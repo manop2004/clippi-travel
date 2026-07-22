@@ -12,6 +12,8 @@ export interface Place {
   year?: string | number;
   rating?: number;
   reviews_count?: number;
+  lat?: number;
+  lng?: number;
 }
 
 interface PlaceCardProps {
@@ -61,6 +63,10 @@ export default function PlaceCard({ place, onClick, compact = false }: PlaceCard
         <span className="text-[8px] font-black tracking-wider uppercase block truncate" style={{ color: C.accentDeep }}>{prefecture}</span>
         <h3 className="text-xs font-black leading-tight mt-0.5 truncate" style={{ color: C.ink }}>{shopName}</h3>
         <p className="text-[10px] text-[#8A7870] font-semibold mt-0.5 truncate">Est. {founded}</p>
+      </div>
+      <div className="flex items-center justify-between mt-3 pt-2.5 border-t shrink-0 select-none" style={{ borderColor: C.line }}>
+        <StarRow value={rating} size={10} />
+        <span className="text-[9px] font-bold text-[#8A7870] shrink-0">{reviewsCount} reviews</span>
       </div>
     </div>
   );

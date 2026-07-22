@@ -1,8 +1,16 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { C } from "../constants/mockData";
-import StarRow from "./StarRow";
 import PlaceCard, { Place } from "./PlaceCard";
 import { supabase } from "../supabaseClient";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+});
 
 interface TrendingSpotsProps {
   openPlace: (place: any) => void;
@@ -11,14 +19,16 @@ interface TrendingSpotsProps {
 
 export default function TrendingSpots({ openPlace, onViewAll }: TrendingSpotsProps) {
   const [places, setPlaces] = useState<Place[]>([]);
-  const [showAll, setShowAll] = useState(false);
+  const [showMap, setShowMap] = useState(false);
   const [loading, setLoading] = useState(true);
+  const mapRef = useRef<L.Map | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     async function fetchPlaces() {
       setLoading(true);
       try {
-        const { data, error } = await supabase.from("century_shops").select("id, shop_name, prefecture, founded");
+        const { data, error } = await supabase.from("century_shops").select("id, shop_name, prefecture, founded, lat, lng");
         if (error) {
           console.error("Error fetching places:", error);
           console.error("Error code:", error.code);
@@ -40,6 +50,51 @@ export default function TrendingSpots({ openPlace, onViewAll }: TrendingSpotsPro
     fetchPlaces();
   }, []);
 
+  useEffect(() => {
+    if (showMap && mapContainerRef.current && !mapRef.current) {
+      const defaultLat = 35.6762;
+      const defaultLng = 139.6503;
+
+      mapRef.current = L.map(mapContainerRef.current, {
+        center: [defaultLat, defaultLng],
+        zoom: 10,
+        scrollWheelZoom: true,
+      });
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      }).addTo(mapRef.current);
+
+      places.forEach((place) => {
+        const lat = place.lat || defaultLat;
+        const lng = place.lng || defaultLng;
+        const shopName = place.shop_name || place.name || "Unknown Shop";
+
+        L.marker([lat, lng])
+          .addTo(mapRef.current!)
+          .bindPopup(`<b>${shopName}</b><br/>${place.prefecture || ""}`)
+          .on("click", () => {
+            handlePlaceClick(place);
+            setShowMap(false);
+          });
+      });
+
+      if (places.length > 0) {
+        const group = L.featureGroup(
+          places.map((p) => L.marker([p.lat || defaultLat, p.lng || defaultLng]))
+        );
+        mapRef.current.fitBounds(group.getBounds().pad(0.2));
+      }
+    }
+
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
+  }, [showMap]);
+
   const handlePlaceClick = (p: Place) => {
     const shopName = p.shop_name || p.name || "Unknown Shop";
     const prefecture = p.prefecture || p.tag || "Japan";
@@ -50,16 +105,16 @@ export default function TrendingSpots({ openPlace, onViewAll }: TrendingSpotsPro
 
   return (
     <div className="w-full min-w-0">
-      {/* Header Section */}
       <div className="flex items-end justify-between mb-4 select-none">
         <div>
           <h2 className="text-lg font-black tracking-tight" style={{ color: C.ink }}>Trending Spots</h2>
           <p className="text-[11px] font-semibold text-[#8A7870] mt-0.5">Most visited heritage places this week</p>
         </div>
-        <button onClick={() => setShowAll(true)} className="text-xs font-black hover:underline shrink-0 text-[#E0533C]">View All →</button>
+        <button onClick={() => setShowMap(true)} className="text-xs font-black hover:underline shrink-0 text-[#E0533C]">
+          View Map →
+        </button>
       </div>
 
-      {/* Cards Container */}
       <div className="flex md:grid md:grid-cols-4 gap-4 overflow-x-auto md:overflow-x-visible pb-3 pt-1 snap-x snap-mandatory scrollbar-none w-full">
         {loading ? (
           Array.from({ length: 4 }).map((_, i) => (
@@ -83,37 +138,20 @@ export default function TrendingSpots({ openPlace, onViewAll }: TrendingSpotsPro
         )}
       </div>
 
-      {/* Full-screen mobile view for View All */}
-      {showAll && (
+      {showMap && (
         <div className="fixed inset-0 z-50 bg-[#FAF6F0] overflow-y-auto">
-          {/* Sticky Header */}
           <div className="sticky top-0 z-10 bg-[#FAF6F0] border-b px-4 py-3 flex items-center justify-between" style={{ borderColor: C.line }}>
-            <h2 className="text-lg font-black" style={{ color: C.ink }}>All Places</h2>
-            <button onClick={() => setShowAll(false)} className="w-8 h-8 rounded-full bg-white border flex items-center justify-center shadow-sm" style={{ borderColor: C.line }}>✕</button>
+            <h2 className="text-lg font-black" style={{ color: C.ink }}>Map View</h2>
+            <button onClick={() => setShowMap(false)} className="w-8 h-8 rounded-full bg-white border flex items-center justify-center shadow-sm" style={{ borderColor: C.line }}>✕</button>
           </div>
 
           <div className="p-4">
             {loading ? (
-              <div className="grid grid-cols-2 gap-3.5">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="p-3.5 rounded-2xl bg-white border animate-pulse" style={{ borderColor: C.line }}>
-                    <div className="h-16 rounded-xl mb-2" style={{ background: C.line }} />
-                    <div className="h-2 rounded mb-1.5" style={{ background: C.line }} />
-                    <div className="h-2 rounded mb-1.5" style={{ background: C.line }} />
-                    <div className="h-2 rounded" style={{ background: C.line }} />
-                  </div>
-                ))}
-              </div>
-            ) : places.length === 0 ? (
-              <div className="p-6 rounded-2xl bg-white border text-center" style={{ borderColor: C.line }}>
-                <p className="text-xs text-[#8A7870] italic">No places available yet.</p>
+              <div className="h-96 w-full flex items-center justify-center">
+                <span className="text-xs text-[#8A7870]">Loading map...</span>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-3.5">
-                {places.map((p) => (
-                  <PlaceCard key={p.id} place={p} compact onClick={() => { handlePlaceClick(p); setShowAll(false); }} />
-                ))}
-              </div>
+              <div ref={mapContainerRef} className="h-96 w-full rounded-2xl border" style={{ borderColor: C.line }} />
             )}
           </div>
         </div>
