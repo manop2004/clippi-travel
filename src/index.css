@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+:root {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: #F2EBE1; /* Board background by default */
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #F2EBE1;
+  min-height: 100vh;
+}
+
+/* Reset root container to span full width and height */
+#root {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  text-align: left !important;
+  border: none !important;
+  min-height: 100vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* Scrollbar utility to hide default scrollbars */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Custom interactive animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

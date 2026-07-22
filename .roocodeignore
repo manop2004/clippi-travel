@@ -1,0 +1,19 @@
+# Gemini & AI Logs/Cache
+.gemini/
+
+# Dependencies & Build Outputs
+node_modules/
+.next/
+dist/
+build/
+out/
+
+# Git & Lock files
+.git/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Environment & Logs
+.env*
+*.log
