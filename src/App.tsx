@@ -150,7 +150,7 @@ export default function App() {
 
           {/* 📄 Main Workspace Pages */}
           <main className="flex-1 p-4 md:p-8 max-w-5xl mx-auto w-full pb-24 md:pb-8">
-            {tab === "explore" && <ExploreView openPlace={(p: any) => setSelectedPlace(trending.find(item => item.name === p.name) || p)} />}
+            {tab === "explore" && <ExploreView openPlace={(p: any) => setSelectedPlace(trending.find(item => item.name === p.name) || p)} onViewMap={() => setTab("map")} />}
             {tab === "map" && <MapView openPlace={(p: any) => setSelectedPlace(p)} />}
             {tab === "collection" && <CollectionView />}
             {tab === "profile" && <ProfileView />}
