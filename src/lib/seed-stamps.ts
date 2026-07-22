@@ -5,12 +5,12 @@ import { supabase } from "../supabaseClient";
 import { createStamp, getStamps } from "../hooks/useReviewStamp";
 
 const initialStamps = [
-  { name: "Tokyo Station Red Brick", icon: "🏢", description: "Historic red brick station building", location: "Tokyo" },
-  { name: "Hachiko Pixel Stamp", icon: "🐕", description: "Hachiko statue in Shibuya", location: "Tokyo" },
-  { name: "Kaminarimon Gate", icon: "⛩️", description: "Thunder Gate at Asakusa", location: "Tokyo" },
-  { name: "Torii Fox", icon: "🦊", description: "Fox statue at Fushimi Inari", location: "Kyoto" },
-  { name: "Castle Seal", icon: "🏯", description: "Japanese castle stamp", location: "Osaka" },
-  { name: "Fuji Sightseeing", icon: "🗻", description: "Mount Fuji viewpoint", location: "Yamanashi" },
+  { place_id: 1, name: "Tokyo Station Red Brick", icon: "🏢", description: "Historic red brick station building", location: "Tokyo" },
+  { place_id: 2, name: "Hachiko Pixel Stamp", icon: "🐕", description: "Hachiko statue in Shibuya", location: "Tokyo" },
+  { place_id: 3, name: "Kaminarimon Gate", icon: "⛩️", description: "Thunder Gate at Asakusa", location: "Tokyo" },
+  { place_id: 4, name: "Torii Fox", icon: "🦊", description: "Fox statue at Fushimi Inari", location: "Kyoto" },
+  { place_id: 5, name: "Castle Seal", icon: "🏯", description: "Japanese castle stamp", location: "Osaka" },
+  { place_id: 6, name: "Fuji Sightseeing", icon: "🗻", description: "Mount Fuji viewpoint", location: "Yamanashi" },
 ];
 
 export async function seedStamps() {

@@ -85,7 +85,6 @@ export default function ExploreView({ openPlace }: { openPlace: (p: any) => void
         </div>
       ) : (
         <TrendingSpots 
-          trending={trendingShops} 
           openPlace={openPlace} 
         />
       )}
