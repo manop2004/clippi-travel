@@ -1,5 +1,5 @@
 import { supabase } from "../supabaseClient";
-import { Review, Place, Stamp, UserStamp, CreateReviewInput, CreatePlaceInput, CreateStampInput } from "../types/review-stamp";
+import { Review, Place, UserStamp, CreateReviewInput, CreatePlaceInput } from "../types/review-stamp";
 
 // Reviews hooks
 export async function getReviews(placeId: string | number): Promise<Review[]> {
@@ -141,41 +141,11 @@ async function updatePlaceRating(placeId: string | number): Promise<void> {
   }
 }
 
-// Stamps hooks
-export async function getStamps(): Promise<Stamp[]> {
-  const { data, error } = await supabase
-    .from("stamps")
-    .select("*")
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.error("Error fetching stamps:", error);
-    return [];
-  }
-  return data || [];
-}
-
-export async function getStampsByPlace(placeId: string | number): Promise<Stamp[]> {
-  const { data, error } = await supabase
-    .from("stamps")
-    .select("*")
-    .eq("place_id", placeId)
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.error("Error fetching stamps by place:", error);
-    return [];
-  }
-  return data || [];
-}
-
+// Stamp collection hooks - uses shop_id directly instead of stamp_id
 export async function getUserStamps(userId: string): Promise<UserStamp[]> {
   const { data, error } = await supabase
     .from("user_stamps")
-    .select(`
-      *,
-      stamp:stamp_id (*)
-    `)
+    .select("*")
     .eq("user_id", userId)
     .order("collected_at", { ascending: false });
 
@@ -186,7 +156,7 @@ export async function getUserStamps(userId: string): Promise<UserStamp[]> {
   return data || [];
 }
 
-export async function collectStamp(stampId: string): Promise<UserStamp | null> {
+export async function collectStamp(shopId: string | number): Promise<UserStamp | null> {
   const { data: { user } } = await supabase.auth.getUser();
   
   if (!user) {
@@ -197,7 +167,7 @@ export async function collectStamp(stampId: string): Promise<UserStamp | null> {
     .from("user_stamps")
     .insert({
       user_id: user.id,
-      stamp_id: stampId,
+      shop_id: shopId,
     })
     .select()
     .single();
@@ -209,35 +179,13 @@ export async function collectStamp(stampId: string): Promise<UserStamp | null> {
   return data;
 }
 
-export async function createStamp(input: CreateStampInput): Promise<Stamp | null> {
-  const { data, error } = await supabase
-    .from("stamps")
-    .insert({
-      place_id: input.place_id,
-      name: input.name,
-      icon: input.icon,
-      description: input.description || null,
-      location: input.location || null,
-      lat: input.lat || null,
-      lng: input.lng || null,
-    })
-    .select()
-    .single();
-
-  if (error) {
-    console.error("Error creating stamp:", error);
-    throw error;
-  }
-  return data;
-}
-
-// Check if user has collected a specific stamp
-export async function hasUserCollectedStamp(userId: string, stampId: string): Promise<boolean> {
+// Check if user has collected a stamp for a specific shop
+export async function hasUserCollectedStamp(userId: string, shopId: string | number): Promise<boolean> {
   const { data, error } = await supabase
     .from("user_stamps")
     .select("id")
     .eq("user_id", userId)
-    .eq("stamp_id", stampId)
+    .eq("shop_id", shopId)
     .single();
 
   if (error && error.code !== "PGRST116") {

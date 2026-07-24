@@ -32,24 +32,11 @@ export interface Place {
   created_at?: string;
 }
 
-export interface Stamp {
-  id: string;
-  place_id: string | number;
-  name: string;
-  icon: string;
-  description?: string;
-  location?: string;
-  lat?: number;
-  lng?: number;
-  created_at?: string;
-}
-
 export interface UserStamp {
   id: string;
   user_id: string;
-  stamp_id: string;
+  shop_id: string | number;
   collected_at: string;
-  stamp?: Stamp;
 }
 
 // Input types for creating new records
@@ -67,16 +54,6 @@ export interface CreatePlaceInput {
   address?: string;
   description?: string;
   website?: string;
-  lat?: number;
-  lng?: number;
-}
-
-export interface CreateStampInput {
-  place_id: string | number;
-  name: string;
-  icon: string;
-  description?: string;
-  location?: string;
   lat?: number;
   lng?: number;
 }

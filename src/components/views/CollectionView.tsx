@@ -1,61 +1,44 @@
 import React, { useState, useEffect } from "react";
 import { C } from "../../constants/mockData";
-import { getUserStamps, getStamps } from "../../hooks/useReviewStamp";
+import { getUserStamps, getPlaces } from "../../hooks/useReviewStamp";
 import { supabase } from "../../supabaseClient";
-import { Stamp, UserStamp } from "../../types/review-stamp";
+import { UserStamp, Place } from "../../types/review-stamp";
 import StarRow from "../StarRow";
+import { MapPin } from "lucide-react";
 
 export default function CollectionView() {
   const [userStamps, setUserStamps] = useState<UserStamp[]>([]);
-  const [stampsByPlace, setStampsByPlace] = useState<Map<string | number, Stamp[]>>(new Map());
+  const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
-  const [places, setPlaces] = useState<any[]>([]);
 
-  // Get current user
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUser(user);
     });
   }, []);
 
-  // Fetch places
   useEffect(() => {
-    supabase.from("century_shops").select("*").then(({ data }) => {
-      if (data) setPlaces(data);
-    });
-  }, []);
-
-  // Fetch user stamps and all stamps
-  useEffect(() => {
-    async function fetchStamps() {
+    async function fetchData() {
       if (!user?.id) return;
       setLoading(true);
       try {
-        const [userStampsData, allStamps] = await Promise.all([
-          user?.id ? getUserStamps(user.id) : Promise.resolve([]),
-          getStamps(),
+        const [userStampsData, placesData] = await Promise.all([
+          getUserStamps(user.id),
+          getPlaces(),
         ]);
-        
         setUserStamps(userStampsData);
-
-        // Group stamps by place_id
-        const map = new Map<string | number, Stamp[]>();
-        for (const stamp of allStamps) {
-          const list = map.get(stamp.place_id) || [];
-          list.push(stamp);
-          map.set(stamp.place_id, list);
-        }
-        setStampsByPlace(map);
+        setPlaces(placesData);
       } catch (error) {
-        console.error("Error fetching stamps:", error);
+        console.error("Error fetching data:", error);
       } finally {
         setLoading(false);
       }
     }
-    fetchStamps();
+    fetchData();
   }, [user]);
 
+  const collectedShopIds = new Set(userStamps.map(us => String(us.shop_id)));
   const totalCollected = userStamps.length;
 
   if (loading) {
@@ -68,7 +51,6 @@ export default function CollectionView() {
 
   return (
     <div className="space-y-4 w-full min-w-0 text-[#231C18]">
-      {/* 📚 Stamp Book Header */}
       <div className="py-1">
         <h2 className="text-base font-black leading-none select-none" style={{ color: C.ink }}>
           Stamp Book
@@ -78,26 +60,25 @@ export default function CollectionView() {
         </p>
       </div>
 
-      {/* 📊 Tour Details & Progress info */}
       <div className="flex items-center justify-between py-1 pb-2 border-b select-none" style={{ borderColor: C.line }}>
-        <span className="text-xs font-black" style={{ color: C.ink }}>Kansai & Kanto</span>
+        <span className="text-xs font-black" style={{ color: C.ink }}>All Regions</span>
         <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full" style={{ background: C.accentSoft, color: C.accentDeep }}>
-          {totalCollected} / {stampsByPlace.size} Stamps Collected
+          {totalCollected} / {places.length} Stamps Collected
         </span>
       </div>
 
-      {/* 🎴 Stamp Cards Grid (2 Columns inside Phone) */}
       <div className="space-y-6">
         {places.length > 0 ? (
           places.map((place) => {
-            const stamps = stampsByPlace.get(place.id) || [];
-            const hasStamps = stamps.length > 0;
-            
+            const got = collectedShopIds.has(String(place.id));
+            const shopName = place.shop_name || place.name || `Place ${place.id}`;
+            const prefecture = place.prefecture || "";
+
             return (
               <div key={place.id} className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-black text-[#8A7870]">
-                    {place.shop_name || place.name || `Place ${place.id}`}
+                  <h3 className="text-xs font-black text-[#8A7870] flex items-center gap-1">
+                    <MapPin size={10} /> {shopName}
                   </h3>
                   {place.rating && (
                     <div className="flex items-center gap-1">
@@ -109,49 +90,34 @@ export default function CollectionView() {
                     </div>
                   )}
                 </div>
-                
-                {hasStamps ? (
-                  <div className="grid grid-cols-2 gap-3.5">
-                    {stamps.map((stamp) => {
-                      const got = userStamps.some(us => us.stamp_id === stamp.id);
-                      return (
-                        <div
-                          key={stamp.id}
-                          className="p-3.5 rounded-2xl bg-white border text-center flex flex-col items-center justify-between min-h-[145px] hover:shadow-xs transition"
-                          style={{ borderColor: C.line }}
-                        >
-                          {/* Round Stamp Circular Seal */}
-                          <div
-                            className="w-16 h-16 rounded-full flex items-center justify-center text-2xl mb-2.5 transition"
-                            style={{
-                              background: got ? C.accentSoft : "#EFE5DD/30",
-                              border: got ? `2px dashed ${C.accent}` : "2px dashed #8A7870",
-                              filter: got ? "none" : "grayscale(1) opacity(0.4)",
-                            }}
-                          >
-                            {stamp.icon}
-                          </div>
 
-                          <div className="space-y-0.5">
-                            <p className="text-[10px] font-black leading-tight max-w-[120px] mx-auto truncate" style={{ color: C.ink }}>
-                              {stamp.name}
-                            </p>
-                            <p 
-                              className="text-[8px] font-black tracking-wider uppercase" 
-                              style={{ color: got ? C.accentDeep : C.inkSoft }}
-                            >
-                              {got ? "ACQUIRED" : "NOT COLLECTED"}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
+                <div
+                  className="p-4 rounded-2xl bg-white border text-center flex flex-col items-center justify-center min-h-[120px] hover:shadow-xs transition"
+                  style={{ borderColor: C.line }}
+                >
+                  <div
+                    className="w-14 h-14 rounded-full flex items-center justify-center text-xl mb-2.5 transition"
+                    style={{
+                      background: got ? C.accentSoft : "#EFE5DD/30",
+                      border: got ? `2px dashed ${C.accent}` : "2px dashed #8A7870",
+                      filter: got ? "none" : "grayscale(1) opacity(0.4)",
+                    }}
+                  >
+                    🏢
                   </div>
-                ) : (
-                  <div className="p-4 rounded-xl bg-white border text-center" style={{ borderColor: C.line }}>
-                    <p className="text-[11px] text-[#8A7870] italic">No stamp available for this place yet.</p>
-                  </div>
-                )}
+                  <p className="text-[10px] font-black leading-tight" style={{ color: C.ink }}>
+                    {shopName}
+                  </p>
+                  <p
+                    className="text-[8px] font-black tracking-wider uppercase mt-1"
+                    style={{ color: got ? C.accentDeep : C.inkSoft }}
+                  >
+                    {got ? "ACQUIRED" : "NOT COLLECTED"}
+                  </p>
+                  {prefecture && (
+                    <p className="text-[8px] text-[#8A7870] mt-1">{prefecture}</p>
+                  )}
+                </div>
               </div>
             );
           })
@@ -164,3 +130,34 @@ export default function CollectionView() {
     </div>
   );
 }
+</arg_value>
+<task_progress>
+- [x] Remove trending prop
+- [x] Add places state + fetch from DB
+- [x] Replace trending.map with places.map in JSX
+- [x] Add full-screen mobile view for View All
+- [x] Make close button sticky
+- [x] Fix slow loading - fetch rating from century_shops instead of reviews
+- [x] Remove unused placesMap state
+- [x] Fix remaining placesMap references in View All grid
+- [x] Fix reviews_count vs reviewsCount
+- [x] Add skeleton loading for initial load
+- [x] Add error/empty state UI
+- [x] Debug fetch error - log full error details
+- [x] Fix select columns to match DB schema
+- [x] Add skeleton for View All when loading
+- [x] Extract PlaceCard component for reuse
+- [x] Update TrendingSpots to use PlaceCard
+- [x] Fix ExploreView.tsx - remove trending prop
+- [x] Fix seed-stamps.ts - add place_id
+- [x] Verify build passes
+- [x] Change View All to View Map with Leaflet map
+- [x] Fix PlaceCard.tsx - restore footer row
+- [x] Fix TrendingSpots.tsx - remove XML artifacts
+- [x] Verify build passes again
+- [x] Simplify to use onViewMap callback instead of Leaflet overlay
+- [x] Change View Map button to navigate via Navigation
+- [x] Create project documentation
+- [x] Remove stamps table - use shop_id in user_stamps
+- [x] Update CollectionView component
+- [ ] Clean up temporary files and verify build</arg_value></tool_call>
