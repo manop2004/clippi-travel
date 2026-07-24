@@ -67,66 +67,88 @@ export default function CollectionView() {
         </span>
       </div>
 
-      <div className="space-y-6">
-        {places.length > 0 ? (
-          places.map((place) => {
-            const got = collectedShopIds.has(String(place.id));
-            const shopName = place.shop_name || place.name || `Place ${place.id}`;
-            const prefecture = place.prefecture || "";
-
-            return (
-              <div key={place.id} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-black text-[#8A7870] flex items-center gap-1">
-                    <MapPin size={10} /> {shopName}
-                  </h3>
-                  {place.rating && (
-                    <div className="flex items-center gap-1">
-                      <span className="text-[10px] font-bold" style={{ color: C.ink }}>{place.rating}</span>
-                      <StarRow value={place.rating || 0} size={10} />
-                      <span className="text-[9px] text-[#8A7870]">
-                        ({place.reviews_count || 0})
-                      </span>
-                    </div>
-                  )}
-                </div>
-
+      {/* Collected Stamps Section */}
+      {userStamps.length > 0 && (
+        <div>
+          <h3 className="text-[10px] font-black uppercase tracking-wider text-[#8A7870] mb-4 flex items-center gap-1.5 select-none">
+            <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
+            Collected Stamps
+          </h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {userStamps.map((us) => {
+              const place = places.find(p => String(p.id) === String(us.shop_id));
+              const shopName = place?.shop_name || place?.name || `Place ${us.shop_id}`;
+              const prefecture = place?.prefecture || "";
+              const collectedDate = new Date(us.collected_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+              return (
                 <div
-                  className="p-4 rounded-2xl bg-white border text-center flex flex-col items-center justify-center min-h-[120px] hover:shadow-xs transition"
-                  style={{ borderColor: C.line }}
+                  key={us.id}
+                  className="p-3.5 rounded-2xl bg-white border text-center flex flex-col items-center justify-center min-h-[120px] hover:shadow-xs transition"
+                  style={{ borderColor: C.line, borderLeft: `3px solid ${C.accent}` }}
                 >
                   <div
-                    className="w-14 h-14 rounded-full flex items-center justify-center text-xl mb-2.5 transition"
-                    style={{
-                      background: got ? C.accentSoft : "#EFE5DD/30",
-                      border: got ? `2px dashed ${C.accent}` : "2px dashed #8A7870",
-                      filter: got ? "none" : "grayscale(1) opacity(0.4)",
-                    }}
+                    className="w-12 h-12 rounded-full flex items-center justify-center text-lg mb-2"
+                    style={{ background: C.accentSoft, border: `2px dashed ${C.accent}` }}
                   >
                     🏢
                   </div>
                   <p className="text-[10px] font-black leading-tight" style={{ color: C.ink }}>
                     {shopName}
                   </p>
-                  <p
-                    className="text-[8px] font-black tracking-wider uppercase mt-1"
-                    style={{ color: got ? C.accentDeep : C.inkSoft }}
-                  >
-                    {got ? "ACQUIRED" : "NOT COLLECTED"}
-                  </p>
+                  <span className="text-[7px] font-bold text-green-600 mt-1">✓ COLLECTED</span>
+                  <span className="text-[7px] text-[#8A7870] mt-0.5">{collectedDate}</span>
                   {prefecture && (
-                    <p className="text-[8px] text-[#8A7870] mt-1">{prefecture}</p>
+                    <span className="text-[7px] text-[#8A7870]">{prefecture}</span>
                   )}
                 </div>
-              </div>
-            );
-          })
-        ) : (
-          <div className="col-span-2 p-6 rounded-2xl bg-white border text-center" style={{ borderColor: C.line }}>
-            <p className="text-xs text-[#8A7870] italic">No places available yet. Check back later!</p>
+              );
+            })}
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Remaining Places Section */}
+      {places.filter(p => !collectedShopIds.has(String(p.id))).length > 0 && (
+        <div>
+          <h3 className="text-[10px] font-black uppercase tracking-wider text-[#8A7870] mb-4 flex items-center gap-1.5 select-none">
+            <span className="w-2 h-2 rounded-full bg-[#8A7870] inline-block" />
+            Remaining Places
+          </h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {places.filter(p => !collectedShopIds.has(String(p.id))).map((place) => {
+              const shopName = place.shop_name || place.name || `Place ${place.id}`;
+              const prefecture = place.prefecture || "";
+              return (
+                <div
+                  key={place.id}
+                  className="p-3.5 rounded-2xl bg-white border text-center flex flex-col items-center justify-center min-h-[120px] hover:shadow-xs transition"
+                  style={{ borderColor: C.line }}
+                >
+                  <div
+                    className="w-12 h-12 rounded-full flex items-center justify-center text-lg mb-2"
+                    style={{ background: "#EFE5DD", border: "2px dashed #8A7870", filter: "grayscale(1) opacity(0.4)" }}
+                  >
+                    🏢
+                  </div>
+                  <p className="text-[10px] font-black leading-tight" style={{ color: C.ink }}>
+                    {shopName}
+                  </p>
+                  <span className="text-[7px] font-bold text-[#8A7870] mt-1">NOT COLLECTED</span>
+                  {prefecture && (
+                    <span className="text-[7px] text-[#8A7870]">{prefecture}</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {places.length === 0 && (
+        <div className="p-6 rounded-2xl bg-white border text-center" style={{ borderColor: C.line }}>
+          <p className="text-xs text-[#8A7870] italic">No places available yet. Check back later!</p>
+        </div>
+      )}
     </div>
   );
 }
