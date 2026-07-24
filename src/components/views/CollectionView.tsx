@@ -7,7 +7,7 @@ import StarRow from "../StarRow";
 import { MapPin } from "lucide-react";
 
 export default function CollectionView() {
-  const [userStamps, setUserStamps] = useState<UserStamp[]>([]);
+  const [userStamps, setUserStamps] = useState<any[]>([]);
   const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
@@ -27,6 +27,8 @@ export default function CollectionView() {
           getUserStamps(user.id),
           getPlaces(),
         ]);
+        console.log("userStamps:", userStampsData);
+        console.log("places:", placesData);
         setUserStamps(userStampsData);
         setPlaces(placesData);
       } catch (error) {
@@ -38,6 +40,10 @@ export default function CollectionView() {
     fetchData();
   }, [user]);
 
+  // Build a lookup map from shop_id -> shop details
+  const shopLookup = new Map();
+  places.forEach(p => shopLookup.set(String(p.id), p));
+  
   const collectedShopIds = new Set(userStamps.map(us => String(us.shop_id)));
   const totalCollected = userStamps.length;
 
@@ -75,8 +81,8 @@ export default function CollectionView() {
             Collected Stamps
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {userStamps.map((us) => {
-              const place = places.find(p => String(p.id) === String(us.shop_id));
+            {userStamps.map((us: any) => {
+              const place = shopLookup.get(String(us.shop_id));
               const shopName = place?.shop_name || place?.name || `Place ${us.shop_id}`;
               const prefecture = place?.prefecture || "";
               const collectedDate = new Date(us.collected_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });

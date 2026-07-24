@@ -142,7 +142,7 @@ async function updatePlaceRating(placeId: string | number): Promise<void> {
 }
 
 // Stamp collection hooks - uses shop_id directly instead of stamp_id
-export async function getUserStamps(userId: string): Promise<UserStamp[]> {
+export async function getUserStamps(userId: string): Promise<any[]> {
   const { data, error } = await supabase
     .from("user_stamps")
     .select("*")
