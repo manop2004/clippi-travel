@@ -92,7 +92,7 @@ export default function CollectionView() {
                   >
                     🏢
                   </div>
-                  <p className="text-[10px] font-black leading-tight" style={{ color: C.ink }}>
+                  <p className="text-[9px] font-black leading-tight" style={{ color: C.ink }}>
                     {shopName}
                   </p>
                   <span className="text-[7px] font-bold text-green-600 mt-1">✓ COLLECTED</span>
