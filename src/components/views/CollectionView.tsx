@@ -130,34 +130,3 @@ export default function CollectionView() {
     </div>
   );
 }
-</arg_value>
-<task_progress>
-- [x] Remove trending prop
-- [x] Add places state + fetch from DB
-- [x] Replace trending.map with places.map in JSX
-- [x] Add full-screen mobile view for View All
-- [x] Make close button sticky
-- [x] Fix slow loading - fetch rating from century_shops instead of reviews
-- [x] Remove unused placesMap state
-- [x] Fix remaining placesMap references in View All grid
-- [x] Fix reviews_count vs reviewsCount
-- [x] Add skeleton loading for initial load
-- [x] Add error/empty state UI
-- [x] Debug fetch error - log full error details
-- [x] Fix select columns to match DB schema
-- [x] Add skeleton for View All when loading
-- [x] Extract PlaceCard component for reuse
-- [x] Update TrendingSpots to use PlaceCard
-- [x] Fix ExploreView.tsx - remove trending prop
-- [x] Fix seed-stamps.ts - add place_id
-- [x] Verify build passes
-- [x] Change View All to View Map with Leaflet map
-- [x] Fix PlaceCard.tsx - restore footer row
-- [x] Fix TrendingSpots.tsx - remove XML artifacts
-- [x] Verify build passes again
-- [x] Simplify to use onViewMap callback instead of Leaflet overlay
-- [x] Change View Map button to navigate via Navigation
-- [x] Create project documentation
-- [x] Remove stamps table - use shop_id in user_stamps
-- [x] Update CollectionView component
-- [ ] Clean up temporary files and verify build</arg_value></tool_call>

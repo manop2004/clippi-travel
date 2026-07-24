@@ -1,14 +1,13 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "../supabaseClient";
-import { getUserStamps, getStamps, getReviews, createReview, collectStamp } from "../hooks/useReviewStamp";
-import { Review, Stamp, UserStamp } from "../types/review-stamp";
+import { getUserStamps, getReviews, createReview, collectStamp } from "../hooks/useReviewStamp";
+import { Review, UserStamp } from "../types/review-stamp";
 
 interface ReviewStampContextType {
   user: any;
   userStamps: UserStamp[];
-  allStamps: Stamp[];
   loading: boolean;
-  collectStamp: (stampId: string) => Promise<void>;
+  collectStamp: (shopId: string | number) => Promise<void>;
   refreshStamps: () => Promise<void>;
 }
 
@@ -29,7 +28,6 @@ interface ReviewStampProviderProps {
 export function ReviewStampProvider({ children }: ReviewStampProviderProps) {
   const [user, setUser] = useState<any>(null);
   const [userStamps, setUserStamps] = useState<UserStamp[]>([]);
-  const [allStamps, setAllStamps] = useState<Stamp[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Get current user
@@ -51,12 +49,7 @@ export function ReviewStampProvider({ children }: ReviewStampProviderProps) {
     async function fetchStamps() {
       setLoading(true);
       try {
-        const [stamps, userStampsData] = await Promise.all([
-          getStamps(),
-          user?.id ? getUserStamps(user.id) : Promise.resolve([]),
-        ]);
-        
-        setAllStamps(stamps);
+        const userStampsData = user?.id ? await getUserStamps(user.id) : [];
         setUserStamps(userStampsData);
       } catch (error) {
         console.error("Error fetching stamps:", error);
@@ -67,11 +60,11 @@ export function ReviewStampProvider({ children }: ReviewStampProviderProps) {
     fetchStamps();
   }, [user]);
 
-  const handleCollectStamp = async (stampId: string) => {
+  const handleCollectStamp = async (shopId: string | number) => {
     if (!user?.id) return;
     
     try {
-      await collectStamp(stampId);
+      await collectStamp(shopId);
       // Refresh user stamps
       const updated = await getUserStamps(user.id);
       setUserStamps(updated);
@@ -84,12 +77,7 @@ export function ReviewStampProvider({ children }: ReviewStampProviderProps) {
     if (!user?.id) return;
     
     try {
-      const [stamps, userStampsData] = await Promise.all([
-        getStamps(),
-        getUserStamps(user.id),
-      ]);
-      
-      setAllStamps(stamps);
+      const userStampsData = await getUserStamps(user.id);
       setUserStamps(userStampsData);
     } catch (error) {
       console.error("Error refreshing stamps:", error);
@@ -101,7 +89,6 @@ export function ReviewStampProvider({ children }: ReviewStampProviderProps) {
       value={{
         user,
         userStamps,
-        allStamps,
         loading,
         collectStamp: handleCollectStamp,
         refreshStamps,

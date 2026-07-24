@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import { X, Navigation, QrCode, Landmark, MapPin, ExternalLink, Send, Loader2, Star } from "lucide-react";
 import { C, categories } from "../constants/mockData";
 import StarRow from "./StarRow";
-import { getReviews, createReview, collectStamp, getStampsByPlace, hasUserCollectedStamp, getUserStamps } from "../hooks/useReviewStamp";
-import { Review, Stamp, UserStamp } from "../types/review-stamp";
+import { getReviews, createReview, collectStamp, hasUserCollectedStamp, getUserStamps } from "../hooks/useReviewStamp";
+import { Review, UserStamp } from "../types/review-stamp";
 import { supabase } from "../supabaseClient";
 
 interface PlaceDetailModalProps {
@@ -17,7 +17,6 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [userStamps, setUserStamps] = useState<UserStamp[]>([]);
   const [collectingStamp, setCollectingStamp] = useState<string | null>(null);
-  const [placeStamp, setPlaceStamp] = useState<Stamp | null>(null);
   const [user, setUser] = useState<any>(null);
   const [realRating, setRealRating] = useState<number | null>(null);
   const [realReviewsCount, setRealReviewsCount] = useState<number | null>(null);
@@ -55,15 +54,6 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
     }
   }, [placeId]);
 
-  // Fetch stamp for this place
-  useEffect(() => {
-    if (placeId) {
-      getStampsByPlace(placeId).then((stamps) => {
-        setPlaceStamp(stamps[0] || null);
-      });
-    }
-  }, [placeId]);
-
   // Fetch real rating and reviews count from reviews table
   useEffect(() => {
     if (!placeId) return;
@@ -89,17 +79,17 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
 
   // Handle stamp collection
   const handleCollectStamp = async () => {
-    if (!user || !placeStamp) return;
+    if (!user || !placeId) return;
     
-    setCollectingStamp(placeStamp.id);
+    setCollectingStamp(String(placeId));
     try {
-      const alreadyCollected = await hasUserCollectedStamp(user.id, placeStamp.id);
+      const alreadyCollected = await hasUserCollectedStamp(user.id, placeId);
       if (!alreadyCollected) {
-        await collectStamp(placeStamp.id);
+        await collectStamp(placeId);
         // Refresh user stamps immediately
         const updated = await getUserStamps(user.id);
         setUserStamps(updated);
-        alert(`Successfully collected ${placeStamp.name}!`);
+        alert(`Successfully collected stamp for ${shopName}!`);
       }
     } catch (error) {
       console.error("Error collecting stamp:", error);
@@ -108,7 +98,7 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
     }
   };
 
-  const hasCollectedStamp = placeStamp ? userStamps.some(us => us.stamp_id === placeStamp.id) : false;
+  const hasCollectedStamp = placeId ? userStamps.some(us => us.shop_id === placeId) : false;
 
   if (!place) return null;
 
@@ -172,7 +162,7 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
               </button>
               <button 
                 onClick={handleCollectStamp}
-                disabled={collectingStamp !== null || !placeStamp}
+                disabled={collectingStamp !== null || !placeId}
                 className="flex-1 py-2.5 px-3 rounded-xl text-xs font-black text-white flex items-center justify-center gap-1.5 shadow-sm transition hover:opacity-95 disabled:opacity-70" 
                 style={{ background: C.accent }}
               >
