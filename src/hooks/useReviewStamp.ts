@@ -79,11 +79,14 @@ export async function deleteReview(id: string): Promise<void> {
 export async function getPlaces(): Promise<Place[]> {
   const { data, error } = await supabase
     .from("century_shops")
-    .select("*")
-    .order("created_at", { ascending: false });
+    .select("*");
 
   if (error) {
     console.error("Error fetching places:", error);
+    console.error("Error code:", error.code);
+    console.error("Error message:", error.message);
+    console.error("Error details:", error.details);
+    console.error("Error hint:", error.hint);
     return [];
   }
   return data || [];
