@@ -48,6 +48,9 @@ export default function MapView({ openPlace }: MapViewProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markersGroupRef = useRef<L.LayerGroup | null>(null);
+  
+  // 📍 เพิ่มบรรทัดนี้เพื่อเก็บตัวแปรหมุดของผู้ใช้
+  const userMarkerRef = useRef<L.Marker | null>(null);
 
   // Fetch shops
   useEffect(() => {
@@ -153,14 +156,41 @@ export default function MapView({ openPlace }: MapViewProps) {
     }
   };
 
+  // 📍 อัปเดตฟังก์ชันเพื่อสร้างและย้ายหมุดผู้ใช้
   const handleNearMeClick = () => {
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
+          
           if (mapRef.current) {
+            // ซูมแผนที่ไปหาผู้ใช้
             mapRef.current.flyTo([lat, lng], 14, { animate: true });
+
+            // สร้างหน้าตาของหมุดผู้ใช้ (เป็นจุดสีฟ้า และมีเอฟเฟกต์กระเพื่อม)
+            const userIconHtml = `
+              <div class="relative flex items-center justify-center w-full h-full">
+                <div class="absolute w-8 h-8 bg-blue-500 rounded-full opacity-40 animate-ping"></div>
+                <div class="w-4 h-4 bg-blue-600 rounded-full border-2 border-white shadow-md z-10"></div>
+              </div>
+            `;
+            
+            const userIcon = L.divIcon({
+              html: userIconHtml,
+              className: "bg-transparent", // ลบพื้นหลังสีขาวดั้งเดิมของ Leaflet
+              iconSize: [32, 32],
+              iconAnchor: [16, 16],
+            });
+
+            // ตรวจสอบว่าเคยปักหมุดไปแล้วหรือยัง?
+            if (userMarkerRef.current) {
+              // ถ้าเคยปักแล้ว ให้ขยับหมุดเดิมไปที่ใหม่
+              userMarkerRef.current.setLatLng([lat, lng]);
+            } else {
+              // ถ้ายังไม่เคยปัก ให้สร้างหมุดใหม่แล้วแปะลงแผนที่
+              userMarkerRef.current = L.marker([lat, lng], { icon: userIcon }).addTo(mapRef.current);
+            }
           }
         },
         (error) => {
@@ -172,6 +202,7 @@ export default function MapView({ openPlace }: MapViewProps) {
       alert("เบราว์เซอร์ของคุณไม่รองรับการดึงตำแหน่ง");
     }
   };
+
 
   if (loading) {
     return (
