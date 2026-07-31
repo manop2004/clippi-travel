@@ -168,6 +168,29 @@ export default function MapView({ openPlace }: MapViewProps) {
     }
   };
 
+  // 🆕 5. ฟังก์ชันดึงพิกัดและซูมไปหาผู้ใช้
+  const handleNearMeClick = () => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          
+          if (mapRef.current) {
+            // สั่งให้แผนที่ขยับไปตำแหน่งของผู้ใช้ที่ซูมระดับ 14
+            mapRef.current.flyTo([lat, lng], 14, { animate: true });
+          }
+        },
+        (error) => {
+          console.error("Error getting location:", error.message);
+          alert("กรุณาอนุญาตการเข้าถึงตำแหน่ง (Location) ในเบราว์เซอร์");
+        }
+      );
+    } else {
+      alert("เบราว์เซอร์ของคุณไม่รองรับการดึงตำแหน่ง");
+    }
+  };
+
   if (loading) {
     return (
       <div className="h-96 w-full flex items-center justify-center text-xs font-black text-[#8A7870]">
@@ -223,6 +246,16 @@ export default function MapView({ openPlace }: MapViewProps) {
           style={{ borderColor: C.line }}
         >
           <div ref={mapContainerRef} className="w-full h-full" />
+          
+          {/* 🆕 ปุ่ม Near Me ลอยอยู่มุมขวาบนของแผนที่ */}
+          <button 
+            onClick={handleNearMeClick}
+            className="absolute top-4 right-4 z-[1000] flex items-center gap-1.5 bg-white px-3 py-2 rounded-full shadow-md hover:bg-stone-50 transition border"
+            style={{ borderColor: C.line, color: C.accent }}
+          >
+            <Navigation size={14} /> 
+            <span className="text-[10px] font-black">Near me</span>
+          </button>
         </div>
 
         {/* Details side pane */}
