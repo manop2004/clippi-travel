@@ -59,13 +59,13 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
   // Fetch real rating and reviews count from reviews table
   useEffect(() => {
     if (!placeId) return;
-    
+
     async function fetchRealRating() {
       const { data } = await supabase
         .from("reviews")
         .select("rating")
         .eq("place_id", placeId);
-      
+
       if (data && data.length > 0) {
         const avgRating = data.reduce((sum, r) => sum + r.rating, 0) / data.length;
         setRealRating(Math.round(avgRating * 10) / 10);
@@ -75,14 +75,14 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
         setRealReviewsCount(null);
       }
     }
-    
+
     fetchRealRating();
   }, [placeId, dbReviews]);
 
   // Handle stamp collection
   const handleCollectStamp = async () => {
     if (!user || !placeId) return;
-    
+
     setCollectingStamp(String(placeId));
     try {
       const alreadyCollected = await hasUserCollectedStamp(user.id, placeId);
@@ -107,13 +107,13 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs animate-fade-in">
-        <div 
-          className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-3xl relative flex flex-col md:flex-row border shadow-2xl" 
+        <div
+          className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-3xl relative flex flex-col md:flex-row border shadow-2xl"
           style={{ background: "#FAF6F0", borderColor: C.line }}
         >
           {/* Close Button */}
-          <button 
-            onClick={onClose} 
+          <button
+            onClick={onClose}
             className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center bg-white shadow-sm hover:scale-105 transition z-30 border"
             style={{ borderColor: C.line }}
           >
@@ -121,10 +121,10 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
           </button>
 
           {/* Left Side: Photo Area */}
-          <div 
+          <div
             className="w-full md:w-[40%] h-48 md:h-auto min-h-[180px] bg-cover bg-center relative flex items-end p-5 shrink-0 select-none"
-            style={{ 
-              backgroundImage: `linear-gradient(to top, rgba(35,28,24,0.8), rgba(35,28,24,0)), url('https://images.unsplash.com/photo-1542044896530-05d85be9b11a?auto=format&fit=crop&q=80&w=600')` 
+            style={{
+              backgroundImage: `linear-gradient(to top, rgba(35,28,24,0.8), rgba(35,28,24,0)), url('https://images.unsplash.com/photo-1542044896530-05d85be9b11a?auto=format&fit=crop&q=80&w=600')`
             }}
           >
             <div className="text-white z-10">
@@ -178,10 +178,10 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
                   <Navigation size={13} /> Navigate
                 </button>
               )}
-              <button 
+              <button
                 onClick={handleCollectStamp}
                 disabled={collectingStamp !== null || !placeId}
-                className="flex-1 py-2.5 px-3 rounded-xl text-xs font-black text-white flex items-center justify-center gap-1.5 shadow-sm transition hover:opacity-95 disabled:opacity-70" 
+                className="flex-1 py-2.5 px-3 rounded-xl text-xs font-black text-white flex items-center justify-center gap-1.5 shadow-sm transition hover:opacity-95 disabled:opacity-70"
                 style={{ background: C.accent }}
               >
                 {collectingStamp ? (
@@ -199,8 +199,8 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
               <div>
                 <span className="block leading-tight">Heritage Stamp Available</span>
                 <span className="font-semibold text-[9px] opacity-80 block mt-0.5">
-                  {hasCollectedStamp 
-                    ? "You have collected this stamp!" 
+                  {hasCollectedStamp
+                    ? "You have collected this stamp!"
                     : "Check in at this location to collect the digital stamp book seal."}
                 </span>
               </div>
@@ -225,9 +225,9 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
               <div className="flex items-center justify-between mb-2.5 select-none">
                 <h3 className="text-[10px] font-black uppercase tracking-wider text-[#8A7870]">Reviews</h3>
                 {user && (
-                  <button 
+                  <button
                     onClick={() => setShowReviewForm(true)}
-                    className="text-[10px] font-black hover:underline" 
+                    className="text-[10px] font-black hover:underline"
                     style={{ color: C.accent }}
                   >
                     Write Review
@@ -246,12 +246,23 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
                       <div key={r.id} className="p-3 rounded-xl bg-white border" style={{ borderColor: C.line }}>
                         <div className="flex items-center justify-between mb-1.5 select-none">
                           <div className="flex items-center gap-1.5">
+
+                            {/*
                             <div className="w-5 h-5 rounded-full bg-[#231C18] text-white flex items-center justify-center text-[9px] font-bold">
                               {r.user?.email?.[0] || "U"}
                             </div>
                             <span className="text-xs font-bold" style={{ color: C.ink }}>
                               {r.user?.email?.split("@")[0] || "User"}
                             </span>
+                            */}
+
+                            <div className="w-5 h-5 rounded-full bg-[#231C18] text-white flex items-center justify-center text-[9px] font-bold">
+                              U
+                            </div>
+                            <span className="text-xs font-bold" style={{ color: C.ink }}>
+                              User
+                            </span>
+
                           </div>
                           <StarRow value={r.rating} size={9} />
                         </div>
@@ -270,7 +281,7 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
             {/* External Website Link */}
             {website && (
               <div className="pt-2 select-none">
-                <a 
+                <a
                   href={website}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -286,8 +297,8 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
 
       {/* Review Form Modal */}
       {showReviewForm && placeId && (
-        <ReviewFormModal 
-          placeId={placeId} 
+        <ReviewFormModal
+          placeId={placeId}
           placeName={shopName}
           onClose={() => setShowReviewForm(false)}
           onSuccess={(newReview) => {
@@ -316,14 +327,14 @@ function ReviewFormModal({ placeId, placeName, onClose, onSuccess }: ReviewFormM
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
-    
+
     try {
       const newReview = await createReview({
         place_id: placeId,
         rating,
         comment: comment.trim() || undefined,
       });
-      
+
       if (newReview) {
         onSuccess(newReview);
       }
@@ -336,13 +347,13 @@ function ReviewFormModal({ placeId, placeName, onClose, onSuccess }: ReviewFormM
 
   return (
     <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs animate-fade-in">
-      <div 
+      <div
         className="w-full max-w-md rounded-3xl p-6 relative bg-white border shadow-2xl"
         style={{ borderColor: C.line }}
       >
         {/* Close Button */}
-        <button 
-          onClick={onClose} 
+        <button
+          onClick={onClose}
           className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center bg-stone-50 border hover:scale-105 transition"
           style={{ borderColor: C.line }}
         >
@@ -364,11 +375,11 @@ function ReviewFormModal({ placeId, placeName, onClose, onSuccess }: ReviewFormM
                   onClick={() => setRating(star)}
                   className="transition-transform hover:scale-110"
                 >
-                  <Star 
-                    size={24} 
-                    fill={star <= rating ? C.gold : "none"} 
-                    color={star <= rating ? C.gold : C.line} 
-                    strokeWidth={1.5} 
+                  <Star
+                    size={24}
+                    fill={star <= rating ? C.gold : "none"}
+                    color={star <= rating ? C.gold : C.line}
+                    strokeWidth={1.5}
                   />
                 </button>
               ))}
@@ -378,20 +389,20 @@ function ReviewFormModal({ placeId, placeName, onClose, onSuccess }: ReviewFormM
           {/* Comment */}
           <div>
             <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">Your Review (optional)</label>
-            <textarea 
-              rows={3} 
-              placeholder="Share your experience..." 
+            <textarea
+              rows={3}
+              placeholder="Share your experience..."
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-xl text-xs border outline-none resize-none bg-stone-50/30 focus:border-[#E0533C] transition-all" 
+              className="w-full px-3.5 py-2 rounded-xl text-xs border outline-none resize-none bg-stone-50/30 focus:border-[#E0533C] transition-all"
               style={{ borderColor: C.line, color: C.ink }}
             />
           </div>
 
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             disabled={submitting}
-            className="w-full py-3 rounded-xl text-xs font-black text-white shadow-md hover:opacity-95 transition flex items-center justify-center gap-2 disabled:opacity-70" 
+            className="w-full py-3 rounded-xl text-xs font-black text-white shadow-md hover:opacity-95 transition flex items-center justify-center gap-2 disabled:opacity-70"
             style={{ background: C.accent }}
           >
             {submitting ? (
@@ -424,7 +435,7 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
-    
+
     try {
       // In a real app, this would save to the database
       // For now, we'll just show a success message
@@ -439,13 +450,13 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs animate-fade-in">
-      <div 
+      <div
         className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl p-6 md:p-8 relative bg-white border shadow-2xl"
         style={{ borderColor: C.line }}
       >
         {/* Close Button */}
-        <button 
-          onClick={onClose} 
+        <button
+          onClick={onClose}
           className="absolute top-6 right-6 w-8.5 h-8.5 rounded-full flex items-center justify-center bg-stone-50 border hover:scale-105 transition"
           style={{ borderColor: C.line }}
         >
@@ -457,24 +468,24 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">Spot Name (English)</label>
-            <input 
-              required 
-              placeholder="e.g. Tokyo Station Red Brick" 
+            <input
+              required
+              placeholder="e.g. Tokyo Station Red Brick"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-xl text-xs border outline-none bg-stone-50/30 focus:border-[#E0533C] transition-all" 
-              style={{ borderColor: C.line, color: C.ink }} 
+              className="w-full px-3.5 py-2 rounded-xl text-xs border outline-none bg-stone-50/30 focus:border-[#E0533C] transition-all"
+              style={{ borderColor: C.line, color: C.ink }}
             />
           </div>
 
           <div>
             <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">Japanese Name</label>
-            <input 
-              placeholder="例：東京駅" 
+            <input
+              placeholder="例：東京駅"
               value={japaneseName}
               onChange={(e) => setJapaneseName(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-xl text-xs border outline-none bg-stone-50/30 focus:border-[#E0533C] transition-all" 
-              style={{ borderColor: C.line, color: C.ink }} 
+              className="w-full px-3.5 py-2 rounded-xl text-xs border outline-none bg-stone-50/30 focus:border-[#E0533C] transition-all"
+              style={{ borderColor: C.line, color: C.ink }}
             />
           </div>
 
@@ -497,28 +508,28 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
 
           <div>
             <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">Description</label>
-            <textarea 
-              rows={3} 
-              placeholder="Tell travelers why this place is special..." 
+            <textarea
+              rows={3}
+              placeholder="Tell travelers why this place is special..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-xl text-xs border outline-none resize-none bg-stone-50/30 focus:border-[#E0533C] transition-all" 
-              style={{ borderColor: C.line, color: C.ink }} 
+              className="w-full px-3.5 py-2 rounded-xl text-xs border outline-none resize-none bg-stone-50/30 focus:border-[#E0533C] transition-all"
+              style={{ borderColor: C.line, color: C.ink }}
             />
           </div>
 
-          <button 
-            type="button" 
-            className="w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border bg-stone-50/50 hover:bg-stone-50 transition" 
+          <button
+            type="button"
+            className="w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border bg-stone-50/50 hover:bg-stone-50 transition"
             style={{ borderColor: C.line, color: C.ink }}
           >
             <MapPin size={13} color={C.accentDeep} /> Pin Current GPS Location
           </button>
 
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             disabled={submitting}
-            className="w-full py-3 rounded-xl text-xs font-black text-white shadow-md hover:opacity-95 transition disabled:opacity-70" 
+            className="w-full py-3 rounded-xl text-xs font-black text-white shadow-md hover:opacity-95 transition disabled:opacity-70"
             style={{ background: C.accent }}
           >
             {submitting ? "Submitting..." : "Submit for Verification"}
