@@ -23,11 +23,8 @@ interface MapViewProps {
   searchQuery?: string;
 }
 
-// Filter options: "All" + the 5 categories defined in mockData.ts
 const filterOptions = [{ id: "All", label: "All" }, ...categories];
 
-// Map each category to an emoji, mirroring the lucide icons used in AddPlaceModal
-// (TrainFront→🚉, Landmark→⛩️, Camera→📸, Utensils→🍽️, Store→🏪)
 function getCategoryEmoji(category: string): string {
   switch (category) {
     case "station":
@@ -45,6 +42,11 @@ function getCategoryEmoji(category: string): string {
   }
 }
 
+// 🛡️ แยกกล่องแผนที่ออกมาและล็อคด้วย React.memo กัน React ทำลาย/สร้าง DOM ใหม่โดยไม่จำเป็น
+const PureMapContainer = React.memo(({ innerRef }: { innerRef: React.RefObject<HTMLDivElement> }) => {
+  return <div ref={innerRef} className="w-full h-full" />;
+});
+
 export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
   const [shops, setShops] = useState<Shop[]>([]);
   const [categoryFilter, setCategoryFilter] = useState("All");
@@ -54,16 +56,14 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markersGroupRef = useRef<L.LayerGroup | null>(null);
+  const userMarkerRef = useRef<L.Marker | null>(null);
 
   // 1. Fetch shops from Supabase
   useEffect(() => {
     async function fetchShops() {
       try {
         setLoading(true);
-        const { data, error } = await supabase
-          .from("century_shops")
-          .select("*");
-
+        const { data, error } = await supabase.from("century_shops").select("*");
         if (error) throw error;
         if (data) {
           const sorted = (data as Shop[]).sort((a, b) => a.shop_name.localeCompare(b.shop_name));
@@ -92,42 +92,33 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
 
   // 2. Initialize Leaflet Map
   useEffect(() => {
-    if (!mapContainerRef.current) return;
+    if (!mapContainerRef.current || mapRef.current) return;
 
-    // ป้องกันสร้าง Map ซ้ำ (สำคัญตอน React.StrictMode รัน effect 2 รอบใน dev mode)
-    if (mapRef.current) return;
-
-    // ล้างรอยเก่าของ Leaflet ที่อาจค้างจาก StrictMode double-invoke / hot-reload
     const container = mapContainerRef.current as any;
     if (container._leaflet_id) {
       container._leaflet_id = null;
     }
 
-    // Create Leaflet Map Instance
     const map = L.map(mapContainerRef.current, {
-      center: [36.2048, 138.2529], // Center of Japan
+      center: [36.2048, 138.2529],
       zoom: 5,
       zoomControl: true,
     });
 
-    // Add Tile Layer (OpenStreetMap)
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: '&copy; OpenStreetMap contributors',
     }).addTo(map);
 
-    // Initialize Markers Group
     const markersGroup = L.layerGroup().addTo(map);
 
     mapRef.current = map;
     markersGroupRef.current = markersGroup;
 
-    // ResizeObserver คอยเฝ้าดูขนาด container จริง แล้วบังคับ Leaflet คำนวณใหม่
     const resizeObserver = new ResizeObserver(() => {
       mapRef.current?.invalidateSize();
     });
     resizeObserver.observe(mapContainerRef.current);
 
-    // Cleanup on unmount
     return () => {
       resizeObserver.disconnect();
       if (mapRef.current) {
@@ -135,21 +126,18 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
         mapRef.current = null;
       }
     };
-  }, [loading]); // Reinitialize only when loading finishes
+  }, [loading]);
 
   // 3. Render markers when filtered list changes
   useEffect(() => {
     if (!mapRef.current || !markersGroupRef.current) return;
 
-    // Clear previous markers
     markersGroupRef.current.clearLayers();
 
     filteredShops.forEach((shop) => {
       if (!shop.lat || !shop.lng) return;
 
       const emoji = getCategoryEmoji(shop.category);
-
-      // Create a custom HTML div icon
       const markerHtml = `
         <div class="relative flex items-center justify-center">
           <div class="w-8 h-8 rounded-full border-2 border-white bg-[#E0533C] text-white flex items-center justify-center shadow-md hover:scale-110 transition-transform duration-150 text-sm">
@@ -157,31 +145,18 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
           </div>
         </div>
       `;
+      const customIcon = L.divIcon({ html: markerHtml, className: "custom-marker-wrapper", iconSize: [32, 32], iconAnchor: [16, 16] });
 
-      const customIcon = L.divIcon({
-        html: markerHtml,
-        className: "custom-marker-wrapper",
-        iconSize: [32, 32],
-        iconAnchor: [16, 16],
+      const marker = L.marker([shop.lat, shop.lng], { icon: customIcon }).on("click", () => {
+        setSelectedShop(shop);
       });
-
-      // Add marker to layer group
-      const marker = L.marker([shop.lat, shop.lng], { icon: customIcon })
-        .on("click", () => {
-          setSelectedShop(shop);
-        });
-
       markersGroupRef.current?.addLayer(marker);
     });
 
-    // Zoom out or auto fit bounds if multiple markers are shown
     if (filteredShops.length > 0 && mapRef.current) {
-      const validPoints = filteredShops
-        .filter(s => s.lat && s.lng)
-        .map(s => L.latLng(s.lat, s.lng));
-
+      const validPoints = filteredShops.filter(s => s.lat && s.lng).map(s => L.latLng(s.lat, s.lng));
       if (validPoints.length > 0) {
-        mapRef.current.invalidateSize(); // ป้องกัน bounds คำนวณผิดจาก container ที่ยังไม่ settle
+        mapRef.current.invalidateSize();
         const bounds = L.latLngBounds(validPoints);
         mapRef.current.fitBounds(bounds, { padding: [30, 30] });
       }
@@ -192,13 +167,55 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
   useEffect(() => {
     if (searchQuery.trim() === "") return;
     setSelectedShop(filteredShops.length > 0 ? filteredShops[0] : null);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery]);
 
   // 5. Pan to selected shop when changed
   const panToShop = (shop: Shop) => {
     if (mapRef.current && shop.lat && shop.lng) {
       mapRef.current.setView([shop.lat, shop.lng], 14, { animate: true });
+    }
+  };
+
+  // 6. Geolocation: "Near me" button — pin the user's current position
+  const handleNearMeClick = () => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+
+          if (mapRef.current) {
+            mapRef.current.flyTo([lat, lng], 14, { animate: true });
+
+            const userIconHtml = `
+              <div class="relative flex items-center justify-center w-full h-full">
+                <div class="absolute w-8 h-8 bg-blue-500 rounded-full opacity-40 animate-ping"></div>
+                <div class="w-4 h-4 bg-blue-600 rounded-full border-2 border-white shadow-md z-10"></div>
+              </div>
+            `;
+
+            const userIcon = L.divIcon({
+              html: userIconHtml,
+              className: "bg-transparent",
+              iconSize: [32, 32],
+              iconAnchor: [16, 16],
+            });
+
+            if (userMarkerRef.current) {
+              userMarkerRef.current.setLatLng([lat, lng]);
+            } else {
+              userMarkerRef.current = L.marker([lat, lng], { icon: userIcon }).addTo(mapRef.current);
+            }
+          }
+        },
+        (error) => {
+          console.error("Error getting location:", error.message);
+          alert("กรุณาอนุญาตการเข้าถึงตำแหน่ง (Location) ในเบราว์เซอร์");
+        }
+      );
+    } else {
+      alert("เบราว์เซอร์ของคุณไม่รองรับการดึงตำแหน่ง");
     }
   };
 
@@ -216,9 +233,7 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
       {/* 📍 Header and Filters */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 py-1 select-none">
         <div>
-          <h2 className="text-lg font-black tracking-tight" style={{ color: C.ink }}>
-            Interactive Map
-          </h2>
+          <h2 className="text-lg font-black tracking-tight" style={{ color: C.ink }}>Interactive Map</h2>
           <p className="text-[11px] font-semibold text-[#8A7870] mt-0.5">
             Explore historical Japanese shops and landmarks
           </p>
@@ -231,7 +246,6 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
               key={f.id}
               onClick={() => {
                 setCategoryFilter(f.id);
-                // Auto-select first shop matching both category AND current search query
                 const q = searchQuery.trim().toLowerCase();
                 const firstInFilter = shops.find((s) => {
                   const matchesCategory = f.id === "All" || s.category === f.id;
@@ -260,50 +274,45 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
 
         {/* Map Viewport Area */}
-        <div
-          className="md:col-span-2 h-[340px] md:h-[420px] rounded-3xl relative overflow-hidden border bg-[#FAF6F0] z-10"
-          style={{ borderColor: C.line }}
-        >
-          <div ref={mapContainerRef} className="w-full h-full" />
+        <div className="md:col-span-2 h-[340px] md:h-[420px] rounded-3xl relative overflow-hidden border bg-[#FAF6F0] z-10" style={{ borderColor: C.line }}>
+
+          <PureMapContainer innerRef={mapContainerRef} />
+
+          <button
+            onClick={handleNearMeClick}
+            className="absolute top-4 right-4 z-[1000] flex items-center gap-1.5 bg-white px-3 py-2 rounded-full shadow-md hover:bg-stone-50 transition border"
+            style={{ borderColor: C.line, color: C.accent }}
+          >
+            <Navigation size={14} />
+            <span className="text-[10px] font-black">Near me</span>
+          </button>
         </div>
 
         {/* Details side pane */}
         {selectedShop ? (
           <div className="w-full h-full">
-            <div
-              className="bg-white rounded-3xl p-5 border flex flex-col justify-between h-[340px] md:h-[420px] shadow-xs"
-              style={{ borderColor: C.line }}
-            >
+            <div className="bg-white rounded-3xl p-5 border flex flex-col justify-between h-[340px] md:h-[420px] shadow-xs" style={{ borderColor: C.line }}>
               <div className="space-y-4 overflow-y-auto scrollbar-none pr-1">
                 <div className="flex items-start gap-3">
-                  {/* Circle Stamp */}
                   <div
                     className="w-14 h-14 rounded-full border-2 border-dashed flex items-center justify-center text-3xl shrink-0 select-none"
                     style={{ background: C.accentSoft, borderColor: C.accent }}
                   >
                     {getCategoryEmoji(selectedShop.category)}
                   </div>
-
                   <div className="leading-tight">
-                    <span className="text-[9px] font-black uppercase tracking-wider block" style={{ color: C.accent }}>
-                      {selectedShop.prefecture}
-                    </span>
-                    <h3 className="text-sm font-black mt-1 leading-snug" style={{ color: C.ink }}>
-                      {selectedShop.shop_name}
-                    </h3>
+                    <span className="text-[9px] font-black uppercase tracking-wider block" style={{ color: C.accent }}>{selectedShop.prefecture}</span>
+                    <h3 className="text-sm font-black mt-1 leading-snug" style={{ color: C.ink }}>{selectedShop.shop_name}</h3>
                     <p className="text-[10px] text-[#8A7870] font-black mt-1 bg-[#FAF6F0] px-2 py-0.5 rounded-md border border-[#EFE5DD]/40 inline-block">
                       Est. {selectedShop.founded}
                     </p>
                   </div>
                 </div>
-
-                {/* Description */}
                 <div className="pt-3.5 border-t space-y-2" style={{ borderColor: C.line }}>
                   <h4 className="text-[9px] font-black uppercase tracking-wider text-[#8A7870]">Description</h4>
                   <p className="text-xs text-[#8A7870] leading-relaxed">
                     {selectedShop.description || "No description available for this historical shop."}
                   </p>
-
                   {selectedShop.address && (
                     <div className="mt-2 text-[11px] text-[#8A7870]">
                       <span className="font-bold block">Address:</span>
@@ -312,25 +321,12 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
                   )}
                 </div>
               </div>
-
-              {/* Action Buttons */}
               <div className="flex flex-col gap-2 mt-4 shrink-0">
-                <button
-                  onClick={() => panToShop(selectedShop)}
-                  className="w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border bg-[#FAF6F0] hover:bg-stone-50 transition"
-                  style={{ borderColor: C.line, color: C.ink }}
-                >
+                <button onClick={() => panToShop(selectedShop)} className="w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border bg-[#FAF6F0] hover:bg-stone-50 transition" style={{ borderColor: C.line, color: C.ink }}>
                   <Navigation size={13} color={C.accent} /> Zoom To Location
                 </button>
-
                 {selectedShop.website && (
-                  <a
-                    href={selectedShop.website}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full py-2.5 rounded-xl text-xs font-black text-white flex items-center justify-center gap-1.5 shadow-md transition hover:opacity-95 text-center"
-                    style={{ background: C.accent }}
-                  >
+                  <a href={selectedShop.website} target="_blank" rel="noopener noreferrer" className="w-full py-2.5 rounded-xl text-xs font-black text-white flex items-center justify-center gap-1.5 shadow-md transition hover:opacity-95 text-center" style={{ background: C.accent }}>
                     Visit Website <ExternalLink size={12} strokeWidth={2.5} />
                   </a>
                 )}
