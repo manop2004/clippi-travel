@@ -1,6 +1,7 @@
 import React from "react";
 import { ArrowLeft, Navigation, QrCode, Landmark } from "lucide-react";
-import { C, reviews } from "../../constants/mockData";
+import { C } from "../../constants/mockData";
+import { getReviews } from "../../hooks/useReviewStamp";
 import StarRow from "../StarRow";
 
 interface PlaceDetailViewProps {
@@ -10,7 +11,11 @@ interface PlaceDetailViewProps {
 }
 
 export default function PlaceDetailView({ place, onBack, onCheckIn }: PlaceDetailViewProps) {
-  if (!place) return null;
+  if (!place) return null; const [reviews, setReviews] = React.useState<any[]>([]);
+
+React.useEffect(() => {
+  getReviews(place.id).then(setReviews);
+}, [place.id]);
 
   return (
     <div className="flex flex-col h-full bg-[#FAF6F0] text-[#231C18] relative">
@@ -87,9 +92,9 @@ export default function PlaceDetailView({ place, onBack, onCheckIn }: PlaceDetai
                   <div className="flex items-center justify-between mb-1.5">
                     <div className="flex items-center gap-2">
                       <div className="w-5.5 h-5.5 rounded-full bg-[#231C18] text-white flex items-center justify-center text-[9px] font-bold">
-                        {r.name[0]}
+                        {r.profiles?.display_name?.[0] ?? "?"}
                       </div>
-                      <span className="text-xs font-bold" style={{ color: C.ink }}>{r.name}</span>
+                      <span className="text-xs font-bold" style={{ color: C.ink }}>{r.profiles?.display_name ?? "Unknown"}</span>
                     </div>
                     <StarRow value={r.stars} size={9} />
                   </div>
