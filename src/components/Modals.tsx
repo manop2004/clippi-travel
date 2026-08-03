@@ -242,33 +242,30 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
               ) : (
                 <div className="space-y-2.5">
                   {dbReviews.length > 0 ? (
-                    dbReviews.map((r) => (
-                      <div key={r.id} className="p-3 rounded-xl bg-white border" style={{ borderColor: C.line }}>
-                        <div className="flex items-center justify-between mb-1.5 select-none">
-                          <div className="flex items-center gap-1.5">
-
-                            {/*
-                            <div className="w-5 h-5 rounded-full bg-[#231C18] text-white flex items-center justify-center text-[9px] font-bold">
-                              {r.user?.email?.[0] || "U"}
+                    dbReviews.map((r) => {
+                      // PostgREST embed อาจคืนค่า profiles เป็น object หรือ array
+                      // ขึ้นกับเวอร์ชัน/การตั้งค่า — normalize ให้เป็น object เสมอ
+                      const reviewerProfile = Array.isArray(r.profiles)
+                        ? r.profiles[0]
+                        : r.profiles;
+                      return (
+                        <div key={r.id} className="p-3 rounded-xl bg-white border" style={{ borderColor: C.line }}>
+                          <div className="flex items-center justify-between mb-1.5 select-none">
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-5 h-5 rounded-full bg-[#231C18] text-white flex items-center justify-center text-[9px] font-bold">
+                                {reviewerProfile?.display_name?.[0]?.toUpperCase() ?? "U"}
+                              </div>
+                              <span className="text-xs font-bold" style={{ color: C.ink }}>
+                                {reviewerProfile?.display_name ?? "User"}
+                              </span>
                             </div>
-                            <span className="text-xs font-bold" style={{ color: C.ink }}>
-                              {r.user?.email?.split("@")[0] || "User"}
-                            </span>
-                            */}
-
-                            <div className="w-5 h-5 rounded-full bg-[#231C18] text-white flex items-center justify-center text-[9px] font-bold">
-                              U
-                            </div>
-                            <span className="text-xs font-bold" style={{ color: C.ink }}>
-                              User
-                            </span>
-
+                            <StarRow value={r.rating} size={9} />
                           </div>
-                          <StarRow value={r.rating} size={9} />
+                          <p className="text-[11px] leading-relaxed text-[#8A7870]">{r.comment}</p>
                         </div>
-                        <p className="text-[11px] leading-relaxed text-[#8A7870]">{r.comment}</p>
-                      </div>
-                    ))
+                      );
+                    })
+
                   ) : (
                     <div className="p-3 rounded-xl bg-white border" style={{ borderColor: C.line }}>
                       <p className="text-[11px] text-[#8A7870] italic">No reviews yet. Be the first to review this place!</p>

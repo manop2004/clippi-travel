@@ -1,3 +1,5 @@
+
+
 import React from "react";
 import { ArrowLeft, Navigation, QrCode, Landmark } from "lucide-react";
 import { C } from "../../constants/mockData";
@@ -13,13 +15,13 @@ interface PlaceDetailViewProps {
 export default function PlaceDetailView({ place, onBack, onCheckIn }: PlaceDetailViewProps) {
   if (!place) return null; const [reviews, setReviews] = React.useState<any[]>([]);
 
-React.useEffect(() => {
-  getReviews(place.id).then(setReviews);
-}, [place.id]);
+  React.useEffect(() => {
+    getReviews(place.id).then(setReviews);
+  }, [place.id]);
 
   return (
     <div className="flex flex-col h-full bg-[#FAF6F0] text-[#231C18] relative">
-      {/* Custom Header inside phone */}
+
       <div className="h-12 flex items-center px-4 border-b select-none" style={{ borderColor: C.line }}>
         <button onClick={onBack} className="p-1 -ml-1 rounded-full hover:bg-[#EFE5DD]/50 transition">
           <ArrowLeft size={20} color={C.ink} />
@@ -27,9 +29,9 @@ React.useEffect(() => {
         <span className="ml-3 font-bold text-sm tracking-tight" style={{ color: C.ink }}>Place Detail</span>
       </div>
 
-      {/* Main Content Area */}
+
       <div className="flex-1 overflow-y-auto scrollbar-none pb-4">
-        {/* Stylized Hero Image / Header Card */}
+
         <div className="h-44 w-full relative overflow-hidden bg-cover bg-center flex items-end p-4 select-none" style={{ background: `linear-gradient(to top, rgba(35,28,24,0.7), rgba(35,28,24,0)), url('https://images.unsplash.com/photo-1542044896530-05d85be9b11a?auto=format&fit=crop&q=80&w=600')` }}>
           <div className="text-white z-10">
             <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#E0533C] text-white tracking-wider inline-block mb-1">
@@ -41,7 +43,7 @@ React.useEffect(() => {
         </div>
 
         <div className="p-4 space-y-4">
-          {/* Quick Info & Rating */}
+
           <div className="flex items-center justify-between pb-3 border-b" style={{ borderColor: C.line }}>
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-bold">{place.rating || "4.8"}</span>
@@ -52,7 +54,7 @@ React.useEffect(() => {
             </span>
           </div>
 
-          {/* Quick Action Buttons */}
+
           <div className="flex gap-2">
             <button className="flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border bg-white shadow-xs transition hover:bg-stone-50" style={{ borderColor: C.line, color: C.ink }}>
               <Navigation size={13} /> Navigate
@@ -62,7 +64,7 @@ React.useEffect(() => {
             </button>
           </div>
 
-          {/* Heritage Stamp Available Alert */}
+
           <div className="p-3 rounded-xl flex gap-2.5 text-xs font-bold border" style={{ background: C.accentSoft, borderColor: C.line, color: C.accentDeep }}>
             <Landmark size={18} className="shrink-0 mt-0.5" />
             <div>
@@ -71,7 +73,7 @@ React.useEffect(() => {
             </div>
           </div>
 
-          {/* About Section */}
+
           <div>
             <h3 className="text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: C.inkSoft }}>About</h3>
             <p className="text-xs leading-relaxed" style={{ color: C.inkSoft }}>
@@ -79,7 +81,7 @@ React.useEffect(() => {
             </p>
           </div>
 
-          {/* Reviews List */}
+
           <div>
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: C.inkSoft }}>Reviews</h3>
@@ -108,3 +110,4 @@ React.useEffect(() => {
     </div>
   );
 }
+
