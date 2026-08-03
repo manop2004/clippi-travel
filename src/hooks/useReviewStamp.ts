@@ -4,11 +4,18 @@ import { Review, Place, UserStamp, CreateReviewInput, CreatePlaceInput } from ".
 // Reviews hooks
 export async function getReviews(placeId: string | number): Promise<Review[]> {
   // แสดงข้อมูล reviews อย่างง่าย ไม่ใช้ join
-  const { data, error } = await supabase
-    .from("reviews")
-    .select("*")
-    .eq("place_id", placeId)
-    .order("created_at", { ascending: false });
+const { data, error } = await supabase
+  .from("reviews")
+  .select(`
+    *,
+    profiles (
+      id,
+      display_name,
+      avatar_url
+    )
+  `)
+  .eq("place_id", placeId)
+  .order("created_at", { ascending: false });
 
   if (error) {
     console.error("Error fetching reviews:", error);

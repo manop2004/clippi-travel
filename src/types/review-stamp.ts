@@ -8,12 +8,11 @@ export interface Review {
   comment: string | null;
   created_at: string;
   updated_at: string;
-  user?: {
-    email?: string;
-    user_metadata?: {
-      name?: string;
-    };
-  };
+ profiles?: {
+  id: string;
+  display_name: string;
+  avatar_url: string | null;
+};
 }
 
 export interface Place {
