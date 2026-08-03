@@ -6,9 +6,10 @@ import { supabase } from "../supabaseClient";
 interface TrendingSpotsProps {
   openPlace: (place: any) => void;
   onViewMap?: () => void;
+  searchQuery?: string;
 }
 
-export default function TrendingSpots({ openPlace, onViewMap }: TrendingSpotsProps) {
+export default function TrendingSpots({ openPlace, onViewMap, searchQuery = "" }: TrendingSpotsProps) {
   const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -37,6 +38,15 @@ export default function TrendingSpots({ openPlace, onViewMap }: TrendingSpotsPro
     }
     fetchPlaces();
   }, []);
+
+  // กรองสถานที่ตาม searchQuery (case-insensitive, ตาม shop_name และ prefecture)
+  const filteredPlaces = places.filter((p) => {
+    const q = searchQuery.trim().toLowerCase();
+    if (q === "") return true;
+    const name = (p.shop_name || p.name || "").toLowerCase();
+    const pref = (p.prefecture || "").toLowerCase();
+    return name.includes(q) || pref.includes(q);
+  });
 
   const handlePlaceClick = (p: Place) => {
     const shopName = p.shop_name || p.name || "Unknown Shop";
@@ -69,13 +79,19 @@ export default function TrendingSpots({ openPlace, onViewMap }: TrendingSpotsPro
               <div className="h-8 rounded-xl mt-3 pt-2.5 border-t" style={{ borderColor: C.line }} />
             </div>
           ))
-        ) : places.length === 0 ? (
+        ) : filteredPlaces.length === 0 ? (
           <div className="col-span-full p-6 rounded-2xl bg-white border text-center" style={{ borderColor: C.line }}>
-            <p className="text-xs text-[#8A7870] italic">No places available yet. Please check your database connection.</p>
-            <p className="text-[10px] text-[#8A7870] mt-2">Check console for debug info</p>
+            <p className="text-xs text-[#8A7870] italic">
+              {places.length === 0
+                ? "No places available yet. Please check your database connection."
+                : `No results for "${searchQuery}"`}
+            </p>
+            {places.length === 0 && (
+              <p className="text-[10px] text-[#8A7870] mt-2">Check console for debug info</p>
+            )}
           </div>
         ) : (
-          places.map((p) => (
+          filteredPlaces.map((p) => (
             <PlaceCard key={p.id} place={p} onClick={() => handlePlaceClick(p)} />
           ))
         )}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ArrowRight, Plus, ExternalLink, Navigation } from "lucide-react";
-import { C } from "../../constants/mockData";
+import { ExternalLink, Navigation } from "lucide-react";
+import { C, categories } from "../../constants/mockData";
 import { supabase } from "../../supabaseClient";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -15,28 +15,39 @@ interface Shop {
   website: string;
   lat: number;
   lng: number;
+  category: string;
 }
 
 interface MapViewProps {
   openPlace: (place: any) => void;
+  searchQuery?: string;
 }
 
-// Helper to assign a fitting emoji based on the shop's name
-function getShopEmoji(name: string): string {
-  const n = name.toLowerCase();
-  if (n.includes("soba") || n.includes("ramen") || n.includes("noodle") || n.includes("shokudo")) return "🍜";
-  if (n.includes("sweet") || n.includes("confection") || n.includes("wagashi") || n.includes("senbei") || n.includes("mochi") || n.includes("yokan") || n.includes("daifuku")) return "🍡";
-  if (n.includes("sake") || n.includes("brewery") || n.includes("shuzo") || n.includes("shouryu") || n.includes("shōzō")) return "🍶";
-  if (n.includes("sushi") || n.includes("fish")) return "🍣";
-  if (n.includes("tea") || n.includes("cha")) return "🍵";
-  if (n.includes("temple") || n.includes("shrine") || n.includes("jinja") || n.includes("ji ")) return "⛩️";
-  return "🏬";
+// Filter options: "All" + the 5 categories defined in mockData.ts
+const filterOptions = [{ id: "All", label: "All" }, ...categories];
+
+// Map each category to an emoji, mirroring the lucide icons used in AddPlaceModal
+// (TrainFront→🚉, Landmark→⛩️, Camera→📸, Utensils→🍽️, Store→🏪)
+function getCategoryEmoji(category: string): string {
+  switch (category) {
+    case "station":
+      return "🚉";
+    case "shrine":
+      return "⛩️";
+    case "spot":
+      return "📸";
+    case "food":
+      return "🍽️";
+    case "shop":
+      return "🏪";
+    default:
+      return "🏬";
+  }
 }
 
-export default function MapView({ openPlace }: MapViewProps) {
+export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
   const [shops, setShops] = useState<Shop[]>([]);
-  const [prefectures, setPrefectures] = useState<string[]>(["All"]);
-  const [filter, setFilter] = useState("All");
+  const [categoryFilter, setCategoryFilter] = useState("All");
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -58,12 +69,6 @@ export default function MapView({ openPlace }: MapViewProps) {
           const sorted = (data as Shop[]).sort((a, b) => a.shop_name.localeCompare(b.shop_name));
           setShops(sorted);
           setSelectedShop(sorted[0] || null);
-
-          // Get unique prefectures and take the top ones (or first 6 unique)
-          const unique = Array.from(new Set(sorted.map((s) => s.prefecture)))
-            .filter(Boolean)
-            .slice(0, 5);
-          setPrefectures(["All", ...unique]);
         }
       } catch (err) {
         console.error("Error fetching century_shops:", err);
@@ -74,15 +79,29 @@ export default function MapView({ openPlace }: MapViewProps) {
     fetchShops();
   }, []);
 
-  // Filtered list of shops
+  // Filtered list of shops (category filter + keyword search)
   const filteredShops = shops.filter((s) => {
-    if (filter === "All") return true;
-    return s.prefecture === filter;
+    const matchesCategory = categoryFilter === "All" || s.category === categoryFilter;
+    const q = searchQuery.trim().toLowerCase();
+    const matchesSearch =
+      q === "" ||
+      s.shop_name.toLowerCase().includes(q) ||
+      (s.prefecture && s.prefecture.toLowerCase().includes(q));
+    return matchesCategory && matchesSearch;
   });
 
   // 2. Initialize Leaflet Map
   useEffect(() => {
     if (!mapContainerRef.current) return;
+
+    // ป้องกันสร้าง Map ซ้ำ (สำคัญตอน React.StrictMode รัน effect 2 รอบใน dev mode)
+    if (mapRef.current) return;
+
+    // ล้างรอยเก่าของ Leaflet ที่อาจค้างจาก StrictMode double-invoke / hot-reload
+    const container = mapContainerRef.current as any;
+    if (container._leaflet_id) {
+      container._leaflet_id = null;
+    }
 
     // Create Leaflet Map Instance
     const map = L.map(mapContainerRef.current, {
@@ -102,8 +121,15 @@ export default function MapView({ openPlace }: MapViewProps) {
     mapRef.current = map;
     markersGroupRef.current = markersGroup;
 
+    // ResizeObserver คอยเฝ้าดูขนาด container จริง แล้วบังคับ Leaflet คำนวณใหม่
+    const resizeObserver = new ResizeObserver(() => {
+      mapRef.current?.invalidateSize();
+    });
+    resizeObserver.observe(mapContainerRef.current);
+
     // Cleanup on unmount
     return () => {
+      resizeObserver.disconnect();
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
@@ -121,7 +147,7 @@ export default function MapView({ openPlace }: MapViewProps) {
     filteredShops.forEach((shop) => {
       if (!shop.lat || !shop.lng) return;
 
-      const emoji = getShopEmoji(shop.shop_name);
+      const emoji = getCategoryEmoji(shop.category);
 
       // Create a custom HTML div icon
       const markerHtml = `
@@ -155,13 +181,21 @@ export default function MapView({ openPlace }: MapViewProps) {
         .map(s => L.latLng(s.lat, s.lng));
 
       if (validPoints.length > 0) {
+        mapRef.current.invalidateSize(); // ป้องกัน bounds คำนวณผิดจาก container ที่ยังไม่ settle
         const bounds = L.latLngBounds(validPoints);
         mapRef.current.fitBounds(bounds, { padding: [30, 30] });
       }
     }
-  }, [filter, shops]);
+  }, [categoryFilter, shops, searchQuery]);
 
-  // 4. Pan to selected shop when changed
+  // 4. Auto-select first matching shop when search query changes
+  useEffect(() => {
+    if (searchQuery.trim() === "") return;
+    setSelectedShop(filteredShops.length > 0 ? filteredShops[0] : null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery]);
+
+  // 5. Pan to selected shop when changed
   const panToShop = (shop: Shop) => {
     if (mapRef.current && shop.lat && shop.lng) {
       mapRef.current.setView([shop.lat, shop.lng], 14, { animate: true });
@@ -178,7 +212,7 @@ export default function MapView({ openPlace }: MapViewProps) {
 
   return (
     <div className="space-y-5 w-full min-w-0 text-[#231C18]">
-      
+
       {/* 📍 Header and Filters */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 py-1 select-none">
         <div>
@@ -186,29 +220,37 @@ export default function MapView({ openPlace }: MapViewProps) {
             Interactive Map
           </h2>
           <p className="text-[11px] font-semibold text-[#8A7870] mt-0.5">
-            Explore 430 historical Japanese shops established over 100 years ago
+            Explore historical Japanese shops and landmarks
           </p>
         </div>
 
-        {/* 🏷️ Filter Tabs */}
+        {/* 🏷️ Filter Tabs (by category) */}
         <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none w-full md:w-auto">
-          {prefectures.map((f) => (
+          {filterOptions.map((f) => (
             <button
-              key={f}
+              key={f.id}
               onClick={() => {
-                setFilter(f);
-                // Auto-select first shop in that filter
-                const firstInFilter = shops.find((s) => f === "All" || s.prefecture === f);
-                if (firstInFilter) setSelectedShop(firstInFilter);
+                setCategoryFilter(f.id);
+                // Auto-select first shop matching both category AND current search query
+                const q = searchQuery.trim().toLowerCase();
+                const firstInFilter = shops.find((s) => {
+                  const matchesCategory = f.id === "All" || s.category === f.id;
+                  const matchesSearch =
+                    q === "" ||
+                    s.shop_name.toLowerCase().includes(q) ||
+                    (s.prefecture && s.prefecture.toLowerCase().includes(q));
+                  return matchesCategory && matchesSearch;
+                });
+                setSelectedShop(firstInFilter || null);
               }}
               className="px-3.5 py-1.5 rounded-full text-[10px] font-black shrink-0 border transition-all duration-150"
               style={
-                filter === f
+                categoryFilter === f.id
                   ? { background: C.accent, color: "#fff", borderColor: C.accent }
                   : { background: "#FFFFFF", color: C.inkSoft, borderColor: C.line }
               }
             >
-              {f}
+              {f.label}
             </button>
           ))}
         </div>
@@ -216,7 +258,7 @@ export default function MapView({ openPlace }: MapViewProps) {
 
       {/* 🗺️ Map Grid Layout */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
-        
+
         {/* Map Viewport Area */}
         <div
           className="md:col-span-2 h-[340px] md:h-[420px] rounded-3xl relative overflow-hidden border bg-[#FAF6F0] z-10"
@@ -226,7 +268,7 @@ export default function MapView({ openPlace }: MapViewProps) {
         </div>
 
         {/* Details side pane */}
-        {selectedShop && (
+        {selectedShop ? (
           <div className="w-full h-full">
             <div
               className="bg-white rounded-3xl p-5 border flex flex-col justify-between h-[340px] md:h-[420px] shadow-xs"
@@ -239,7 +281,7 @@ export default function MapView({ openPlace }: MapViewProps) {
                     className="w-14 h-14 rounded-full border-2 border-dashed flex items-center justify-center text-3xl shrink-0 select-none"
                     style={{ background: C.accentSoft, borderColor: C.accent }}
                   >
-                    {getShopEmoji(selectedShop.shop_name)}
+                    {getCategoryEmoji(selectedShop.category)}
                   </div>
 
                   <div className="leading-tight">
@@ -261,7 +303,7 @@ export default function MapView({ openPlace }: MapViewProps) {
                   <p className="text-xs text-[#8A7870] leading-relaxed">
                     {selectedShop.description || "No description available for this historical shop."}
                   </p>
-                  
+
                   {selectedShop.address && (
                     <div className="mt-2 text-[11px] text-[#8A7870]">
                       <span className="font-bold block">Address:</span>
@@ -280,7 +322,7 @@ export default function MapView({ openPlace }: MapViewProps) {
                 >
                   <Navigation size={13} color={C.accent} /> Zoom To Location
                 </button>
-                
+
                 {selectedShop.website && (
                   <a
                     href={selectedShop.website}
@@ -293,6 +335,17 @@ export default function MapView({ openPlace }: MapViewProps) {
                   </a>
                 )}
               </div>
+            </div>
+          </div>
+        ) : (
+          <div className="w-full h-full">
+            <div
+              className="bg-white rounded-3xl p-6 border text-center h-[340px] md:h-[420px] flex flex-col items-center justify-center"
+              style={{ borderColor: C.line }}
+            >
+              <p className="text-xs font-bold text-[#8A7870]">
+                No places match this filter and search combination.
+              </p>
             </div>
           </div>
         )}

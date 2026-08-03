@@ -36,6 +36,8 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
   const address = place?.address || "";
   const description = place?.description || "No description available for this historical shop.";
   const website = place?.website || "";
+  const lat = typeof place?.lat === "number" ? place.lat : null;
+  const lng = typeof place?.lng === "number" ? place.lng : null;
 
   // Get current user
   useEffect(() => {
@@ -157,9 +159,25 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
 
             {/* Quick Action Buttons */}
             <div className="flex gap-2">
-              <button className="flex-1 py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 border bg-white shadow-2xs transition hover:bg-stone-50" style={{ borderColor: C.line, color: C.ink }}>
-                <Navigation size={13} /> Navigate
-              </button>
+              {typeof lat === "number" && typeof lng === "number" ? (
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 border bg-white shadow-2xs transition hover:bg-stone-50 text-center"
+                  style={{ borderColor: C.line, color: C.ink }}
+                >
+                  <Navigation size={13} /> Navigate
+                </a>
+              ) : (
+                <button
+                  disabled
+                  className="flex-1 py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 border bg-white shadow-2xs opacity-40 cursor-not-allowed"
+                  style={{ borderColor: C.line, color: C.ink }}
+                >
+                  <Navigation size={13} /> Navigate
+                </button>
+              )}
               <button 
                 onClick={handleCollectStamp}
                 disabled={collectingStamp !== null || !placeId}

@@ -17,6 +17,7 @@ export default function App() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const navTabs = [
     { id: "explore", label: "Explore", icon: Compass },
@@ -136,6 +137,8 @@ export default function App() {
               <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl border w-60 bg-[#FAF6F0]" style={{ borderColor: C.line }}>
                 <Search size={14} color={C.inkSoft} />
                 <input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search spots, stations..."
                   className="bg-transparent text-xs outline-none w-full text-[#231C18] placeholder-[#8A7870]"
                 />
@@ -150,9 +153,9 @@ export default function App() {
 
           {/* 📄 Main Workspace Pages */}
           <main className="flex-1 p-4 md:p-8 max-w-5xl mx-auto w-full pb-24 md:pb-8">
-            {tab === "explore" && <ExploreView openPlace={(p: any) => setSelectedPlace(trending.find(item => item.name === p.name) || p)} onViewMap={() => setTab("map")} />}
-            {tab === "map" && <MapView openPlace={(p: any) => setSelectedPlace(p)} />}
-            {tab === "collection" && <CollectionView />}
+            {tab === "explore" && <ExploreView openPlace={(p: any) => setSelectedPlace(trending.find(item => item.name === p.name) || p)} onViewMap={() => setTab("map")} searchQuery={searchQuery} />}
+            {tab === "map" && <MapView openPlace={(p: any) => setSelectedPlace(p)} searchQuery={searchQuery} />}
+            {tab === "collection" && <CollectionView searchQuery={searchQuery} />}
             {tab === "profile" && <ProfileView />}
           </main>
         </div>

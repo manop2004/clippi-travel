@@ -4,7 +4,7 @@ import { C, activity } from "../../constants/mockData";
 import { supabase } from "../../supabaseClient";
 import TrendingSpots from "../TrendingSpots";
 
-export default function ExploreView({ openPlace, onViewMap }: { openPlace: (p: any) => void; onViewMap?: () => void }) {
+export default function ExploreView({ openPlace, onViewMap, searchQuery = "" }: { openPlace: (p: any) => void; onViewMap?: () => void; searchQuery?: string }) {
   const [trendingShops, setTrendingShops] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -84,9 +84,10 @@ export default function ExploreView({ openPlace, onViewMap }: { openPlace: (p: a
           Loading Japan Heritage Database...
         </div>
       ) : (
-        <TrendingSpots 
-          openPlace={openPlace} 
+        <TrendingSpots
+          openPlace={openPlace}
           onViewMap={onViewMap}
+          searchQuery={searchQuery}
         />
       )}
 

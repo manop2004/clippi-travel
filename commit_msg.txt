@@ -1,0 +1,30 @@
+feat: interactive map, search system, and category filtering
+
+Map & Data:
+- Fix Leaflet marker positioning bug (Tailwind Preflight conflict with
+  tile images, container resize timing)
+- Wire up Navigate button to open Google Maps with shop coordinates
+- Backfill category column for all 448 shops (keyword-based
+  classification, manually verified edge cases)
+- Add 17 real landmark entries (5 stations, 10 shrines/temples,
+  2 tourist spots) to support category filtering
+
+Search:
+- Add global search bar wired across Explore, Interactive Map, and
+  Stamp Book views
+- Replace prefecture-based map filter with category-based filter
+  (Station/Shrine-Temple/Tourist Spot/Restaurant-Cafe/Service-Shop)
+  matching Figma design
+- Fix side pane showing stale data when filter+search combo returns
+  zero results
+
+Database:
+- Add profiles table with auto-create trigger on user signup
+- Add activity_log table with insert/delete triggers for reviews
+  and check-ins, syncing XP/level automatically
+- Add user_badges table with unlock logic for Tokyo Explorer and
+  Quality Reviewer badges
+
+Dev environment:
+- Set up separate Supabase dev project isolated from production
+- Fix Google OAuth redirect and session detection issues

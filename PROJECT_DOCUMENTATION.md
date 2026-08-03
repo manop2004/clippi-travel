@@ -1,3 +1,4 @@
+<!--
 # Ekitag Web - Project Documentation
 
 ## Overview
@@ -226,3 +227,4 @@ Private project - Ekitag Heritage Tourism App
 - [x] Simplify to use onViewMap callback instead of Leaflet overlay
 - [x] Change View Map button to navigate via Navigation
 - [x] Create project documentation</arg_value></tool_call>
+-->

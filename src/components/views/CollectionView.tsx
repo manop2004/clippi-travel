@@ -6,7 +6,7 @@ import { UserStamp, Place } from "../../types/review-stamp";
 import StarRow from "../StarRow";
 import { MapPin } from "lucide-react";
 
-export default function CollectionView() {
+export default function CollectionView({ searchQuery = "" }: { searchQuery?: string }) {
   const [userStamps, setUserStamps] = useState<any[]>([]);
   const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,6 +47,31 @@ export default function CollectionView() {
   const collectedShopIds = new Set(userStamps.map(us => String(us.shop_id)));
   const totalCollected = userStamps.length;
 
+  // ฟังก์ชันช่วยกรองตาม searchQuery
+  const matchesSearch = (shopName: string, prefecture: string) => {
+    const q = searchQuery.trim().toLowerCase();
+    if (q === "") return true;
+    return shopName.toLowerCase().includes(q) || prefecture.toLowerCase().includes(q);
+  };
+
+  // กรอง collected stamps
+  const filteredUserStamps = userStamps.filter((us: any) => {
+    const place = shopLookup.get(String(us.shop_id));
+    const shopName = place?.shop_name || place?.name || `Place ${us.shop_id}`;
+    const prefecture = place?.prefecture || "";
+    return matchesSearch(shopName, prefecture);
+  });
+
+  // กรอง remaining places (uncollected)
+  const remainingPlaces = places.filter(
+    (p) => !collectedShopIds.has(String(p.id))
+  );
+  const filteredRemainingPlaces = remainingPlaces.filter((place) => {
+    const shopName = place.shop_name || place.name || `Place ${place.id}`;
+    const prefecture = place.prefecture || "";
+    return matchesSearch(shopName, prefecture);
+  });
+
   if (loading) {
     return (
       <div className="h-96 w-full flex items-center justify-center text-xs font-black text-[#8A7870]">
@@ -74,14 +99,14 @@ export default function CollectionView() {
       </div>
 
       {/* Collected Stamps Section */}
-      {userStamps.length > 0 && (
+      {filteredUserStamps.length > 0 && (
         <div>
           <h3 className="text-[10px] font-black uppercase tracking-wider text-[#8A7870] mb-4 flex items-center gap-1.5 select-none">
             <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
             Collected Stamps
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {userStamps.map((us: any) => {
+            {filteredUserStamps.map((us: any) => {
               const place = shopLookup.get(String(us.shop_id));
               const shopName = place?.shop_name || place?.name || `Place ${us.shop_id}`;
               const prefecture = place?.prefecture || "";
@@ -114,14 +139,14 @@ export default function CollectionView() {
       )}
 
       {/* Remaining Places Section */}
-      {places.filter(p => !collectedShopIds.has(String(p.id))).length > 0 && (
+      {filteredRemainingPlaces.length > 0 && (
         <div>
           <h3 className="text-[10px] font-black uppercase tracking-wider text-[#8A7870] mb-4 flex items-center gap-1.5 select-none">
             <span className="w-2 h-2 rounded-full bg-[#8A7870] inline-block" />
             Remaining Places
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {places.filter(p => !collectedShopIds.has(String(p.id))).map((place) => {
+            {filteredRemainingPlaces.map((place) => {
               const shopName = place.shop_name || place.name || `Place ${place.id}`;
               const prefecture = place.prefecture || "";
               return (
@@ -150,11 +175,15 @@ export default function CollectionView() {
         </div>
       )}
 
-      {places.length === 0 && (
+      {places.length === 0 || (filteredUserStamps.length === 0 && filteredRemainingPlaces.length === 0) ? (
         <div className="p-6 rounded-2xl bg-white border text-center" style={{ borderColor: C.line }}>
-          <p className="text-xs text-[#8A7870] italic">No places available yet. Check back later!</p>
+          <p className="text-xs text-[#8A7870] italic">
+            {places.length === 0
+              ? "No places available yet. Check back later!"
+              : `No stamps match "${searchQuery}"`}
+          </p>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
