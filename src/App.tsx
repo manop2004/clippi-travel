@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Compass, MapPin, BookOpen, User, Plus, Search, Bell } from "lucide-react";
+import { Compass, MapPin, BookOpen, User, Plus, Search, Bell, X } from "lucide-react";
 import { C, trending } from "./constants/mockData";
 import { supabase } from "./supabaseClient";
 import { Session } from "@supabase/supabase-js";
@@ -18,6 +18,7 @@ export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
 
   const navTabs = [
     { id: "explore", label: "Explore", icon: Compass },
@@ -114,8 +115,8 @@ export default function App() {
           
           {/* 📋 Top Header Bar */}
           <header className="flex items-center justify-between py-4 px-4 md:px-8 border-b bg-white" style={{ borderColor: C.line }}>
-            {/* Left Greeting */}
-            <div className="flex items-center gap-3 select-none">
+            {/* Left Greeting — ซ่อนบนมือถือตอนช่อง Search เปิดอยู่ เพื่อให้ช่อง Search เต็มความกว้าง */}
+            <div className={`items-center gap-3 select-none ${showMobileSearch ? "hidden sm:flex" : "flex"}`}>
               <div className="relative shrink-0">
                 <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-[#E7A93C] bg-[#231C18] text-xs">
                   {userInitial}
@@ -133,7 +134,8 @@ export default function App() {
             </div>
 
             {/* Right Search & Alerts */}
-            <div className="flex items-center gap-3">
+            <div className={`flex items-center gap-3 ${showMobileSearch ? "flex-1 sm:flex-none" : ""}`}>
+              {/* Desktop search box — เหมือนเดิม ไม่เปลี่ยน */}
               <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl border w-60 bg-[#FAF6F0]" style={{ borderColor: C.line }}>
                 <Search size={14} color={C.inkSoft} />
                 <input
@@ -143,8 +145,45 @@ export default function App() {
                   className="bg-transparent text-xs outline-none w-full text-[#231C18] placeholder-[#8A7870]"
                 />
               </div>
-              
-              <button className="w-9 h-9 rounded-xl border flex items-center justify-center relative bg-white hover:bg-stone-50 transition" style={{ borderColor: C.line }}>
+
+              {/* Mobile: ช่อง Search เต็มความกว้าง (โผล่มาเฉพาะตอนกดไอคอนแว่นขยาย) */}
+              {showMobileSearch && (
+                <div className="flex sm:hidden items-center gap-2 px-3 py-1.5 rounded-xl border flex-1 bg-[#FAF6F0]" style={{ borderColor: C.line }}>
+                  <Search size={14} color={C.inkSoft} />
+                  <input
+                    autoFocus
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search spots, stations..."
+                    className="bg-transparent text-xs outline-none w-full text-[#231C18] placeholder-[#8A7870]"
+                  />
+                </div>
+              )}
+
+              {/* Mobile: ไอคอนแว่นขยาย (โผล่เฉพาะตอนที่ยังไม่ได้กดเปิด) */}
+              {!showMobileSearch && (
+                <button
+                  onClick={() => setShowMobileSearch(true)}
+                  className="sm:hidden w-9 h-9 rounded-xl border flex items-center justify-center bg-white hover:bg-stone-50 transition"
+                  style={{ borderColor: C.line }}
+                >
+                  <Search size={16} color={C.ink} />
+                </button>
+              )}
+
+              {/* Mobile: ปุ่มปิด (โผล่เฉพาะตอนช่อง Search เปิดอยู่) */}
+              {showMobileSearch && (
+                <button
+                  onClick={() => { setShowMobileSearch(false); setSearchQuery(""); }}
+                  className="sm:hidden w-9 h-9 rounded-xl border flex items-center justify-center bg-white hover:bg-stone-50 transition shrink-0"
+                  style={{ borderColor: C.line }}
+                >
+                  <X size={16} color={C.ink} />
+                </button>
+              )}
+
+              {/* Bell — ซ่อนบนมือถือตอนช่อง Search เปิดอยู่ */}
+              <button className={`w-9 h-9 rounded-xl border items-center justify-center relative bg-white hover:bg-stone-50 transition shrink-0 ${showMobileSearch ? "hidden sm:flex" : "flex"}`} style={{ borderColor: C.line }}>
                 <Bell size={16} color={C.ink} />
                 <span className="w-1.5 h-1.5 rounded-full absolute top-2 right-2" style={{ background: C.accent }} />
               </button>
