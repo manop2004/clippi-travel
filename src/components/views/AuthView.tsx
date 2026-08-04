@@ -1,56 +1,12 @@
 import React, { useState } from "react";
-import { Mail, Lock, Sparkles, ArrowRight, UserPlus, Key } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { C } from "../../constants/mockData";
 import { supabase } from "../../supabaseClient";
 
 export default function AuthView() {
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [errorMsg, setErrorMsg] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMsg("");
-    setSuccessMsg("");
-    setLoading(true);
-
-    try {
-      if (isSignUp) {
-        // Sign Up Flow
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-        });
-
-        if (error) throw error;
-        
-        if (data?.user && data.session === null) {
-          setSuccessMsg("Registration successful! Please check your email inbox to confirm your account.");
-        } else {
-          setSuccessMsg("Registration successful! You are now logged in.");
-        }
-      } else {
-        // Sign In Flow
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (error) throw error;
-      }
-    } catch (err: any) {
-      setErrorMsg(err.message || "An authentication error occurred.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleGoogleSignIn = async () => {
-    setErrorMsg("");
-    setSuccessMsg("");
     setLoading(true);
 
     try {
@@ -63,7 +19,7 @@ export default function AuthView() {
 
       if (error) throw error;
     } catch (err: any) {
-      setErrorMsg(err.message || "Failed to initiate Google sign in.");
+      console.error("Failed to initiate Google sign in:", err.message);
       setLoading(false);
     }
   };
@@ -84,100 +40,8 @@ export default function AuthView() {
           </div>
           <h2 className="text-xl font-black tracking-tight">CheckInJapan</h2>
           <p className="text-xs text-[#8A7870] font-semibold mt-1">
-            {isSignUp ? "Create your traveler account to collect seals" : "Sign in to manage your digital stamp book"}
+            Sign in to manage your digital stamp book
           </p>
-        </div>
-
-        {/* Tab Switcher */}
-        <div className="bg-[#EFE5DD]/60 p-1 rounded-xl flex items-center mb-6 select-none">
-          <button
-            onClick={() => { setIsSignUp(false); setErrorMsg(""); setSuccessMsg(""); }}
-            className={`flex-1 py-2 text-xs font-black rounded-lg transition-all flex items-center justify-center gap-1.5 ${!isSignUp ? "bg-white text-[#231C18] shadow-2xs" : "text-[#8A7870]"}`}
-          >
-            <Key size={13} /> Sign In
-          </button>
-          <button
-            onClick={() => { setIsSignUp(true); setErrorMsg(""); setSuccessMsg(""); }}
-            className={`flex-1 py-2 text-xs font-black rounded-lg transition-all flex items-center justify-center gap-1.5 ${isSignUp ? "bg-white text-[#231C18] shadow-2xs" : "text-[#8A7870]"}`}
-          >
-            <UserPlus size={13} /> Register
-          </button>
-        </div>
-
-        {/* Alerts */}
-        {errorMsg && (
-          <div className="p-3 rounded-xl text-xs font-bold bg-[#FDF0EA] border border-[#E0533C]/20 text-[#C64627] mb-4">
-            {errorMsg}
-          </div>
-        )}
-        {successMsg && (
-          <div className="p-3 rounded-xl text-xs font-bold bg-green-50 border border-green-200 text-green-700 mb-4">
-            {successMsg}
-          </div>
-        )}
-
-        {/* Input Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="text-[10px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870] select-none">Email Address</label>
-            <div className="relative">
-              <Mail size={14} className="absolute left-3.5 top-3 text-[#8A7870]" />
-              <input
-                required
-                type="email"
-                placeholder="e.g. traveler@mail.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={loading}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl text-xs border outline-none bg-stone-50/20 focus:border-[#E0533C] transition-all placeholder-[#8A7870]/70"
-                style={{ borderColor: C.line }}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="text-[10px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870] select-none">Password</label>
-            <div className="relative">
-              <Lock size={14} className="absolute left-3.5 top-3 text-[#8A7870]" />
-              <input
-                required
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={loading}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl text-xs border outline-none bg-stone-50/20 focus:border-[#E0533C] transition-all placeholder-[#8A7870]/70"
-                style={{ borderColor: C.line }}
-              />
-            </div>
-          </div>
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 rounded-xl text-xs font-black text-white shadow-md hover:opacity-95 transition-all flex items-center justify-center gap-1.5 mt-2"
-            style={{ background: C.accent }}
-          >
-            {loading ? (
-              <span>Connecting...</span>
-            ) : (
-              <>
-                <span>{isSignUp ? "Create Account" : "Sign In"}</span>
-                <ArrowRight size={13} strokeWidth={2.5} />
-              </>
-            )}
-          </button>
-        </form>
-
-        {/* Divider */}
-        <div className="relative my-5 select-none">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t" style={{ borderColor: C.line }} />
-          </div>
-          <div className="relative flex justify-center text-[9px] uppercase font-black">
-            <span className="bg-white px-3 text-[#8A7870]">Or continue with</span>
-          </div>
         </div>
 
         {/* Google Sign In Button */}
@@ -205,10 +69,10 @@ export default function AuthView() {
               d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
             />
           </svg>
-          <span>Google Workspace</span>
+          <span>{loading ? "Connecting..." : "Google Workspace"}</span>
         </button>
 
-        {/* Dynamic Tip at bottom */}
+        {/* Tip footer */}
         <div className="mt-5 flex items-center gap-2 bg-[#FAF6F0] p-3 rounded-2xl border" style={{ borderColor: C.line }}>
           <Sparkles size={14} color={C.accent} className="shrink-0" />
           <span className="text-[10px] font-semibold text-[#8A7870]">
