@@ -17,7 +17,13 @@ export default function TrendingSpots({ openPlace, onViewMap, searchQuery = "" }
     async function fetchPlaces() {
       setLoading(true);
       try {
-        const { data, error } = await supabase.from("century_shops").select("id, shop_name, prefecture, founded, lat, lng");
+        const { data, error } = await supabase
+          .from("century_shops")
+          .select("id, shop_name, prefecture, founded, lat, lng, rating, reviews_count, category")
+          .order("reviews_count", { ascending: false })
+          .order("rating", { ascending: false })
+          .limit(20);
+
         if (error) {
           console.error("Error fetching places:", error);
           console.error("Error code:", error.code);
@@ -70,7 +76,7 @@ export default function TrendingSpots({ openPlace, onViewMap, searchQuery = "" }
 
       <div className="flex md:grid md:grid-cols-4 gap-4 overflow-x-auto md:overflow-x-visible pb-3 pt-1 snap-x snap-mandatory scrollbar-none w-full">
         {loading ? (
-          Array.from({ length: 4 }).map((_, i) => (
+          Array.from({ length: 20 }).map((_, i) => (
             <div key={i} className="w-[180px] min-w-[180px] md:w-auto md:min-w-0 shrink-0 snap-align-start rounded-2xl bg-white p-4 border animate-pulse" style={{ borderColor: C.line }}>
               <div className="h-20 rounded-xl mb-3" style={{ background: C.line }} />
               <div className="h-2 rounded mb-1.5" style={{ background: C.line }} />

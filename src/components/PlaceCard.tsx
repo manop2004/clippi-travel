@@ -14,6 +14,7 @@ export interface Place {
   reviews_count?: number;
   lat?: number;
   lng?: number;
+  category?: string;
 }
 
 interface PlaceCardProps {

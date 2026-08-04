@@ -322,15 +322,35 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
                 </div>
               </div>
               <div className="flex flex-col gap-2 mt-4 shrink-0">
-                <button onClick={() => panToShop(selectedShop)} className="w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border bg-[#FAF6F0] hover:bg-stone-50 transition" style={{ borderColor: C.line, color: C.ink }}>
+                <button
+                  onClick={() => openPlace(selectedShop)}
+                  className="w-full py-2.5 rounded-xl text-xs font-black text-white flex items-center justify-center gap-1.5 shadow-md transition hover:opacity-95"
+                  style={{ background: C.accent }}
+                >
+                  View Details & Write Review
+                </button>
+
+                <button
+                  onClick={() => panToShop(selectedShop)}
+                  className="w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border bg-[#FAF6F0] hover:bg-stone-50 transition"
+                  style={{ borderColor: C.line, color: C.ink }}
+                >
                   <Navigation size={13} color={C.accent} /> Zoom To Location
                 </button>
+
                 {selectedShop.website && (
-                  <a href={selectedShop.website} target="_blank" rel="noopener noreferrer" className="w-full py-2.5 rounded-xl text-xs font-black text-white flex items-center justify-center gap-1.5 shadow-md transition hover:opacity-95 text-center" style={{ background: C.accent }}>
+                  <a
+                    href={selectedShop.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border bg-[#FAF6F0] hover:bg-stone-50 transition text-center"
+                    style={{ borderColor: C.line, color: C.ink }}
+                  >
                     Visit Website <ExternalLink size={12} strokeWidth={2.5} />
                   </a>
                 )}
               </div>
+
             </div>
           </div>
         ) : (
