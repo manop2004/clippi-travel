@@ -56,3 +56,25 @@ export interface CreatePlaceInput {
   lat?: number;
   lng?: number;
 }
+
+export interface PlaceSubmission {
+  id: string;
+  user_id: string;
+  name_en: string;
+  name_jp: string | null;
+  category: string;
+  description: string | null;
+  lat: number | null;
+  lng: number | null;
+  status: "pending" | "approved" | "rejected";
+  created_at: string;
+}
+
+export interface CreatePlaceSubmissionInput {
+  name_en: string;
+  name_jp?: string;
+  category: string;
+  description?: string;
+  lat?: number;
+  lng?: number;
+}

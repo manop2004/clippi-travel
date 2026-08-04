@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { X, Navigation, QrCode, Landmark, MapPin, ExternalLink, Send, Loader2, Star } from "lucide-react";
 import { C, categories } from "../constants/mockData";
 import StarRow from "./StarRow";
-import { getReviews, createReview, collectStamp, hasUserCollectedStamp, getUserStamps } from "../hooks/useReviewStamp";
+import { getReviews, createReview, collectStamp, hasUserCollectedStamp, getUserStamps, createPlaceSubmission } from "../hooks/useReviewStamp";
 import { Review, UserStamp } from "../types/review-stamp";
 import { supabase } from "../supabaseClient";
 
@@ -434,12 +434,20 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
     setSubmitting(true);
 
     try {
-      // In a real app, this would save to the database
-      // For now, we'll just show a success message
-      alert("Thank you! Spot submitted for verification.");
+      await createPlaceSubmission({
+        name_en: name,
+        name_jp: japaneseName || undefined,
+        category: cat,
+        description: description || undefined,
+      });
+      alert("Thank you! Your submission is pending review by our team.");
+      setName("");
+      setJapaneseName("");
+      setDescription("");
+      setCat("station");
       onClose();
-    } catch (error) {
-      alert("Failed to submit spot");
+    } catch (error: any) {
+      alert(error.message || "Failed to submit spot. Please try again.");
     } finally {
       setSubmitting(false);
     }

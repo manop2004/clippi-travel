@@ -1,5 +1,5 @@
 import { supabase } from "../supabaseClient";
-import { Review, Place, UserStamp, CreateReviewInput, CreatePlaceInput } from "../types/review-stamp";
+import { Review, Place, UserStamp, CreateReviewInput, CreatePlaceInput, PlaceSubmission, CreatePlaceSubmissionInput } from "../types/review-stamp";
 
 // Reviews hooks
 export async function getReviews(placeId: string | number): Promise<Review[]> {
@@ -203,4 +203,33 @@ export async function hasUserCollectedStamp(userId: string, shopId: string | num
     return false;
   }
   return !!data;
+}
+
+// Place submission hooks - for user-submitted places pending review
+export async function createPlaceSubmission(input: CreatePlaceSubmissionInput): Promise<PlaceSubmission | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("User not authenticated");
+  }
+
+  const { data, error } = await supabase
+    .from("place_submissions")
+    .insert({
+      user_id: user.id,
+      name_en: input.name_en,
+      name_jp: input.name_jp || null,
+      category: input.category,
+      description: input.description || null,
+      lat: input.lat ?? null,
+      lng: input.lng ?? null,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error creating place submission:", error);
+    throw error;
+  }
+  return data;
 }
