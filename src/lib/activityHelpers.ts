@@ -4,7 +4,7 @@ export interface ActivityLogRow {
   detail: string | null;
   created_at: string;
   profiles?: { display_name: string } | { display_name: string }[] | null;
-  century_shops?: { shop_name: string } | { shop_name: string }[] | null;
+  century_shops?: { shop_name: string; image_url: string | null } | { shop_name: string; image_url: string | null }[] | null;
 }
 
 export const BADGE_LABELS: Record<string, string> = {

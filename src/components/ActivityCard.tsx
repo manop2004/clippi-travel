@@ -14,6 +14,8 @@ export default function ActivityCard({ activity: a }: { activity: ActivityLogRow
   else if (a.activity_type === "review") actionText = `reviewed ${shopName}`;
   else if (a.activity_type === "badge") actionText = `unlocked ${BADGE_LABELS[a.detail ?? ""] ?? "a"} badge`;
 
+  const showThumbnail = !isBadge && shop?.image_url;
+
   return (
     <div className="p-4 rounded-2xl bg-white border" style={{ borderColor: C.line }}>
       <div className="flex items-start gap-3">
@@ -35,6 +37,14 @@ export default function ActivityCard({ activity: a }: { activity: ActivityLogRow
           )}
           <span className="text-[9px] text-[#8A7870] font-medium block mt-1.5">{timeAgo(a.created_at)}</span>
         </div>
+        {showThumbnail && (
+          <img
+            src={shop!.image_url!}
+            alt={shopName}
+            className="w-14 h-14 rounded-lg object-cover shrink-0"
+            loading="lazy"
+          />
+        )}
       </div>
     </div>
   );

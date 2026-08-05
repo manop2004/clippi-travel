@@ -43,7 +43,7 @@ export default function ActivityFeedModal({ isOpen, onClose }: ActivityFeedModal
         detail,
         created_at,
         profiles ( display_name ),
-        century_shops ( shop_name )
+        century_shops ( shop_name, image_url )
       `)
       .order("created_at", { ascending: false })
       .range(from, to);
