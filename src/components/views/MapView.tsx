@@ -16,6 +16,7 @@ interface Shop {
   lat: number;
   lng: number;
   category: string;
+  image_url?: string;
 }
 
 interface MapViewProps {

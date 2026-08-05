@@ -38,6 +38,7 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
   const website = place?.website || "";
   const lat = typeof place?.lat === "number" ? place.lat : null;
   const lng = typeof place?.lng === "number" ? place.lng : null;
+  const imageUrl = place?.image_url || "https://images.unsplash.com/photo-1542044896530-05d85be9b11a?auto=format&fit=crop&q=80&w=600";
 
   // Get current user
   useEffect(() => {
@@ -124,7 +125,7 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
           <div
             className="w-full md:w-[40%] h-48 md:h-auto min-h-[180px] bg-cover bg-center relative flex items-end p-5 shrink-0 select-none"
             style={{
-              backgroundImage: `linear-gradient(to top, rgba(35,28,24,0.8), rgba(35,28,24,0)), url('https://images.unsplash.com/photo-1542044896530-05d85be9b11a?auto=format&fit=crop&q=80&w=600')`
+              backgroundImage: `linear-gradient(to top, rgba(35,28,24,0.8), rgba(35,28,24,0)), url('${imageUrl}')`
             }}
           >
             <div className="text-white z-10">

@@ -15,6 +15,7 @@ export interface Place {
   lat?: number;
   lng?: number;
   category?: string;
+  image_url?: string;
 }
 
 interface PlaceCardProps {
@@ -45,7 +46,13 @@ export default function PlaceCard({ place, onClick, compact = false }: PlaceCard
   if (compact) {
     return (
       <div onClick={onClick} className="p-3.5 rounded-2xl bg-white border cursor-pointer" style={{ borderColor: C.line }}>
-        <div className="h-16 rounded-xl flex items-center justify-center text-2xl mb-2" style={{ background: C.accentSoft }}>{emoji}</div>
+        <div className="h-16 rounded-xl overflow-hidden mb-2 flex items-center justify-center text-2xl" style={{ background: C.accentSoft }}>
+          {place.image_url ? (
+            <img src={place.image_url} alt={shopName} className="w-full h-full object-cover" loading="lazy" />
+          ) : (
+            emoji
+          )}
+        </div>
         <span className="text-[8px] font-black tracking-wider uppercase block truncate" style={{ color: C.accentDeep }}>{prefecture}</span>
         <h3 className="text-xs font-black leading-tight mt-0.5 truncate" style={{ color: C.ink }}>{shopName}</h3>
         <p className="text-[10px] text-[#8A7870] font-semibold mt-0.5 truncate">Est. {founded}</p>
@@ -60,7 +67,13 @@ export default function PlaceCard({ place, onClick, compact = false }: PlaceCard
   return (
     <div onClick={onClick} className="w-[180px] min-w-[180px] md:w-auto md:min-w-0 shrink-0 snap-align-start rounded-2xl bg-white p-4 border transition-all duration-200 hover:shadow-md cursor-pointer flex flex-col justify-between h-[210px] sm:h-[220px]" style={{ borderColor: C.line }}>
       <div>
-        <div className="h-20 rounded-xl flex items-center justify-center text-3xl mb-3 shrink-0 select-none" style={{ background: C.accentSoft }}>{emoji}</div>
+        <div className="h-20 rounded-xl overflow-hidden mb-3 shrink-0 select-none flex items-center justify-center text-3xl" style={{ background: C.accentSoft }}>
+          {place.image_url ? (
+            <img src={place.image_url} alt={shopName} className="w-full h-full object-cover" loading="lazy" />
+          ) : (
+            emoji
+          )}
+        </div>
         <span className="text-[8px] font-black tracking-wider uppercase block truncate" style={{ color: C.accentDeep }}>{prefecture}</span>
         <h3 className="text-xs font-black leading-tight mt-0.5 truncate" style={{ color: C.ink }}>{shopName}</h3>
         <p className="text-[10px] text-[#8A7870] font-semibold mt-0.5 truncate">Est. {founded}</p>

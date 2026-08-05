@@ -19,7 +19,7 @@ export default function TrendingSpots({ openPlace, onViewMap, searchQuery = "" }
       try {
         const { data, error } = await supabase
           .from("century_shops")
-          .select("id, shop_name, prefecture, founded, lat, lng, rating, reviews_count, category")
+          .select("id, shop_name, prefecture, founded, lat, lng, rating, reviews_count, category, image_url")
           .order("reviews_count", { ascending: false })
           .order("rating", { ascending: false })
           .limit(20);
