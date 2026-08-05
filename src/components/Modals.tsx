@@ -426,8 +426,37 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
   const [japaneseName, setJapaneseName] = useState("");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState("");
 
   if (!isOpen) return null;
+
+  const handlePinLocation = () => {
+    if (!("geolocation" in navigator)) {
+      setLocationError("Your browser doesn't support location services.");
+      return;
+    }
+    setLocating(true);
+    setLocationError("");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setCoords({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+        setLocating(false);
+      },
+      (error) => {
+        setLocationError(
+          error.code === error.PERMISSION_DENIED
+            ? "Location permission denied. Please allow access and try again."
+            : "Could not get your location. Please try again."
+        );
+        setLocating(false);
+      }
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -439,12 +468,16 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
         name_jp: japaneseName || undefined,
         category: cat,
         description: description || undefined,
+        lat: coords?.lat,
+        lng: coords?.lng,
       });
       alert("Thank you! Your submission is pending review by our team.");
       setName("");
       setJapaneseName("");
       setDescription("");
       setCat("station");
+      setCoords(null);
+      setLocationError("");
       onClose();
     } catch (error: any) {
       alert(error.message || "Failed to submit spot. Please try again.");
@@ -523,13 +556,33 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
             />
           </div>
 
-          <button
-            type="button"
-            className="w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border bg-stone-50/50 hover:bg-stone-50 transition"
-            style={{ borderColor: C.line, color: C.ink }}
-          >
-            <MapPin size={13} color={C.accentDeep} /> Pin Current GPS Location
-          </button>
+          <div>
+            <button
+              type="button"
+              onClick={handlePinLocation}
+              disabled={locating}
+              className="w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition disabled:opacity-70"
+              style={
+                coords
+                  ? { borderColor: "#4CAF50", color: "#2E7D32", background: "#F0F9F0" }
+                  : { borderColor: C.line, color: C.ink, background: "rgba(250,246,240,0.5)" }
+              }
+            >
+              {locating ? (
+                <Loader2 size={13} className="animate-spin" />
+              ) : (
+                <MapPin size={13} color={coords ? "#2E7D32" : C.accentDeep} />
+              )}
+              {locating
+                ? "Getting your location..."
+                : coords
+                ? `Location pinned (${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)})`
+                : "Pin Current GPS Location"}
+            </button>
+            {locationError && (
+              <p className="text-[10px] text-[#E0533C] font-semibold mt-1.5">{locationError}</p>
+            )}
+          </div>
 
           <button
             type="submit"
