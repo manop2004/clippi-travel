@@ -29,6 +29,8 @@ export interface Place {
   rating?: number;
   reviews_count?: number;
   created_at?: string;
+  region?: string;
+  image_url?: string;
 }
 
 export interface UserStamp {
