@@ -77,4 +77,5 @@ export interface CreatePlaceSubmissionInput {
   description?: string;
   lat?: number;
   lng?: number;
+  image_url?: string;
 }

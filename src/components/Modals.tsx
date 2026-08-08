@@ -435,6 +435,10 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [locating, setLocating] = useState(false);
   const [locationError, setLocationError] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [imageError, setImageError] = useState("");
 
   if (!isOpen) return null;
 
@@ -464,11 +468,67 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
     );
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSelectedFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
+    setImageError("");
+  };
+
+  const handleRemoveImage = () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setSelectedFile(null);
+    setPreviewUrl(null);
+  };
+
+  const resetForm = () => {
+    setName("");
+    setJapaneseName("");
+    setDescription("");
+    setCat("food");
+    setCoords(null);
+    setLocationError("");
+    setImageError("");
+    handleRemoveImage();
+  };
+
+  const handleClose = () => {
+    resetForm();
+    onClose();
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!selectedFile) {
+      setImageError("Please add a photo of the location.");
+      return;
+    }
+
     setSubmitting(true);
+    setImageError("");
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("You must be signed in to submit a place.");
+
+      setUploading(true);
+      const fileExt = selectedFile.name.split(".").pop();
+      const filePath = `${user.id}/${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("place-photos")
+        .upload(filePath, selectedFile);
+
+      if (uploadError) throw new Error("Failed to upload photo. Please try again.");
+
+      const { data: publicUrlData } = supabase.storage
+        .from("place-photos")
+        .getPublicUrl(filePath);
+
+      setUploading(false);
+
       await createPlaceSubmission({
         name_en: name,
         name_jp: japaneseName || undefined,
@@ -476,19 +536,16 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
         description: description || undefined,
         lat: coords?.lat,
         lng: coords?.lng,
+        image_url: publicUrlData.publicUrl,
       });
+
       alert("Thank you! Your submission is pending review by our team.");
-      setName("");
-      setJapaneseName("");
-      setDescription("");
-      setCat("food");
-      setCoords(null);
-      setLocationError("");
-      onClose();
+      handleClose();
     } catch (error: any) {
       alert(error.message || "Failed to submit spot. Please try again.");
     } finally {
       setSubmitting(false);
+      setUploading(false);
     }
   };
 
@@ -500,7 +557,7 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
       >
         {/* Close Button */}
         <button
-          onClick={onClose}
+          onClick={handleClose}
           className="absolute top-6 right-6 w-8.5 h-8.5 rounded-full flex items-center justify-center bg-stone-50 border hover:scale-105 transition"
           style={{ borderColor: C.line }}
         >
@@ -563,6 +620,41 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
           </div>
 
           <div>
+            <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">
+              Photo <span style={{ color: C.accent }}>*</span>
+            </label>
+            {previewUrl ? (
+              <div className="relative">
+                <img src={previewUrl} alt="Preview" className="w-full h-40 object-cover rounded-xl border" style={{ borderColor: C.line }} />
+                <button
+                  type="button"
+                  onClick={handleRemoveImage}
+                  className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 flex items-center justify-center shadow-md hover:scale-105 transition"
+                >
+                  <X size={14} color={C.ink} />
+                </button>
+              </div>
+            ) : (
+              <label
+                className="w-full h-32 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1.5 cursor-pointer hover:bg-stone-50 transition"
+                style={{ borderColor: imageError ? "#E0533C" : C.line }}
+              >
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+                <MapPin size={20} color={C.accentDeep} />
+                <span className="text-[10px] font-bold text-[#8A7870]">Tap to add a photo</span>
+              </label>
+            )}
+            {imageError && (
+              <p className="text-[10px] text-[#E0533C] font-semibold mt-1.5">{imageError}</p>
+            )}
+          </div>
+
+          <div>
             <button
               type="button"
               onClick={handlePinLocation}
@@ -596,7 +688,7 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
             className="w-full py-3 rounded-xl text-xs font-black text-white shadow-md hover:opacity-95 transition disabled:opacity-70"
             style={{ background: C.accent }}
           >
-            {submitting ? "Submitting..." : "Submit for Verification"}
+            {uploading ? "Uploading photo..." : submitting ? "Submitting..." : "Submit for Verification"}
           </button>
         </form>
       </div>

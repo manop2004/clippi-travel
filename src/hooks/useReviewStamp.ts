@@ -223,6 +223,7 @@ export async function createPlaceSubmission(input: CreatePlaceSubmissionInput): 
       description: input.description || null,
       lat: input.lat ?? null,
       lng: input.lng ?? null,
+      image_url: input.image_url || null,
     })
     .select()
     .single();
