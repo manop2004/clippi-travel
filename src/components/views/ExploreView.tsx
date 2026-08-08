@@ -7,7 +7,7 @@ import ActivityCard from "../ActivityCard";
 import ActivityFeedModal from "../ActivityFeedModal";
 import { ActivityLogRow } from "../../lib/activityHelpers";
 
-export default function ExploreView({ openPlace, onViewMap, searchQuery = "" }: { openPlace: (p: any) => void; onViewMap?: () => void; searchQuery?: string }) {
+export default function ExploreView({ openPlace, onViewMap, onSeeAllTrending, searchQuery = "" }: { openPlace: (p: any) => void; onViewMap?: () => void; onSeeAllTrending?: () => void; searchQuery?: string }) {
   const [activityFeed, setActivityFeed] = useState<ActivityLogRow[]>([]);
   const [loadingActivity, setLoadingActivity] = useState(true);
   const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
@@ -85,7 +85,7 @@ export default function ExploreView({ openPlace, onViewMap, searchQuery = "" }: 
 
       <TrendingSpots
         openPlace={openPlace}
-        onViewMap={onViewMap}
+        onViewMap={onSeeAllTrending}
         searchQuery={searchQuery}
       />
 

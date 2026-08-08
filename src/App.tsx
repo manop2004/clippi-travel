@@ -4,6 +4,7 @@ import { C, trending } from "./constants/mockData";
 import { supabase } from "./supabaseClient";
 import { Session } from "@supabase/supabase-js";
 import ExploreView from "./components/views/ExploreView";
+import TrendingAllView from "./components/views/TrendingAllView";
 import MapView from "./components/views/MapView";
 import CollectionView from "./components/views/CollectionView";
 import ProfileView from "./components/views/ProfileView";
@@ -20,6 +21,11 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const [showAllTrending, setShowAllTrending] = useState(false);
+
+  useEffect(() => {
+    if (tab !== "explore") setShowAllTrending(false);
+  }, [tab]);
 
   const navTabs = [
     { id: "explore", label: "Explore", icon: Compass },
@@ -200,7 +206,21 @@ export default function App() {
 
             {/* 📄 Main Workspace Pages */}
             <main className="flex-1 p-4 md:p-8 max-w-5xl mx-auto w-full pb-24 md:pb-8">
-              {tab === "explore" && <ExploreView openPlace={(p: any) => setSelectedPlace(trending.find(item => item.name === p.name) || p)} onViewMap={() => setTab("map")} searchQuery={searchQuery} />}
+              {tab === "explore" && (
+                showAllTrending ? (
+                  <TrendingAllView
+                    openPlace={(p: any) => setSelectedPlace(p)}
+                    searchQuery={searchQuery}
+                    onBack={() => setShowAllTrending(false)}
+                  />
+                ) : (
+                  <ExploreView
+                    openPlace={(p: any) => setSelectedPlace(trending.find(item => item.name === p.name) || p)}
+                    onSeeAllTrending={() => setShowAllTrending(true)}
+                    searchQuery={searchQuery}
+                  />
+                )
+              )}
               {tab === "map" && <MapView openPlace={(p: any) => setSelectedPlace(p)} searchQuery={searchQuery} />}
               {tab === "collection" && <CollectionView searchQuery={searchQuery} />}
               {tab === "profile" && <ProfileView />}

@@ -70,7 +70,7 @@ export default function TrendingSpots({ openPlace, onViewMap, searchQuery = "" }
           <p className="text-[11px] font-semibold text-[#8A7870] mt-0.5">Most visited heritage places this week</p>
         </div>
         <button onClick={onViewMap} className="text-xs font-black hover:underline shrink-0 text-[#E0533C]">
-          View Map →
+          See all trending shops →
         </button>
       </div>
 
