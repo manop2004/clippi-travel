@@ -17,6 +17,7 @@ interface Shop {
   lng: number;
   category: string;
   pin_type: string;
+  region: string;
   image_url?: string;
 }
 
@@ -30,6 +31,9 @@ const PIN_TYPE_FILTERS = [
   { id: "food", label: "Restaurant/Cafe" },
   { id: "shop", label: "Service/Shop" },
 ];
+
+const REGIONS = ["Kanto", "Kansai", "Hokkaido", "Tohoku", "Chubu", "Chugoku", "Kyushu & Okinawa", "Shikoku"];
+const REGION_FILTERS = [{ id: "All", label: "All" }, ...REGIONS.map(r => ({ id: r, label: r }))];
 
 function getPinTypeEmoji(pinType: string): string {
   switch (pinType) {
@@ -50,6 +54,7 @@ const PureMapContainer = React.memo(({ innerRef }: { innerRef: React.RefObject<H
 export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
   const [shops, setShops] = useState<Shop[]>([]);
   const [pinTypeFilter, setPinTypeFilter] = useState("All");
+  const [regionFilter, setRegionFilter] = useState("All");
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -81,13 +86,14 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
 
   // Filtered list of shops (category filter + keyword search)
   const filteredShops = shops.filter((s) => {
+    const matchesRegion = regionFilter === "All" || s.region === regionFilter;
     const matchesCategory = pinTypeFilter === "All" || s.pin_type === pinTypeFilter;
     const q = searchQuery.trim().toLowerCase();
     const matchesSearch =
       q === "" ||
       s.shop_name.toLowerCase().includes(q) ||
       (s.prefecture && s.prefecture.toLowerCase().includes(q));
-    return matchesCategory && matchesSearch;
+    return matchesRegion && matchesCategory && matchesSearch;
   });
 
   // 2. Initialize Leaflet Map
@@ -161,7 +167,7 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
         mapRef.current.fitBounds(bounds, { padding: [30, 30] });
       }
     }
-  }, [pinTypeFilter, shops, searchQuery]);
+  }, [regionFilter, pinTypeFilter, shops, searchQuery]);
 
   // 4. Auto-select first matching shop when search query changes
   useEffect(() => {
@@ -239,34 +245,68 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
           </p>
         </div>
 
-        {/* 🏷️ Filter Tabs (by category) */}
-        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none w-full md:w-auto">
-          {PIN_TYPE_FILTERS.map((f) => (
-            <button
-              key={f.id}
-              onClick={() => {
-                setPinTypeFilter(f.id);
-                const q = searchQuery.trim().toLowerCase();
-                const firstInFilter = shops.find((s) => {
-                  const matchesCategory = f.id === "All" || s.pin_type === f.id;
-                  const matchesSearch =
-                    q === "" ||
-                    s.shop_name.toLowerCase().includes(q) ||
-                    (s.prefecture && s.prefecture.toLowerCase().includes(q));
-                  return matchesCategory && matchesSearch;
-                });
-                setSelectedShop(firstInFilter || null);
-              }}
-              className="px-3.5 py-1.5 rounded-full text-[10px] font-black shrink-0 border transition-all duration-150"
-              style={
-                pinTypeFilter === f.id
-                  ? { background: C.accent, color: "#fff", borderColor: C.accent }
-                  : { background: "#FFFFFF", color: C.inkSoft, borderColor: C.line }
-              }
-            >
-              {f.label}
-            </button>
-          ))}
+        <div className="flex flex-col gap-2 w-full md:w-auto">
+          {/* 🌏 Filter Tabs (by region) */}
+          <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none w-full md:w-auto">
+            {REGION_FILTERS.map((r) => (
+              <button
+                key={r.id}
+                onClick={() => {
+                  setRegionFilter(r.id);
+                  const q = searchQuery.trim().toLowerCase();
+                  const firstInFilter = shops.find((s) => {
+                    const matchesRegion = r.id === "All" || s.region === r.id;
+                    const matchesCategory = pinTypeFilter === "All" || s.pin_type === pinTypeFilter;
+                    const matchesSearch =
+                      q === "" ||
+                      s.shop_name.toLowerCase().includes(q) ||
+                      (s.prefecture && s.prefecture.toLowerCase().includes(q));
+                    return matchesRegion && matchesCategory && matchesSearch;
+                  });
+                  setSelectedShop(firstInFilter || null);
+                }}
+                className="px-3.5 py-1.5 rounded-full text-[10px] font-black shrink-0 border transition-all duration-150"
+                style={
+                  regionFilter === r.id
+                    ? { background: C.accent, color: "#fff", borderColor: C.accent }
+                    : { background: "#FFFFFF", color: C.inkSoft, borderColor: C.line }
+                }
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+
+          {/* 🏷️ Filter Tabs (by category) */}
+          <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none w-full md:w-auto">
+            {PIN_TYPE_FILTERS.map((f) => (
+              <button
+                key={f.id}
+                onClick={() => {
+                  setPinTypeFilter(f.id);
+                  const q = searchQuery.trim().toLowerCase();
+                  const firstInFilter = shops.find((s) => {
+                    const matchesRegion = regionFilter === "All" || s.region === regionFilter;
+                    const matchesCategory = f.id === "All" || s.pin_type === f.id;
+                    const matchesSearch =
+                      q === "" ||
+                      s.shop_name.toLowerCase().includes(q) ||
+                      (s.prefecture && s.prefecture.toLowerCase().includes(q));
+                    return matchesRegion && matchesCategory && matchesSearch;
+                  });
+                  setSelectedShop(firstInFilter || null);
+                }}
+                className="px-3.5 py-1.5 rounded-full text-[10px] font-black shrink-0 border transition-all duration-150"
+                style={
+                  pinTypeFilter === f.id
+                    ? { background: C.accent, color: "#fff", borderColor: C.accent }
+                    : { background: "#FFFFFF", color: C.inkSoft, borderColor: C.line }
+                }
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
