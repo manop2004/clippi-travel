@@ -16,6 +16,7 @@ interface Shop {
   lat: number;
   lng: number;
   category: string;
+  pin_type: string;
   image_url?: string;
 }
 
@@ -24,22 +25,20 @@ interface MapViewProps {
   searchQuery?: string;
 }
 
-const filterOptions = [{ id: "All", label: "All" }, ...categories];
+const PIN_TYPE_FILTERS = [
+  { id: "All", label: "All" },
+  { id: "food", label: "Restaurant/Cafe" },
+  { id: "shop", label: "Service/Shop" },
+];
 
-function getCategoryEmoji(category: string): string {
-  switch (category) {
-    case "station":
-      return "🚉";
-    case "shrine":
-      return "⛩️";
-    case "spot":
-      return "📸";
+function getPinTypeEmoji(pinType: string): string {
+  switch (pinType) {
     case "food":
-      return "🍽️";
+      return "🍜";
     case "shop":
-      return "🏪";
+      return "🎁";
     default:
-      return "🏬";
+      return "📍";
   }
 }
 
@@ -50,7 +49,7 @@ const PureMapContainer = React.memo(({ innerRef }: { innerRef: React.RefObject<H
 
 export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
   const [shops, setShops] = useState<Shop[]>([]);
-  const [categoryFilter, setCategoryFilter] = useState("All");
+  const [pinTypeFilter, setPinTypeFilter] = useState("All");
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -82,7 +81,7 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
 
   // Filtered list of shops (category filter + keyword search)
   const filteredShops = shops.filter((s) => {
-    const matchesCategory = categoryFilter === "All" || s.category === categoryFilter;
+    const matchesCategory = pinTypeFilter === "All" || s.pin_type === pinTypeFilter;
     const q = searchQuery.trim().toLowerCase();
     const matchesSearch =
       q === "" ||
@@ -138,7 +137,7 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
     filteredShops.forEach((shop) => {
       if (!shop.lat || !shop.lng) return;
 
-      const emoji = getCategoryEmoji(shop.category);
+      const emoji = getPinTypeEmoji(shop.pin_type);
       const markerHtml = `
         <div class="relative flex items-center justify-center">
           <div class="w-8 h-8 rounded-full border-2 border-white bg-[#E0533C] text-white flex items-center justify-center shadow-md hover:scale-110 transition-transform duration-150 text-sm">
@@ -162,7 +161,7 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
         mapRef.current.fitBounds(bounds, { padding: [30, 30] });
       }
     }
-  }, [categoryFilter, shops, searchQuery]);
+  }, [pinTypeFilter, shops, searchQuery]);
 
   // 4. Auto-select first matching shop when search query changes
   useEffect(() => {
@@ -242,14 +241,14 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
 
         {/* 🏷️ Filter Tabs (by category) */}
         <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none w-full md:w-auto">
-          {filterOptions.map((f) => (
+          {PIN_TYPE_FILTERS.map((f) => (
             <button
               key={f.id}
               onClick={() => {
-                setCategoryFilter(f.id);
+                setPinTypeFilter(f.id);
                 const q = searchQuery.trim().toLowerCase();
                 const firstInFilter = shops.find((s) => {
-                  const matchesCategory = f.id === "All" || s.category === f.id;
+                  const matchesCategory = f.id === "All" || s.pin_type === f.id;
                   const matchesSearch =
                     q === "" ||
                     s.shop_name.toLowerCase().includes(q) ||
@@ -260,7 +259,7 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
               }}
               className="px-3.5 py-1.5 rounded-full text-[10px] font-black shrink-0 border transition-all duration-150"
               style={
-                categoryFilter === f.id
+                pinTypeFilter === f.id
                   ? { background: C.accent, color: "#fff", borderColor: C.accent }
                   : { background: "#FFFFFF", color: C.inkSoft, borderColor: C.line }
               }
@@ -299,7 +298,7 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
                     className="w-14 h-14 rounded-full border-2 border-dashed flex items-center justify-center text-3xl shrink-0 select-none"
                     style={{ background: C.accentSoft, borderColor: C.accent }}
                   >
-                    {getCategoryEmoji(selectedShop.category)}
+                    {getPinTypeEmoji(selectedShop.pin_type)}
                   </div>
                   <div className="leading-tight">
                     <span className="text-[9px] font-black uppercase tracking-wider block" style={{ color: C.accent }}>{selectedShop.prefecture}</span>

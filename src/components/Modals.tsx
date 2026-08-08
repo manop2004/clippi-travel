@@ -421,8 +421,13 @@ interface AddPlaceModalProps {
   onClose: () => void;
 }
 
+const PIN_TYPES = [
+  { id: "food", label: "Restaurant/Cafe", emoji: "🍜" },
+  { id: "shop", label: "Service/Shop", emoji: "🎁" },
+];
+
 export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
-  const [cat, setCat] = useState("station");
+  const [cat, setCat] = useState("food");
   const [name, setName] = useState("");
   const [japaneseName, setJapaneseName] = useState("");
   const [description, setDescription] = useState("");
@@ -476,7 +481,7 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
       setName("");
       setJapaneseName("");
       setDescription("");
-      setCat("station");
+      setCat("food");
       setCoords(null);
       setLocationError("");
       onClose();
@@ -531,7 +536,7 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
           <div>
             <label className="text-[9px] font-black uppercase tracking-wider block mb-2 text-[#8A7870]">Category</label>
             <div className="flex flex-wrap gap-1.5">
-              {categories.map((c) => (
+              {PIN_TYPES.map((c) => (
                 <button
                   type="button"
                   key={c.id}
@@ -539,7 +544,7 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
                   className="px-3.5 py-1.5 rounded-full text-[10px] font-black flex items-center gap-1.5 border transition-all duration-150"
                   style={cat === c.id ? { background: C.accent, color: "#fff", borderColor: C.accent } : { background: "#fff", color: C.inkSoft, borderColor: C.line }}
                 >
-                  <c.icon size={11} /> {c.label}
+                  {c.emoji} {c.label}
                 </button>
               ))}
             </div>
