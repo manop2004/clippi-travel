@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ChevronLeft, Loader2 } from "lucide-react";
+import { ChevronLeft, Loader2, Star } from "lucide-react";
 import { C } from "../../constants/mockData";
 import { getPlaces } from "../../hooks/useReviewStamp";
 import { Place } from "../../types/review-stamp";
@@ -122,12 +122,20 @@ export default function TrendingAllView({ openPlace, searchQuery = "", onBack }:
                     >
                       {p.pin_type === "food" ? "Restaurant/Cafe" : "Service/Shop"}
                     </span>
-                    <span className="text-[10px] text-[#8A7870]">· {p.prefecture}</span>
+                    <span className="text-[10px] text-[#8A7870]">· {p.region || p.prefecture}</span>
                   </div>
                 </div>
-                <span className="text-xs font-bold shrink-0" style={{ color: C.gold }}>
-                  ★{(p.rating ?? 0).toFixed(1)}
-                </span>
+                <div className="text-right shrink-0">
+                  <div className="flex items-center gap-1 justify-end">
+                    <Star size={11} fill={C.gold} color={C.gold} />
+                    <span className="text-xs font-bold" style={{ color: C.ink }}>
+                      {(p.rating ?? 0).toFixed(1)}
+                    </span>
+                  </div>
+                  <span className="text-[9px] text-[#8A7870] block mt-0.5">
+                    ({p.reviews_count ?? 0})
+                  </span>
+                </div>
               </button>
             );
           })}
