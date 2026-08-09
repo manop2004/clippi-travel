@@ -222,7 +222,7 @@ export default function App() {
                 )
               )}
               {tab === "map" && <MapView openPlace={(p: any) => setSelectedPlace(p)} searchQuery={searchQuery} />}
-              {tab === "collection" && <CollectionView searchQuery={searchQuery} />}
+              {tab === "collection" && <CollectionView searchQuery={searchQuery} openPlace={(p: any) => setSelectedPlace(p)} />}
               {tab === "profile" && <ProfileView />}
             </main>
           </div>

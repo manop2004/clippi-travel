@@ -9,7 +9,7 @@ import { MapPin } from "lucide-react";
 const REGIONS = ["Kanto", "Kansai", "Hokkaido", "Tohoku", "Chubu", "Chugoku", "Kyushu & Okinawa", "Shikoku"];
 const REGION_FILTERS = [{ id: "All", label: "All" }, ...REGIONS.map(r => ({ id: r, label: r }))];
 
-export default function CollectionView({ searchQuery = "" }: { searchQuery?: string }) {
+export default function CollectionView({ searchQuery = "", openPlace }: { searchQuery?: string; openPlace?: (place: any) => void }) {
   const [userStamps, setUserStamps] = useState<any[]>([]);
   const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
@@ -145,7 +145,8 @@ export default function CollectionView({ searchQuery = "" }: { searchQuery?: str
               return (
                 <div
                   key={us.id}
-                  className="p-3.5 rounded-2xl bg-white border text-center flex flex-col items-center justify-center min-h-[120px] hover:shadow-xs transition"
+                  onClick={() => openPlace?.(place)}
+                  className="p-3.5 rounded-2xl bg-white border text-center flex flex-col items-center justify-center min-h-[120px] hover:shadow-xs transition cursor-pointer"
                   style={{ borderColor: C.line, borderLeft: `3px solid ${C.accent}` }}
                 >
                   <div
@@ -187,7 +188,8 @@ export default function CollectionView({ searchQuery = "" }: { searchQuery?: str
               return (
                 <div
                   key={place.id}
-                  className="p-3.5 rounded-2xl bg-white border text-center flex flex-col items-center justify-center min-h-[120px] hover:shadow-xs transition"
+                  onClick={() => openPlace?.(place)}
+                  className="p-3.5 rounded-2xl bg-white border text-center flex flex-col items-center justify-center min-h-[120px] hover:shadow-xs transition cursor-pointer"
                   style={{ borderColor: C.line }}
                 >
                   <div
