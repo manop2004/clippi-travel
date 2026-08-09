@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { Star } from "lucide-react";
 import { C } from "../constants/mockData";
 import { Place } from "./PlaceCard";
 import { supabase } from "../supabaseClient";
+import Carousel from "./Carousel";
 
 interface TrendingSpotsProps {
   openPlace: (place: any) => void;
@@ -13,8 +14,6 @@ interface TrendingSpotsProps {
 export default function TrendingSpots({ openPlace, onViewMap, searchQuery = "" }: TrendingSpotsProps) {
   const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     async function fetchPlaces() {
@@ -56,14 +55,6 @@ export default function TrendingSpots({ openPlace, onViewMap, searchQuery = "" }
     openPlace({ ...p, name: shopName, tag: prefecture, founded });
   };
 
-  const handleScroll = () => {
-    if (!scrollRef.current) return;
-    const { scrollLeft, clientWidth } = scrollRef.current;
-    if (clientWidth === 0) return;
-    const idx = Math.round(scrollLeft / clientWidth);
-    setActiveIndex(idx);
-  };
-
   return (
     <div className="w-full min-w-0">
       <div className="flex items-end justify-between mb-4 select-none">
@@ -87,18 +78,16 @@ export default function TrendingSpots({ openPlace, onViewMap, searchQuery = "" }
         </div>
       ) : (
         <>
-          <div
-            ref={scrollRef}
-            onScroll={handleScroll}
-            className="flex md:grid md:grid-cols-3 gap-4 overflow-x-auto md:overflow-x-visible pb-1 snap-x snap-mandatory scrollbar-none w-full"
-          >
-            {filteredPlaces.map((p: any, idx) => {
+          <Carousel
+            items={filteredPlaces}
+            keyExtractor={(p: any) => p.id}
+            desktopClassName="md:grid md:grid-cols-3"
+            renderItem={(p: any, idx) => {
               const shopName = p.shop_name || p.name || "Unknown Shop";
               return (
                 <div
-                  key={p.id}
                   onClick={() => handlePlaceClick(p)}
-                  className="w-full min-w-full md:min-w-0 shrink-0 snap-center rounded-2xl bg-white border overflow-hidden flex hover:shadow-md transition cursor-pointer"
+                  className="w-full rounded-2xl bg-white border overflow-hidden flex hover:shadow-md transition cursor-pointer"
                   style={{ borderColor: C.line, height: "160px" }}
                 >
                   <div className="relative w-28 shrink-0" style={{ background: C.accentSoft }}>
@@ -136,21 +125,8 @@ export default function TrendingSpots({ openPlace, onViewMap, searchQuery = "" }
                   </div>
                 </div>
               );
-            })}
-          </div>
-
-          <div className="flex justify-center gap-1.5 mt-3 md:hidden">
-            {filteredPlaces.map((_, i) => (
-              <span
-                key={i}
-                className="h-1.5 rounded-full transition-all duration-200"
-                style={{
-                  background: i === activeIndex ? C.accent : C.line,
-                  width: i === activeIndex ? "16px" : "6px",
-                }}
-              />
-            ))}
-          </div>
+            }}
+          />
 
           <button
             onClick={onViewMap}
