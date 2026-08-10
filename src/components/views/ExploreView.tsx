@@ -3,6 +3,7 @@ import { Sparkles, ArrowRight } from "lucide-react";
 import { C } from "../../constants/mockData";
 import { supabase } from "../../supabaseClient";
 import TrendingSpots from "../TrendingSpots";
+import NewStamps from "../NewStamps";
 import SeasonalHits from "../SeasonalHits";
 import ActivityCard from "../ActivityCard";
 import ActivityFeedModal from "../ActivityFeedModal";
@@ -91,6 +92,8 @@ export default function ExploreView({ openPlace, onViewMap, onSeeAllTrending, se
         onViewMap={onSeeAllTrending}
         searchQuery={searchQuery}
       />
+
+      <NewStamps openPlace={openPlace} />
 
       <div className="w-full min-w-0">
         <div className="flex items-end justify-between mb-4">
