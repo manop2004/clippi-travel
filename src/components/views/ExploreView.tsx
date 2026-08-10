@@ -3,6 +3,7 @@ import { Sparkles, ArrowRight } from "lucide-react";
 import { C } from "../../constants/mockData";
 import { supabase } from "../../supabaseClient";
 import TrendingSpots from "../TrendingSpots";
+import SeasonalHits from "../SeasonalHits";
 import ActivityCard from "../ActivityCard";
 import ActivityFeedModal from "../ActivityFeedModal";
 import { ActivityLogRow } from "../../lib/activityHelpers";
@@ -82,6 +83,8 @@ export default function ExploreView({ openPlace, onViewMap, onSeeAllTrending, se
           </button>
         </div>
       </div>
+
+      <SeasonalHits openPlace={openPlace} />
 
       <TrendingSpots
         openPlace={openPlace}
