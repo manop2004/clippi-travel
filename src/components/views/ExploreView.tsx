@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { Sparkles, ArrowRight } from "lucide-react";
 import { C } from "../../constants/mockData";
 import { supabase } from "../../supabaseClient";
 import TrendingSpots from "../TrendingSpots";
 import NewStamps from "../NewStamps";
 import SeasonalHits from "../SeasonalHits";
+import RegionalBanners from "../RegionalBanners";
 import ActivityCard from "../ActivityCard";
 import ActivityFeedModal from "../ActivityFeedModal";
 import { ActivityLogRow } from "../../lib/activityHelpers";
@@ -43,47 +43,7 @@ export default function ExploreView({ openPlace, onViewMap, onSeeAllTrending, se
   return (
     <div className="space-y-6 md:space-y-8 w-full min-w-0 text-[#231C18]">
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div 
-          className="md:col-span-2 rounded-2xl p-5 md:p-6 flex flex-col justify-between h-36 border" 
-          style={{ background: C.accentSoft, borderColor: C.line }}
-        >
-          <div>
-            <span className="text-[8px] font-black px-2.5 py-1 rounded-full inline-flex items-center gap-0.5 bg-white text-[#E0533C] border border-[#FAF6F0] mb-2 md:mb-3 select-none w-fit">
-              <Sparkles size={8} /> NEW
-            </span>
-            <h3 className="text-sm md:text-lg font-black leading-tight text-[#231C18]">
-              New Stamps Added in Kansai Regional Tour!
-            </h3>
-            <p className="text-[10px] md:text-xs text-[#8A7870] font-semibold mt-1 max-w-xl">
-              Earn exclusive stamp seals and level up your traveler profile by visiting historical stations.
-            </p>
-          </div>
-          <button className="text-[10px] md:text-xs font-black flex items-center gap-0.5 hover:underline text-[#E0533C] self-start mt-2">
-            Read More <ArrowRight size={10} />
-          </button>
-        </div>
-
-        <div 
-          className="rounded-2xl p-5 md:p-6 flex flex-col justify-between h-36 text-white border" 
-          style={{ background: C.accent, borderColor: C.accentDeep }}
-        >
-          <div>
-            <span className="text-[8px] font-black px-2.5 py-1 rounded-full inline-flex items-center gap-0.5 bg-white/20 text-white mb-2 md:mb-3 select-none w-fit">
-              <Sparkles size={8} /> EVENT
-            </span>
-            <h3 className="text-sm md:text-base font-black leading-tight">
-              Tokyo Night Walk
-            </h3>
-            <p className="text-[10px] text-stone-200 mt-1">
-              Join 40+ stamp collectors this Saturday at Asakusa.
-            </p>
-          </div>
-          <button className="text-[10px] md:text-xs font-black flex items-center gap-0.5 hover:underline text-orange-200 self-start mt-2">
-            Join Now <ArrowRight size={10} />
-          </button>
-        </div>
-      </div>
+      <RegionalBanners openPlace={openPlace} />
 
       <SeasonalHits openPlace={openPlace} />
 
