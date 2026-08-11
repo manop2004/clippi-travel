@@ -43,7 +43,13 @@ export default function ExploreView({ openPlace, onViewMap, onSeeAllTrending, se
   return (
     <div className="space-y-6 md:space-y-8 w-full min-w-0 text-[#231C18]">
       
-      <RegionalBanners openPlace={openPlace} />
+      <div className="w-full min-w-0">
+        <div className="mb-4">
+          <h2 className="text-lg font-black tracking-tight" style={{ color: C.ink }}>Recommended / Promotions</h2>
+          <p className="text-[11px] font-semibold text-[#8A7870] mt-0.5">Curated picks and featured spots</p>
+        </div>
+        <RegionalBanners openPlace={openPlace} />
+      </div>
 
       <SeasonalHits openPlace={openPlace} />
 
