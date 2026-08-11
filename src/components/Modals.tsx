@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { X, Navigation, QrCode, Landmark, MapPin, ExternalLink, Send, Loader2, Star } from "lucide-react";
+import { X, Navigation, Crosshair, Landmark, MapPin, ExternalLink, Send, Loader2, Star } from "lucide-react";
 import { C, categories } from "../constants/mockData";
 import StarRow from "./StarRow";
 import { getReviews, createReview, collectStamp, hasUserCollectedStamp, getUserStamps, createPlaceSubmission } from "../hooks/useReviewStamp";
 import { Review, UserStamp } from "../types/review-stamp";
 import { supabase } from "../supabaseClient";
+import { haversineDistance, formatDistance } from "../lib/geoHelpers";
 
 interface PlaceDetailModalProps {
   place: any;
@@ -80,25 +81,72 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
     fetchRealRating();
   }, [placeId, dbReviews]);
 
-  // Handle stamp collection
+  // Handle stamp collection with Geofence check
+
+  //const GEOFENCE_RADIUS_METERS = 150;
+
+  const GEOFENCE_RADIUS_METERS = 200;
+
   const handleCollectStamp = async () => {
     if (!user || !placeId) return;
 
-    setCollectingStamp(String(placeId));
-    try {
-      const alreadyCollected = await hasUserCollectedStamp(user.id, placeId);
-      if (!alreadyCollected) {
-        await collectStamp(placeId);
-        // Refresh user stamps immediately
-        const updated = await getUserStamps(user.id);
-        setUserStamps(updated);
-        alert(`Successfully collected stamp for ${shopName}!`);
-      }
-    } catch (error) {
-      console.error("Error collecting stamp:", error);
-    } finally {
-      setCollectingStamp(null);
+    // ร้านไม่มีพิกัด → เช็คอินด้วย geofence ไม่ได้
+    if (typeof lat !== "number" || typeof lng !== "number") {
+      alert("ร้านนี้ยังไม่มีข้อมูลพิกัด ไม่สามารถเช็คอินได้");
+      return;
     }
+
+    if (!("geolocation" in navigator)) {
+      alert("เบราว์เซอร์ของคุณไม่รองรับการดึงตำแหน่ง");
+      return;
+    }
+
+    setCollectingStamp(String(placeId));
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const userLat = position.coords.latitude;
+        const userLng = position.coords.longitude;
+        const distance = haversineDistance(userLat, userLng, lat, lng);
+
+        // อยู่นอกรัศมี → แจ้งเตือนระยะห่าง แล้วหยุด
+        if (distance > GEOFENCE_RADIUS_METERS) {
+          alert(
+            `คุณอยู่ห่างจากร้าน ${formatDistance(distance)} ` +
+            `ต้องอยู่ในระยะ ${GEOFENCE_RADIUS_METERS} m ถึงจะเช็คอินได้`
+          );
+          setCollectingStamp(null);
+          return;
+        }
+
+        // อยู่ในรัศมี → ทำงานต่อตามเดิม
+        try {
+          const alreadyCollected = await hasUserCollectedStamp(user.id, placeId);
+          if (!alreadyCollected) {
+            await collectStamp(placeId);
+            const updated = await getUserStamps(user.id);
+            setUserStamps(updated);
+            alert(
+              `เช็คอินสำเร็จที่ ${shopName}! ` +
+              `(คุณอยู่ห่างร้าน ${formatDistance(distance)})`
+            );
+          }
+        } catch (error) {
+          console.error("Error collecting stamp:", error);
+        } finally {
+          setCollectingStamp(null);
+        }
+      },
+      (error) => {
+        setCollectingStamp(null);
+        const msg =
+          error.code === error.PERMISSION_DENIED
+            ? "กรุณาอนุญาตการเข้าถึงตำแหน่งเพื่อเช็คอิน"
+            : "ไม่สามารถดึงตำแหน่งของคุณได้ กรุณาลองใหม่";
+        alert(msg);
+      },
+      { timeout: 10000 } // เพิ่ม timeout ที่เดิมไม่มี
+    );
   };
 
   const hasCollectedStamp = placeId ? userStamps.some(us => us.shop_id === placeId) : false;
@@ -188,9 +236,9 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
                 {collectingStamp ? (
                   <Loader2 size={13} className="animate-spin" />
                 ) : (
-                  <QrCode size={13} />
+                  <Crosshair size={13} />
                 )}
-                {hasCollectedStamp ? "Stamp Collected" : "Check-in QR/NFC"}
+                {hasCollectedStamp ? "Stamp Collected" : "Check-in Here"}
               </button>
             </div>
 
@@ -674,8 +722,8 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
               {locating
                 ? "Getting your location..."
                 : coords
-                ? `Location pinned (${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)})`
-                : "Pin Current GPS Location"}
+                  ? `Location pinned (${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)})`
+                  : "Pin Current GPS Location"}
             </button>
             {locationError && (
               <p className="text-[10px] text-[#E0533C] font-semibold mt-1.5">{locationError}</p>
