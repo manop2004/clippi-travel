@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Compass, MapPin, BookOpen, User, Plus, Search, Bell, X } from "lucide-react";
-import { C, trending } from "./constants/mockData";
+import { C } from "./constants/mockData";
 import { supabase } from "./supabaseClient";
 import { Session } from "@supabase/supabase-js";
 import ExploreView from "./components/views/ExploreView";
@@ -215,7 +215,7 @@ export default function App() {
                   />
                 ) : (
                   <ExploreView
-                    openPlace={(p: any) => setSelectedPlace(trending.find(item => item.name === p.name) || p)}
+                    openPlace={(p: any) => setSelectedPlace(p)}
                     onSeeAllTrending={() => setShowAllTrending(true)}
                     searchQuery={searchQuery}
                   />
