@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Star } from "lucide-react";
 import { C } from "../constants/mockData";
 import { supabase } from "../supabaseClient";
+import { useLocalizedShop } from "../lib/i18nHelpers";
 
 // เปลี่ยนเป็น 3 ตอนพร้อม demo จริง (ตอนนี้ตั้งวันเว้นวันเพื่อเห็นผลเร็วขึ้นตอนทดสอบ)
 const ROTATION_DAYS = 1;
@@ -13,13 +14,14 @@ interface SeasonalHitsProps {
 export default function SeasonalHits({ openPlace }: SeasonalHitsProps) {
   const [shops, setShops] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const { getName } = useLocalizedShop();
 
   useEffect(() => {
     async function fetchShops() {
       setLoading(true);
       const { data, error } = await supabase
         .from("century_shops")
-        .select("id, shop_name, prefecture, region, pin_type, flavor_type, rating, reviews_count, description, image_url")
+        .select("id, shop_name, shop_name_jp, prefecture, region, pin_type, flavor_type, rating, reviews_count, description, description_jp, lat, lng, image_url")
         .not("flavor_type", "is", null);
       if (error) {
         console.error("Error fetching seasonal shops:", error);
@@ -43,7 +45,7 @@ export default function SeasonalHits({ openPlace }: SeasonalHitsProps) {
   const todaysPair = [todaysSweet, todaysSavory].filter(Boolean) as any[];
 
   const handleClick = (p: any) => {
-    const shopName = p.shop_name || p.name || "Unknown Shop";
+    const shopName = getName(p);
     const prefecture = p.prefecture || "Japan";
     openPlace({ ...p, name: shopName, tag: prefecture });
   };
@@ -74,7 +76,7 @@ export default function SeasonalHits({ openPlace }: SeasonalHitsProps) {
 
       <div className="grid grid-cols-2 gap-3 md:gap-4 w-full">
         {todaysPair.map((p: any) => {
-          const shopName = p.shop_name || p.name || "Unknown Shop";
+          const shopName = getName(p);
           return (
             <div
               key={p.id}

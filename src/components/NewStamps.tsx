@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { C } from "../constants/mockData";
 import { supabase } from "../supabaseClient";
 import { timeAgo } from "../lib/activityHelpers";
+import { useLocalizedShop } from "../lib/i18nHelpers";
 
 interface NewStampsProps {
   openPlace: (place: any) => void;
@@ -10,13 +11,14 @@ interface NewStampsProps {
 export default function NewStamps({ openPlace }: NewStampsProps) {
   const [shops, setShops] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const { getName } = useLocalizedShop();
 
   useEffect(() => {
     async function fetchShops() {
       setLoading(true);
       const { data, error } = await supabase
         .from("century_shops")
-        .select("id, shop_name, prefecture, region, image_url, created_at")
+        .select("id, shop_name, shop_name_jp, prefecture, region, lat, lng, image_url, created_at")
         .order("created_at", { ascending: false })
         .limit(10);
       if (error) {
@@ -30,7 +32,7 @@ export default function NewStamps({ openPlace }: NewStampsProps) {
   }, []);
 
   const handleClick = (p: any) => {
-    const shopName = p.shop_name || p.name || "Unknown Shop";
+    const shopName = getName(p);
     openPlace({ ...p, name: shopName, tag: p.region || p.prefecture });
   };
 
@@ -64,7 +66,7 @@ export default function NewStamps({ openPlace }: NewStampsProps) {
 
       <div className="flex md:grid md:grid-cols-4 gap-3 overflow-x-auto md:overflow-x-visible pb-1 snap-x snap-mandatory scrollbar-none w-full">
         {shops.map((p: any) => {
-          const shopName = p.shop_name || p.name || "Unknown Shop";
+          const shopName = getName(p);
           return (
             <div
               key={p.id}

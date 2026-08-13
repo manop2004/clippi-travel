@@ -4,14 +4,17 @@ import { C, categories } from "../../constants/mockData";
 import { supabase } from "../../supabaseClient";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { useLocalizedShop } from "../../lib/i18nHelpers";
 
 interface Shop {
   id: number;
   shop_name: string;
+  shop_name_jp?: string;
   prefecture: string;
   founded: string;
   address: string;
   description: string;
+  description_jp?: string;
   website: string;
   lat: number;
   lng: number;
@@ -57,6 +60,7 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
   const [regionFilter, setRegionFilter] = useState("All");
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [loading, setLoading] = useState(true);
+  const { getName, getDescription } = useLocalizedShop();
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -342,7 +346,7 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
                   </div>
                   <div className="leading-tight">
                     <span className="text-[9px] font-black uppercase tracking-wider block" style={{ color: C.accent }}>{selectedShop.prefecture}</span>
-                    <h3 className="text-sm font-black mt-1 leading-snug" style={{ color: C.ink }}>{selectedShop.shop_name}</h3>
+                    <h3 className="text-sm font-black mt-1 leading-snug" style={{ color: C.ink }}>{getName(selectedShop)}</h3>
                     <p className="text-[10px] text-[#8A7870] font-black mt-1 bg-[#FAF6F0] px-2 py-0.5 rounded-md border border-[#EFE5DD]/40 inline-block">
                       Est. {selectedShop.founded}
                     </p>
@@ -351,7 +355,7 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
                 <div className="pt-3.5 border-t space-y-2" style={{ borderColor: C.line }}>
                   <h4 className="text-[9px] font-black uppercase tracking-wider text-[#8A7870]">Description</h4>
                   <p className="text-xs text-[#8A7870] leading-relaxed">
-                    {selectedShop.description || "No description available for this historical shop."}
+                    {getDescription(selectedShop) || "No description available for this historical shop."}
                   </p>
                   {selectedShop.address && (
                     <div className="mt-2 text-[11px] text-[#8A7870]">

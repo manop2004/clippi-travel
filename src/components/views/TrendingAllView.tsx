@@ -3,6 +3,7 @@ import { ChevronLeft, Loader2, Star } from "lucide-react";
 import { C } from "../../constants/mockData";
 import { getPlaces } from "../../hooks/useReviewStamp";
 import { Place } from "../../types/review-stamp";
+import { useLocalizedShop } from "../../lib/i18nHelpers";
 
 const PIN_TYPE_FILTERS = [
   { id: "All", label: "All" },
@@ -23,6 +24,7 @@ export default function TrendingAllView({ openPlace, searchQuery = "", onBack }:
   const [loading, setLoading] = useState(true);
   const [pinTypeFilter, setPinTypeFilter] = useState("All");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const { getName } = useLocalizedShop();
 
   useEffect(() => {
     async function load() {
@@ -97,7 +99,7 @@ export default function TrendingAllView({ openPlace, searchQuery = "", onBack }:
       ) : (
         <div className="space-y-3">
           {visibleItems.map((p: any, idx) => {
-            const shopName = p.shop_name || p.name || "Unknown";
+            const shopName = getName(p);
             return (
               <button
                 key={p.id}

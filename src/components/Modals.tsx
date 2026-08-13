@@ -6,6 +6,7 @@ import { getReviews, createReview, collectStamp, hasUserCollectedStamp, getUserS
 import { Review, UserStamp } from "../types/review-stamp";
 import { supabase } from "../supabaseClient";
 import { haversineDistance, formatDistance } from "../lib/geoHelpers";
+import { useLocalizedShop } from "../lib/i18nHelpers";
 
 interface PlaceDetailModalProps {
   place: any;
@@ -21,6 +22,7 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
   const [user, setUser] = useState<any>(null);
   const [realRating, setRealRating] = useState<number | null>(null);
   const [realReviewsCount, setRealReviewsCount] = useState<number | null>(null);
+  const { getName, getDescription } = useLocalizedShop();
 
   // Fetch user stamps
   useEffect(() => {
@@ -31,11 +33,11 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
 
   // Map variables dynamically to support both Mock data and Supabase database records
   const placeId = place?.id || place?.place_id || null;
-  const shopName = place?.shop_name || place?.name || "Unknown Shop";
+  const shopName = getName(place);
   const tag = place?.prefecture || place?.tag || "Japan";
   const founded = place?.founded || place?.year || "";
   const address = place?.address || "";
-  const description = place?.description || "No description available for this historical shop.";
+  const description = getDescription(place) || "No description available for this historical shop.";
   const website = place?.website || "";
   const lat = typeof place?.lat === "number" ? place.lat : null;
   const lng = typeof place?.lng === "number" ? place.lng : null;

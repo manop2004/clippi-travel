@@ -5,6 +5,7 @@ import { supabase } from "../../supabaseClient";
 import { UserStamp, Place } from "../../types/review-stamp";
 import StarRow from "../StarRow";
 import { MapPin } from "lucide-react";
+import { useLocalizedShop } from "../../lib/i18nHelpers";
 
 const REGIONS = ["Kanto", "Kansai", "Hokkaido", "Tohoku", "Chubu", "Chugoku", "Kyushu & Okinawa", "Shikoku"];
 const REGION_FILTERS = [{ id: "All", label: "All" }, ...REGIONS.map(r => ({ id: r, label: r }))];
@@ -15,6 +16,7 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [regionFilter, setRegionFilter] = useState("All");
+  const { getName } = useLocalizedShop();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -70,7 +72,7 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
   // กรอง collected stamps
   const filteredUserStamps = userStamps.filter((us: any) => {
     const place = shopLookup.get(String(us.shop_id));
-    const shopName = place?.shop_name || place?.name || `Place ${us.shop_id}`;
+    const shopName = place ? getName(place) : `Place ${us.shop_id}`;
     const prefecture = place?.prefecture || "";
     return matchesFilters(shopName, prefecture, place?.region);
   });
@@ -80,7 +82,7 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
     (p) => !collectedShopIds.has(String(p.id))
   );
   const filteredRemainingPlaces = remainingPlaces.filter((place) => {
-    const shopName = place.shop_name || place.name || `Place ${place.id}`;
+    const shopName = getName(place);
     const prefecture = place.prefecture || "";
     return matchesFilters(shopName, prefecture, place.region);
   });
@@ -139,7 +141,7 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {filteredUserStamps.map((us: any) => {
               const place = shopLookup.get(String(us.shop_id));
-              const shopName = place?.shop_name || place?.name || `Place ${us.shop_id}`;
+              const shopName = place ? getName(place) : `Place ${us.shop_id}`;
               const prefecture = place?.prefecture || "";
               const collectedDate = new Date(us.collected_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
               return (
@@ -183,7 +185,7 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {filteredRemainingPlaces.map((place) => {
-              const shopName = place.shop_name || place.name || `Place ${place.id}`;
+              const shopName = getName(place);
               const prefecture = place.prefecture || "";
               return (
                 <div

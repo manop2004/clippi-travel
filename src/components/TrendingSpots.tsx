@@ -4,6 +4,7 @@ import { C } from "../constants/mockData";
 import { Place } from "./PlaceCard";
 import { supabase } from "../supabaseClient";
 import Carousel from "./Carousel";
+import { useLocalizedShop } from "../lib/i18nHelpers";
 
 interface TrendingSpotsProps {
   openPlace: (place: any) => void;
@@ -14,6 +15,7 @@ interface TrendingSpotsProps {
 export default function TrendingSpots({ openPlace, onViewMap, searchQuery = "" }: TrendingSpotsProps) {
   const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
+  const { getName } = useLocalizedShop();
 
   useEffect(() => {
     async function fetchPlaces() {
@@ -21,7 +23,7 @@ export default function TrendingSpots({ openPlace, onViewMap, searchQuery = "" }
       try {
         const { data, error } = await supabase
           .from("century_shops")
-          .select("id, shop_name, prefecture, region, founded, lat, lng, rating, reviews_count, category, pin_type, description, image_url")
+          .select("id, shop_name, shop_name_jp, prefecture, region, founded, lat, lng, rating, reviews_count, category, pin_type, description, description_jp, image_url")
           .order("reviews_count", { ascending: false })
           .order("rating", { ascending: false })
           .limit(3);
@@ -49,7 +51,7 @@ export default function TrendingSpots({ openPlace, onViewMap, searchQuery = "" }
   });
 
   const handlePlaceClick = (p: Place) => {
-    const shopName = p.shop_name || p.name || "Unknown Shop";
+    const shopName = getName(p);
     const prefecture = p.prefecture || p.tag || "Japan";
     const founded = p.founded || p.year || "-";
     openPlace({ ...p, name: shopName, tag: prefecture, founded });
@@ -83,7 +85,7 @@ export default function TrendingSpots({ openPlace, onViewMap, searchQuery = "" }
             keyExtractor={(p: any) => p.id}
             desktopClassName="md:grid md:grid-cols-3"
             renderItem={(p: any, idx) => {
-              const shopName = p.shop_name || p.name || "Unknown Shop";
+              const shopName = getName(p);
               return (
                 <div
                   onClick={() => handlePlaceClick(p)}

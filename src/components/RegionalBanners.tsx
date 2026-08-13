@@ -3,6 +3,7 @@ import { Star } from "lucide-react";
 import { C } from "../constants/mockData";
 import { supabase } from "../supabaseClient";
 import Carousel from "./Carousel";
+import { useLocalizedShop } from "../lib/i18nHelpers";
 
 const REGIONS = ["Kanto", "Kansai", "Hokkaido", "Tohoku", "Chubu", "Chugoku", "Kyushu & Okinawa", "Shikoku"];
 
@@ -13,13 +14,14 @@ interface RegionalBannersProps {
 export default function RegionalBanners({ openPlace }: RegionalBannersProps) {
   const [shops, setShops] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const { getName } = useLocalizedShop();
 
   useEffect(() => {
     async function fetchShops() {
       setLoading(true);
       const { data, error } = await supabase
         .from("century_shops")
-        .select("id, shop_name, prefecture, region, rating, reviews_count, description, image_url")
+        .select("id, shop_name, shop_name_jp, prefecture, region, rating, reviews_count, description, description_jp, lat, lng, image_url")
         .order("reviews_count", { ascending: false })
         .order("rating", { ascending: false });
       if (error) {
@@ -38,9 +40,10 @@ export default function RegionalBanners({ openPlace }: RegionalBannersProps) {
     .filter(Boolean) as any[];
 
   const handleClick = (p: any) => {
-    const shopName = p.shop_name || p.name || "Unknown Shop";
+    const shopName = getName(p);
     openPlace({ ...p, name: shopName, tag: p.region || p.prefecture });
   };
+
 
   if (loading) {
     return (
@@ -57,7 +60,7 @@ export default function RegionalBanners({ openPlace }: RegionalBannersProps) {
         keyExtractor={(p: any) => p.id}
         desktopClassName="md:grid md:grid-cols-3"
         renderItem={(p: any) => {
-          const shopName = p.shop_name || p.name || "Unknown Shop";
+          const shopName = getName(p);
           return (
             <div
               onClick={() => handleClick(p)}
