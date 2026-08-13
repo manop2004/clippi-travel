@@ -48,9 +48,6 @@ export async function createReview(input: CreateReviewInput): Promise<Review | n
     throw error;
   }
 
-  // Update place's average rating and reviews count
-  await updatePlaceRating(input.place_id);
-
   return data;
 }
 
@@ -127,29 +124,6 @@ export async function createPlace(input: CreatePlaceInput): Promise<Place | null
   return data;
 }
 
-async function updatePlaceRating(placeId: string | number): Promise<void> {
-  // Get all reviews for this place
-  const { data: reviews, error } = await supabase
-    .from("reviews")
-    .select("rating")
-    .eq("place_id", placeId);
-
-  if (error) {
-    console.error("Error fetching reviews for rating update:", error);
-    return;
-  }
-
-  if (reviews && reviews.length > 0) {
-    const avgRating = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
-    const reviewsCount = reviews.length;
-
-    // Update place with new average rating
-    await supabase
-      .from("century_shops")
-      .update({ rating: avgRating, reviews_count: reviewsCount })
-      .eq("id", placeId);
-  }
-}
 
 // Stamp collection hooks - uses shop_id directly instead of stamp_id
 export async function getUserStamps(userId: string): Promise<any[]> {
