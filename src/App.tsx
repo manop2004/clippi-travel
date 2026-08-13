@@ -12,6 +12,7 @@ import AuthView from "./components/views/AuthView";
 import { PlaceDetailModal, AddPlaceModal } from "./components/Modals";
 import { ReviewStampProvider } from "./context/ReviewStampContext";
 import PasswordGate from "./components/PasswordGate";
+import LanguageToggle from "./components/LanguageToggle";
 
 export default function App() {
   const [tab, setTab] = useState("explore");
@@ -195,6 +196,11 @@ export default function App() {
                     <X size={16} color={C.ink} />
                   </button>
                 )}
+
+                {/* Language Toggle — ซ่อนบนมือถือตอนช่อง Search เปิดอยู่ เพื่อเลี่ยงปัญหา layout ล้น */}
+                <div className={`${showMobileSearch ? "hidden sm:flex" : "flex"}`}>
+                  <LanguageToggle />
+                </div>
 
                 {/* Bell — ซ่อนบนมือถือตอนช่อง Search เปิดอยู่ */}
                 <button className={`w-9 h-9 rounded-xl border items-center justify-center relative bg-white hover:bg-stone-50 transition shrink-0 ${showMobileSearch ? "hidden sm:flex" : "flex"}`} style={{ borderColor: C.line }}>
