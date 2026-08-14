@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { C } from "../constants/mockData";
 import { supabase } from "../supabaseClient";
 import { timeAgo } from "../lib/activityHelpers";
+import { useLang, localized } from "../lib/i18n";
 
 interface NewStampsProps {
   openPlace: (place: any) => void;
@@ -10,13 +11,14 @@ interface NewStampsProps {
 export default function NewStamps({ openPlace }: NewStampsProps) {
   const [shops, setShops] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const { t, lang } = useLang();
 
   useEffect(() => {
     async function fetchShops() {
       setLoading(true);
       const { data, error } = await supabase
         .from("century_shops")
-        .select("id, shop_name, prefecture, region, image_url, created_at")
+        .select("id, shop_name, shop_name_jp, prefecture, region, image_url, created_at")
         .order("created_at", { ascending: false })
         .limit(10);
       if (error) {
@@ -30,7 +32,7 @@ export default function NewStamps({ openPlace }: NewStampsProps) {
   }, []);
 
   const handleClick = (p: any) => {
-    const shopName = p.shop_name || p.name || "Unknown Shop";
+    const shopName = localized(p, "shop_name", lang) || p.name || "Unknown Shop";
     openPlace({ ...p, name: shopName, tag: p.region || p.prefecture });
   };
 
@@ -38,7 +40,7 @@ export default function NewStamps({ openPlace }: NewStampsProps) {
     return (
       <div className="w-full min-w-0">
         <div className="mb-4">
-          <h2 className="text-lg font-black tracking-tight" style={{ color: C.ink }}>New Stamps</h2>
+          <h2 className="text-lg font-black tracking-tight" style={{ color: C.ink }}>{t("newstamps.title")}</h2>
         </div>
         <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-none">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -58,13 +60,13 @@ export default function NewStamps({ openPlace }: NewStampsProps) {
   return (
     <div className="w-full min-w-0">
       <div className="mb-4 select-none">
-        <h2 className="text-lg font-black tracking-tight" style={{ color: C.ink }}>New Stamps</h2>
-        <p className="text-[11px] font-semibold text-[#8A7870] mt-0.5">Freshly added to the collection</p>
+        <h2 className="text-lg font-black tracking-tight" style={{ color: C.ink }}>{t("newstamps.title")}</h2>
+        <p className="text-[11px] font-semibold text-[#8A7870] mt-0.5">{t("newstamps.sub")}</p>
       </div>
 
       <div className="flex md:grid md:grid-cols-4 gap-3 overflow-x-auto md:overflow-x-visible pb-1 snap-x snap-mandatory scrollbar-none w-full">
         {shops.map((p: any) => {
-          const shopName = p.shop_name || p.name || "Unknown Shop";
+          const shopName = localized(p, "shop_name", lang) || p.name || "Unknown Shop";
           return (
             <div
               key={p.id}

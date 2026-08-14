@@ -4,6 +4,7 @@ import { C } from "../../constants/mockData";
 import { supabase } from "../../supabaseClient";
 import { User as AuthUser } from "@supabase/supabase-js";
 import { BADGE_LABELS } from "../../lib/activityHelpers";
+import { useLang } from "../../lib/i18n";
 
 // ─── Level / XP helpers (ต้องสอดคล้องกับ DB Trigger adjust_user_xp) ───────
 // level = FLOOR(xp / 100) + 1
@@ -11,24 +12,25 @@ import { BADGE_LABELS } from "../../lib/activityHelpers";
 const xpForLevel = (level: number) => level * 100;
 const levelFromXp = (xp: number) => Math.floor(xp / 100) + 1;
 
-const LEVEL_TITLES: Record<number, string> = {
-  1: "Wanderer",
-  2: "Explorer",
-  3: "Adventurer",
-  4: "Local Expert",
-  5: "Heritage Master",
+// map level → i18n key (คำแปลอยู่ใน dict)
+const LEVEL_TITLE_KEYS: Record<number, string> = {
+  1: "level.wanderer",
+  2: "level.explorer",
+  3: "level.adventurer",
+  4: "level.localExpert",
+  5: "level.heritageMaster",
 };
-const getLevelTitle = (level: number) =>
-  LEVEL_TITLES[level] ?? (level >= 6 ? "Legendary Traveler" : "Wanderer");
+const getLevelTitleKey = (level: number) =>
+  LEVEL_TITLE_KEYS[level] ?? (level >= 6 ? "level.legendary" : "level.wanderer");
 
-// ─── Badge catalog: badge_type → { label, desc, icon } ─────────────────────
+// ─── Badge catalog: badge_type → { labelKey, descKey, icon } ───────────────
 const BADGE_CATALOG: Record<
   string,
-  { label: string; desc: string; icon: React.ComponentType<any> }
+  { labelKey: string; descKey: string; icon: React.ComponentType<any> }
 > = {
-  tokyo_explorer:   { label: "Tokyo Explorer",   desc: "Visited 5 Tokyo spots",    icon: Award },
-  quality_reviewer: { label: "Quality Reviewer", desc: "Left 5 detailed reviews",  icon: Star  },
-  secret_badge:     { label: "Secret Badge",     desc: "Locked accomplishment",     icon: Lock  },
+  tokyo_explorer:   { labelKey: "badge.tokyo_explorer.label",   descKey: "badge.tokyo_explorer.desc",   icon: Award },
+  quality_reviewer: { labelKey: "badge.quality_reviewer.label", descKey: "badge.quality_reviewer.desc", icon: Star  },
+  secret_badge:     { labelKey: "badge.secret_badge.label",     descKey: "badge.secret_badge.desc",     icon: Lock  },
 };
 
 // All known badges in display order
@@ -36,6 +38,7 @@ const ALL_BADGE_KEYS = ["tokyo_explorer", "quality_reviewer", "secret_badge"];
 
 export default function ProfileView() {
   const [user, setUser] = useState<AuthUser | null>(null);
+  const { t } = useLang();
 
   // ─── Real data states ────────────────────────────────────────────────────
   const [stampCount,  setStampCount]  = useState<number | null>(null);
@@ -145,11 +148,11 @@ export default function ProfileView() {
   // ─── Derived XP / Level values ───────────────────────────────────────────
   const currentLevel  = profileLvl ?? 1;
   const currentXp     = profileXp  ?? 0;
-  const xpNeeded      = xpForLevel(currentLevel);          // XP required to reach next level
-  const xpIntoLevel   = currentXp - xpForLevel(currentLevel - 1); // XP earned within this level
-  const xpSpan        = xpForLevel(currentLevel) - xpForLevel(currentLevel - 1); // span of this level
+  const xpNeeded      = xpForLevel(currentLevel);
+  const xpIntoLevel   = currentXp - xpForLevel(currentLevel - 1);
+  const xpSpan        = xpForLevel(currentLevel) - xpForLevel(currentLevel - 1);
   const progressPct   = xpSpan > 0 ? Math.min((xpIntoLevel / xpSpan) * 100, 100) : 100;
-  const levelTitle    = getLevelTitle(currentLevel);
+  const levelTitle    = t(getLevelTitleKey(currentLevel));
 
   // Badges: build display list from catalog, marking unlocked/locked
   const unlockedSet = new Set(unlockedBadgeKeys ?? []);
@@ -159,6 +162,12 @@ export default function ProfileView() {
     return { key, ...meta, locked };
   });
   const unlockedBadgeCount = unlockedBadgeKeys?.length ?? 0;
+
+  const settingsItems = [
+    { icon: Share2,      labelKey: "settings.share.label",   subKey: "settings.share.sub" },
+    { icon: HelpCircle,  labelKey: "settings.help.label",    subKey: "settings.help.sub" },
+    { icon: ShieldCheck, labelKey: "settings.privacy.label", subKey: "settings.privacy.sub" },
+  ];
 
   // ─── Stat skeleton helper ─────────────────────────────────────────────────
   const StatNum = ({ val }: { val: number | null }) =>
@@ -174,7 +183,6 @@ export default function ProfileView() {
       {/* 👤 Profile Header Card */}
       <div className="bg-white rounded-3xl p-6 border flex flex-col md:flex-row md:items-center justify-between gap-6" style={{ borderColor: C.line }}>
         <div className="flex items-center gap-4 select-none">
-          {/* Large Avatar */}
           <div className="relative shrink-0">
             <div className="w-16 h-16 rounded-full flex items-center justify-center font-bold text-[#E7A93C] bg-[#231C18] text-xl shadow-sm">
               {userInitial}
@@ -188,7 +196,7 @@ export default function ProfileView() {
             <h2 className="text-lg font-black" style={{ color: C.ink }}>{userName}</h2>
             <p className="text-xs text-[#8A7870] font-semibold mt-0.5">{userEmail}</p>
             <button className="mt-2.5 px-3.5 py-1.5 border rounded-lg text-[10px] font-bold hover:bg-[#FAF6F0] transition" style={{ borderColor: C.line }}>
-              Edit Profile
+              {t("profile.editProfile")}
             </button>
           </div>
         </div>
@@ -197,15 +205,15 @@ export default function ProfileView() {
         <div className="grid grid-cols-3 gap-6 md:gap-10 border-t md:border-t-0 md:border-l pt-4 md:pt-0 md:pl-10 select-none" style={{ borderColor: C.line }}>
           <div className="text-center md:text-left leading-tight">
             <StatNum val={stampCount} />
-            <span className="text-[10px] font-black text-[#8A7870] uppercase tracking-wider block mt-0.5">Stamps</span>
+            <span className="text-[10px] font-black text-[#8A7870] uppercase tracking-wider block mt-0.5">{t("profile.stamps")}</span>
           </div>
           <div className="text-center md:text-left leading-tight">
             <StatNum val={reviewCount} />
-            <span className="text-[10px] font-black text-[#8A7870] uppercase tracking-wider block mt-0.5">Reviews</span>
+            <span className="text-[10px] font-black text-[#8A7870] uppercase tracking-wider block mt-0.5">{t("profile.reviews")}</span>
           </div>
           <div className="text-center md:text-left leading-tight">
             <StatNum val={loadingStats ? null : unlockedBadgeCount} />
-            <span className="text-[10px] font-black text-[#8A7870] uppercase tracking-wider block mt-0.5">Badges</span>
+            <span className="text-[10px] font-black text-[#8A7870] uppercase tracking-wider block mt-0.5">{t("profile.badges")}</span>
           </div>
         </div>
       </div>
@@ -216,12 +224,12 @@ export default function ProfileView() {
         {/* Left: Traveler Rank (real XP/Level) */}
         <div className="md:col-span-1 bg-white rounded-3xl p-5 border flex flex-col justify-between min-h-[220px]" style={{ borderColor: C.line }}>
           <div>
-            <h3 className="text-xs font-black uppercase tracking-wider text-[#8A7870] mb-3 select-none">Traveler Rank</h3>
+            <h3 className="text-xs font-black uppercase tracking-wider text-[#8A7870] mb-3 select-none">{t("profile.travelerRank")}</h3>
             {loadingStats ? (
               <div className="p-4 rounded-2xl animate-pulse" style={{ background: C.accentSoft, height: "80px" }} />
             ) : (
               <div className="p-4 rounded-2xl text-white select-none shadow-xs" style={{ background: `linear-gradient(135deg, ${C.accent}, ${C.accentDeep})` }}>
-                <span className="text-[9px] font-bold opacity-85 uppercase tracking-wider block">LEVEL {currentLevel}</span>
+                <span className="text-[9px] font-bold opacity-85 uppercase tracking-wider block">{t("profile.level")} {currentLevel}</span>
                 <h4 className="text-lg font-black leading-tight mt-0.5">{levelTitle}</h4>
                 <span className="text-[10px] font-bold block mt-1.5 opacity-80">
                   {currentXp.toLocaleString()} / {xpNeeded.toLocaleString()} XP
@@ -241,7 +249,7 @@ export default function ProfileView() {
                   />
                 </div>
                 <span className="text-[9px] font-bold text-[#8A7870] mt-1.5 block">
-                  {Math.max(0, xpNeeded - currentXp).toLocaleString()} XP to next level
+                  {Math.max(0, xpNeeded - currentXp).toLocaleString()} {t("profile.xpToNext")}
                 </span>
               </>
             )}
@@ -251,9 +259,8 @@ export default function ProfileView() {
         {/* Right: Unlocked Badges (real data from user_badges table) */}
         <div className="md:col-span-2 bg-white rounded-3xl p-5 border flex flex-col min-h-[220px]" style={{ borderColor: C.line }}>
           <div className="flex items-center justify-between mb-4 select-none">
-            <h3 className="text-xs font-black uppercase tracking-wider text-[#8A7870]">Unlocked Badges</h3>
-            {/* TODO: เปิด Modal แสดง badge ทั้งหมด ยังไม่ implement */}
-            <button className="text-[10px] font-bold text-[#E0533C] hover:underline">View All</button>
+            <h3 className="text-xs font-black uppercase tracking-wider text-[#8A7870]">{t("profile.unlockedBadges")}</h3>
+            <button className="text-[10px] font-bold text-[#E0533C] hover:underline">{t("common.viewAll")}</button>
           </div>
 
           {loadingStats ? (
@@ -281,10 +288,10 @@ export default function ProfileView() {
                     <b.icon size={18} color={b.locked ? C.inkSoft : C.accentDeep} strokeWidth={2.2} />
                   </div>
                   <p className="text-[10px] font-black leading-tight truncate w-full" style={{ color: b.locked ? C.inkSoft : C.ink }}>
-                    {b.label}
+                    {t(b.labelKey)}
                   </p>
                   <p className="text-[8px] font-semibold text-[#8A7870] mt-0.5 hidden sm:block truncate w-full">
-                    {b.desc}
+                    {t(b.descKey)}
                   </p>
                 </div>
               ))}
@@ -296,21 +303,17 @@ export default function ProfileView() {
 
       {/* 🛠️ Account Settings */}
       <div className="w-full">
-        <h3 className="text-xs font-black uppercase tracking-wider text-[#8A7870] mb-3 select-none">Account Settings</h3>
+        <h3 className="text-xs font-black uppercase tracking-wider text-[#8A7870] mb-3 select-none">{t("profile.accountSettings")}</h3>
         <div className="rounded-3xl bg-white border divide-y overflow-hidden shadow-xs" style={{ borderColor: C.line }}>
-          {[
-            { icon: Share2,      label: "Share Public Profile",     sub: "Share your stamp books with others" },
-            { icon: HelpCircle,  label: "Help & Support Center",    sub: "FAQs, feedback, and user guides" },
-            { icon: ShieldCheck, label: "Privacy & Data Settings",  sub: "Manage location permissions and history" },
-          ].map((item) => (
-            <button key={item.label} className="w-full p-4 flex items-center justify-between text-left hover:bg-stone-50/50 transition">
+          {settingsItems.map((item) => (
+            <button key={item.labelKey} className="w-full p-4 flex items-center justify-between text-left hover:bg-stone-50/50 transition">
               <span className="flex items-center gap-3.5 min-w-0">
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-[#FAF6F0] shrink-0 border" style={{ borderColor: C.line }}>
                   <item.icon size={15} color={C.accentDeep} strokeWidth={2.2} />
                 </div>
                 <div className="leading-tight truncate">
-                  <span className="text-xs font-black block" style={{ color: C.ink }}>{item.label}</span>
-                  <span className="text-[10px] text-[#8A7870] font-semibold block mt-0.5">{item.sub}</span>
+                  <span className="text-xs font-black block" style={{ color: C.ink }}>{t(item.labelKey)}</span>
+                  <span className="text-[10px] text-[#8A7870] font-semibold block mt-0.5">{t(item.subKey)}</span>
                 </div>
               </span>
               <ChevronRight size={14} color={C.inkSoft} className="shrink-0 ml-2" />
@@ -324,8 +327,8 @@ export default function ProfileView() {
                 <LogOut size={15} color="#E0533C" strokeWidth={2.2} />
               </div>
               <div className="leading-tight">
-                <span className="text-xs font-black block text-red-600">Sign Out</span>
-                <span className="text-[9px] text-red-400 font-semibold block mt-0.5">Disconnect account from this device</span>
+                <span className="text-xs font-black block text-red-600">{t("action.signOut")}</span>
+                <span className="text-[9px] text-red-400 font-semibold block mt-0.5">{t("profile.signOutSub")}</span>
               </div>
             </span>
             <ChevronRight size={14} color="#FCA5A5" className="shrink-0 ml-2" />

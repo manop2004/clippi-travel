@@ -12,6 +12,7 @@ import AuthView from "./components/views/AuthView";
 import { PlaceDetailModal, AddPlaceModal } from "./components/Modals";
 import { ReviewStampProvider } from "./context/ReviewStampContext";
 import PasswordGate from "./components/PasswordGate";
+import { LangSwitcher, useLang } from "./lib/i18n";
 
 export default function App() {
   const [tab, setTab] = useState("explore");
@@ -22,16 +23,17 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [showAllTrending, setShowAllTrending] = useState(false);
+  const { t } = useLang();
 
   useEffect(() => {
     if (tab !== "explore") setShowAllTrending(false);
   }, [tab]);
 
   const navTabs = [
-    { id: "explore", label: "Explore", icon: Compass },
-    { id: "map", label: "Interactive Map", icon: MapPin },
-    { id: "collection", label: "Stamp Book", icon: BookOpen },
-    { id: "profile", label: "Profile", icon: User },
+    { id: "explore", label: t("nav.explore"), icon: Compass },
+    { id: "map", label: t("nav.map"), icon: MapPin },
+    { id: "collection", label: t("nav.collection"), icon: BookOpen },
+    { id: "profile", label: t("nav.profile"), icon: User },
   ];
 
   // Supabase Auth session listener
@@ -140,7 +142,7 @@ export default function App() {
                   </span>
                 </div>
                 <div className="leading-tight">
-                  <p className="text-[9px] font-extrabold tracking-wider uppercase text-[#E0533C]">GOOD MORNING</p>
+                  <p className="text-[9px] font-extrabold tracking-wider uppercase text-[#E0533C]">{t("greeting.morning")}</p>
                   <h2 className="text-xs font-black flex items-center gap-1">
                     {userEmail.split("@")[0]} <span className="text-[10px]">👋</span>
                   </h2>
@@ -155,7 +157,7 @@ export default function App() {
                   <input
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search spots, stations..."
+                    placeholder={t("search.placeholder")}
                     className="bg-transparent text-xs outline-none w-full text-[#231C18] placeholder-[#8A7870]"
                   />
                 </div>
@@ -168,7 +170,7 @@ export default function App() {
                       autoFocus
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search spots, stations..."
+                      placeholder={t("search.placeholder")}
                       className="bg-transparent text-xs outline-none w-full text-[#231C18] placeholder-[#8A7870]"
                     />
                   </div>
@@ -195,6 +197,11 @@ export default function App() {
                     <X size={16} color={C.ink} />
                   </button>
                 )}
+
+                {/* ปุ่มสลับภาษา — ซ่อนบนมือถือตอนช่อง Search เปิดอยู่ */}
+                <span className={showMobileSearch ? "hidden sm:block" : "block"}>
+                  <LangSwitcher />
+                </span>
 
                 {/* Bell — ซ่อนบนมือถือตอนช่อง Search เปิดอยู่ */}
                 <button className={`w-9 h-9 rounded-xl border items-center justify-center relative bg-white hover:bg-stone-50 transition shrink-0 ${showMobileSearch ? "hidden sm:flex" : "flex"}`} style={{ borderColor: C.line }}>

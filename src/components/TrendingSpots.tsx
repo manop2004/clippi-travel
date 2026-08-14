@@ -4,6 +4,7 @@ import { C } from "../constants/mockData";
 import { Place } from "./PlaceCard";
 import { supabase } from "../supabaseClient";
 import Carousel from "./Carousel";
+import { useLang, localized } from "../lib/i18n";
 
 interface TrendingSpotsProps {
   openPlace: (place: any) => void;
@@ -14,6 +15,7 @@ interface TrendingSpotsProps {
 export default function TrendingSpots({ openPlace, onViewMap, searchQuery = "" }: TrendingSpotsProps) {
   const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
+  const { t, lang } = useLang();
 
   useEffect(() => {
     async function fetchPlaces() {
@@ -21,7 +23,7 @@ export default function TrendingSpots({ openPlace, onViewMap, searchQuery = "" }
       try {
         const { data, error } = await supabase
           .from("century_shops")
-          .select("id, shop_name, prefecture, region, founded, lat, lng, rating, reviews_count, category, pin_type, description, image_url")
+          .select("id, shop_name, shop_name_jp, prefecture, region, founded, lat, lng, rating, reviews_count, category, pin_type, description, description_jp, image_url")
           .order("reviews_count", { ascending: false })
           .order("rating", { ascending: false })
           .limit(3);
@@ -49,7 +51,7 @@ export default function TrendingSpots({ openPlace, onViewMap, searchQuery = "" }
   });
 
   const handlePlaceClick = (p: Place) => {
-    const shopName = p.shop_name || p.name || "Unknown Shop";
+    const shopName = localized(p, "shop_name", lang) || p.name || "Unknown Shop";
     const prefecture = p.prefecture || p.tag || "Japan";
     const founded = p.founded || p.year || "-";
     openPlace({ ...p, name: shopName, tag: prefecture, founded });
@@ -59,8 +61,8 @@ export default function TrendingSpots({ openPlace, onViewMap, searchQuery = "" }
     <div className="w-full min-w-0">
       <div className="flex items-end justify-between mb-4 select-none">
         <div>
-          <h2 className="text-lg font-black tracking-tight" style={{ color: C.ink }}>Trending Spots</h2>
-          <p className="text-[11px] font-semibold text-[#8A7870] mt-0.5">Most visited heritage places this week</p>
+          <h2 className="text-lg font-black tracking-tight" style={{ color: C.ink }}>{t("section.trending")}</h2>
+          <p className="text-[11px] font-semibold text-[#8A7870] mt-0.5">{t("trending.sub")}</p>
         </div>
       </div>
 
@@ -73,7 +75,7 @@ export default function TrendingSpots({ openPlace, onViewMap, searchQuery = "" }
       ) : filteredPlaces.length === 0 ? (
         <div className="p-6 rounded-2xl bg-white border text-center" style={{ borderColor: C.line }}>
           <p className="text-xs text-[#8A7870] italic">
-            {places.length === 0 ? "No places available yet." : `No results for "${searchQuery}"`}
+            {places.length === 0 ? t("empty.noPlaces") : `${t("empty.noResults")} "${searchQuery}"`}
           </p>
         </div>
       ) : (
@@ -83,7 +85,8 @@ export default function TrendingSpots({ openPlace, onViewMap, searchQuery = "" }
             keyExtractor={(p: any) => p.id}
             desktopClassName="md:grid md:grid-cols-3"
             renderItem={(p: any, idx) => {
-              const shopName = p.shop_name || p.name || "Unknown Shop";
+              const shopName = localized(p, "shop_name", lang) || p.name || "Unknown Shop";
+              const desc = localized(p, "description", lang);
               return (
                 <div
                   onClick={() => handlePlaceClick(p)}
@@ -110,7 +113,7 @@ export default function TrendingSpots({ openPlace, onViewMap, searchQuery = "" }
                         className="text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0"
                         style={{ background: C.accentSoft, color: C.accentDeep }}
                       >
-                        {p.pin_type === "food" ? "Restaurant/Cafe" : "Service/Shop"}
+                        {p.pin_type === "food" ? t("cat.restaurantCafe") : t("cat.serviceShop")}
                       </span>
                       <span className="text-[10px] text-[#8A7870] truncate">· {p.region || p.prefecture}</span>
                     </div>
@@ -119,8 +122,8 @@ export default function TrendingSpots({ openPlace, onViewMap, searchQuery = "" }
                       <span className="text-xs font-bold" style={{ color: C.ink }}>{(p.rating ?? 0).toFixed(1)}</span>
                       <span className="text-[10px] text-[#8A7870]">({p.reviews_count ?? 0})</span>
                     </div>
-                    {p.description && (
-                      <p className="text-[10px] text-[#8A7870] mt-1.5 line-clamp-2 leading-snug">{p.description}</p>
+                    {desc && (
+                      <p className="text-[10px] text-[#8A7870] mt-1.5 line-clamp-2 leading-snug">{desc}</p>
                     )}
                   </div>
                 </div>
@@ -133,7 +136,7 @@ export default function TrendingSpots({ openPlace, onViewMap, searchQuery = "" }
             className="w-full mt-3 py-2.5 rounded-xl text-xs font-black border hover:bg-stone-50 transition"
             style={{ borderColor: C.accent, color: C.accent }}
           >
-            See all trending shops →
+            {t("trending.seeAll")}
           </button>
         </>
       )}

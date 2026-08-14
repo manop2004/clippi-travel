@@ -3,11 +3,12 @@ import { ChevronLeft, Loader2, Star } from "lucide-react";
 import { C } from "../../constants/mockData";
 import { getPlaces } from "../../hooks/useReviewStamp";
 import { Place } from "../../types/review-stamp";
+import { useLang, localized } from "../../lib/i18n";
 
 const PIN_TYPE_FILTERS = [
-  { id: "All", label: "All" },
-  { id: "food", label: "Restaurant/Cafe" },
-  { id: "shop", label: "Service/Shop" },
+  { id: "All", labelKey: "filter.all" },
+  { id: "food", labelKey: "cat.restaurantCafe" },
+  { id: "shop", labelKey: "cat.serviceShop" },
 ];
 
 const PAGE_SIZE = 20;
@@ -23,6 +24,7 @@ export default function TrendingAllView({ openPlace, searchQuery = "", onBack }:
   const [loading, setLoading] = useState(true);
   const [pinTypeFilter, setPinTypeFilter] = useState("All");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const { t, lang } = useLang();
 
   useEffect(() => {
     async function load() {
@@ -64,8 +66,8 @@ export default function TrendingAllView({ openPlace, searchQuery = "", onBack }:
           <ChevronLeft size={16} color={C.ink} />
         </button>
         <div>
-          <h2 className="text-lg font-black tracking-tight" style={{ color: C.ink }}>Trending Spots</h2>
-          <p className="text-[11px] font-semibold text-[#8A7870] mt-0.5">Ranked by popularity · updated every 3 days</p>
+          <h2 className="text-lg font-black tracking-tight" style={{ color: C.ink }}>{t("section.trending")}</h2>
+          <p className="text-[11px] font-semibold text-[#8A7870] mt-0.5">{t("trending.rankedSub")}</p>
         </div>
       </div>
 
@@ -81,7 +83,7 @@ export default function TrendingAllView({ openPlace, searchQuery = "", onBack }:
                 : { background: "#FFFFFF", color: C.inkSoft, borderColor: C.line }
             }
           >
-            {f.label}
+            {t(f.labelKey)}
           </button>
         ))}
       </div>
@@ -92,16 +94,16 @@ export default function TrendingAllView({ openPlace, searchQuery = "", onBack }:
         </div>
       ) : visibleItems.length === 0 ? (
         <div className="p-6 rounded-2xl bg-white border text-center" style={{ borderColor: C.line }}>
-          <p className="text-xs text-[#8A7870] italic">No trending spots match this filter.</p>
+          <p className="text-xs text-[#8A7870] italic">{t("empty.noTrendingFilter")}</p>
         </div>
       ) : (
         <div className="space-y-3">
           {visibleItems.map((p: any, idx) => {
-            const shopName = p.shop_name || p.name || "Unknown";
+            const shopName = localized(p, "shop_name", lang) || p.name || "Unknown";
             return (
               <button
                 key={p.id}
-                onClick={() => openPlace(p)}
+                onClick={() => openPlace({ ...p, name: shopName })}
                 className="w-full flex items-center gap-3 p-3 rounded-2xl bg-white border text-left hover:shadow-xs transition"
                 style={{ borderColor: C.line }}
               >
@@ -120,7 +122,7 @@ export default function TrendingAllView({ openPlace, searchQuery = "", onBack }:
                       className="text-[9px] font-bold px-2 py-0.5 rounded-full"
                       style={{ background: C.accentSoft, color: C.accentDeep }}
                     >
-                      {p.pin_type === "food" ? "Restaurant/Cafe" : "Service/Shop"}
+                      {p.pin_type === "food" ? t("cat.restaurantCafe") : t("cat.serviceShop")}
                     </span>
                     <span className="text-[10px] text-[#8A7870]">· {p.region || p.prefecture}</span>
                   </div>
@@ -146,7 +148,7 @@ export default function TrendingAllView({ openPlace, searchQuery = "", onBack }:
               className="w-full py-2.5 rounded-xl text-xs font-bold border bg-[#FAF6F0] hover:bg-stone-50 transition"
               style={{ borderColor: C.line, color: C.ink }}
             >
-              Load more
+              {t("common.loadMore")}
             </button>
           )}
         </div>
