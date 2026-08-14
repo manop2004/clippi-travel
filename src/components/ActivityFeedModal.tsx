@@ -4,6 +4,7 @@ import { C } from "../constants/mockData";
 import { supabase } from "../supabaseClient";
 import ActivityCard from "./ActivityCard";
 import { ActivityLogRow } from "../lib/activityHelpers";
+import { useLang } from "../lib/i18n";
 
 const PAGE_SIZE = 20;
 
@@ -18,6 +19,7 @@ export default function ActivityFeedModal({ isOpen, onClose }: ActivityFeedModal
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
+  const { t } = useLang();
 
   useEffect(() => {
     if (!isOpen) return;
@@ -74,7 +76,7 @@ export default function ActivityFeedModal({ isOpen, onClose }: ActivityFeedModal
         style={{ borderColor: C.line }}
       >
         <div className="sticky top-0 bg-white z-10 flex items-center justify-between p-5 border-b" style={{ borderColor: C.line }}>
-          <h2 className="text-base font-black" style={{ color: C.ink }}>All Activity</h2>
+          <h2 className="text-base font-black" style={{ color: C.ink }}>{t("profile.allActivity")}</h2>
           <button
             onClick={onClose}
             className="w-8 h-8 rounded-full flex items-center justify-center bg-stone-50 border hover:scale-105 transition"
@@ -91,7 +93,7 @@ export default function ActivityFeedModal({ isOpen, onClose }: ActivityFeedModal
             </div>
           ) : items.length === 0 ? (
             <div className="p-6 rounded-2xl bg-[#FAF6F0] border text-center" style={{ borderColor: C.line }}>
-              <p className="text-xs text-[#8A7870] italic">No activity yet.</p>
+              <p className="text-xs text-[#8A7870] italic">{t("feed.noActivity")}</p>
             </div>
           ) : (
             <>
@@ -105,7 +107,7 @@ export default function ActivityFeedModal({ isOpen, onClose }: ActivityFeedModal
                   className="w-full py-2.5 rounded-xl text-xs font-bold border bg-[#FAF6F0] hover:bg-stone-50 transition disabled:opacity-60"
                   style={{ borderColor: C.line, color: C.ink }}
                 >
-                  {loadingMore ? "Loading..." : "Load more"}
+                  {loadingMore ? t("common.loading") : t("common.loadMore")}
                 </button>
               )}
             </>

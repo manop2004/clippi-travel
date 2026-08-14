@@ -1,18 +1,21 @@
 import React from "react";
 import { C } from "../constants/mockData";
 import { ActivityLogRow, BADGE_LABELS, timeAgo, normalizeEmbed } from "../lib/activityHelpers";
+import { useLang, localized } from "../lib/i18n";
 
 export default function ActivityCard({ activity: a }: { activity: ActivityLogRow }) {
+  const { t, lang } = useLang();
   const profile = normalizeEmbed(a.profiles);
   const shop = normalizeEmbed(a.century_shops);
-  const displayName = profile?.display_name ?? "User";
-  const shopName = shop?.shop_name ?? "a place";
+  const displayName = profile?.display_name ?? t("reviews.user");
+  // localized() จะใช้ shop_name_jp ถ้ามีใน embed (ยังไม่ได้ดึงตอนนี้ → fallback เป็นอังกฤษ)
+  const shopName = localized(shop as any, "shop_name", lang) || shop?.shop_name || t("activity.aPlace");
   const isBadge = a.activity_type === "badge";
 
   let actionText = "";
-  if (a.activity_type === "checkin") actionText = `checked in at ${shopName}`;
-  else if (a.activity_type === "review") actionText = `reviewed ${shopName}`;
-  else if (a.activity_type === "badge") actionText = `unlocked ${BADGE_LABELS[a.detail ?? ""] ?? "a"} badge`;
+  if (a.activity_type === "checkin") actionText = t("activity.checkin").replace("{shop}", shopName);
+  else if (a.activity_type === "review") actionText = t("activity.review").replace("{shop}", shopName);
+  else if (a.activity_type === "badge") actionText = t("activity.badge").replace("{badge}", BADGE_LABELS[a.detail ?? ""] ?? "");
 
   const showThumbnail = !isBadge && shop?.image_url;
 

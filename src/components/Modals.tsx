@@ -6,7 +6,7 @@ import { getReviews, createReview, collectStamp, hasUserCollectedStamp, getUserS
 import { Review, UserStamp } from "../types/review-stamp";
 import { supabase } from "../supabaseClient";
 import { haversineDistance, formatDistance } from "../lib/geoHelpers";
-import { useLocalizedShop } from "../lib/i18nHelpers";
+import { useLang, localized } from "../lib/i18n";
 
 interface PlaceDetailModalProps {
   place: any;
@@ -22,7 +22,7 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
   const [user, setUser] = useState<any>(null);
   const [realRating, setRealRating] = useState<number | null>(null);
   const [realReviewsCount, setRealReviewsCount] = useState<number | null>(null);
-  const { getName, getDescription } = useLocalizedShop();
+  const { t, lang } = useLang();
 
   // Fetch user stamps
   useEffect(() => {
@@ -33,11 +33,11 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
 
   // Map variables dynamically to support both Mock data and Supabase database records
   const placeId = place?.id || place?.place_id || null;
-  const shopName = getName(place);
+  const shopName = localized(place, "shop_name", lang) || place?.name || "Unknown Shop";
   const tag = place?.prefecture || place?.tag || "Japan";
   const founded = place?.founded || place?.year || "";
   const address = place?.address || "";
-  const description = getDescription(place) || "No description available for this historical shop.";
+  const description = localized(place, "description", lang) || t("map.noDesc");
   const website = place?.website || "";
   const lat = typeof place?.lat === "number" ? place.lat : null;
   const lng = typeof place?.lng === "number" ? place.lng : null;
@@ -84,9 +84,6 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
   }, [placeId, dbReviews]);
 
   // Handle stamp collection with Geofence check
-
-  //const GEOFENCE_RADIUS_METERS = 150;
-
   const GEOFENCE_RADIUS_METERS = 200;
 
   const handleCollectStamp = async () => {
@@ -94,12 +91,12 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
 
     // ร้านไม่มีพิกัด → เช็คอินด้วย geofence ไม่ได้
     if (typeof lat !== "number" || typeof lng !== "number") {
-      alert("ร้านนี้ยังไม่มีข้อมูลพิกัด ไม่สามารถเช็คอินได้");
+      alert(t("alert.noCoords"));
       return;
     }
 
     if (!("geolocation" in navigator)) {
-      alert("เบราว์เซอร์ของคุณไม่รองรับการดึงตำแหน่ง");
+      alert(t("alert.noGeo"));
       return;
     }
 
@@ -114,8 +111,9 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
         // อยู่นอกรัศมี → แจ้งเตือนระยะห่าง แล้วหยุด
         if (distance > GEOFENCE_RADIUS_METERS) {
           alert(
-            `คุณอยู่ห่างจากร้าน ${formatDistance(distance)} ` +
-            `ต้องอยู่ในระยะ ${GEOFENCE_RADIUS_METERS} m ถึงจะเช็คอินได้`
+            t("alert.tooFar")
+              .replace("{d}", formatDistance(distance))
+              .replace("{r}", String(GEOFENCE_RADIUS_METERS))
           );
           setCollectingStamp(null);
           return;
@@ -129,8 +127,9 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
             const updated = await getUserStamps(user.id);
             setUserStamps(updated);
             alert(
-              `เช็คอินสำเร็จที่ ${shopName}! ` +
-              `(คุณอยู่ห่างร้าน ${formatDistance(distance)})`
+              t("alert.checkinOk")
+                .replace("{shop}", shopName)
+                .replace("{d}", formatDistance(distance))
             );
           }
         } catch (error) {
@@ -143,17 +142,19 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
         setCollectingStamp(null);
         const msg =
           error.code === error.PERMISSION_DENIED
-            ? "กรุณาอนุญาตการเข้าถึงตำแหน่งเพื่อเช็คอิน"
-            : "ไม่สามารถดึงตำแหน่งของคุณได้ กรุณาลองใหม่";
+            ? t("alert.permDenied")
+            : t("alert.locFail");
         alert(msg);
       },
-      { timeout: 10000 } // เพิ่ม timeout ที่เดิมไม่มี
+      { timeout: 10000 }
     );
   };
 
   const hasCollectedStamp = placeId ? userStamps.some(us => us.shop_id === placeId) : false;
 
   if (!place) return null;
+
+  const reviewCount = realReviewsCount ?? dbReviews.length ?? 0;
 
   return (
     <>
@@ -183,7 +184,7 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
                 {tag}
               </span>
               <h2 className="text-lg font-black leading-tight drop-shadow-xs">{shopName}</h2>
-              <p className="text-[10px] text-stone-300 drop-shadow-xs">{founded && `Est. ${founded}`}</p>
+              <p className="text-[10px] text-stone-300 drop-shadow-xs">{founded && `${t("card.est")} ${founded}`}</p>
             </div>
           </div>
 
@@ -198,13 +199,13 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
                     <StarRow value={realRating} size={11} />
                   </>
                 ) : (
-                  <span className="text-xs font-bold text-[#8A7870]">No rating</span>
+                  <span className="text-xs font-bold text-[#8A7870]">{t("place.noRating")}</span>
                 )}
               </div>
               <span className="text-[10px] font-bold text-[#8A7870] select-none">
-                {(realReviewsCount ?? dbReviews.length ?? 0) > 0
-                  ? `${realReviewsCount ?? dbReviews.length} reviews`
-                  : "No reviews"}
+                {reviewCount > 0
+                  ? `${reviewCount} ${t("card.reviews")}`
+                  : t("reviews.none")}
               </span>
             </div>
 
@@ -218,7 +219,7 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
                   className="flex-1 py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 border bg-white shadow-2xs transition hover:bg-stone-50 text-center"
                   style={{ borderColor: C.line, color: C.ink }}
                 >
-                  <Navigation size={13} /> Navigate
+                  <Navigation size={13} /> {t("place.navigate")}
                 </a>
               ) : (
                 <button
@@ -226,7 +227,7 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
                   className="flex-1 py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 border bg-white shadow-2xs opacity-40 cursor-not-allowed"
                   style={{ borderColor: C.line, color: C.ink }}
                 >
-                  <Navigation size={13} /> Navigate
+                  <Navigation size={13} /> {t("place.navigate")}
                 </button>
               )}
               <button
@@ -240,7 +241,7 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
                 ) : (
                   <Crosshair size={13} />
                 )}
-                {hasCollectedStamp ? "Stamp Collected" : "Check-in Here"}
+                {hasCollectedStamp ? t("place.stampCollected") : t("place.checkinHere")}
               </button>
             </div>
 
@@ -248,24 +249,24 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
             <div className="p-3 rounded-xl flex gap-2.5 text-xs font-bold border select-none" style={{ background: C.accentSoft, borderColor: C.line, color: C.accentDeep }}>
               <Landmark size={16} className="shrink-0 mt-0.5" />
               <div>
-                <span className="block leading-tight">Heritage Stamp Available</span>
+                <span className="block leading-tight">{t("collection.available")}</span>
                 <span className="font-semibold text-[9px] opacity-80 block mt-0.5">
                   {hasCollectedStamp
-                    ? "You have collected this stamp!"
-                    : "Check in at this location to collect the digital stamp book seal."}
+                    ? t("place.stampGot")
+                    : t("place.checkinHint")}
                 </span>
               </div>
             </div>
 
             {/* About Section */}
             <div>
-              <h3 className="text-[10px] font-black uppercase tracking-wider text-[#8A7870] mb-1 select-none">About This Spot</h3>
+              <h3 className="text-[10px] font-black uppercase tracking-wider text-[#8A7870] mb-1 select-none">{t("place.aboutThisSpot")}</h3>
               <p className="text-xs leading-relaxed text-[#8A7870]">
                 {description}
               </p>
               {address && (
                 <div className="mt-2.5 text-[11px] text-[#8A7870]">
-                  <span className="font-bold block">Address:</span>
+                  <span className="font-bold block">{t("map.address")}</span>
                   <span className="block mt-0.5 font-medium">{address}</span>
                 </div>
               )}
@@ -274,28 +275,26 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
             {/* Reviews List */}
             <div>
               <div className="flex items-center justify-between mb-2.5 select-none">
-                <h3 className="text-[10px] font-black uppercase tracking-wider text-[#8A7870]">Reviews</h3>
+                <h3 className="text-[10px] font-black uppercase tracking-wider text-[#8A7870]">{t("section.reviews")}</h3>
                 {user && (
                   <button
                     onClick={() => setShowReviewForm(true)}
                     className="text-[10px] font-black hover:underline"
                     style={{ color: C.accent }}
                   >
-                    Write Review
+                    {t("action.writeReview")}
                   </button>
                 )}
               </div>
 
               {loadingReviews ? (
                 <div className="text-center py-4">
-                  <span className="text-xs text-[#8A7870]">Loading reviews...</span>
+                  <span className="text-xs text-[#8A7870]">{t("reviews.loading")}</span>
                 </div>
               ) : (
                 <div className="space-y-2.5">
                   {dbReviews.length > 0 ? (
                     dbReviews.map((r) => {
-                      // PostgREST embed อาจคืนค่า profiles เป็น object หรือ array
-                      // ขึ้นกับเวอร์ชัน/การตั้งค่า — normalize ให้เป็น object เสมอ
                       const reviewerProfile = Array.isArray(r.profiles)
                         ? r.profiles[0]
                         : r.profiles;
@@ -307,7 +306,7 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
                                 {reviewerProfile?.display_name?.[0]?.toUpperCase() ?? "U"}
                               </div>
                               <span className="text-xs font-bold" style={{ color: C.ink }}>
-                                {reviewerProfile?.display_name ?? "User"}
+                                {reviewerProfile?.display_name ?? t("reviews.user")}
                               </span>
                             </div>
                             <StarRow value={r.rating} size={9} />
@@ -319,7 +318,7 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
 
                   ) : (
                     <div className="p-3 rounded-xl bg-white border" style={{ borderColor: C.line }}>
-                      <p className="text-[11px] text-[#8A7870] italic">No reviews yet. Be the first to review this place!</p>
+                      <p className="text-[11px] text-[#8A7870] italic">{t("reviews.beFirst")}</p>
                     </div>
                   )}
                 </div>
@@ -335,7 +334,7 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
                   rel="noopener noreferrer"
                   className="text-xs font-black flex items-center gap-1 text-[#E0533C] hover:underline"
                 >
-                  Visit Official Website <ExternalLink size={12} strokeWidth={2.5} />
+                  {t("place.visitOfficial")} <ExternalLink size={12} strokeWidth={2.5} />
                 </a>
               </div>
             )}
@@ -371,6 +370,7 @@ function ReviewFormModal({ placeId, placeName, onClose, onSuccess }: ReviewFormM
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const { t } = useLang();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -387,7 +387,7 @@ function ReviewFormModal({ placeId, placeName, onClose, onSuccess }: ReviewFormM
         onSuccess(newReview);
       }
     } catch (error: any) {
-      alert(error.message || "Failed to submit review");
+      alert(error.message || t("review.submitFail"));
     } finally {
       setSubmitting(false);
     }
@@ -408,13 +408,13 @@ function ReviewFormModal({ placeId, placeName, onClose, onSuccess }: ReviewFormM
           <X size={16} color={C.ink} />
         </button>
 
-        <h2 className="text-lg font-black mb-1" style={{ color: C.ink }}>Write a Review</h2>
+        <h2 className="text-lg font-black mb-1" style={{ color: C.ink }}>{t("action.writeReview")}</h2>
         <p className="text-[10px] text-[#8A7870] mb-4">{placeName}</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Rating Selection */}
           <div>
-            <label className="text-[9px] font-black uppercase tracking-wider block mb-2 text-[#8A7870]">Your Rating</label>
+            <label className="text-[9px] font-black uppercase tracking-wider block mb-2 text-[#8A7870]">{t("review.yourRating")}</label>
             <div className="flex items-center gap-1">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
@@ -436,10 +436,10 @@ function ReviewFormModal({ placeId, placeName, onClose, onSuccess }: ReviewFormM
 
           {/* Comment */}
           <div>
-            <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">Your Review (optional)</label>
+            <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">{t("review.optional")}</label>
             <textarea
               rows={3}
-              placeholder="Share your experience..."
+              placeholder={t("review.placeholder")}
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               className="w-full px-3.5 py-2 rounded-xl text-xs border outline-none resize-none bg-stone-50/30 focus:border-[#E0533C] transition-all"
@@ -458,7 +458,7 @@ function ReviewFormModal({ placeId, placeName, onClose, onSuccess }: ReviewFormM
             ) : (
               <Send size={14} />
             )}
-            {submitting ? "Submitting..." : "Submit Review"}
+            {submitting ? t("common.submitting") : t("review.submit")}
           </button>
         </form>
       </div>
@@ -472,8 +472,8 @@ interface AddPlaceModalProps {
 }
 
 const PIN_TYPES = [
-  { id: "food", label: "Restaurant/Cafe", emoji: "🍜" },
-  { id: "shop", label: "Service/Shop", emoji: "🎁" },
+  { id: "food", labelKey: "cat.restaurantCafe", emoji: "🍜" },
+  { id: "shop", labelKey: "cat.serviceShop", emoji: "🎁" },
 ];
 
 export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
@@ -489,12 +489,13 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [imageError, setImageError] = useState("");
+  const { t } = useLang();
 
   if (!isOpen) return null;
 
   const handlePinLocation = () => {
     if (!("geolocation" in navigator)) {
-      setLocationError("Your browser doesn't support location services.");
+      setLocationError(t("add.noGeo"));
       return;
     }
     setLocating(true);
@@ -510,8 +511,8 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
       (error) => {
         setLocationError(
           error.code === error.PERMISSION_DENIED
-            ? "Location permission denied. Please allow access and try again."
-            : "Could not get your location. Please try again."
+            ? t("add.permDenied")
+            : t("add.locFail")
         );
         setLocating(false);
       }
@@ -552,7 +553,7 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
     e.preventDefault();
 
     if (!selectedFile) {
-      setImageError("Please add a photo of the location.");
+      setImageError(t("add.errPhoto"));
       return;
     }
 
@@ -561,7 +562,7 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("You must be signed in to submit a place.");
+      if (!user) throw new Error(t("add.mustSignIn"));
 
       setUploading(true);
       const fileExt = selectedFile.name.split(".").pop();
@@ -571,7 +572,7 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
         .from("place-photos")
         .upload(filePath, selectedFile);
 
-      if (uploadError) throw new Error("Failed to upload photo. Please try again.");
+      if (uploadError) throw new Error(t("add.uploadFail"));
 
       const { data: publicUrlData } = supabase.storage
         .from("place-photos")
@@ -589,10 +590,10 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
         image_url: publicUrlData.publicUrl,
       });
 
-      alert("Thank you! Your submission is pending review by our team.");
+      alert(t("add.thankYou"));
       handleClose();
     } catch (error: any) {
-      alert(error.message || "Failed to submit spot. Please try again.");
+      alert(error.message || t("add.submitFail"));
     } finally {
       setSubmitting(false);
       setUploading(false);
@@ -614,14 +615,14 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
           <X size={15} color={C.ink} />
         </button>
 
-        <h2 className="text-lg font-black mb-5" style={{ color: C.ink }}>Submit a New Spot</h2>
+        <h2 className="text-lg font-black mb-5" style={{ color: C.ink }}>{t("action.submitSpot")}</h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">Spot Name (English)</label>
+            <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">{t("add.nameEn")}</label>
             <input
               required
-              placeholder="e.g. Tokyo Station Red Brick"
+              placeholder={t("add.namePlaceholder")}
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full px-3.5 py-2 rounded-xl text-xs border outline-none bg-stone-50/30 focus:border-[#E0533C] transition-all"
@@ -630,7 +631,7 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
           </div>
 
           <div>
-            <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">Japanese Name</label>
+            <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">{t("place.japaneseName")}</label>
             <input
               placeholder="例：東京駅"
               value={japaneseName}
@@ -641,7 +642,7 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
           </div>
 
           <div>
-            <label className="text-[9px] font-black uppercase tracking-wider block mb-2 text-[#8A7870]">Category</label>
+            <label className="text-[9px] font-black uppercase tracking-wider block mb-2 text-[#8A7870]">{t("place.category")}</label>
             <div className="flex flex-wrap gap-1.5">
               {PIN_TYPES.map((c) => (
                 <button
@@ -651,17 +652,17 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
                   className="px-3.5 py-1.5 rounded-full text-[10px] font-black flex items-center gap-1.5 border transition-all duration-150"
                   style={cat === c.id ? { background: C.accent, color: "#fff", borderColor: C.accent } : { background: "#fff", color: C.inkSoft, borderColor: C.line }}
                 >
-                  {c.emoji} {c.label}
+                  {c.emoji} {t(c.labelKey)}
                 </button>
               ))}
             </div>
           </div>
 
           <div>
-            <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">Description</label>
+            <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">{t("place.description")}</label>
             <textarea
               rows={3}
-              placeholder="Tell travelers why this place is special..."
+              placeholder={t("add.descPlaceholder")}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="w-full px-3.5 py-2 rounded-xl text-xs border outline-none resize-none bg-stone-50/30 focus:border-[#E0533C] transition-all"
@@ -671,7 +672,7 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
 
           <div>
             <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">
-              Photo <span style={{ color: C.accent }}>*</span>
+              {t("add.photo")} <span style={{ color: C.accent }}>*</span>
             </label>
             {previewUrl ? (
               <div className="relative">
@@ -696,7 +697,7 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
                   className="hidden"
                 />
                 <MapPin size={20} color={C.accentDeep} />
-                <span className="text-[10px] font-bold text-[#8A7870]">Tap to add a photo</span>
+                <span className="text-[10px] font-bold text-[#8A7870]">{t("add.tapPhoto")}</span>
               </label>
             )}
             {imageError && (
@@ -722,10 +723,10 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
                 <MapPin size={13} color={coords ? "#2E7D32" : C.accentDeep} />
               )}
               {locating
-                ? "Getting your location..."
+                ? t("add.locating")
                 : coords
-                  ? `Location pinned (${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)})`
-                  : "Pin Current GPS Location"}
+                  ? t("add.pinned").replace("{lat}", coords.lat.toFixed(4)).replace("{lng}", coords.lng.toFixed(4))
+                  : t("add.pinGps")}
             </button>
             {locationError && (
               <p className="text-[10px] text-[#E0533C] font-semibold mt-1.5">{locationError}</p>
@@ -738,7 +739,7 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
             className="w-full py-3 rounded-xl text-xs font-black text-white shadow-md hover:opacity-95 transition disabled:opacity-70"
             style={{ background: C.accent }}
           >
-            {uploading ? "Uploading photo..." : submitting ? "Submitting..." : "Submit for Verification"}
+            {uploading ? t("add.uploading") : submitting ? t("common.submitting") : t("add.submitVerify")}
           </button>
         </form>
       </div>

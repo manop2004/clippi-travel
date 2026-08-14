@@ -3,7 +3,7 @@ import { Star } from "lucide-react";
 import { C } from "../constants/mockData";
 import { supabase } from "../supabaseClient";
 import Carousel from "./Carousel";
-import { useLocalizedShop } from "../lib/i18nHelpers";
+import { useLang, localized } from "../lib/i18n";
 
 const REGIONS = ["Kanto", "Kansai", "Hokkaido", "Tohoku", "Chubu", "Chugoku", "Kyushu & Okinawa", "Shikoku"];
 
@@ -14,7 +14,7 @@ interface RegionalBannersProps {
 export default function RegionalBanners({ openPlace }: RegionalBannersProps) {
   const [shops, setShops] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const { getName } = useLocalizedShop();
+  const { t, lang } = useLang();
 
   useEffect(() => {
     async function fetchShops() {
@@ -40,7 +40,7 @@ export default function RegionalBanners({ openPlace }: RegionalBannersProps) {
     .filter(Boolean) as any[];
 
   const handleClick = (p: any) => {
-    const shopName = getName(p);
+    const shopName = localized(p, "shop_name", lang) || p.name || "Unknown Shop";
     openPlace({ ...p, name: shopName, tag: p.region || p.prefecture });
   };
 
@@ -60,7 +60,7 @@ export default function RegionalBanners({ openPlace }: RegionalBannersProps) {
         keyExtractor={(p: any) => p.id}
         desktopClassName="md:grid md:grid-cols-3"
         renderItem={(p: any) => {
-          const shopName = getName(p);
+          const shopName = localized(p, "shop_name", lang) || p.name || "Unknown Shop";
           return (
             <div
               onClick={() => handleClick(p)}
@@ -80,7 +80,7 @@ export default function RegionalBanners({ openPlace }: RegionalBannersProps) {
                   className="text-[9px] font-black px-2.5 py-1 rounded-full bg-white/90 self-start mb-2"
                   style={{ color: C.accentDeep }}
                 >
-                  📍 {p.region}'s Best
+                  📍 {t("region.best").replace("{r}", p.region)}
                 </span>
                 <h3 className="text-white text-sm font-black truncate">{shopName}</h3>
                 <div className="flex items-center gap-1 mt-1">

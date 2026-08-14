@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef } from "react";
 import { ExternalLink, Navigation } from "lucide-react";
 import { C, categories } from "../../constants/mockData";
 import { supabase } from "../../supabaseClient";
+import { useLang, localized } from "../../lib/i18n";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { useLocalizedShop } from "../../lib/i18nHelpers";
+
 
 interface Shop {
   id: number;
@@ -30,9 +31,9 @@ interface MapViewProps {
 }
 
 const PIN_TYPE_FILTERS = [
-  { id: "All", label: "All" },
-  { id: "food", label: "Restaurant/Cafe" },
-  { id: "shop", label: "Service/Shop" },
+  { id: "All", labelKey: "filter.all" },
+  { id: "food", labelKey: "cat.restaurantCafe" },
+  { id: "shop", labelKey: "cat.serviceShop" },
 ];
 
 const REGIONS = ["Kanto", "Kansai", "Hokkaido", "Tohoku", "Chubu", "Chugoku", "Kyushu & Okinawa", "Shikoku"];
@@ -60,7 +61,7 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
   const [regionFilter, setRegionFilter] = useState("All");
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [loading, setLoading] = useState(true);
-  const { getName, getDescription } = useLocalizedShop();
+  const { t, lang } = useLang();
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -232,10 +233,13 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
   if (loading) {
     return (
       <div className="h-96 w-full flex items-center justify-center text-xs font-black text-[#8A7870]">
-        Loading Japan Heritage Database...
+        {t("map.loading")}
       </div>
     );
   }
+
+  const selectedName = selectedShop ? (localized(selectedShop as any, "shop_name", lang) || selectedShop.shop_name) : "";
+  const selectedDesc = selectedShop ? localized(selectedShop as any, "description", lang) : "";
 
   return (
     <div className="space-y-5 w-full min-w-0 text-[#231C18]">
@@ -243,9 +247,9 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
       {/* 📍 Header and Filters */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 py-1 select-none">
         <div>
-          <h2 className="text-lg font-black tracking-tight" style={{ color: C.ink }}>Interactive Map</h2>
+          <h2 className="text-lg font-black tracking-tight" style={{ color: C.ink }}>{t("nav.map")}</h2>
           <p className="text-[11px] font-semibold text-[#8A7870] mt-0.5">
-            Explore historical Japanese shops and landmarks
+            {t("map.sub")}
           </p>
         </div>
 
@@ -276,7 +280,7 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
                     : { background: "#FFFFFF", color: C.inkSoft, borderColor: C.line }
                 }
               >
-                {r.label}
+                {r.id === "All" ? t("filter.all") : r.label}
               </button>
             ))}
           </div>
@@ -307,7 +311,7 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
                     : { background: "#FFFFFF", color: C.inkSoft, borderColor: C.line }
                 }
               >
-                {f.label}
+                {t(f.labelKey)}
               </button>
             ))}
           </div>
@@ -328,7 +332,7 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
             style={{ borderColor: C.line, color: C.accent }}
           >
             <Navigation size={14} />
-            <span className="text-[10px] font-black">Near me</span>
+            <span className="text-[10px] font-black">{t("place.nearMe")}</span>
           </button>
         </div>
 
@@ -346,20 +350,20 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
                   </div>
                   <div className="leading-tight">
                     <span className="text-[9px] font-black uppercase tracking-wider block" style={{ color: C.accent }}>{selectedShop.prefecture}</span>
-                    <h3 className="text-sm font-black mt-1 leading-snug" style={{ color: C.ink }}>{getName(selectedShop)}</h3>
+                    <h3 className="text-sm font-black mt-1 leading-snug" style={{ color: C.ink }}>{selectedName}</h3>
                     <p className="text-[10px] text-[#8A7870] font-black mt-1 bg-[#FAF6F0] px-2 py-0.5 rounded-md border border-[#EFE5DD]/40 inline-block">
-                      Est. {selectedShop.founded}
+                      {t("card.est")} {selectedShop.founded}
                     </p>
                   </div>
                 </div>
                 <div className="pt-3.5 border-t space-y-2" style={{ borderColor: C.line }}>
-                  <h4 className="text-[9px] font-black uppercase tracking-wider text-[#8A7870]">Description</h4>
+                  <h4 className="text-[9px] font-black uppercase tracking-wider text-[#8A7870]">{t("place.description")}</h4>
                   <p className="text-xs text-[#8A7870] leading-relaxed">
-                    {getDescription(selectedShop) || "No description available for this historical shop."}
+                    {selectedDesc || t("map.noDesc")}
                   </p>
                   {selectedShop.address && (
                     <div className="mt-2 text-[11px] text-[#8A7870]">
-                      <span className="font-bold block">Address:</span>
+                      <span className="font-bold block">{t("map.address")}</span>
                       <span className="block mt-0.5 font-medium">{selectedShop.address}</span>
                     </div>
                   )}
@@ -367,11 +371,11 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
               </div>
               <div className="flex flex-col gap-2 mt-4 shrink-0">
                 <button
-                  onClick={() => openPlace(selectedShop)}
+                  onClick={() => openPlace({ ...selectedShop, name: selectedName })}
                   className="w-full py-2.5 rounded-xl text-xs font-black text-white flex items-center justify-center gap-1.5 shadow-md transition hover:opacity-95"
                   style={{ background: C.accent }}
                 >
-                  View Details & Write Review
+                  {t("map.viewDetails")}
                 </button>
 
                 <button
@@ -379,7 +383,7 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
                   className="w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border bg-[#FAF6F0] hover:bg-stone-50 transition"
                   style={{ borderColor: C.line, color: C.ink }}
                 >
-                  <Navigation size={13} color={C.accent} /> Zoom To Location
+                  <Navigation size={13} color={C.accent} /> {t("map.zoomTo")}
                 </button>
 
                 {selectedShop.website && (
@@ -390,7 +394,7 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
                     className="w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border bg-[#FAF6F0] hover:bg-stone-50 transition text-center"
                     style={{ borderColor: C.line, color: C.ink }}
                   >
-                    Visit Website <ExternalLink size={12} strokeWidth={2.5} />
+                    {t("map.visitWebsite")} <ExternalLink size={12} strokeWidth={2.5} />
                   </a>
                 )}
               </div>
@@ -404,7 +408,7 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
               style={{ borderColor: C.line }}
             >
               <p className="text-xs font-bold text-[#8A7870]">
-                No places match this filter and search combination.
+                {t("map.noMatch")}
               </p>
             </div>
           </div>

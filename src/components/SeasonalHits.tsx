@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Star } from "lucide-react";
 import { C } from "../constants/mockData";
 import { supabase } from "../supabaseClient";
-import { useLocalizedShop } from "../lib/i18nHelpers";
+import { useLang, localized } from "../lib/i18n";
 
 // เปลี่ยนเป็น 3 ตอนพร้อม demo จริง (ตอนนี้ตั้งวันเว้นวันเพื่อเห็นผลเร็วขึ้นตอนทดสอบ)
 const ROTATION_DAYS = 1;
@@ -14,7 +14,7 @@ interface SeasonalHitsProps {
 export default function SeasonalHits({ openPlace }: SeasonalHitsProps) {
   const [shops, setShops] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const { getName } = useLocalizedShop();
+  const { t, lang } = useLang();
 
   useEffect(() => {
     async function fetchShops() {
@@ -45,7 +45,7 @@ export default function SeasonalHits({ openPlace }: SeasonalHitsProps) {
   const todaysPair = [todaysSweet, todaysSavory].filter(Boolean) as any[];
 
   const handleClick = (p: any) => {
-    const shopName = getName(p);
+    const shopName = localized(p, "shop_name", lang) || p.name || "Unknown Shop";
     const prefecture = p.prefecture || "Japan";
     openPlace({ ...p, name: shopName, tag: prefecture });
   };
@@ -54,7 +54,7 @@ export default function SeasonalHits({ openPlace }: SeasonalHitsProps) {
     return (
       <div className="w-full min-w-0">
         <div className="mb-4">
-          <h2 className="text-lg font-black tracking-tight" style={{ color: C.ink }}>Seasonal Hits</h2>
+          <h2 className="text-lg font-black tracking-tight" style={{ color: C.ink }}>{t("seasonal.title")}</h2>
         </div>
         <div className="grid grid-cols-2 gap-3 md:gap-4">
           {Array.from({ length: 2 }).map((_, i) => (
@@ -70,13 +70,13 @@ export default function SeasonalHits({ openPlace }: SeasonalHitsProps) {
   return (
     <div className="w-full min-w-0">
       <div className="mb-4 select-none">
-        <h2 className="text-lg font-black tracking-tight" style={{ color: C.ink }}>Seasonal Hits</h2>
-        <p className="text-[11px] font-semibold text-[#8A7870] mt-0.5">Sweet & savory picks, refreshed regularly</p>
+        <h2 className="text-lg font-black tracking-tight" style={{ color: C.ink }}>{t("seasonal.title")}</h2>
+        <p className="text-[11px] font-semibold text-[#8A7870] mt-0.5">{t("seasonal.sub")}</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:gap-4 w-full">
         {todaysPair.map((p: any) => {
-          const shopName = getName(p);
+          const shopName = localized(p, "shop_name", lang) || p.name || "Unknown Shop";
           return (
             <div
               key={p.id}
@@ -92,7 +92,7 @@ export default function SeasonalHits({ openPlace }: SeasonalHitsProps) {
                     color: p.flavor_type === "sweet" ? "#C2185B" : "#E65100",
                   }}
                 >
-                  {p.flavor_type === "sweet" ? "🍡 Sweet" : "🍜 Savory"}
+                  {p.flavor_type === "sweet" ? t("seasonal.sweet") : t("seasonal.savory")}
                 </span>
                 {p.image_url ? (
                   <img src={p.image_url} alt={shopName} className="w-full h-full object-cover" loading="lazy" />

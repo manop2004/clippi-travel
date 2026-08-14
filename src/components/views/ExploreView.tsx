@@ -8,11 +8,13 @@ import RegionalBanners from "../RegionalBanners";
 import ActivityCard from "../ActivityCard";
 import ActivityFeedModal from "../ActivityFeedModal";
 import { ActivityLogRow } from "../../lib/activityHelpers";
+import { useLang } from "../../lib/i18n";
 
 export default function ExploreView({ openPlace, onViewMap, onSeeAllTrending, searchQuery = "" }: { openPlace: (p: any) => void; onViewMap?: () => void; onSeeAllTrending?: () => void; searchQuery?: string }) {
   const [activityFeed, setActivityFeed] = useState<ActivityLogRow[]>([]);
   const [loadingActivity, setLoadingActivity] = useState(true);
   const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
+  const { t } = useLang();
 
   useEffect(() => {
     async function fetchActivity() {
@@ -45,8 +47,8 @@ export default function ExploreView({ openPlace, onViewMap, onSeeAllTrending, se
       
       <div className="w-full min-w-0">
         <div className="mb-4">
-          <h2 className="text-lg font-black tracking-tight" style={{ color: C.ink }}>Recommended / Promotions</h2>
-          <p className="text-[11px] font-semibold text-[#8A7870] mt-0.5">Curated picks and featured spots</p>
+          <h2 className="text-lg font-black tracking-tight" style={{ color: C.ink }}>{t("explore.promoTitle")}</h2>
+          <p className="text-[11px] font-semibold text-[#8A7870] mt-0.5">{t("explore.promoSub")}</p>
         </div>
         <RegionalBanners openPlace={openPlace} />
       </div>
@@ -64,14 +66,14 @@ export default function ExploreView({ openPlace, onViewMap, onSeeAllTrending, se
       <div className="w-full min-w-0">
         <div className="flex items-end justify-between mb-4">
           <div>
-            <h3 className="text-lg font-black tracking-tight" style={{ color: C.ink }}>Recent Activity</h3>
-            <p className="text-[11px] font-semibold text-[#8A7870] mt-0.5">Explore check-in activities from the community</p>
+            <h3 className="text-lg font-black tracking-tight" style={{ color: C.ink }}>{t("section.recentActivity")}</h3>
+            <p className="text-[11px] font-semibold text-[#8A7870] mt-0.5">{t("explore.recentSub")}</p>
           </div>
           <button
             onClick={() => setIsActivityModalOpen(true)}
             className="text-xs font-black text-[#E0533C] hover:underline"
           >
-            View All →
+            {t("common.viewAll")} →
           </button>
         </div>
 
@@ -91,7 +93,7 @@ export default function ExploreView({ openPlace, onViewMap, onSeeAllTrending, se
           </div>
         ) : activityFeed.length === 0 ? (
           <div className="p-6 rounded-2xl bg-white border text-center" style={{ borderColor: C.line }}>
-            <p className="text-xs text-[#8A7870] italic">No activity yet. Be the first to check in or write a review!</p>
+            <p className="text-xs text-[#8A7870] italic">{t("explore.noActivity")}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">

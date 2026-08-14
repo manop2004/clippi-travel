@@ -5,7 +5,7 @@ import { supabase } from "../../supabaseClient";
 import { UserStamp, Place } from "../../types/review-stamp";
 import StarRow from "../StarRow";
 import { MapPin } from "lucide-react";
-import { useLocalizedShop } from "../../lib/i18nHelpers";
+import { useLang, localized } from "../../lib/i18n";
 
 const REGIONS = ["Kanto", "Kansai", "Hokkaido", "Tohoku", "Chubu", "Chugoku", "Kyushu & Okinawa", "Shikoku"];
 const REGION_FILTERS = [{ id: "All", label: "All" }, ...REGIONS.map(r => ({ id: r, label: r }))];
@@ -16,7 +16,7 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [regionFilter, setRegionFilter] = useState("All");
-  const { getName } = useLocalizedShop();
+  const { t, lang } = useLang();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -33,8 +33,6 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
           getUserStamps(user.id),
           getPlaces(),
         ]);
-        console.log("userStamps:", userStampsData);
-        console.log("places:", placesData);
         setUserStamps(userStampsData);
         setPlaces(placesData);
       } catch (error) {
@@ -49,7 +47,7 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
   // Build a lookup map from shop_id -> shop details
   const shopLookup = new Map();
   places.forEach(p => shopLookup.set(String(p.id), p));
-  
+
   const collectedShopIds = new Set(userStamps.map(us => String(us.shop_id)));
   const totalCollected = userStamps.length;
 
@@ -72,7 +70,7 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
   // กรอง collected stamps
   const filteredUserStamps = userStamps.filter((us: any) => {
     const place = shopLookup.get(String(us.shop_id));
-    const shopName = place ? getName(place) : `Place ${us.shop_id}`;
+    const shopName = place ? (localized(place, "shop_name", lang) || place.name || `Place ${us.shop_id}`) : `Place ${us.shop_id}`;
     const prefecture = place?.prefecture || "";
     return matchesFilters(shopName, prefecture, place?.region);
   });
@@ -82,7 +80,7 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
     (p) => !collectedShopIds.has(String(p.id))
   );
   const filteredRemainingPlaces = remainingPlaces.filter((place) => {
-    const shopName = getName(place);
+    const shopName = localized(place, "shop_name", lang) || place.name || `Place ${place.id}`;
     const prefecture = place.prefecture || "";
     return matchesFilters(shopName, prefecture, place.region);
   });
@@ -90,7 +88,7 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
   if (loading) {
     return (
       <div className="h-96 w-full flex items-center justify-center text-xs font-black text-[#8A7870]">
-        Loading your stamp collection...
+        {t("collection.loading")}
       </div>
     );
   }
@@ -99,10 +97,10 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
     <div className="space-y-4 w-full min-w-0 text-[#231C18]">
       <div className="py-1">
         <h2 className="text-base font-black leading-none select-none" style={{ color: C.ink }}>
-          Stamp Book
+          {t("nav.collection")}
         </h2>
         <p className="text-[10px] font-semibold mt-1" style={{ color: C.inkSoft }}>
-          Your Eki-tag style digital collection
+          {t("collection.sub")}
         </p>
       </div>
 
@@ -119,15 +117,15 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
                 : { background: "#FFFFFF", color: C.inkSoft, borderColor: C.line }
             }
           >
-            {r.label}
+            {r.id === "All" ? t("filter.all") : r.label}
           </button>
         ))}
       </div>
 
       <div className="flex items-center justify-between py-1 pb-2 border-b select-none" style={{ borderColor: C.line }}>
-        <span className="text-xs font-black" style={{ color: C.ink }}>{regionFilter === "All" ? "All Regions" : regionFilter}</span>
+        <span className="text-xs font-black" style={{ color: C.ink }}>{regionFilter === "All" ? t("collection.allRegions") : regionFilter}</span>
         <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full" style={{ background: C.accentSoft, color: C.accentDeep }}>
-          {collectedInRegion} / {placesInRegion.length} Stamps Collected
+          {collectedInRegion} / {placesInRegion.length} {t("collection.stampsCollectedSuffix")}
         </span>
       </div>
 
@@ -136,12 +134,12 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
         <div>
           <h3 className="text-[10px] font-black uppercase tracking-wider text-[#8A7870] mb-4 flex items-center gap-1.5 select-none">
             <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
-            Collected Stamps
+            {t("collection.collected")}
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {filteredUserStamps.map((us: any) => {
               const place = shopLookup.get(String(us.shop_id));
-              const shopName = place ? getName(place) : `Place ${us.shop_id}`;
+              const shopName = localized(place, "shop_name", lang) || place?.name || `Place ${us.shop_id}`;
               const prefecture = place?.prefecture || "";
               const collectedDate = new Date(us.collected_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
               return (
@@ -164,7 +162,7 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
                   <p className="text-[9px] font-black leading-tight" style={{ color: C.ink }}>
                     {shopName}
                   </p>
-                  <span className="text-[7px] font-bold text-green-600 mt-1">✓ COLLECTED</span>
+                  <span className="text-[7px] font-bold text-green-600 mt-1">{t("collection.collectedTag")}</span>
                   <span className="text-[7px] text-[#8A7870] mt-0.5">{collectedDate}</span>
                   {prefecture && (
                     <span className="text-[7px] text-[#8A7870]">{prefecture}</span>
@@ -181,11 +179,11 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
         <div>
           <h3 className="text-[10px] font-black uppercase tracking-wider text-[#8A7870] mb-4 flex items-center gap-1.5 select-none">
             <span className="w-2 h-2 rounded-full bg-[#8A7870] inline-block" />
-            Remaining Places
+            {t("collection.remaining")}
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {filteredRemainingPlaces.map((place) => {
-              const shopName = getName(place);
+              const shopName = localized(place, "shop_name", lang) || place.name || `Place ${place.id}`;
               const prefecture = place.prefecture || "";
               return (
                 <div
@@ -207,7 +205,7 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
                   <p className="text-[10px] font-black leading-tight" style={{ color: C.ink }}>
                     {shopName}
                   </p>
-                  <span className="text-[7px] font-bold text-[#8A7870] mt-1">NOT COLLECTED</span>
+                  <span className="text-[7px] font-bold text-[#8A7870] mt-1">{t("collection.notCollected")}</span>
                   {prefecture && (
                     <span className="text-[7px] text-[#8A7870]">{prefecture}</span>
                   )}
@@ -222,8 +220,8 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
         <div className="p-6 rounded-2xl bg-white border text-center" style={{ borderColor: C.line }}>
           <p className="text-xs text-[#8A7870] italic">
             {places.length === 0
-              ? "No places available yet. Check back later!"
-              : `No stamps match "${searchQuery}"`}
+              ? t("collection.noPlacesLater")
+              : `${t("collection.noMatch")} "${searchQuery}"`}
           </p>
         </div>
       ) : null}
