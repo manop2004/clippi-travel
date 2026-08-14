@@ -39,6 +39,7 @@ export async function createReview(input: CreateReviewInput): Promise<Review | n
       place_id: input.place_id,
       rating: input.rating,
       comment: input.comment || null,
+      image_urls: input.image_urls || null,
     })
     .select()
     .single();
@@ -197,7 +198,8 @@ export async function createPlaceSubmission(input: CreatePlaceSubmissionInput): 
       description: input.description || null,
       lat: input.lat ?? null,
       lng: input.lng ?? null,
-      image_url: input.image_url || null,
+      image_url: input.image_urls && input.image_urls.length > 0 ? input.image_urls[0] : (input.image_url || null),
+      image_urls: input.image_urls || null,
     })
     .select()
     .single();

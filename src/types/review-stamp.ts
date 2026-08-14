@@ -6,6 +6,7 @@ export interface Review {
   place_id: string | number;
   rating: number;
   comment: string | null;
+  image_urls?: string[];
   created_at: string;
   updated_at: string;
  profiles?: {
@@ -45,6 +46,7 @@ export interface CreateReviewInput {
   place_id: string | number;
   rating: number;
   comment?: string;
+  image_urls?: string[];
 }
 
 export interface CreatePlaceInput {
@@ -69,6 +71,7 @@ export interface PlaceSubmission {
   lat: number | null;
   lng: number | null;
   status: "pending" | "approved" | "rejected";
+  image_urls?: string[];
   created_at: string;
 }
 
@@ -80,4 +83,5 @@ export interface CreatePlaceSubmissionInput {
   lat?: number;
   lng?: number;
   image_url?: string;
+  image_urls?: string[];
 }

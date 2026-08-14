@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, Navigation, Crosshair, Landmark, MapPin, ExternalLink, Send, Loader2, Star } from "lucide-react";
+import { X, Navigation, Crosshair, Landmark, MapPin, ExternalLink, Send, Loader2, Star, Camera } from "lucide-react";
 import { C, categories } from "../constants/mockData";
 import StarRow from "./StarRow";
 import { getReviews, createReview, collectStamp, hasUserCollectedStamp, getUserStamps, createPlaceSubmission } from "../hooks/useReviewStamp";
@@ -370,17 +370,94 @@ function ReviewFormModal({ placeId, placeName, onClose, onSuccess }: ReviewFormM
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [imageError, setImageError] = useState("");
   const { t } = useLang();
+
+  // Cleanup object URLs on unmount
+  useEffect(() => {
+    return () => {
+      previewUrls.forEach(url => URL.revokeObjectURL(url));
+    };
+  }, [previewUrls]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const newFiles = Array.from(files);
+
+    if (selectedFiles.length + newFiles.length > 3) {
+      setImageError("Maximum 3 photos allowed.");
+      const allowedCount = 3 - selectedFiles.length;
+      if (allowedCount <= 0) return;
+
+      const slicedNewFiles = newFiles.slice(0, allowedCount);
+      const newUrls = slicedNewFiles.map(file => URL.createObjectURL(file));
+      setSelectedFiles(prev => [...prev, ...slicedNewFiles]);
+      setPreviewUrls(prev => [...prev, ...newUrls]);
+    } else {
+      const newUrls = newFiles.map(file => URL.createObjectURL(file));
+      setSelectedFiles(prev => [...prev, ...newFiles]);
+      setPreviewUrls(prev => [...prev, ...newUrls]);
+      setImageError("");
+    }
+  };
+
+  const handleRemoveImage = (index: number) => {
+    URL.revokeObjectURL(previewUrls[index]);
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    setPreviewUrls(prev => prev.filter((_, i) => i !== index));
+    setImageError("");
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (selectedFiles.length === 0) {
+      setImageError("Please add at least one photo for the review.");
+      return;
+    }
+
     setSubmitting(true);
+    setImageError("");
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("You must be signed in to submit a review.");
+
+      setUploading(true);
+      const uploadedUrls: string[] = [];
+
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
+        const fileExt = file.name.split(".").pop();
+        const timestamp = Date.now();
+        // place-photos/reviews/{userId}/{timestamp}-{index}.{ext}
+        const filePath = `reviews/${user.id}/${timestamp}-${i}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("place-photos")
+          .upload(filePath, file);
+
+        if (uploadError) throw new Error("Failed to upload photo. Please try again.");
+
+        const { data: publicUrlData } = supabase.storage
+          .from("place-photos")
+          .getPublicUrl(filePath);
+
+        uploadedUrls.push(publicUrlData.publicUrl);
+      }
+
+      setUploading(false);
+
       const newReview = await createReview({
         place_id: placeId,
         rating,
         comment: comment.trim() || undefined,
+        image_urls: uploadedUrls,
       });
 
       if (newReview) {
@@ -390,6 +467,7 @@ function ReviewFormModal({ placeId, placeName, onClose, onSuccess }: ReviewFormM
       alert(error.message || t("review.submitFail"));
     } finally {
       setSubmitting(false);
+      setUploading(false);
     }
   };
 
@@ -447,18 +525,57 @@ function ReviewFormModal({ placeId, placeName, onClose, onSuccess }: ReviewFormM
             />
           </div>
 
+          {/* Photos Upload Grid (Up to 3 Photos) */}
+          <div>
+            <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">
+              Photos <span style={{ color: C.accent }}>*</span>
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {previewUrls.map((url, index) => (
+                <div key={index} className="relative h-20 rounded-xl border overflow-hidden" style={{ borderColor: C.line }}>
+                  <img src={url} alt={`Preview ${index}`} className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveImage(index)}
+                    className="absolute top-1 right-1 w-5.5 h-5.5 rounded-full bg-white/95 flex items-center justify-center shadow-md hover:scale-105 transition border"
+                    style={{ borderColor: C.line }}
+                  >
+                    <X size={10} color={C.ink} />
+                  </button>
+                </div>
+              ))}
+
+              {previewUrls.length < 3 && (
+                <label
+                  className="h-20 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-stone-50 transition"
+                  style={{ borderColor: imageError ? "#E0533C" : C.line }}
+                >
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="hidden"
+                    multiple
+                  />
+                  <Camera size={16} color={C.accentDeep} />
+                  <span className="text-[8px] font-bold text-[#8A7870] text-center px-1">
+                    {previewUrls.length === 0 ? "Tap to add photos" : "+ Add More"}
+                  </span>
+                </label>
+              )}
+            </div>
+            {imageError && (
+              <p className="text-[10px] text-[#E0533C] font-semibold mt-1.5">{imageError}</p>
+            )}
+          </div>
+
           <button
             type="submit"
             disabled={submitting}
             className="w-full py-3 rounded-xl text-xs font-black text-white shadow-md hover:opacity-95 transition flex items-center justify-center gap-2 disabled:opacity-70"
             style={{ background: C.accent }}
           >
-            {submitting ? (
-              <Loader2 size={14} className="animate-spin" />
-            ) : (
-              <Send size={14} />
-            )}
-            {submitting ? t("common.submitting") : t("review.submit")}
+            {uploading ? "Uploading photos..." : submitting ? t("common.submitting") : t("review.submit")}
           </button>
         </form>
       </div>
@@ -485,11 +602,18 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [locating, setLocating] = useState(false);
   const [locationError, setLocationError] = useState("");
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [imageError, setImageError] = useState("");
   const { t } = useLang();
+
+  // Cleanup object URLs on unmount
+  useEffect(() => {
+    return () => {
+      previewUrls.forEach(url => URL.revokeObjectURL(url));
+    };
+  }, [previewUrls]);
 
   if (!isOpen) return null;
 
@@ -520,17 +644,33 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setSelectedFile(file);
-    setPreviewUrl(URL.createObjectURL(file));
-    setImageError("");
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const newFiles = Array.from(files);
+
+    if (selectedFiles.length + newFiles.length > 5) {
+      setImageError("Maximum 5 photos allowed.");
+      const allowedCount = 5 - selectedFiles.length;
+      if (allowedCount <= 0) return;
+
+      const slicedNewFiles = newFiles.slice(0, allowedCount);
+      const newUrls = slicedNewFiles.map(file => URL.createObjectURL(file));
+      setSelectedFiles(prev => [...prev, ...slicedNewFiles]);
+      setPreviewUrls(prev => [...prev, ...newUrls]);
+    } else {
+      const newUrls = newFiles.map(file => URL.createObjectURL(file));
+      setSelectedFiles(prev => [...prev, ...newFiles]);
+      setPreviewUrls(prev => [...prev, ...newUrls]);
+      setImageError("");
+    }
   };
 
-  const handleRemoveImage = () => {
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setSelectedFile(null);
-    setPreviewUrl(null);
+  const handleRemoveImage = (index: number) => {
+    URL.revokeObjectURL(previewUrls[index]);
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    setPreviewUrls(prev => prev.filter((_, i) => i !== index));
+    setImageError("");
   };
 
   const resetForm = () => {
@@ -541,7 +681,9 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
     setCoords(null);
     setLocationError("");
     setImageError("");
-    handleRemoveImage();
+    previewUrls.forEach(url => URL.revokeObjectURL(url));
+    setSelectedFiles([]);
+    setPreviewUrls([]);
   };
 
   const handleClose = () => {
@@ -552,8 +694,8 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!selectedFile) {
-      setImageError(t("add.errPhoto"));
+    if (selectedFiles.length === 0) {
+      setImageError("Please add at least one photo of the location.");
       return;
     }
 
@@ -565,18 +707,27 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
       if (!user) throw new Error(t("add.mustSignIn"));
 
       setUploading(true);
-      const fileExt = selectedFile.name.split(".").pop();
-      const filePath = `${user.id}/${Date.now()}.${fileExt}`;
+      const uploadedUrls: string[] = [];
 
-      const { error: uploadError } = await supabase.storage
-        .from("place-photos")
-        .upload(filePath, selectedFile);
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
+        const fileExt = file.name.split(".").pop();
+        const timestamp = Date.now();
+        // place-photos/submissions/{userId}/{timestamp}-{index}.{ext}
+        const filePath = `submissions/${user.id}/${timestamp}-${i}.${fileExt}`;
 
-      if (uploadError) throw new Error(t("add.uploadFail"));
+        const { error: uploadError } = await supabase.storage
+          .from("place-photos")
+          .upload(filePath, file);
 
-      const { data: publicUrlData } = supabase.storage
-        .from("place-photos")
-        .getPublicUrl(filePath);
+        if (uploadError) throw new Error(t("add.uploadFail"));
+
+        const { data: publicUrlData } = supabase.storage
+          .from("place-photos")
+          .getPublicUrl(filePath);
+
+        uploadedUrls.push(publicUrlData.publicUrl);
+      }
 
       setUploading(false);
 
@@ -587,7 +738,7 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
         description: description || undefined,
         lat: coords?.lat,
         lng: coords?.lng,
-        image_url: publicUrlData.publicUrl,
+        image_urls: uploadedUrls,
       });
 
       alert(t("add.thankYou"));
@@ -674,32 +825,40 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
             <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">
               {t("add.photo")} <span style={{ color: C.accent }}>*</span>
             </label>
-            {previewUrl ? (
-              <div className="relative">
-                <img src={previewUrl} alt="Preview" className="w-full h-40 object-cover rounded-xl border" style={{ borderColor: C.line }} />
-                <button
-                  type="button"
-                  onClick={handleRemoveImage}
-                  className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 flex items-center justify-center shadow-md hover:scale-105 transition"
+            <div className="grid grid-cols-3 gap-2">
+              {previewUrls.map((url, index) => (
+                <div key={index} className="relative h-24 rounded-xl border overflow-hidden" style={{ borderColor: C.line }}>
+                  <img src={url} alt={`Preview ${index}`} className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveImage(index)}
+                    className="absolute top-1.5 right-1.5 w-5.5 h-5.5 rounded-full bg-white/95 flex items-center justify-center shadow-md hover:scale-105 transition border"
+                    style={{ borderColor: C.line }}
+                  >
+                    <X size={10} color={C.ink} />
+                  </button>
+                </div>
+              ))}
+
+              {previewUrls.length < 5 && (
+                <label
+                  className="h-24 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-stone-50 transition"
+                  style={{ borderColor: imageError ? "#E0533C" : C.line }}
                 >
-                  <X size={14} color={C.ink} />
-                </button>
-              </div>
-            ) : (
-              <label
-                className="w-full h-32 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1.5 cursor-pointer hover:bg-stone-50 transition"
-                style={{ borderColor: imageError ? "#E0533C" : C.line }}
-              >
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-                <MapPin size={20} color={C.accentDeep} />
-                <span className="text-[10px] font-bold text-[#8A7870]">{t("add.tapPhoto")}</span>
-              </label>
-            )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="hidden"
+                    multiple
+                  />
+                  <Camera size={18} color={C.accentDeep} />
+                  <span className="text-[8px] font-bold text-[#8A7870] text-center px-1">
+                    {previewUrls.length === 0 ? t("add.tapPhoto") : "+ Add More"}
+                  </span>
+                </label>
+              )}
+            </div>
             {imageError && (
               <p className="text-[10px] text-[#E0533C] font-semibold mt-1.5">{imageError}</p>
             )}
