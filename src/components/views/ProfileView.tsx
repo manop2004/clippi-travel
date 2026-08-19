@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Award, Star, Lock, Share2, HelpCircle, ShieldCheck, ChevronRight, LogOut } from "lucide-react";
+import { Award, Star, Lock, Share2, HelpCircle, ShieldCheck, ChevronRight, LogOut, LayoutDashboard } from "lucide-react";
 import { C } from "../../constants/mockData";
 import { supabase } from "../../supabaseClient";
 import { User as AuthUser } from "@supabase/supabase-js";
@@ -36,7 +36,12 @@ const BADGE_CATALOG: Record<
 // All known badges in display order
 const ALL_BADGE_KEYS = ["tokyo_explorer", "quality_reviewer", "secret_badge"];
 
-export default function ProfileView() {
+interface ProfileViewProps {
+  isAdmin?: boolean;
+  onOpenAdminDashboard?: () => void;
+}
+
+export default function ProfileView({ isAdmin = false, onOpenAdminDashboard }: ProfileViewProps) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const { t } = useLang();
 
@@ -305,6 +310,23 @@ export default function ProfileView() {
       <div className="w-full">
         <h3 className="text-xs font-black uppercase tracking-wider text-[#8A7870] mb-3 select-none">{t("profile.accountSettings")}</h3>
         <div className="rounded-3xl bg-white border divide-y overflow-hidden shadow-xs" style={{ borderColor: C.line }}>
+          {isAdmin && (
+  <button
+    onClick={onOpenAdminDashboard}
+    className="w-full p-4 flex items-center justify-between text-left hover:bg-orange-50/30 transition"
+  >
+    <span className="flex items-center gap-3.5 min-w-0">
+      <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border" style={{ background: C.accentSoft, borderColor: C.accent }}>
+        <LayoutDashboard size={15} color={C.accentDeep} strokeWidth={2.2} />
+      </div>
+      <div className="leading-tight">
+        <span className="text-xs font-black block" style={{ color: C.ink }}>Admin Dashboard</span>
+        <span className="text-[10px] text-[#8A7870] font-semibold block mt-0.5">Manage submissions & users</span>
+      </div>
+    </span>
+    <ChevronRight size={14} color={C.inkSoft} className="shrink-0 ml-2" />
+  </button>
+)}
           {settingsItems.map((item) => (
             <button key={item.labelKey} className="w-full p-4 flex items-center justify-between text-left hover:bg-stone-50/50 transition">
               <span className="flex items-center gap-3.5 min-w-0">

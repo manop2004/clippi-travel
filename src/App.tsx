@@ -13,6 +13,7 @@ import { PlaceDetailModal, AddPlaceModal } from "./components/Modals";
 import { ReviewStampProvider } from "./context/ReviewStampContext";
 import PasswordGate from "./components/PasswordGate";
 import { LangSwitcher, useLang } from "./lib/i18n";
+import AdminDashboardView from "./components/views/AdminDashboardView";
 
 export default function App() {
   const [tab, setTab] = useState("explore");
@@ -23,8 +24,13 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [showAllTrending, setShowAllTrending] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+const [showAdminDashboard, setShowAdminDashboard] = useState(false);
   const { t } = useLang();
 
+  useEffect(() => {
+  if (tab !== "profile") setShowAdminDashboard(false);
+}, [tab]);
   useEffect(() => {
     if (tab !== "explore") setShowAllTrending(false);
   }, [tab]);
@@ -39,16 +45,34 @@ export default function App() {
   // Supabase Auth session listener
   useEffect(() => {
     // 1. Get current session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setAuthLoading(false);
-    });
+supabase.auth.getSession().then(async ({ data: { session } }) => {
+  setSession(session);
+  setAuthLoading(false);
+  if (session) {
+    const { data } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", session.user.id)
+      .maybeSingle();
+    setIsAdmin(data?.role === "admin");
+  }
+});
 
     // 2. Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setAuthLoading(false);
-    });
+const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+  setSession(session);
+  setAuthLoading(false);
+  if (session) {
+    const { data } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", session.user.id)
+      .maybeSingle();
+    setIsAdmin(data?.role === "admin");
+  } else {
+    setIsAdmin(false);
+  }
+});
 
     return () => subscription.unsubscribe();
   }, []);
@@ -230,7 +254,16 @@ export default function App() {
               )}
               {tab === "map" && <MapView openPlace={(p: any) => setSelectedPlace(p)} searchQuery={searchQuery} />}
               {tab === "collection" && <CollectionView searchQuery={searchQuery} openPlace={(p: any) => setSelectedPlace(p)} />}
-              {tab === "profile" && <ProfileView />}
+              {tab === "profile" && (
+  showAdminDashboard ? (
+    <AdminDashboardView onBack={() => setShowAdminDashboard(false)} />
+  ) : (
+    <ProfileView
+      isAdmin={isAdmin}
+      onOpenAdminDashboard={() => setShowAdminDashboard(true)}
+    />
+  )
+)}
             </main>
           </div>
 
