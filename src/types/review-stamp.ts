@@ -67,7 +67,9 @@ export interface PlaceSubmission {
   name_en: string;
   name_jp: string | null;
   category: string;
+  street?: string | null;
   description: string | null;
+  website?: string | null;
   lat: number | null;
   lng: number | null;
   status: "pending" | "approved" | "rejected";
@@ -79,7 +81,9 @@ export interface CreatePlaceSubmissionInput {
   name_en: string;
   name_jp?: string;
   category: string;
+  street?: string;
   description?: string;
+  website?: string;
   lat?: number;
   lng?: number;
   image_url?: string;

@@ -1,0 +1,48 @@
+import React from "react";
+import { useUserRole, UserRole } from "../../hooks/useUserRole";
+import { ShieldAlert } from "lucide-react";
+import { C } from "../../constants/mockData";
+
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+  allowedRoles: UserRole[];
+  onGoHome?: () => void;
+}
+
+export function ProtectedRoute({ children, allowedRoles, onGoHome }: ProtectedRouteProps) {
+  const { role, loading } = useUserRole();
+
+  if (loading) {
+    return (
+      <div className="p-12 text-center text-xs font-bold text-[#8A7870] animate-pulse">
+        Checking access permissions...
+      </div>
+    );
+  }
+
+  if (!allowedRoles.includes(role)) {
+    return (
+      <div className="p-8 bg-white rounded-3xl border text-center space-y-4 max-w-lg mx-auto" style={{ borderColor: C.line }}>
+        <div className="w-12 h-12 rounded-2xl bg-red-50 border border-red-200 flex items-center justify-center mx-auto text-red-600">
+          <ShieldAlert size={24} />
+        </div>
+        <div>
+          <h3 className="text-base font-black text-[#231C18]">Access Restricted</h3>
+          <p className="text-xs text-[#8A7870] font-semibold mt-1">
+            You do not have permission to access this page. Required role: {allowedRoles.join(", ")}.
+          </p>
+        </div>
+        {onGoHome && (
+          <button
+            onClick={onGoHome}
+            className="px-5 py-2.5 rounded-xl text-xs font-black text-white bg-[#231C18] hover:bg-stone-800 transition cursor-pointer"
+          >
+            Return to Explore Page
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}

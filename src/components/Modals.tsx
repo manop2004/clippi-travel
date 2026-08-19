@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { X, Navigation, Crosshair, Landmark, MapPin, ExternalLink, Send, Loader2, Star, Camera } from "lucide-react";
+import { createPortal } from "react-dom";
+import { X, Navigation, Crosshair, Landmark, MapPin, ExternalLink, Send, Loader2, Star, Camera, Edit3, Trash2, Globe } from "lucide-react";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import { C, categories } from "../constants/mockData";
 import StarRow from "./StarRow";
 import { getReviews, createReview, collectStamp, hasUserCollectedStamp, getUserStamps, createPlaceSubmission } from "../hooks/useReviewStamp";
@@ -7,13 +10,17 @@ import { Review, UserStamp } from "../types/review-stamp";
 import { supabase } from "../supabaseClient";
 import { haversineDistance, formatDistance } from "../lib/geoHelpers";
 import { useLang, localized } from "../lib/i18n";
+import { useUserRole } from "../hooks/useUserRole";
 
 interface PlaceDetailModalProps {
   place: any;
   onClose: () => void;
+  onEditStore?: (place: any) => void;
+  onDeleteStore?: (place: any) => void;
 }
 
-export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
+export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }: PlaceDetailModalProps) {
+  const { role, isAdmin, isStoreOwner } = useUserRole();
   const [dbReviews, setDbReviews] = useState<Review[]>([]);
   const [loadingReviews, setLoadingReviews] = useState(true);
   const [showReviewForm, setShowReviewForm] = useState(false);
@@ -244,6 +251,34 @@ export function PlaceDetailModal({ place, onClose }: PlaceDetailModalProps) {
                 {hasCollectedStamp ? t("place.stampCollected") : t("place.checkinHere")}
               </button>
             </div>
+
+            {/* Edit & Delete Shop Buttons for Admin / Store Owner */}
+            {(isAdmin || isStoreOwner) && (
+              <div className="flex gap-2">
+                {onEditStore && (
+                  <button
+                    onClick={() => {
+                      onClose();
+                      onEditStore(place);
+                    }}
+                    className="flex-1 py-2.5 px-3 rounded-xl text-xs font-black bg-amber-500 hover:bg-amber-600 text-white flex items-center justify-center gap-1.5 transition shadow-sm"
+                  >
+                    <Edit3 size={14} /> Edit Shop
+                  </button>
+                )}
+                {onDeleteStore && (
+                  <button
+                    onClick={() => {
+                      onClose();
+                      onDeleteStore(place);
+                    }}
+                    className="py-2.5 px-4 rounded-xl text-xs font-black bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 flex items-center justify-center gap-1.5 transition shadow-sm"
+                  >
+                    <Trash2 size={14} /> Delete Shop
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* Heritage Stamp Available Alert */}
             <div className="p-3 rounded-xl flex gap-2.5 text-xs font-bold border select-none" style={{ background: C.accentSoft, borderColor: C.line, color: C.accentDeep }}>
@@ -586,6 +621,8 @@ function ReviewFormModal({ placeId, placeName, onClose, onSuccess }: ReviewFormM
 interface AddPlaceModalProps {
   isOpen: boolean;
   onClose: () => void;
+  editSubmission?: any | null;
+  onSubmissionUpdated?: () => void;
 }
 
 const PIN_TYPES = [
@@ -593,10 +630,189 @@ const PIN_TYPES = [
   { id: "shop", labelKey: "cat.serviceShop", emoji: "🎁" },
 ];
 
-export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
+function LocationPickerMap({
+  coords,
+  onSelectCoords,
+}: {
+  coords: { lat: number; lng: number } | null;
+  onSelectCoords: (c: { lat: number; lng: number }) => void;
+}) {
+  const mapContainerRef = React.useRef<HTMLDivElement>(null);
+  const mapRef = React.useRef<L.Map | null>(null);
+  const storeMarkerRef = React.useRef<L.Marker | null>(null);
+  const userLocationMarkerRef = React.useRef<L.Marker | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
+
+  useEffect(() => {
+    if (!mapContainerRef.current || mapRef.current) return;
+
+    const initialLat = coords?.lat || 35.6762;
+    const initialLng = coords?.lng || 139.6503;
+
+    const container = mapContainerRef.current as any;
+    if (container._leaflet_id) {
+      container._leaflet_id = null;
+    }
+
+    const map = L.map(mapContainerRef.current, {
+      center: [initialLat, initialLng],
+      zoom: coords ? 16 : 7,
+      zoomControl: true,
+    });
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap contributors",
+    }).addTo(map);
+
+    const storeIcon = L.divIcon({
+      className: "custom-store-pin",
+      html: `<div style="background:#E0533C;width:24px;height:24px;border-radius:50%;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:white;font-size:12px;">📍</div>`,
+      iconSize: [24, 24],
+      iconAnchor: [12, 12],
+    });
+
+    if (coords) {
+      const marker = L.marker([coords.lat, coords.lng], { icon: storeIcon, draggable: true }).addTo(map);
+      marker.on("dragend", (e: any) => {
+        const latlng = e.target.getLatLng();
+        onSelectCoords({ lat: latlng.lat, lng: latlng.lng });
+      });
+      storeMarkerRef.current = marker;
+    }
+
+    // Manual map click: update red store pin & form state
+    map.on("click", (e: L.LeafletMouseEvent) => {
+      const { lat, lng } = e.latlng;
+      onSelectCoords({ lat, lng });
+
+      if (storeMarkerRef.current) {
+        storeMarkerRef.current.setLatLng([lat, lng]);
+      } else {
+        const marker = L.marker([lat, lng], { icon: storeIcon, draggable: true }).addTo(map);
+        marker.on("dragend", (event: any) => {
+          const dragLatLng = event.target.getLatLng();
+          onSelectCoords({ lat: dragLatLng.lat, lng: dragLatLng.lng });
+        });
+        storeMarkerRef.current = marker;
+      }
+    });
+
+    mapRef.current = map;
+
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 200);
+
+    return () => {
+      clearTimeout(timer);
+      map.remove();
+      mapRef.current = null;
+    };
+  }, []);
+
+  // Update red store pin when coords prop changes (e.g. from bottom button or manual click)
+  useEffect(() => {
+    if (!mapRef.current || !coords) return;
+    const map = mapRef.current;
+    map.flyTo([coords.lat, coords.lng], 16, { animate: true, duration: 1.2 });
+
+    const storeIcon = L.divIcon({
+      className: "custom-store-pin",
+      html: `<div style="background:#E0533C;width:24px;height:24px;border-radius:50%;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:white;font-size:12px;">📍</div>`,
+      iconSize: [24, 24],
+      iconAnchor: [12, 12],
+    });
+
+    if (storeMarkerRef.current) {
+      storeMarkerRef.current.setLatLng([coords.lat, coords.lng]);
+    } else {
+      const marker = L.marker([coords.lat, coords.lng], { icon: storeIcon, draggable: true }).addTo(map);
+      marker.on("dragend", (event: any) => {
+        const dragLatLng = event.target.getLatLng();
+        onSelectCoords({ lat: dragLatLng.lat, lng: dragLatLng.lng });
+      });
+      storeMarkerRef.current = marker;
+    }
+  }, [coords?.lat, coords?.lng]);
+
+  // Floating "Near Me" button: Shows blue dot ONLY and pans map to user without mutating form coords or red store pin
+  const handleNearMeClick = () => {
+    if (!navigator.geolocation) {
+      alert("ไม่สามารถดึงตำแหน่งปัจจุบันได้ โปรดเปิดสิทธิ์ Location บนเบราว์เซอร์");
+      return;
+    }
+
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+
+        if (mapRef.current) {
+          // 1. Center/pan map view to user's position
+          mapRef.current.flyTo([latitude, longitude], 16, { animate: true, duration: 1.2 });
+
+          // 2. Render blue dot user marker with popup "ตำแหน่งปัจจุบันของคุณ"
+          const blueUserIcon = L.divIcon({
+            className: "custom-user-dot",
+            html: `<div style="position:relative;width:20px;height:20px;display:flex;align-items:center;justify-content:center;">
+              <div style="position:absolute;width:20px;height:20px;background:#2563EB;border-radius:50%;opacity:0.4;animation:ping 1.5s cubic-bezier(0,0,0.2,1) infinite;"></div>
+              <div style="width:12px;height:12px;background:#2563EB;border:2px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);z-index:10;"></div>
+            </div>`,
+            iconSize: [20, 20],
+            iconAnchor: [10, 10],
+          });
+
+          const popupContent = "<div style='font-size:11px;font-weight:bold;color:#231C18;padding:2px;'>📍 ตำแหน่งปัจจุบันของคุณ</div>";
+
+          if (userLocationMarkerRef.current) {
+            userLocationMarkerRef.current.setLatLng([latitude, longitude]);
+            userLocationMarkerRef.current.bindPopup(popupContent).openPopup();
+          } else {
+            const userMarker = L.marker([latitude, longitude], { icon: blueUserIcon }).addTo(mapRef.current);
+            userMarker.bindPopup(popupContent).openPopup();
+            userLocationMarkerRef.current = userMarker;
+          }
+        }
+
+        // CRITICAL: Do NOT call onSelectCoords! Leave store coordinates/pin untouched.
+        setIsLocating(false);
+      },
+      (error) => {
+        alert("ไม่สามารถดึงตำแหน่งปัจจุบันได้ โปรดเปิดสิทธิ์ Location บนเบราว์เซอร์");
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
+
+  return (
+    <div className="w-full h-48 rounded-2xl overflow-hidden border relative z-0" style={{ borderColor: C.line }}>
+      <div ref={mapContainerRef} className="w-full h-full" />
+
+      {/* Floating Near Me button on top-right overlay of mini-map */}
+      <button
+        type="button"
+        onClick={handleNearMeClick}
+        disabled={isLocating}
+        className="absolute top-3 right-3 z-[1000] bg-white/90 hover:bg-white text-gray-800 text-xs font-semibold px-3 py-1.5 rounded-full shadow-md flex items-center gap-1.5 cursor-pointer backdrop-blur-sm transition-all border border-gray-200 disabled:opacity-60"
+      >
+        {isLocating ? (
+          <Loader2 size={13} className="animate-spin text-[#2563EB]" />
+        ) : (
+          <Crosshair size={13} className="text-[#2563EB]" />
+        )}
+        <span>📍 Near Me</span>
+      </button>
+    </div>
+  );
+}
+
+export function AddPlaceModal({ isOpen, onClose, editSubmission, onSubmissionUpdated }: AddPlaceModalProps) {
   const [cat, setCat] = useState("food");
   const [name, setName] = useState("");
   const [japaneseName, setJapaneseName] = useState("");
+  const [street, setStreet] = useState("");
+  const [website, setWebsite] = useState("");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
@@ -608,10 +824,42 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
   const [imageError, setImageError] = useState("");
   const { t } = useLang();
 
+  // Populate form fields when editSubmission prop is passed
+  useEffect(() => {
+    if (editSubmission && isOpen) {
+      setName(editSubmission.name_en || "");
+      setJapaneseName(editSubmission.name_jp || "");
+      setStreet(editSubmission.street || "");
+      setWebsite(editSubmission.website || "");
+      setDescription(editSubmission.description || "");
+      setCat(editSubmission.category || "food");
+      if (editSubmission.lat && editSubmission.lng) {
+        setCoords({ lat: Number(editSubmission.lat), lng: Number(editSubmission.lng) });
+      } else {
+        setCoords(null);
+      }
+
+      if (editSubmission.image_urls && editSubmission.image_urls.length > 0) {
+        setPreviewUrls(editSubmission.image_urls);
+      } else if (editSubmission.image_url) {
+        setPreviewUrls([editSubmission.image_url]);
+      } else {
+        setPreviewUrls([]);
+      }
+      setSelectedFiles([]);
+      setImageError("");
+      setLocationError("");
+    } else if (isOpen && !editSubmission) {
+      resetForm();
+    }
+  }, [editSubmission, isOpen]);
+
   // Cleanup object URLs on unmount
   useEffect(() => {
     return () => {
-      previewUrls.forEach(url => URL.revokeObjectURL(url));
+      previewUrls.forEach(url => {
+        if (url.startsWith("blob:")) URL.revokeObjectURL(url);
+      });
     };
   }, [previewUrls]);
 
@@ -649,9 +897,9 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
 
     const newFiles = Array.from(files);
 
-    if (selectedFiles.length + newFiles.length > 5) {
+    if (previewUrls.length + newFiles.length > 5) {
       setImageError("Maximum 5 photos allowed.");
-      const allowedCount = 5 - selectedFiles.length;
+      const allowedCount = 5 - previewUrls.length;
       if (allowedCount <= 0) return;
 
       const slicedNewFiles = newFiles.slice(0, allowedCount);
@@ -667,21 +915,28 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
   };
 
   const handleRemoveImage = (index: number) => {
-    URL.revokeObjectURL(previewUrls[index]);
-    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    const urlToRemove = previewUrls[index];
+    if (urlToRemove && urlToRemove.startsWith("blob:")) {
+      URL.revokeObjectURL(urlToRemove);
+    }
     setPreviewUrls(prev => prev.filter((_, i) => i !== index));
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
     setImageError("");
   };
 
   const resetForm = () => {
     setName("");
     setJapaneseName("");
+    setStreet("");
+    setWebsite("");
     setDescription("");
     setCat("food");
     setCoords(null);
     setLocationError("");
     setImageError("");
-    previewUrls.forEach(url => URL.revokeObjectURL(url));
+    previewUrls.forEach(url => {
+      if (url.startsWith("blob:")) URL.revokeObjectURL(url);
+    });
     setSelectedFiles([]);
     setPreviewUrls([]);
   };
@@ -694,7 +949,7 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (selectedFiles.length === 0) {
+    if (previewUrls.length === 0 && selectedFiles.length === 0) {
       setImageError("Please add at least one photo of the location.");
       return;
     }
@@ -713,7 +968,6 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
         const file = selectedFiles[i];
         const fileExt = file.name.split(".").pop();
         const timestamp = Date.now();
-        // place-photos/submissions/{userId}/{timestamp}-{index}.{ext}
         const filePath = `submissions/${user.id}/${timestamp}-${i}.${fileExt}`;
 
         const { error: uploadError } = await supabase.storage
@@ -731,18 +985,83 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
 
       setUploading(false);
 
-      await createPlaceSubmission({
-        name_en: name,
-        name_jp: japaneseName || undefined,
-        category: cat,
-        description: description || undefined,
-        lat: coords?.lat,
-        lng: coords?.lng,
-        image_urls: uploadedUrls,
-      });
+      const existingUrls = previewUrls.filter(url => !url.startsWith("blob:"));
+      const finalImageUrls = [...existingUrls, ...uploadedUrls];
 
-      alert(t("add.thankYou"));
-      handleClose();
+      if (editSubmission) {
+        // UPDATE existing place_submission & reset status to pending
+        const payload: Record<string, any> = {
+          name_en: name,
+          name_jp: japaneseName || null,
+          category: cat,
+          street: street || null,
+          description: description || null,
+          lat: coords?.lat ?? null,
+          lng: coords?.lng ?? null,
+          image_url: finalImageUrls[0] || null,
+          image_urls: finalImageUrls,
+          status: "pending", // Reset status back to pending for review
+          rejection_reason: null,
+        };
+
+        if (website) {
+          payload.website = website;
+        }
+
+        // Resilient update: Retry stripping optional/schema-cached columns if DB errors occur
+        const executeUpdate = async (p: Record<string, any>): Promise<void> => {
+          const { error: err } = await supabase
+            .from("place_submissions")
+            .update(p)
+            .eq("id", editSubmission.id);
+
+          if (err) {
+            const msg = err.message || "";
+            if (msg.includes("admin_comment") || err.code === "PGRST204") {
+              delete p.admin_comment;
+            }
+            if (msg.includes("website")) {
+              delete p.website;
+            }
+            if (msg.includes("street")) {
+              delete p.street;
+            }
+            if (msg.includes("rejection_reason")) {
+              delete p.rejection_reason;
+            }
+
+            // Retry after removing failing column
+            const { error: retryErr } = await supabase
+              .from("place_submissions")
+              .update(p)
+              .eq("id", editSubmission.id);
+
+            if (retryErr) throw retryErr;
+          }
+        };
+
+        await executeUpdate(payload);
+
+        alert("ส่งข้อมูลที่แก้ไขให้แอดมินเรียบร้อยแล้ว! (Updated submission sent to admin successfully!)");
+        if (onSubmissionUpdated) onSubmissionUpdated();
+        handleClose();
+      } else {
+        // CREATE new place_submission
+        await createPlaceSubmission({
+          name_en: name,
+          name_jp: japaneseName || undefined,
+          category: cat,
+          street: street || undefined,
+          description: description || undefined,
+          website: website || undefined,
+          lat: coords?.lat,
+          lng: coords?.lng,
+          image_urls: finalImageUrls,
+        });
+
+        alert(t("add.thankYou"));
+        handleClose();
+      }
     } catch (error: any) {
       alert(error.message || t("add.submitFail"));
     } finally {
@@ -751,24 +1070,31 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs animate-fade-in">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-fade-in">
       <div
-        className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl p-6 md:p-8 relative bg-white border shadow-2xl"
+        className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[88vh] my-auto transition-all animate-in fade-in zoom-in-95 duration-200 border"
         style={{ borderColor: C.line }}
       >
-        {/* Close Button */}
-        <button
-          onClick={handleClose}
-          className="absolute top-6 right-6 w-8.5 h-8.5 rounded-full flex items-center justify-center bg-stone-50 border hover:scale-105 transition"
+        {/* Sticky Header */}
+        <div
+          className="p-5 border-b flex items-center justify-between bg-white sticky top-0 z-10 shrink-0"
           style={{ borderColor: C.line }}
         >
-          <X size={15} color={C.ink} />
-        </button>
+          <h3 className="text-lg font-bold text-gray-900">
+            {editSubmission ? "แก้ไขข้อมูลและส่งตรวจใหม่ (Edit & Resubmit Spot)" : t("action.submitSpot")}
+          </h3>
+          <button
+            type="button"
+            onClick={handleClose}
+            className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors"
+          >
+            ✕
+          </button>
+        </div>
 
-        <h2 className="text-lg font-black mb-5" style={{ color: C.ink }}>{t("action.submitSpot")}</h2>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Scrollable Form Content */}
+        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto flex-1 space-y-4">
           <div>
             <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">{t("add.nameEn")}</label>
             <input
@@ -790,6 +1116,36 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
               className="w-full px-3.5 py-2 rounded-xl text-xs border outline-none bg-stone-50/30 focus:border-[#E0533C] transition-all"
               style={{ borderColor: C.line, color: C.ink }}
             />
+          </div>
+
+          {/* ชื่อถนน / Street Name */}
+          <div>
+            <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">
+              ชื่อถนน / ที่อยู่ (Street Name)
+            </label>
+            <input
+              type="text"
+              value={street}
+              onChange={(e) => setStreet(e.target.value)}
+              placeholder="เช่น Chuo-dori Ave, Takeshita Street"
+              className="w-full px-3.5 py-2 rounded-xl text-xs border outline-none bg-stone-50/30 focus:border-[#E0533C] transition-all"
+              style={{ borderColor: C.line, color: C.ink }}
+            />
+          </div>
+
+          <div>
+            <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">Website URL / ลิงก์เว็บไซต์</label>
+            <div className="relative flex items-center">
+              <Globe size={14} className="absolute left-3 text-[#8A7870]" />
+              <input
+                type="url"
+                placeholder="https://example.com"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+                className="w-full pl-9 pr-3.5 py-2 rounded-xl text-xs border outline-none bg-stone-50/30 focus:border-[#E0533C] transition-all"
+                style={{ borderColor: C.line, color: C.ink }}
+              />
+            </div>
           </div>
 
           <div>
@@ -864,28 +1220,43 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
             )}
           </div>
 
-          <div>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-[9px] font-black uppercase tracking-wider block text-[#8A7870]">
+                Location on Map / เลือกตำแหน่งบนแผนที่
+              </label>
+              {coords && (
+                <span className="text-[9px] font-bold text-[#E0533C]">
+                  📍 {coords.lat.toFixed(4)}, {coords.lng.toFixed(4)}
+                </span>
+              )}
+            </div>
+
+            <LocationPickerMap coords={coords} onSelectCoords={(c) => setCoords(c)} />
+
             <button
               type="button"
               onClick={handlePinLocation}
               disabled={locating}
-              className="w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition disabled:opacity-70"
+              className="w-full py-2.5 rounded-xl text-xs font-black flex items-center justify-center gap-2 border transition shadow-xs disabled:opacity-70 active:scale-[0.99] mt-2"
               style={
                 coords
-                  ? { borderColor: "#4CAF50", color: "#2E7D32", background: "#F0F9F0" }
-                  : { borderColor: C.line, color: C.ink, background: "rgba(250,246,240,0.5)" }
+                  ? { borderColor: "#2563EB", color: "#1D4ED8", background: "#EFF6FF" }
+                  : { borderColor: C.line, color: C.ink, background: "#FAF6F0" }
               }
             >
               {locating ? (
-                <Loader2 size={13} className="animate-spin" />
+                <Loader2 size={14} className="animate-spin text-[#2563EB]" />
               ) : (
-                <MapPin size={13} color={coords ? "#2E7D32" : C.accentDeep} />
+                <Crosshair size={14} className="text-[#2563EB]" />
               )}
-              {locating
-                ? t("add.locating")
-                : coords
-                  ? t("add.pinned").replace("{lat}", coords.lat.toFixed(4)).replace("{lng}", coords.lng.toFixed(4))
-                  : t("add.pinGps")}
+              <span>
+                {locating
+                  ? "กำลังค้นหาตำแหน่ง..."
+                  : coords
+                    ? `📍 ปักตำแหน่งปัจจุบัน (${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)})`
+                    : "📍 ปักตำแหน่งปัจจุบัน"}
+              </span>
             </button>
             {locationError && (
               <p className="text-[10px] text-[#E0533C] font-semibold mt-1.5">{locationError}</p>
@@ -895,13 +1266,19 @@ export function AddPlaceModal({ isOpen, onClose }: AddPlaceModalProps) {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full py-3 rounded-xl text-xs font-black text-white shadow-md hover:opacity-95 transition disabled:opacity-70"
-            style={{ background: C.accent }}
+            className="w-full py-3 rounded-xl text-xs font-black text-[#231C18] bg-amber-400 hover:bg-amber-500 shadow-md transition disabled:opacity-70 flex items-center justify-center gap-2"
           >
-            {uploading ? t("add.uploading") : submitting ? t("common.submitting") : t("add.submitVerify")}
+            {uploading
+              ? t("add.uploading")
+              : submitting
+              ? t("common.submitting")
+              : editSubmission
+              ? "บันทึกและส่งตรวจใหม่ (Save & Resubmit)"
+              : t("add.submitVerify")}
           </button>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
