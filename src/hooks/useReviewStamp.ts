@@ -188,23 +188,66 @@ export async function createPlaceSubmission(input: CreatePlaceSubmissionInput): 
     throw new Error("User not authenticated");
   }
 
+  const payload: Record<string, any> = {
+    user_id: user.id,
+    name_en: input.name_en,
+    name_jp: input.name_jp || null,
+    category: input.category,
+    description: input.description || null,
+    lat: input.lat ?? null,
+    lng: input.lng ?? null,
+    image_url: input.image_urls && input.image_urls.length > 0 ? input.image_urls[0] : (input.image_url || null),
+    image_urls: input.image_urls || null,
+  };
+
+  if (input.street) {
+    payload.street = input.street;
+  }
+
+  if (input.website) {
+    payload.website = input.website;
+  }
+
   const { data, error } = await supabase
     .from("place_submissions")
-    .insert({
-      user_id: user.id,
-      name_en: input.name_en,
-      name_jp: input.name_jp || null,
-      category: input.category,
-      description: input.description || null,
-      lat: input.lat ?? null,
-      lng: input.lng ?? null,
-      image_url: input.image_urls && input.image_urls.length > 0 ? input.image_urls[0] : (input.image_url || null),
-      image_urls: input.image_urls || null,
-    })
+    .insert(payload)
     .select()
-    .single();
+    .maybeSingle();
 
   if (error) {
+    const msg = error.message || "";
+    if (msg.includes("street") || msg.includes("website") || error.code === "PGRST204" || error.code === "PGRST100") {
+      if (msg.includes("street")) {
+        delete payload.street;
+        if (input.street && !payload.description?.includes(input.street)) {
+          payload.description = payload.description ? `${payload.description} (Address: ${input.street})` : input.street;
+        }
+      }
+      if (msg.includes("website")) {
+        delete payload.website;
+      }
+
+      const { data: retryData, error: retryError } = await supabase
+        .from("place_submissions")
+        .insert(payload)
+        .select()
+        .maybeSingle();
+
+      if (retryError) {
+        delete payload.street;
+        delete payload.website;
+        const { data: finalData, error: finalError } = await supabase
+          .from("place_submissions")
+          .insert(payload)
+          .select()
+          .maybeSingle();
+
+        if (finalError) throw finalError;
+        return finalData;
+      }
+      return retryData;
+    }
+
     console.error("Error creating place submission:", error);
     throw error;
   }

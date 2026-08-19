@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ExternalLink, Navigation } from "lucide-react";
+import { ExternalLink, Navigation, Crosshair, MapPin, Loader2, RefreshCw } from "lucide-react";
 import { C, categories } from "../../constants/mockData";
 import { supabase } from "../../supabaseClient";
 import { useLang, localized } from "../../lib/i18n";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-
 
 interface Shop {
   id: number;
@@ -23,6 +22,7 @@ interface Shop {
   pin_type: string;
   region: string;
   image_url?: string;
+  distanceKm?: number | null;
 }
 
 interface MapViewProps {
@@ -39,6 +39,21 @@ const PIN_TYPE_FILTERS = [
 const REGIONS = ["Kanto", "Kansai", "Hokkaido", "Tohoku", "Chubu", "Chugoku", "Kyushu & Okinawa", "Shikoku"];
 const REGION_FILTERS = [{ id: "All", label: "All" }, ...REGIONS.map(r => ({ id: r, label: r }))];
 
+// Haversine distance formula to calculate distance in kilometers between two lat/lng points
+function getDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Earth's radius in kilometers
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) *
+      Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 function getPinTypeEmoji(pinType: string): string {
   switch (pinType) {
     case "food":
@@ -50,7 +65,7 @@ function getPinTypeEmoji(pinType: string): string {
   }
 }
 
-// 🛡️ แยกกล่องแผนที่ออกมาและล็อคด้วย React.memo กัน React ทำลาย/สร้าง DOM ใหม่โดยไม่จำเป็น
+// React.memo wrapper around map container to prevent re-creation on render
 const PureMapContainer = React.memo(({ innerRef }: { innerRef: React.RefObject<HTMLDivElement> }) => {
   return <div ref={innerRef} className="w-full h-full" />;
 });
@@ -59,6 +74,10 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
   const [shops, setShops] = useState<Shop[]>([]);
   const [pinTypeFilter, setPinTypeFilter] = useState("All");
   const [regionFilter, setRegionFilter] = useState("All");
+  const [isNearMeActive, setIsNearMeActive] = useState(false);
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [locatingUser, setLocatingUser] = useState(false);
+  const [nearMeLoading, setNearMeLoading] = useState(false);
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [loading, setLoading] = useState(true);
   const { t, lang } = useLang();
@@ -89,17 +108,51 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
     fetchShops();
   }, []);
 
-  // Filtered list of shops (category filter + keyword search)
-  const filteredShops = shops.filter((s) => {
-    const matchesRegion = regionFilter === "All" || s.region === regionFilter;
-    const matchesCategory = pinTypeFilter === "All" || s.pin_type === pinTypeFilter;
-    const q = searchQuery.trim().toLowerCase();
-    const matchesSearch =
-      q === "" ||
-      s.shop_name.toLowerCase().includes(q) ||
-      (s.prefecture && s.prefecture.toLowerCase().includes(q));
-    return matchesRegion && matchesCategory && matchesSearch;
+  // Compute distances for all shops when userCoords is set
+  const shopsWithDistance = shops.map((s) => {
+    let distanceKm: number | null = null;
+    if (userCoords && s.lat && s.lng) {
+      distanceKm = getDistanceKm(userCoords.lat, userCoords.lng, s.lat, s.lng);
+    }
+    return { ...s, distanceKm };
   });
+
+  // Filtered list of shops based on region, pin type, search query, and Near Me 50km radius
+  const filteredShops = shopsWithDistance
+    .filter((s) => {
+      const matchesRegion = regionFilter === "All" || s.region === regionFilter;
+      const matchesCategory = pinTypeFilter === "All" || s.pin_type === pinTypeFilter;
+      const q = searchQuery.trim().toLowerCase();
+      const matchesSearch =
+        q === "" ||
+        s.shop_name.toLowerCase().includes(q) ||
+        (s.prefecture && s.prefecture.toLowerCase().includes(q));
+
+      let matchesNearMe = true;
+      if (isNearMeActive) {
+        if (s.distanceKm !== null) {
+          matchesNearMe = s.distanceKm <= 50;
+        } else {
+          matchesNearMe = false;
+        }
+      }
+
+      return matchesRegion && matchesCategory && matchesSearch && matchesNearMe;
+    })
+    .sort((a, b) => {
+      if (isNearMeActive && a.distanceKm !== null && b.distanceKm !== null) {
+        return a.distanceKm - b.distanceKm;
+      }
+      return 0;
+    });
+
+  // Fallback: If Near Me is active but no shops exist within 50km, display nearest shops sorted by distance
+  const displayedShops = (isNearMeActive && filteredShops.length === 0 && userCoords)
+    ? [...shopsWithDistance]
+        .filter(s => s.lat && s.lng && s.distanceKm !== null)
+        .sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0))
+        .slice(0, 10)
+    : filteredShops;
 
   // 2. Initialize Leaflet Map
   useEffect(() => {
@@ -139,19 +192,48 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
     };
   }, [loading]);
 
-  // 3. Render markers when filtered list changes
+  // Render user marker helper (exact blue dot styling from Modals.tsx)
+  const renderUserMarker = (lat: number, lng: number) => {
+    if (!mapRef.current) return;
+
+    const blueUserIcon = L.divIcon({
+      className: "custom-user-dot",
+      html: `<div style="position:relative;width:20px;height:20px;display:flex;align-items:center;justify-content:center;">
+        <div style="position:absolute;width:20px;height:20px;background:#2563EB;border-radius:50%;opacity:0.4;animation:ping 1.5s cubic-bezier(0,0,0.2,1) infinite;"></div>
+        <div style="width:12px;height:12px;background:#2563EB;border:2px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);z-index:10;"></div>
+      </div>`,
+      iconSize: [20, 20],
+      iconAnchor: [10, 10],
+    });
+
+    const popupContent = "<div style='font-size:11px;font-weight:bold;color:#231C18;padding:2px;'>📍 ตำแหน่งปัจจุบันของคุณ</div>";
+
+    if (userMarkerRef.current) {
+      userMarkerRef.current.setLatLng([lat, lng]);
+      userMarkerRef.current.bindPopup(popupContent).openPopup();
+    } else {
+      const marker = L.marker([lat, lng], { icon: blueUserIcon }).addTo(mapRef.current);
+      marker.bindPopup(popupContent).openPopup();
+      userMarkerRef.current = marker;
+    }
+  };
+
+  // 3. Render shop markers on map when displayedShops changes
   useEffect(() => {
     if (!mapRef.current || !markersGroupRef.current) return;
 
     markersGroupRef.current.clearLayers();
 
-    filteredShops.forEach((shop) => {
+    displayedShops.forEach((shop) => {
       if (!shop.lat || !shop.lng) return;
 
       const emoji = getPinTypeEmoji(shop.pin_type);
+      const isSelected = selectedShop?.id === shop.id;
       const markerHtml = `
         <div class="relative flex items-center justify-center">
-          <div class="w-8 h-8 rounded-full border-2 border-white bg-[#E0533C] text-white flex items-center justify-center shadow-md hover:scale-110 transition-transform duration-150 text-sm">
+          <div class="w-8 h-8 rounded-full border-2 border-white ${
+            isSelected ? "bg-amber-500 scale-110 ring-4 ring-amber-300/50" : "bg-[#E0533C]"
+          } text-white flex items-center justify-center shadow-md hover:scale-110 transition-transform duration-150 text-sm">
             ${emoji}
           </div>
         </div>
@@ -164,70 +246,58 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
       markersGroupRef.current?.addLayer(marker);
     });
 
-    if (filteredShops.length > 0 && mapRef.current) {
-      const validPoints = filteredShops.filter(s => s.lat && s.lng).map(s => L.latLng(s.lat, s.lng));
+    if (displayedShops.length > 0 && mapRef.current && !userCoords) {
+      const validPoints = displayedShops.filter(s => s.lat && s.lng).map(s => L.latLng(s.lat, s.lng));
       if (validPoints.length > 0) {
         mapRef.current.invalidateSize();
         const bounds = L.latLngBounds(validPoints);
-        mapRef.current.fitBounds(bounds, { padding: [30, 30] });
+        mapRef.current.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
       }
     }
   }, [regionFilter, pinTypeFilter, shops, searchQuery]);
 
-  // 4. Auto-select first matching shop when search query changes
+  // 4. Auto-select first matching shop when search query or filter changes
   useEffect(() => {
-    if (searchQuery.trim() === "") return;
-    setSelectedShop(filteredShops.length > 0 ? filteredShops[0] : null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery]);
+    if (displayedShops.length > 0 && (!selectedShop || !displayedShops.some(s => s.id === selectedShop.id))) {
+      setSelectedShop(displayedShops[0]);
+    }
+  }, [displayedShops]);
 
-  // 5. Pan to selected shop when changed
+  // 5. Pan to selected shop
   const panToShop = (shop: Shop) => {
     if (mapRef.current && shop.lat && shop.lng) {
       mapRef.current.setView([shop.lat, shop.lng], 14, { animate: true });
     }
   };
 
-  // 6. Geolocation: "Near me" button — pin the user's current position
+  // 6. Geolocation: "Near Me" floating button handler (matching AddPlaceModal 1:1)
   const handleNearMeClick = () => {
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const lat = position.coords.latitude;
-          const lng = position.coords.longitude;
-
-          if (mapRef.current) {
-            mapRef.current.flyTo([lat, lng], 14, { animate: true });
-
-            const userIconHtml = `
-              <div class="relative flex items-center justify-center w-full h-full">
-                <div class="absolute w-8 h-8 bg-blue-500 rounded-full opacity-40 animate-ping"></div>
-                <div class="w-4 h-4 bg-blue-600 rounded-full border-2 border-white shadow-md z-10"></div>
-              </div>
-            `;
-
-            const userIcon = L.divIcon({
-              html: userIconHtml,
-              className: "bg-transparent",
-              iconSize: [32, 32],
-              iconAnchor: [16, 16],
-            });
-
-            if (userMarkerRef.current) {
-              userMarkerRef.current.setLatLng([lat, lng]);
-            } else {
-              userMarkerRef.current = L.marker([lat, lng], { icon: userIcon }).addTo(mapRef.current);
-            }
-          }
-        },
-        (error) => {
-          console.error("Error getting location:", error.message);
-          alert("กรุณาอนุญาตการเข้าถึงตำแหน่ง (Location) ในเบราว์เซอร์");
-        }
-      );
-    } else {
-      alert("เบราว์เซอร์ของคุณไม่รองรับการดึงตำแหน่ง");
+    if (!navigator.geolocation) {
+      alert("ไม่สามารถดึงตำแหน่งปัจจุบันได้ โปรดเปิดสิทธิ์ Location บนเบราว์เซอร์");
+      return;
     }
+
+    setNearMeLoading(true);
+    setLocatingUser(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setUserCoords({ lat: latitude, lng: longitude });
+
+        if (mapRef.current) {
+          renderUserMarker(latitude, longitude);
+          mapRef.current.flyTo([latitude, longitude], 16, { animate: true, duration: 1.2 });
+        }
+        setNearMeLoading(false);
+        setLocatingUser(false);
+      },
+      (error) => {
+        setNearMeLoading(false);
+        setLocatingUser(false);
+        alert("ไม่สามารถดึงตำแหน่งปัจจุบันได้ โปรดเปิดสิทธิ์ Location บนเบราว์เซอร์");
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
   };
 
   if (loading) {
@@ -254,24 +324,28 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
         </div>
 
         <div className="flex flex-col gap-2 w-full md:w-auto">
-          {/* 🌏 Filter Tabs (by region) */}
-          <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none w-full md:w-auto">
+          {/* 🌏 Filter Tabs (by region & Near Me) */}
+          <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none w-full md:w-auto items-center">
+            {/* Near Me Locator Button */}
+            <button
+              onClick={handleNearMeClick}
+              disabled={nearMeLoading}
+              className="px-3.5 py-1.5 rounded-full text-[10px] font-black shrink-0 border transition-all duration-150 flex items-center gap-1.5 shadow-xs disabled:opacity-50 bg-white hover:bg-stone-50 text-[#2563EB]"
+              style={{ borderColor: C.line }}
+            >
+              {nearMeLoading ? (
+                <Loader2 size={12} className="animate-spin text-[#2563EB]" />
+              ) : (
+                <Navigation size={12} className="text-[#2563EB]" />
+              )}
+              <span>📍 Near Me / ใกล้ฉัน</span>
+            </button>
+
             {REGION_FILTERS.map((r) => (
               <button
                 key={r.id}
                 onClick={() => {
                   setRegionFilter(r.id);
-                  const q = searchQuery.trim().toLowerCase();
-                  const firstInFilter = shops.find((s) => {
-                    const matchesRegion = r.id === "All" || s.region === r.id;
-                    const matchesCategory = pinTypeFilter === "All" || s.pin_type === pinTypeFilter;
-                    const matchesSearch =
-                      q === "" ||
-                      s.shop_name.toLowerCase().includes(q) ||
-                      (s.prefecture && s.prefecture.toLowerCase().includes(q));
-                    return matchesRegion && matchesCategory && matchesSearch;
-                  });
-                  setSelectedShop(firstInFilter || null);
                 }}
                 className="px-3.5 py-1.5 rounded-full text-[10px] font-black shrink-0 border transition-all duration-150"
                 style={
@@ -290,20 +364,7 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
             {PIN_TYPE_FILTERS.map((f) => (
               <button
                 key={f.id}
-                onClick={() => {
-                  setPinTypeFilter(f.id);
-                  const q = searchQuery.trim().toLowerCase();
-                  const firstInFilter = shops.find((s) => {
-                    const matchesRegion = regionFilter === "All" || s.region === regionFilter;
-                    const matchesCategory = f.id === "All" || s.pin_type === f.id;
-                    const matchesSearch =
-                      q === "" ||
-                      s.shop_name.toLowerCase().includes(q) ||
-                      (s.prefecture && s.prefecture.toLowerCase().includes(q));
-                    return matchesRegion && matchesCategory && matchesSearch;
-                  });
-                  setSelectedShop(firstInFilter || null);
-                }}
+                onClick={() => setPinTypeFilter(f.id)}
                 className="px-3.5 py-1.5 rounded-full text-[10px] font-black shrink-0 border transition-all duration-150"
                 style={
                   pinTypeFilter === f.id
@@ -326,14 +387,34 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
 
           <PureMapContainer innerRef={mapContainerRef} />
 
+          {/* Top Right Floating Controls */}
           <button
+            type="button"
             onClick={handleNearMeClick}
-            className="absolute top-4 right-4 z-[1000] flex items-center gap-1.5 bg-white px-3 py-2 rounded-full shadow-md hover:bg-stone-50 transition border"
-            style={{ borderColor: C.line, color: C.accent }}
+            disabled={nearMeLoading || locatingUser}
+            className="absolute top-3 right-3 z-[1000] bg-white/90 hover:bg-white text-gray-800 text-xs font-semibold px-3 py-1.5 rounded-full shadow-md flex items-center gap-1.5 cursor-pointer backdrop-blur-sm transition-all border border-gray-200 disabled:opacity-60"
           >
-            <Navigation size={14} />
-            <span className="text-[10px] font-black">{t("place.nearMe")}</span>
+            {nearMeLoading || locatingUser ? (
+              <Loader2 size={13} className="animate-spin text-[#2563EB]" />
+            ) : (
+              <Crosshair size={13} className="text-[#2563EB]" />
+            )}
+            <span>📍 Near Me</span>
           </button>
+
+          {/* Active Near Me Radius Badge */}
+          {isNearMeActive && (
+            <div className="absolute bottom-4 left-4 z-[1000] bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-full border shadow-md flex items-center gap-2 text-[10px] font-black text-blue-700" style={{ borderColor: C.line }}>
+              <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
+              <span>Showing shops within 50km radius</span>
+              <button
+                onClick={() => setIsNearMeActive(false)}
+                className="ml-1 text-[9px] text-[#8A7870] hover:text-[#231C18] underline font-bold"
+              >
+                Clear
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Details side pane */}
@@ -351,9 +432,18 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
                   <div className="leading-tight">
                     <span className="text-[9px] font-black uppercase tracking-wider block" style={{ color: C.accent }}>{selectedShop.prefecture}</span>
                     <h3 className="text-sm font-black mt-1 leading-snug" style={{ color: C.ink }}>{selectedName}</h3>
-                    <p className="text-[10px] text-[#8A7870] font-black mt-1 bg-[#FAF6F0] px-2 py-0.5 rounded-md border border-[#EFE5DD]/40 inline-block">
-                      {t("card.est")} {selectedShop.founded}
-                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="text-[10px] text-[#8A7870] font-black bg-[#FAF6F0] px-2 py-0.5 rounded-md border border-[#EFE5DD]/40 inline-block">
+                        {t("card.est")} {selectedShop.founded}
+                      </p>
+
+                      {/* Display distance if userCoords available */}
+                      {selectedShop.distanceKm !== undefined && selectedShop.distanceKm !== null && (
+                        <p className="text-[10px] text-blue-700 font-black bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100 inline-block">
+                          📍 {selectedShop.distanceKm.toFixed(1)} km away
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="pt-3.5 border-t space-y-2" style={{ borderColor: C.line }}>
@@ -404,12 +494,20 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
         ) : (
           <div className="w-full h-full">
             <div
-              className="bg-white rounded-3xl p-6 border text-center h-[340px] md:h-[420px] flex flex-col items-center justify-center"
+              className="bg-white rounded-3xl p-6 border text-center h-[340px] md:h-[420px] flex flex-col items-center justify-center space-y-2"
               style={{ borderColor: C.line }}
             >
               <p className="text-xs font-bold text-[#8A7870]">
-                {t("map.noMatch")}
+                {isNearMeActive ? "No shops found within 50km of your location." : t("map.noMatch")}
               </p>
+              {isNearMeActive && (
+                <button
+                  onClick={() => setIsNearMeActive(false)}
+                  className="px-3 py-1.5 rounded-xl bg-stone-100 text-xs font-bold text-[#231C18] hover:bg-stone-200 transition"
+                >
+                  Show All Shops
+                </button>
+              )}
             </div>
           </div>
         )}
