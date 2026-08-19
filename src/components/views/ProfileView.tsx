@@ -55,11 +55,7 @@ const BADGE_CATALOG: Record<
 
 const ALL_BADGE_KEYS = ["tokyo_explorer", "quality_reviewer", "secret_badge"];
 
-interface ProfileViewProps {
-  onOpenAdminDashboard?: () => void;
-}
-
-export default function ProfileView({ onOpenAdminDashboard }: ProfileViewProps) {
+export default function ProfileView() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const { role, isAdmin } = useUserRole();
   const { t } = useLang();
@@ -414,18 +410,6 @@ export default function ProfileView({ onOpenAdminDashboard }: ProfileViewProps) 
           </div>
         </div>
 
-        {/* Admin Dashboard Entry Button (If Admin) */}
-        {isAdmin && onOpenAdminDashboard && (
-          <div className="shrink-0 border-t md:border-t-0 pt-4 md:pt-0">
-            <button
-              onClick={onOpenAdminDashboard}
-              className="w-full md:w-auto px-4 py-2.5 rounded-2xl text-xs font-black text-white bg-[#231C18] hover:bg-stone-800 transition flex items-center justify-center gap-2 cursor-pointer shadow-xs"
-            >
-              <LayoutDashboard size={15} className="text-[#E7A93C]" />
-              <span>Admin Dashboard</span>
-            </button>
-          </div>
-        )}
 
         {/* Live Statistics Row — Stamps / Reviews / Badges */}
         <div className="grid grid-cols-3 gap-6 md:gap-10 border-t md:border-t-0 md:border-l pt-4 md:pt-0 md:pl-10 select-none" style={{ borderColor: C.line }}>

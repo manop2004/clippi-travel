@@ -12,7 +12,6 @@ import AdminReviewView from "./components/views/AdminReviewView";
 import UserManagementPage from "./components/views/UserManagementPage";
 import ManageShopsPage from "./components/views/ManageShopsPage";
 import AuthView from "./components/views/AuthView";
-import AdminDashboardView from "./components/views/AdminDashboardView";
 import { PlaceDetailModal, AddPlaceModal } from "./components/Modals";
 import { ReviewStampProvider } from "./context/ReviewStampContext";
 import PasswordGate from "./components/PasswordGate";
@@ -32,14 +31,9 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [showAllTrending, setShowAllTrending] = useState(false);
-  const [showAdminDashboard, setShowAdminDashboard] = useState(false);
 
   const { t } = useLang();
   const { role, isAdmin, isStoreOwner } = useUserRole();
-
-  useEffect(() => {
-    if (tab !== "profile") setShowAdminDashboard(false);
-  }, [tab]);
 
   useEffect(() => {
     if (tab !== "explore") setShowAllTrending(false);
@@ -278,15 +272,7 @@ export default function App() {
               )}
               {tab === "map" && <MapView openPlace={(p: any) => setSelectedPlace(p)} searchQuery={searchQuery} />}
               {tab === "collection" && <CollectionView searchQuery={searchQuery} openPlace={(p: any) => setSelectedPlace(p)} />}
-              {tab === "profile" && (
-                showAdminDashboard ? (
-                  <AdminDashboardView onBack={() => setShowAdminDashboard(false)} />
-                ) : (
-                  <ProfileView
-                    onOpenAdminDashboard={() => setShowAdminDashboard(true)}
-                  />
-                )
-              )}
+              {tab === "profile" && <ProfileView />}
               {(tab === "admin" || tab === "admin_review") && (
                 <ProtectedRoute allowedRoles={["admin"]} onGoHome={() => setTab("explore")}>
                   <AdminReviewView />
