@@ -625,6 +625,19 @@ interface AddPlaceModalProps {
   onSubmissionUpdated?: () => void;
 }
 
+// Haversine Distance Calculator helper function in meters
+const getDistanceInMeters = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const R = 6371e3; // Earth's radius in meters
+  const rad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = rad(lat2 - lat1);
+  const dLon = rad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c; // Returns distance in meters
+};
+
 const PIN_TYPES = [
   { id: "food", labelKey: "cat.restaurantCafe", emoji: "🍜" },
   { id: "shop", labelKey: "cat.serviceShop", emoji: "🎁" },
@@ -632,22 +645,35 @@ const PIN_TYPES = [
 
 function LocationPickerMap({
   coords,
+  userLocation,
   onSelectCoords,
 }: {
   coords: { lat: number; lng: number } | null;
+  userLocation: { lat: number; lng: number } | null;
   onSelectCoords: (c: { lat: number; lng: number }) => void;
 }) {
   const mapContainerRef = React.useRef<HTMLDivElement>(null);
   const mapRef = React.useRef<L.Map | null>(null);
   const storeMarkerRef = React.useRef<L.Marker | null>(null);
   const userLocationMarkerRef = React.useRef<L.Marker | null>(null);
+  const userCircleRef = React.useRef<L.Circle | null>(null);
+  const userLocationRef = React.useRef<{ lat: number; lng: number } | null>(userLocation);
+  const coordsRef = React.useRef<{ lat: number; lng: number } | null>(coords);
   const [isLocating, setIsLocating] = useState(false);
+
+  useEffect(() => {
+    userLocationRef.current = userLocation;
+  }, [userLocation]);
+
+  useEffect(() => {
+    coordsRef.current = coords;
+  }, [coords]);
 
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
-    const initialLat = coords?.lat || 35.6762;
-    const initialLng = coords?.lng || 139.6503;
+    const initialLat = coords?.lat || userLocation?.lat || 35.6762;
+    const initialLng = coords?.lng || userLocation?.lng || 139.6503;
 
     const container = mapContainerRef.current as any;
     if (container._leaflet_id) {
@@ -656,7 +682,7 @@ function LocationPickerMap({
 
     const map = L.map(mapContainerRef.current, {
       center: [initialLat, initialLng],
-      zoom: coords ? 16 : 7,
+      zoom: coords || userLocation ? 16 : 7,
       zoomControl: true,
     });
 
@@ -674,15 +700,37 @@ function LocationPickerMap({
     if (coords) {
       const marker = L.marker([coords.lat, coords.lng], { icon: storeIcon, draggable: true }).addTo(map);
       marker.on("dragend", (e: any) => {
-        const latlng = e.target.getLatLng();
-        onSelectCoords({ lat: latlng.lat, lng: latlng.lng });
+        const dragLatLng = e.target.getLatLng();
+        if (userLocationRef.current) {
+          const dist = getDistanceInMeters(userLocationRef.current.lat, userLocationRef.current.lng, dragLatLng.lat, dragLatLng.lng);
+          if (dist > 500) {
+            alert(`คุณสามารถเลือกตำแหน่งได้เฉพาะในระยะไม่เกิน 500 เมตรรอบตัวคุณเท่านั้น (ระยะปัจจุบัน: ${Math.round(dist)} เมตร)`);
+            if (coordsRef.current) {
+              marker.setLatLng([coordsRef.current.lat, coordsRef.current.lng]);
+            } else if (userLocationRef.current) {
+              marker.setLatLng([userLocationRef.current.lat, userLocationRef.current.lng]);
+              onSelectCoords({ lat: userLocationRef.current.lat, lng: userLocationRef.current.lng });
+            }
+            return;
+          }
+        }
+        onSelectCoords({ lat: dragLatLng.lat, lng: dragLatLng.lng });
       });
       storeMarkerRef.current = marker;
     }
 
-    // Manual map click: update red store pin & form state
+    // Manual map click: update red store pin & form state with 500m radius validation
     map.on("click", (e: L.LeafletMouseEvent) => {
       const { lat, lng } = e.latlng;
+
+      if (userLocationRef.current) {
+        const dist = getDistanceInMeters(userLocationRef.current.lat, userLocationRef.current.lng, lat, lng);
+        if (dist > 500) {
+          alert(`คุณสามารถเลือกตำแหน่งได้เฉพาะในระยะไม่เกิน 500 เมตรรอบตัวคุณเท่านั้น (ระยะปัจจุบัน: ${Math.round(dist)} เมตร)`);
+          return;
+        }
+      }
+
       onSelectCoords({ lat, lng });
 
       if (storeMarkerRef.current) {
@@ -691,6 +739,16 @@ function LocationPickerMap({
         const marker = L.marker([lat, lng], { icon: storeIcon, draggable: true }).addTo(map);
         marker.on("dragend", (event: any) => {
           const dragLatLng = event.target.getLatLng();
+          if (userLocationRef.current) {
+            const dragDist = getDistanceInMeters(userLocationRef.current.lat, userLocationRef.current.lng, dragLatLng.lat, dragLatLng.lng);
+            if (dragDist > 500) {
+              alert(`คุณสามารถเลือกตำแหน่งได้เฉพาะในระยะไม่เกิน 500 เมตรรอบตัวคุณเท่านั้น (ระยะปัจจุบัน: ${Math.round(dragDist)} เมตร)`);
+              if (coordsRef.current) {
+                marker.setLatLng([coordsRef.current.lat, coordsRef.current.lng]);
+              }
+              return;
+            }
+          }
           onSelectCoords({ lat: dragLatLng.lat, lng: dragLatLng.lng });
         });
         storeMarkerRef.current = marker;
@@ -710,7 +768,30 @@ function LocationPickerMap({
     };
   }, []);
 
-  // Update red store pin when coords prop changes (e.g. from bottom button or manual click)
+  // Render Visual 500m Radius Circle around user's GPS location
+  useEffect(() => {
+    if (!mapRef.current || !userLocation) return;
+    const map = mapRef.current;
+
+    const circleStyle = {
+      color: "#ef4444",
+      fillColor: "#ef4444",
+      fillOpacity: 0.12,
+      weight: 2,
+    };
+
+    if (userCircleRef.current) {
+      userCircleRef.current.setLatLng([userLocation.lat, userLocation.lng]);
+    } else {
+      const circle = L.circle([userLocation.lat, userLocation.lng], {
+        radius: 500,
+        ...circleStyle,
+      }).addTo(map);
+      userCircleRef.current = circle;
+    }
+  }, [userLocation?.lat, userLocation?.lng]);
+
+  // Update red store pin when coords prop changes
   useEffect(() => {
     if (!mapRef.current || !coords) return;
     const map = mapRef.current;
@@ -729,13 +810,23 @@ function LocationPickerMap({
       const marker = L.marker([coords.lat, coords.lng], { icon: storeIcon, draggable: true }).addTo(map);
       marker.on("dragend", (event: any) => {
         const dragLatLng = event.target.getLatLng();
+        if (userLocationRef.current) {
+          const dragDist = getDistanceInMeters(userLocationRef.current.lat, userLocationRef.current.lng, dragLatLng.lat, dragLatLng.lng);
+          if (dragDist > 500) {
+            alert(`คุณสามารถเลือกตำแหน่งได้เฉพาะในระยะไม่เกิน 500 เมตรรอบตัวคุณเท่านั้น (ระยะปัจจุบัน: ${Math.round(dragDist)} เมตร)`);
+            if (coordsRef.current) {
+              marker.setLatLng([coordsRef.current.lat, coordsRef.current.lng]);
+            }
+            return;
+          }
+        }
         onSelectCoords({ lat: dragLatLng.lat, lng: dragLatLng.lng });
       });
       storeMarkerRef.current = marker;
     }
   }, [coords?.lat, coords?.lng]);
 
-  // Floating "Near Me" button: Shows blue dot ONLY and pans map to user without mutating form coords or red store pin
+  // Floating "Near Me" button
   const handleNearMeClick = () => {
     if (!navigator.geolocation) {
       alert("ไม่สามารถดึงตำแหน่งปัจจุบันได้ โปรดเปิดสิทธิ์ Location บนเบราว์เซอร์");
@@ -748,10 +839,8 @@ function LocationPickerMap({
         const { latitude, longitude } = position.coords;
 
         if (mapRef.current) {
-          // 1. Center/pan map view to user's position
           mapRef.current.flyTo([latitude, longitude], 16, { animate: true, duration: 1.2 });
 
-          // 2. Render blue dot user marker with popup "ตำแหน่งปัจจุบันของคุณ"
           const blueUserIcon = L.divIcon({
             className: "custom-user-dot",
             html: `<div style="position:relative;width:20px;height:20px;display:flex;align-items:center;justify-content:center;">
@@ -774,7 +863,6 @@ function LocationPickerMap({
           }
         }
 
-        // CRITICAL: Do NOT call onSelectCoords! Leave store coordinates/pin untouched.
         setIsLocating(false);
       },
       (error) => {
@@ -808,6 +896,7 @@ function LocationPickerMap({
 }
 
 export function AddPlaceModal({ isOpen, onClose, editSubmission, onSubmissionUpdated }: AddPlaceModalProps) {
+  const { role, isAdmin } = useUserRole();
   const [cat, setCat] = useState("food");
   const [name, setName] = useState("");
   const [japaneseName, setJapaneseName] = useState("");
@@ -816,6 +905,7 @@ export function AddPlaceModal({ isOpen, onClose, editSubmission, onSubmissionUpd
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locating, setLocating] = useState(false);
   const [locationError, setLocationError] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -823,6 +913,28 @@ export function AddPlaceModal({ isOpen, onClose, editSubmission, onSubmissionUpd
   const [uploading, setUploading] = useState(false);
   const [imageError, setImageError] = useState("");
   const { t } = useLang();
+
+  // Fetch current user GPS location when modal opens
+  useEffect(() => {
+    if (isOpen && "geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const uLoc = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+          setUserLocation(uLoc);
+          if (!editSubmission && !coords) {
+            setCoords(uLoc);
+          }
+        },
+        (error) => {
+          console.warn("Could not retrieve GPS location:", error);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    }
+  }, [isOpen]);
 
   // Populate form fields when editSubmission prop is passed
   useEffect(() => {
@@ -874,10 +986,12 @@ export function AddPlaceModal({ isOpen, onClose, editSubmission, onSubmissionUpd
     setLocationError("");
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setCoords({
+        const uLoc = {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
-        });
+        };
+        setUserLocation(uLoc);
+        setCoords(uLoc);
         setLocating(false);
       },
       (error) => {
@@ -887,7 +1001,8 @@ export function AddPlaceModal({ isOpen, onClose, editSubmission, onSubmissionUpd
             : t("add.locFail")
         );
         setLocating(false);
-      }
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   };
 
@@ -951,6 +1066,24 @@ export function AddPlaceModal({ isOpen, onClose, editSubmission, onSubmissionUpd
 
     if (previewUrls.length === 0 && selectedFiles.length === 0) {
       setImageError("Please add at least one photo of the location.");
+      return;
+    }
+
+    if (!coords) {
+      setLocationError("กรุณาเลือกตำแหน่งบนแผนที่");
+      return;
+    }
+
+    if (!userLocation) {
+      setLocationError("ไม่สามารถยืนยันตำแหน่ง GPS ของคุณได้ กรุณาเปิดใช้งานตำแหน่งที่ตั้ง (GPS)");
+      alert("ไม่สามารถยืนยันตำแหน่ง GPS ของคุณได้ กรุณาเปิดใช้งานตำแหน่งที่ตั้ง (GPS)");
+      return;
+    }
+
+    const distFromUser = getDistanceInMeters(userLocation.lat, userLocation.lng, coords.lat, coords.lng);
+    if (distFromUser > 500) {
+      alert(`คุณสามารถเลือกตำแหน่งได้เฉพาะในระยะไม่เกิน 500 เมตรรอบตัวคุณเท่านั้น (ระยะปัจจุบัน: ${Math.round(distFromUser)} เมตร)`);
+      setLocationError(`ตำแหน่งที่เลือกอยู่นอกรัศมี 500 เมตร (${Math.round(distFromUser)} m)`);
       return;
     }
 
@@ -1045,9 +1178,50 @@ export function AddPlaceModal({ isOpen, onClose, editSubmission, onSubmissionUpd
         alert("ส่งข้อมูลที่แก้ไขให้แอดมินเรียบร้อยแล้ว! (Updated submission sent to admin successfully!)");
         if (onSubmissionUpdated) onSubmissionUpdated();
         handleClose();
+      } else if (isAdmin) {
+        // ADMIN DIRECT INSERT INTO century_shops WITHOUT APPROVAL
+        const cleanShopPayload: Record<string, any> = {
+          shop_name: name,
+          shop_name_jp: japaneseName || null,
+          category: cat || "food",
+          address: street || null,
+          description: description || null,
+          lat: coords?.lat ?? null,
+          lng: coords?.lng ?? null,
+          image_url: finalImageUrls[0] || null,
+        };
+
+        if (website) {
+          cleanShopPayload.website = website;
+        }
+
+        const executeAdminShopInsert = async (p: Record<string, any>): Promise<void> => {
+          const { error: err } = await supabase
+            .from("century_shops")
+            .insert([p]);
+
+          if (err) {
+            console.warn("Insert error into century_shops:", err.message);
+            const msg = err.message || "";
+            if (msg.includes("website")) delete p.website;
+            if (msg.includes("shop_name_jp")) delete p.shop_name_jp;
+
+            const { error: retryErr } = await supabase
+              .from("century_shops")
+              .insert([p]);
+
+            if (retryErr) throw retryErr;
+          }
+        };
+
+        await executeAdminShopInsert(cleanShopPayload);
+
+        alert("เพิ่มร้านค้าใหม่เข้าสู่ระบบเรียบร้อยแล้ว");
+        if (onSubmissionUpdated) onSubmissionUpdated();
+        handleClose();
       } else {
-        // CREATE new place_submission
-        await createPlaceSubmission({
+        // CREATE new place_submission for regular users
+        const submission = await createPlaceSubmission({
           name_en: name,
           name_jp: japaneseName || undefined,
           category: cat,
@@ -1058,6 +1232,36 @@ export function AddPlaceModal({ isOpen, onClose, editSubmission, onSubmissionUpd
           lng: coords?.lng,
           image_urls: finalImageUrls,
         });
+
+        // Isolated non-blocking secondary admin notification insert with actor_id & shop_name safeguards
+        try {
+          const shopNameText = name || japaneseName || "ร้านค้าใหม่";
+          const notifPayload: Record<string, any> = {
+            title: "มีการส่งร้านค้าใหม่",
+            message: `มีสถานที่ใหม่ส่งเข้ามาตรวจสอบ: ${shopNameText}`,
+            shop_name: shopNameText,
+            actor_id: user?.id || null,
+            type: "place_submission",
+          };
+          if (submission?.id) {
+            notifPayload.submission_id = submission.id;
+          }
+
+          const { error: notifErr } = await supabase
+            .from("admin_notifications")
+            .insert([notifPayload]);
+
+          if (notifErr) {
+            console.warn("Secondary admin notification insert error:", notifErr.message);
+            const msg = notifErr.message || "";
+            if (msg.includes("submission_id") || notifErr.code === "PGRST204") {
+              delete notifPayload.submission_id;
+              await supabase.from("admin_notifications").insert([notifPayload]);
+            }
+          }
+        } catch (notifErr) {
+          console.warn("Notification failed silently:", notifErr);
+        }
 
         alert(t("add.thankYou"));
         handleClose();
@@ -1082,7 +1286,7 @@ export function AddPlaceModal({ isOpen, onClose, editSubmission, onSubmissionUpd
           style={{ borderColor: C.line }}
         >
           <h3 className="text-lg font-bold text-gray-900">
-            {editSubmission ? "แก้ไขข้อมูลและส่งตรวจใหม่ (Edit & Resubmit Spot)" : t("action.submitSpot")}
+            {editSubmission ? "แก้ไขข้อมูลและส่งตรวจใหม่ (Edit & Resubmit Spot)" : isAdmin ? "เพิ่มร้านค้าใหม่เข้าสู่ระบบ (Add Shop to System)" : t("action.submitSpot")}
           </h3>
           <button
             type="button"
@@ -1232,7 +1436,7 @@ export function AddPlaceModal({ isOpen, onClose, editSubmission, onSubmissionUpd
               )}
             </div>
 
-            <LocationPickerMap coords={coords} onSelectCoords={(c) => setCoords(c)} />
+            <LocationPickerMap coords={coords} userLocation={userLocation} onSelectCoords={(c) => setCoords(c)} />
 
             <button
               type="button"
@@ -1274,7 +1478,9 @@ export function AddPlaceModal({ isOpen, onClose, editSubmission, onSubmissionUpd
               ? t("common.submitting")
               : editSubmission
               ? "บันทึกและส่งตรวจใหม่ (Save & Resubmit)"
-              : t("add.submitVerify")}
+              : isAdmin
+              ? "เพิ่มเข้าสู่ระบบทันที"
+              : "ส่งเพื่อตรวจสอบ"}
           </button>
         </form>
       </div>
