@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Compass, MapPin, BookOpen, User, Plus, Search, Bell, X, ShieldCheck, Store, Users } from "lucide-react";
+import { Compass, MapPin, BookOpen, User, Plus, Search, X, ShieldCheck, Store, Users, ScrollText } from "lucide-react";
 import { C } from "./constants/mockData";
 import { supabase } from "./supabaseClient";
 import { Session } from "@supabase/supabase-js";
@@ -21,6 +21,8 @@ import Sidebar from "./components/Sidebar";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { EditShopModal } from "./components/EditShopModal";
 import { BannedGuard } from "./components/auth/BannedGuard";
+import AdminLogPage from "./components/views/AdminLogPage";
+import NotificationBell from "./components/NotificationBell";
 
 export default function App() {
   const [tab, setTab] = useState("explore");
@@ -43,7 +45,9 @@ export default function App() {
   // Support direct route paths (e.g. /admin/review or #admin/review)
   useEffect(() => {
     const path = (window.location.pathname + window.location.hash).toLowerCase();
-    if (path.includes("admin") || path.includes("review")) {
+    if (path.includes("log")) {
+      setTab("admin_log");
+    } else if (path.includes("admin") || path.includes("review")) {
       setTab("admin");
     } else if (path.includes("users")) {
       setTab("users_manage");
@@ -61,6 +65,7 @@ export default function App() {
     { id: "store_manage", label: "Manage My Shop", icon: Store, roles: ["store", "admin"] },
     { id: "admin", label: "Admin Review", icon: ShieldCheck, roles: ["admin"] },
     { id: "users_manage", label: "User Management", icon: Users, roles: ["admin"] },
+    { id: "admin_log", label: "Activity Log", icon: ScrollText, roles: ["admin"] },
   ];
 
   const navTabs = allNavTabs.filter((item) => item.roles.includes(role));
@@ -276,11 +281,8 @@ export default function App() {
                   <LangSwitcher />
                 </span>
 
-                {/* Bell Alert */}
-                <button className={`w-9 h-9 rounded-xl border items-center justify-center relative bg-white hover:bg-stone-50 transition shrink-0 ${showMobileSearch ? "hidden sm:flex" : "flex"}`} style={{ borderColor: C.line }}>
-                  <Bell size={16} color={C.ink} />
-                  <span className="w-1.5 h-1.5 rounded-full absolute top-2 right-2" style={{ background: C.accent }} />
-                </button>
+                {/* Bell Alert (admin-only notifications) */}
+                <NotificationBell hideOnMobileSearch={showMobileSearch} />
               </div>
             </header>
 
@@ -316,6 +318,11 @@ export default function App() {
                 />
               )}
               {tab === "users_manage" && <UserManagementPage />}
+              {tab === "admin_log" && (
+                <ProtectedRoute allowedRoles={["admin"]} onGoHome={() => setTab("explore")}>
+                  <AdminLogPage />
+                </ProtectedRoute>
+              )}
             </main>
           </div>
 
