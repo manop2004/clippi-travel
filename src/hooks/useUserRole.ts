@@ -9,6 +9,8 @@ export interface UserRoleState {
   isAdmin: boolean;
   isStoreOwner: boolean;
   isUser: boolean;
+  isBanned: boolean;
+  banReason: string | null;
   loading: boolean;
   error: string | null;
   refreshRole: () => Promise<void>;
@@ -17,6 +19,8 @@ export interface UserRoleState {
 export function useUserRole(): UserRoleState {
   const [user, setUser] = useState<any | null>(null);
   const [role, setRole] = useState<UserRole>("user");
+  const [isBanned, setIsBanned] = useState<boolean>(false);
+  const [banReason, setBanReason] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,13 +34,34 @@ export function useUserRole(): UserRoleState {
       if (!session?.user) {
         setUser(null);
         setRole("user");
+        setIsBanned(false);
+        setBanReason(null);
         setLoading(false);
         return;
       }
 
       setUser(session.user);
 
-      // 1. Check user_roles table
+      // Direct, standard async query to fetch profiles data (role, is_banned, ban_reason)
+      const { data: profileData, error: profileErr } = await supabase
+        .from("profiles")
+        .select("role, is_banned, ban_reason")
+        .eq("id", session.user.id)
+        .maybeSingle();
+
+      if (profileErr) {
+        console.error("Error fetching profile:", profileErr);
+      }
+
+      if (profileData) {
+        setIsBanned(Boolean(profileData.is_banned));
+        setBanReason(profileData.ban_reason || "ละเมิดเงื่อนไขการใช้งานระบบ");
+      } else {
+        setIsBanned(false);
+        setBanReason(null);
+      }
+
+      // Check user_roles table for role override
       const { data: roleData } = await supabase
         .from("user_roles")
         .select("role")
@@ -45,24 +70,15 @@ export function useUserRole(): UserRoleState {
 
       if (roleData?.role) {
         setRole(roleData.role as UserRole);
+      } else if (profileData?.role) {
+        setRole(profileData.role as UserRole);
+      } else if (session.user.user_metadata?.role) {
+        setRole(session.user.user_metadata.role as UserRole);
       } else {
-        // 2. Fallback check: profiles table or user_metadata
-        const { data: profileData } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", session.user.id)
-          .maybeSingle();
-
-        if (profileData?.role) {
-          setRole(profileData.role as UserRole);
-        } else if (session.user.user_metadata?.role) {
-          setRole(session.user.user_metadata.role as UserRole);
-        } else {
-          setRole("user");
-        }
+        setRole("user");
       }
     } catch (err: any) {
-      console.error("Error in useUserRole:", err);
+      console.error("Unexpected profile fetch error:", err);
       setError(err.message || "Failed to load user role.");
       setRole("user");
     } finally {
@@ -71,13 +87,20 @@ export function useUserRole(): UserRoleState {
   };
 
   useEffect(() => {
+    let isMounted = true;
+
     fetchUserRole();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      fetchUserRole();
+      if (isMounted) {
+        fetchUserRole();
+      }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   return {
@@ -86,6 +109,8 @@ export function useUserRole(): UserRoleState {
     isAdmin: role === "admin",
     isStoreOwner: role === "store" || role === "admin",
     isUser: role === "user",
+    isBanned,
+    banReason,
     loading,
     error,
     refreshRole: fetchUserRole,

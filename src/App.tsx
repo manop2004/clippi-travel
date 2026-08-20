@@ -20,6 +20,7 @@ import { useUserRole, UserRole } from "./hooks/useUserRole";
 import Sidebar from "./components/Sidebar";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { EditShopModal } from "./components/EditShopModal";
+import { BannedGuard } from "./components/auth/BannedGuard";
 
 export default function App() {
   const [tab, setTab] = useState("explore");
@@ -33,7 +34,7 @@ export default function App() {
   const [showAllTrending, setShowAllTrending] = useState(false);
 
   const { t } = useLang();
-  const { role, isAdmin, isStoreOwner } = useUserRole();
+  const { role, isAdmin, isStoreOwner, isBanned, banReason } = useUserRole();
 
   useEffect(() => {
     if (tab !== "explore") setShowAllTrending(false);
@@ -132,6 +133,36 @@ export default function App() {
           Verifying session...
         </div>
       </PasswordGate>
+    );
+  }
+
+  // ROOT-LEVEL BANNED INTERCEPTOR FOR BANNED USERS
+  if (session && isBanned) {
+    return (
+      <div className="fixed inset-0 z-[99999] bg-slate-900 flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center shadow-2xl border border-red-100 animate-fade-in">
+          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-5 text-4xl">
+            🛑
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">บัญชีของคุณถูกระงับการใช้งาน</h2>
+          <p className="text-gray-500 text-sm mb-6">คุณไม่สามารถเข้าถึงส่วนใดๆ ของระบบได้เนื่องจากบัญชีถูกแบน</p>
+
+          <div className="bg-red-50 text-red-700 p-4 rounded-2xl border border-red-200 text-left mb-6">
+            <p className="text-xs font-bold uppercase text-red-500 mb-1">สาเหตุการแบน:</p>
+            <p className="text-sm font-semibold">{banReason || 'ละเมิดเงื่อนไขการใช้งานระบบ'}</p>
+          </div>
+
+          <button
+            onClick={async () => {
+              await supabase.auth.signOut();
+              window.location.href = '/';
+            }}
+            className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 px-4 rounded-xl transition shadow-lg shadow-red-200 cursor-pointer"
+          >
+            ออกจากระบบ (Logout)
+          </button>
+        </div>
+      </div>
     );
   }
 

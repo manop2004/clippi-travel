@@ -188,6 +188,8 @@ export async function createPlaceSubmission(input: CreatePlaceSubmissionInput): 
     throw new Error("User not authenticated");
   }
 
+  let createdRecord: any = null;
+
   const payload: Record<string, any> = {
     user_id: user.id,
     name_en: input.name_en,
@@ -243,13 +245,50 @@ export async function createPlaceSubmission(input: CreatePlaceSubmissionInput): 
           .maybeSingle();
 
         if (finalError) throw finalError;
-        return finalData;
+        createdRecord = finalData;
+      } else {
+        createdRecord = retryData;
       }
-      return retryData;
+    } else {
+      console.error("Error creating place submission:", error);
+      throw error;
+    }
+  } else {
+    createdRecord = data;
+  }
+
+  // Non-blocking secondary admin notification insert
+  try {
+    const submissionId = createdRecord?.id;
+    const shopNameText = input.name_en || input.name_jp || "ร้านค้าใหม่";
+
+    const notifPayload: Record<string, any> = {
+      title: "มีการส่งร้านค้าใหม่",
+      message: `มีสถานที่ใหม่ส่งเข้ามาตรวจสอบ: ${shopNameText}`,
+      shop_name: shopNameText,
+      actor_id: user?.id || null,
+      type: "place_submission",
+    };
+    if (submissionId) {
+      notifPayload.submission_id = submissionId;
     }
 
-    console.error("Error creating place submission:", error);
-    throw error;
+    const { error: notifErr } = await supabase
+      .from("admin_notifications")
+      .insert([notifPayload]);
+
+    if (notifErr) {
+      const msg = notifErr.message || "";
+      if (msg.includes("submission_id") || notifErr.code === "PGRST204") {
+        delete notifPayload.submission_id;
+        await supabase
+          .from("admin_notifications")
+          .insert([notifPayload]);
+      }
+    }
+  } catch (notifErr) {
+    console.warn("Secondary admin notification failed silently:", notifErr);
   }
-  return data;
+
+  return createdRecord;
 }
