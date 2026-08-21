@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { C } from "../constants/mockData";
 import { supabase } from "../supabaseClient";
 import { timeAgo } from "../lib/activityHelpers";
@@ -11,7 +11,17 @@ interface NewStampsProps {
 export default function NewStamps({ openPlace }: NewStampsProps) {
   const [shops, setShops] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const { t, lang } = useLang();
+
+  const handleScroll = () => {
+    if (!scrollRef.current) return;
+    const { scrollLeft, clientWidth } = scrollRef.current;
+    if (clientWidth === 0) return;
+    const page = Math.round(scrollLeft / clientWidth);
+    setActiveIndex(page);
+  };
 
   useEffect(() => {
     async function fetchShops() {
@@ -47,7 +57,7 @@ export default function NewStamps({ openPlace }: NewStampsProps) {
             <div
               key={i}
               className="shrink-0 h-[130px] rounded-2xl bg-white border animate-pulse"
-              style={{ borderColor: C.line, width: "46%" }}
+              style={{ borderColor: C.line, width: "calc(50% - 6px)" }}
             />
           ))}
         </div>
@@ -64,7 +74,11 @@ export default function NewStamps({ openPlace }: NewStampsProps) {
         <p className="text-[11px] font-semibold text-[#8A7870] mt-0.5">{t("newstamps.sub")}</p>
       </div>
 
-      <div className="flex md:grid md:grid-cols-4 gap-3 overflow-x-auto md:overflow-x-visible pb-1 snap-x snap-mandatory scrollbar-none w-full">
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="flex md:grid md:grid-cols-4 gap-3 overflow-x-auto md:overflow-x-visible pb-1 snap-x snap-mandatory scrollbar-none w-full"
+      >
         {shops.map((p: any) => {
           const shopName = localized(p, "shop_name", lang) || p.name || "Unknown Shop";
           return (
@@ -72,7 +86,7 @@ export default function NewStamps({ openPlace }: NewStampsProps) {
               key={p.id}
               onClick={() => handleClick(p)}
               className="shrink-0 md:shrink md:w-full snap-start rounded-2xl bg-white border overflow-hidden cursor-pointer hover:shadow-md transition"
-              style={{ borderColor: C.line, width: "46%" }}
+              style={{ borderColor: C.line, width: "calc(50% - 6px)" }}
             >
               <div className="h-16 relative" style={{ background: C.accentSoft }}>
                 {p.image_url ? (
@@ -91,6 +105,21 @@ export default function NewStamps({ openPlace }: NewStampsProps) {
           );
         })}
       </div>
+
+      {shops.length > 2 && (
+        <div className="flex sm:hidden justify-center gap-1.5 mt-3">
+          {Array.from({ length: Math.ceil(shops.length / 2) }).map((_, i) => (
+            <span
+              key={i}
+              className="h-1.5 rounded-full transition-all duration-200"
+              style={{
+                width: i === activeIndex ? "16px" : "6px",
+                background: i === activeIndex ? C.accent : C.line,
+              }}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
