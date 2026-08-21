@@ -59,22 +59,46 @@ function UserManagementContent() {
   const handleRoleChange = async (userId: string, newRole: UserRole) => {
     setUpdatingId(userId);
     try {
-      // 1. Upsert into user_roles
-      await supabase
-        .from("user_roles")
-        .upsert({ user_id: userId, role: newRole, updated_at: new Date().toISOString() });
-
-      // 2. Update profiles table fallback role column
-      await supabase
+      // 1. Update profiles table (sync role and is_admin boolean)
+      const { error: profileErr } = await supabase
         .from("profiles")
-        .update({ role: newRole })
+        .update({ 
+          role: newRole,
+          is_admin: newRole === "admin"
+        })
         .eq("id", userId);
 
+      if (profileErr) throw profileErr;
+
+      // 2. Upsert into user_roles with correct columns (granted_at instead of updated_at)
+      const { error: roleErr } = await supabase
+        .from("user_roles")
+        .upsert(
+          { 
+            user_id: userId, 
+            role: newRole, 
+            granted_by: currentAdmin?.id || null,
+            granted_at: new Date().toISOString() 
+          },
+          { onConflict: "user_id" }
+        );
+
+      if (roleErr) {
+        console.warn("[UserManagement] user_roles upsert warning:", roleErr.message);
+      }
+
+      // 3. Update React local state immediately
       setUsers((prev) =>
-        prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
+        prev.map((u) => 
+          u.id === userId 
+            ? { ...u, role: newRole, is_admin: newRole === "admin" } 
+            : u
+        )
       );
+
       alert("อัปเดตสิทธิ์ผู้ใช้เรียบร้อยแล้ว!");
     } catch (err: any) {
+      console.error("[UserManagement] Failed to update role:", err);
       alert("ไม่สามารถเปลี่ยนสิทธิ์ได้: " + (err.message || "Failed"));
     } finally {
       setUpdatingId(null);
