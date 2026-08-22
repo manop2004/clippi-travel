@@ -29,6 +29,7 @@ const ACTION_TYPE_LABELS: Record<string, string> = {
   shop_updated: "Updated a shop",
   shop_deleted: "Deleted a shop",
   assign_store_owner: "Assigned a store owner",
+  auto_approve_own_submission: "Admin added shop (self-approved)",
 };
 
 // B4: fixed filter dropdown as specified in the brief.
@@ -39,6 +40,7 @@ const ACTION_TYPE_FILTERS: { value: string; label: string }[] = [
   { value: "shop_updated", label: "Shop Updated" },
   { value: "shop_deleted", label: "Shop Deleted" },
   { value: "assign_store_owner", label: "Store Owner Assigned" },
+  { value: "auto_approve_own_submission", label: "Self-Approved" },
 ];
 
 function formatActionType(actionType: string | null): string {

@@ -1179,6 +1179,7 @@ export function AddPlaceModal({ isOpen, onClose, editSubmission, onSubmissionUpd
         if (onSubmissionUpdated) onSubmissionUpdated();
         handleClose();
       } else if (isAdmin) {
+        // การ submit/เพิ่มร้าน ไม่ทำให้เป็นเจ้าของร้านอัตโนมัติอีกต่อไป ต้องมอบสิทธิ์ผ่านหน้า User Management > มอบสิทธิ์ร้าน เท่านั้น (เปลี่ยนกลับมาตามหลักการเดิม หลังจากเคย auto-assign ชั่วคราวก่อน demo วันที่ผ่านมา)
         // ADMIN DIRECT INSERT INTO century_shops WITHOUT APPROVAL
         const cleanShopPayload: Record<string, any> = {
           shop_name: name,
@@ -1189,16 +1190,19 @@ export function AddPlaceModal({ isOpen, onClose, editSubmission, onSubmissionUpd
           lat: coords?.lat ?? null,
           lng: coords?.lng ?? null,
           image_url: finalImageUrls[0] || null,
+          owner_id: null,
         };
 
         if (website) {
           cleanShopPayload.website = website;
         }
 
-        const executeAdminShopInsert = async (p: Record<string, any>): Promise<void> => {
-          const { error: err } = await supabase
+        const executeAdminShopInsert = async (p: Record<string, any>): Promise<any> => {
+          const { data, error: err } = await supabase
             .from("century_shops")
-            .insert([p]);
+            .insert([p])
+            .select()
+            .single();
 
           if (err) {
             console.warn("Insert error into century_shops:", err.message);
@@ -1206,15 +1210,32 @@ export function AddPlaceModal({ isOpen, onClose, editSubmission, onSubmissionUpd
             if (msg.includes("website")) delete p.website;
             if (msg.includes("shop_name_jp")) delete p.shop_name_jp;
 
-            const { error: retryErr } = await supabase
+            const { data: retryData, error: retryErr } = await supabase
               .from("century_shops")
-              .insert([p]);
+              .insert([p])
+              .select()
+              .single();
 
             if (retryErr) throw retryErr;
+            return retryData;
           }
+          return data;
         };
 
-        await executeAdminShopInsert(cleanShopPayload);
+        const newShop = await executeAdminShopInsert(cleanShopPayload);
+
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        const adminId = currentUser?.id || null;
+
+        if (adminId && newShop) {
+          await supabase.from("admin_action_log").insert({
+            admin_id: adminId,
+            action_type: "auto_approve_own_submission",
+            target_table: "century_shops",
+            target_id: newShop.id,
+            detail: { shop_name: name, note: "Admin self-approved on creation" }
+          });
+        }
 
         alert("เพิ่มร้านค้าใหม่เข้าสู่ระบบเรียบร้อยแล้ว");
         if (onSubmissionUpdated) onSubmissionUpdated();

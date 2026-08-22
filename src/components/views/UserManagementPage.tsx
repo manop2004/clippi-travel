@@ -22,11 +22,70 @@ function UserManagementContent() {
   const [banningId, setBanningId] = useState<string | null>(null);
   const [currentAdmin, setCurrentAdmin] = useState<any>(null);
 
+  // States for Assign Shop Modal
+  const [selectedUserForAssign, setSelectedUserForAssign] = useState<any | null>(null);
+  const [shops, setShops] = useState<any[]>([]);
+  const [loadingShops, setLoadingShops] = useState(false);
+  const [shopSearch, setShopSearch] = useState("");
+  const [selectedShopId, setSelectedShopId] = useState<string>("");
+  const [assigning, setAssigning] = useState(false);
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       setCurrentAdmin(user);
     });
   }, []);
+
+  const loadShops = async () => {
+    setLoadingShops(true);
+    try {
+      const { data, error } = await supabase
+        .from("century_shops")
+        .select("id, shop_name")
+        .order("shop_name", { ascending: true });
+      if (error) throw error;
+      setShops(data || []);
+    } catch (err) {
+      console.error("Error loading shops:", err);
+    } finally {
+      setLoadingShops(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedUserForAssign) {
+      loadShops();
+      setShopSearch("");
+      setSelectedShopId("");
+    }
+  }, [selectedUserForAssign]);
+
+  const handleAssignShopSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUserForAssign || !selectedShopId) return;
+    setAssigning(true);
+    try {
+      const adminId = currentAdmin?.id;
+      if (!adminId) throw new Error("Admin not logged in");
+
+      // 1. Call RPC assign_store_owner
+      const { error: rpcErr } = await supabase.rpc("assign_store_owner", {
+        p_user_id: selectedUserForAssign.id,
+        p_shop_id: Number(selectedShopId),
+        p_admin_id: adminId,
+      });
+
+      if (rpcErr) throw rpcErr;
+
+      alert("มอบสิทธิ์เจ้าของร้านค้าเรียบร้อยแล้ว!");
+      setSelectedUserForAssign(null);
+      fetchUsers(); // Refresh user list
+    } catch (err: any) {
+      alert("เกิดข้อผิดพลาดในการมอบสิทธิ์: " + (err.message || "Failed"));
+    } finally {
+      setAssigning(false);
+    }
+  };
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -339,6 +398,17 @@ function UserManagementContent() {
 
                 {/* Actions: Role Selector & Ban Button */}
                 <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                  {/* Assign Shop Button (only for user / store) */}
+                  {(u.role === "store" || u.role === "user") && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedUserForAssign(u)}
+                      className="px-3 py-1.5 rounded-xl text-xs font-black bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 transition cursor-pointer"
+                    >
+                      มอบสิทธิ์ร้าน
+                    </button>
+                  )}
+
                   <select
                     value={u.role}
                     disabled={updatingId === u.id}
@@ -384,6 +454,101 @@ function UserManagementContent() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Assign Shop Modal */}
+      {selectedUserForAssign && (
+        <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl w-full max-w-md border shadow-2xl overflow-hidden flex flex-col p-6 space-y-4" style={{ borderColor: C.line }}>
+            {/* Header */}
+            <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: C.line }}>
+              <h3 className="text-sm font-black text-[#231C18]">มอบสิทธิ์ดูแลร้านค้า</h3>
+              <button
+                type="button"
+                onClick={() => setSelectedUserForAssign(null)}
+                className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-stone-100 transition cursor-pointer font-bold text-stone-500"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* User Info Detail */}
+            <div className="bg-[#FAF6F0] p-3 rounded-2xl border text-xs space-y-1" style={{ borderColor: C.line }}>
+              <p className="font-bold text-[#8A7870]">ผู้รับสิทธิ์:</p>
+              <p className="font-black text-[#231C18]">
+                {selectedUserForAssign.display_name || selectedUserForAssign.username || selectedUserForAssign.id}
+              </p>
+              <p className="text-[10px] text-[#8A7870] font-semibold uppercase tracking-wider mt-1">
+                บทบาทปัจจุบัน: {selectedUserForAssign.role}
+              </p>
+            </div>
+
+            {/* Shop Selection Form */}
+            <form onSubmit={handleAssignShopSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase text-[#8A7870] block">ค้นหาและเลือกร้านค้า</label>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border bg-[#FAF6F0]" style={{ borderColor: C.line }}>
+                  <Search size={14} className="text-[#8A7870]" />
+                  <input
+                    type="text"
+                    value={shopSearch}
+                    onChange={(e) => setShopSearch(e.target.value)}
+                    placeholder="พิมพ์ชื่อร้านเพื่อค้นหา..."
+                    className="w-full text-xs outline-none bg-transparent"
+                  />
+                </div>
+
+                {loadingShops ? (
+                  <div className="p-4 text-center text-xs font-bold text-[#8A7870] animate-pulse">กำลังโหลดร้านค้า...</div>
+                ) : (
+                  <div className="max-h-48 overflow-y-auto border rounded-xl divide-y bg-white" style={{ borderColor: C.line }}>
+                    {shops
+                      .filter(s => (s.shop_name || "").toLowerCase().includes(shopSearch.toLowerCase().trim()))
+                      .slice(0, 50)
+                      .map(s => {
+                        const isSelected = selectedShopId === s.id.toString();
+                        return (
+                          <div
+                            key={s.id}
+                            onClick={() => setSelectedShopId(s.id.toString())}
+                            className={`p-2.5 text-xs cursor-pointer hover:bg-stone-50 transition flex items-center justify-between ${
+                              isSelected ? "bg-amber-50/50 font-black text-[#231C18]" : "text-[#231C18]"
+                            }`}
+                          >
+                            <span>{s.shop_name}</span>
+                            {isSelected && <span className="text-amber-600 font-bold">✓ Selected</span>}
+                          </div>
+                        );
+                      })}
+                    {shops.filter(s => (s.shop_name || "").toLowerCase().includes(shopSearch.toLowerCase().trim())).length === 0 && (
+                      <div className="p-4 text-center text-xs text-[#8A7870]">ไม่พบร้านค้าที่ตรงกับคำค้นหา</div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Actions Footer */}
+              <div className="flex items-center justify-end gap-2 pt-3 border-t" style={{ borderColor: C.line }}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedUserForAssign(null)}
+                  className="px-4 py-2 rounded-xl border text-xs font-bold hover:bg-stone-100 transition cursor-pointer"
+                  style={{ borderColor: C.line }}
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="submit"
+                  disabled={assigning || !selectedShopId}
+                  className="px-5 py-2 rounded-xl text-xs font-black text-white bg-[#E0533C] hover:bg-[#c94530] transition flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
+                >
+                  {assigning && <Loader2 size={13} className="animate-spin" />}
+                  <span>ยืนยันมอบสิทธิ์</span>
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

@@ -35,6 +35,11 @@ export default function AdminReviewView() {
   const handleApprove = async (sub: any) => {
     setProcessingId(sub.id);
     try {
+      // Get current admin user id
+      const { data: { user } } = await supabase.auth.getUser();
+      const adminId = user?.id || null;
+
+      // การ submit/เพิ่มร้าน ไม่ทำให้เป็นเจ้าของร้านอัตโนมัติอีกต่อไป ต้องมอบสิทธิ์ผ่านหน้า User Management > มอบสิทธิ์ร้าน เท่านั้น (เปลี่ยนกลับมาตามหลักการเดิม หลังจากเคย auto-assign ชั่วคราวก่อน demo วันที่ผ่านมา)
       // 1. Sanitize and structure payload BEFORE inserting into century_shops
       const shopPayload: Record<string, any> = {
         shop_name: sub.name_en,
@@ -45,6 +50,7 @@ export default function AdminReviewView() {
         lat: sub.lat ?? null,
         lng: sub.lng ?? null,
         image_url: sub.image_urls?.[0] || sub.image_url || null,
+        owner_id: null,
       };
 
       if (sub.website) {
@@ -82,6 +88,8 @@ export default function AdminReviewView() {
       const updatePayload: Record<string, any> = {
         status: "approved",
         updated_at: new Date().toISOString(),
+        reviewed_by: adminId,
+        reviewed_at: new Date().toISOString(),
       };
 
       const { error: subErr } = await supabase
@@ -104,6 +112,17 @@ export default function AdminReviewView() {
         }
       }
 
+      // 3. Log action to admin_action_log
+      if (adminId && newShop) {
+        await supabase.from("admin_action_log").insert({
+          admin_id: adminId,
+          action_type: "approve_submission",
+          target_table: "place_submissions",
+          target_id: sub.id,
+          detail: { new_shop_id: newShop.id, shop_name: sub.name_en }
+        });
+      }
+
       setSubmissions((prev) => prev.filter((s) => s.id !== sub.id));
       alert(`อนุมัติร้าน "${sub.name_en}" เข้าสู่ระบบเรียบร้อยแล้ว!`);
     } catch (err: any) {
@@ -117,15 +136,30 @@ export default function AdminReviewView() {
   const handleRejectSubmit = async (subId: string) => {
     setProcessingId(subId);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const adminId = user?.id || null;
+
       const { error } = await supabase
         .from("place_submissions")
         .update({
           status: "rejected",
           rejection_reason: rejectionReason || "ข้อมูลไม่ครบถ้วนหรือไม่เป็นไปตามเกณฑ์",
+          reviewed_by: adminId,
+          reviewed_at: new Date().toISOString(),
         })
         .eq("id", subId);
 
       if (error) throw error;
+
+      if (adminId) {
+        await supabase.from("admin_action_log").insert({
+          admin_id: adminId,
+          action_type: "reject_submission",
+          target_table: "place_submissions",
+          target_id: subId,
+          detail: { reason: rejectionReason }
+        });
+      }
 
       setSubmissions((prev) => prev.filter((s) => s.id !== subId));
       setRejectingId(null);
