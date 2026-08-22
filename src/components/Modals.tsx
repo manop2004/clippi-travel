@@ -918,6 +918,7 @@ export function AddPlaceModal({ isOpen, onClose, editSubmission, onSubmissionUpd
   const [uploading, setUploading] = useState(false);
   const [imageError, setImageError] = useState("");
   const [descriptionError, setDescriptionError] = useState("");
+  const [streetError, setStreetError] = useState("");
   const [gpsError, setGpsError] = useState("");
   const { t } = useLang();
 
@@ -1004,6 +1005,7 @@ export function AddPlaceModal({ isOpen, onClose, editSubmission, onSubmissionUpd
       setImageError("");
       setLocationError("");
       setDescriptionError("");
+      setStreetError("");
 
       // Populate prefecture fields
       const editPref = editSubmission.prefecture || "";
@@ -1114,6 +1116,7 @@ export function AddPlaceModal({ isOpen, onClose, editSubmission, onSubmissionUpd
     setLocationError("");
     setImageError("");
     setDescriptionError("");
+    setStreetError("");
     setGpsError("");
     previewUrls.forEach(url => {
       if (url.startsWith("blob:")) URL.revokeObjectURL(url);
@@ -1159,6 +1162,11 @@ export function AddPlaceModal({ isOpen, onClose, editSubmission, onSubmissionUpd
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!street.trim()) {
+      setStreetError("Address is required.");
+      return;
+    }
 
     if (!description.trim()) {
       setDescriptionError("Description (English) is required.");
@@ -1480,16 +1488,25 @@ export function AddPlaceModal({ isOpen, onClose, editSubmission, onSubmissionUpd
           {/* Address */}
           <div>
             <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">
-              Address
+              Address <span style={{ color: C.accent }}>*</span>
             </label>
             <input
+              required
               type="text"
               value={street}
-              onChange={(e) => setStreet(e.target.value)}
+              onChange={(e) => {
+                setStreet(e.target.value);
+                setStreetError("");
+              }}
               placeholder="e.g. Chuo-dori Ave, Takeshita Street"
               className="w-full px-3.5 py-2 rounded-xl text-xs border outline-none bg-stone-50/30 focus:border-[#E0533C] transition-all"
-              style={{ borderColor: C.line, color: C.ink }}
+              style={{ borderColor: streetError ? "#E0533C" : C.line, color: C.ink }}
             />
+            {streetError && (
+              <p className="text-[10px] text-[#E0533C] font-semibold mt-1.5">
+                {streetError}
+              </p>
+            )}
           </div>
 
           {/* Prefecture Selector */}
