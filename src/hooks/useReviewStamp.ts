@@ -181,7 +181,9 @@ export async function hasUserCollectedStamp(userId: string, shopId: string | num
 }
 
 // Place submission hooks - for user-submitted places pending review
-export async function createPlaceSubmission(input: CreatePlaceSubmissionInput): Promise<PlaceSubmission | null> {
+export async function createPlaceSubmission(
+  input: CreatePlaceSubmissionInput & { prefecture?: string | null; ownership_proof_url?: string | null; description_jp?: string | null }
+): Promise<PlaceSubmission | null> {
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
@@ -196,10 +198,13 @@ export async function createPlaceSubmission(input: CreatePlaceSubmissionInput): 
     name_jp: input.name_jp || null,
     category: input.category,
     description: input.description || null,
+    description_jp: input.description_jp || null,
     lat: input.lat ?? null,
     lng: input.lng ?? null,
     image_url: input.image_urls && input.image_urls.length > 0 ? input.image_urls[0] : (input.image_url || null),
     image_urls: input.image_urls || null,
+    prefecture: input.prefecture || null,
+    ownership_proof_url: input.ownership_proof_url || null,
   };
 
   if (input.street) {
