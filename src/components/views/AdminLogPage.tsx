@@ -188,8 +188,17 @@ export default function AdminLogPage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-xs text-[#231C18] leading-snug">
-                    <span className="font-black mr-1">{adminName}</span>
-                    {formatActionType(log.action_type)}
+                    {log.action_type === "assign_store_owner" && log.detail?.shop_name && log.detail?.user_name ? (
+                      <>
+                        <span className="font-black mr-1">{adminName}</span>
+                        มอบสิทธิ์ร้าน '{log.detail.shop_name}' ให้ {log.detail.user_name}
+                      </>
+                    ) : (
+                      <>
+                        <span className="font-black mr-1">{adminName}</span>
+                        {formatActionType(log.action_type)}
+                      </>
+                    )}
                   </p>
                   <p className="text-[10px] text-[#8A7870] font-semibold mt-1">
                     {log.target_table && (
