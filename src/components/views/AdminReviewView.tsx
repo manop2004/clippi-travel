@@ -30,6 +30,7 @@ export default function AdminReviewView() {
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
   const [validationError, setValidationError] = useState("");
+  const [assignOwnership, setAssignOwnership] = useState(false);
 
   const fetchPendingSubmissions = async () => {
     setLoading(true);
@@ -93,6 +94,7 @@ export default function AdminReviewView() {
     }
     setValidationError("");
     setRejectionReason("");
+    setAssignOwnership(false);
   };
 
   const handleSaveAndApprove = async () => {
@@ -201,6 +203,22 @@ export default function AdminReviewView() {
           target_id: selectedSubmission.id,
           detail: { new_shop_id: newShop.id, shop_name: nameEn.trim() }
         });
+      }
+
+      // d) Assign store ownership if requested
+      if (assignOwnership && newShop) {
+        const { error: assignErr } = await supabase.rpc(
+          "assign_store_owner",
+          {
+            p_user_id: selectedSubmission.user_id,
+            p_shop_id: newShop.id,
+            p_admin_id: adminId,
+          }
+        );
+        if (assignErr) {
+          console.error("Failed to assign store owner:", assignErr.message);
+          alert("ร้านถูกอนุมัติสำเร็จ แต่มอบสิทธิ์เจ้าของร้านไม่สำเร็จ: " + assignErr.message + " กรุณาไปมอบสิทธิ์ผ่าน User Management แทน");
+        }
       }
 
       setSubmissions((prev) => prev.filter((s) => s.id !== selectedSubmission.id));
@@ -621,6 +639,27 @@ export default function AdminReviewView() {
                       <span className="text-xs text-gray-400 font-semibold italic">No document attached</span>
                     )}
                   </div>
+
+                  <label className="flex items-center gap-2 mt-3 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={assignOwnership}
+                      onChange={(e) => setAssignOwnership(e.target.checked)}
+                      className="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                    />
+                    <span className="text-xs font-bold text-[#231C18]">
+                      Assign as Store Owner
+                    </span>
+                  </label>
+                  {selectedSubmission.ownership_proof_url ? (
+                    <p className="text-[10px] text-[#8A7870] font-semibold ml-6">
+                      Grant {selectedSubmission.profiles?.display_name || "this user"} ownership of this shop after approval
+                    </p>
+                  ) : (
+                    <p className="text-[10px] text-amber-600 font-semibold ml-6">
+                      No ownership proof attached — verify manually before assigning
+                    </p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 bg-stone-50/50 p-4 rounded-2xl border" style={{ borderColor: C.line }}>
