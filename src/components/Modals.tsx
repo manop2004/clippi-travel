@@ -918,6 +918,7 @@ export function AddPlaceModal({ isOpen, onClose, editSubmission, onSubmissionUpd
   const [uploading, setUploading] = useState(false);
   const [imageError, setImageError] = useState("");
   const [descriptionError, setDescriptionError] = useState("");
+  const [nameEnError, setNameEnError] = useState("");
   const [streetError, setStreetError] = useState("");
   const [gpsError, setGpsError] = useState("");
   const { t } = useLang();
@@ -1005,6 +1006,7 @@ export function AddPlaceModal({ isOpen, onClose, editSubmission, onSubmissionUpd
       setImageError("");
       setLocationError("");
       setDescriptionError("");
+      setNameEnError("");
       setStreetError("");
 
       // Populate prefecture fields
@@ -1116,6 +1118,7 @@ export function AddPlaceModal({ isOpen, onClose, editSubmission, onSubmissionUpd
     setLocationError("");
     setImageError("");
     setDescriptionError("");
+    setNameEnError("");
     setStreetError("");
     setGpsError("");
     previewUrls.forEach(url => {
@@ -1162,6 +1165,11 @@ export function AddPlaceModal({ isOpen, onClose, editSubmission, onSubmissionUpd
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!name.trim()) {
+      setNameEnError("Spot Name (English) is required.");
+      return;
+    }
 
     if (!street.trim()) {
       setStreetError("Address is required.");
@@ -1461,15 +1469,23 @@ export function AddPlaceModal({ isOpen, onClose, editSubmission, onSubmissionUpd
         {/* Scrollable Form Content */}
         <form onSubmit={handleSubmit} className="p-6 overflow-y-auto flex-1 space-y-4">
           <div>
-            <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">{t("add.nameEn")}</label>
+            <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">
+              {t("add.nameEn")} <span style={{ color: C.accent }}>*</span>
+            </label>
             <input
               required
               placeholder={t("add.namePlaceholder")}
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value);
+                setNameEnError("");
+              }}
               className="w-full px-3.5 py-2 rounded-xl text-xs border outline-none bg-stone-50/30 focus:border-[#E0533C] transition-all"
-              style={{ borderColor: C.line, color: C.ink }}
+              style={{ borderColor: nameEnError ? "#E0533C" : C.line, color: C.ink }}
             />
+            {nameEnError && (
+              <p className="text-[10px] text-[#E0533C] font-semibold mt-1.5">{nameEnError}</p>
+            )}
           </div>
 
           <div>
