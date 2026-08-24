@@ -29,6 +29,7 @@ const ACTION_TYPE_LABELS: Record<string, string> = {
   shop_updated: "Updated a shop",
   shop_deleted: "Deleted a shop",
   assign_store_owner: "Assigned a store owner",
+  auto_approve_own_submission: "Admin added shop (self-approved)",
 };
 
 // B4: fixed filter dropdown as specified in the brief.
@@ -39,6 +40,7 @@ const ACTION_TYPE_FILTERS: { value: string; label: string }[] = [
   { value: "shop_updated", label: "Shop Updated" },
   { value: "shop_deleted", label: "Shop Deleted" },
   { value: "assign_store_owner", label: "Store Owner Assigned" },
+  { value: "auto_approve_own_submission", label: "Self-Approved" },
 ];
 
 function formatActionType(actionType: string | null): string {
@@ -186,8 +188,17 @@ export default function AdminLogPage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-xs text-[#231C18] leading-snug">
-                    <span className="font-black mr-1">{adminName}</span>
-                    {formatActionType(log.action_type)}
+                    {log.action_type === "assign_store_owner" && log.detail?.shop_name && log.detail?.user_name ? (
+                      <>
+                        <span className="font-black mr-1">{adminName}</span>
+                        มอบสิทธิ์ร้าน '{log.detail.shop_name}' ให้ {log.detail.user_name}
+                      </>
+                    ) : (
+                      <>
+                        <span className="font-black mr-1">{adminName}</span>
+                        {formatActionType(log.action_type)}
+                      </>
+                    )}
                   </p>
                   <p className="text-[10px] text-[#8A7870] font-semibold mt-1">
                     {log.target_table && (

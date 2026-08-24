@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { X, Navigation, Crosshair, Landmark, MapPin, ExternalLink, Send, Loader2, Star, Camera, Edit3, Trash2, Globe } from "lucide-react";
+import { X, Navigation, Crosshair, Landmark, MapPin, ExternalLink, Send, Loader2, Star, Camera, Edit3, Trash2, Globe, FileText } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { C, categories } from "../constants/mockData";
@@ -659,6 +659,7 @@ function LocationPickerMap({
   const storeMarkerRef = React.useRef<L.Marker | null>(null);
   const userLocationMarkerRef = React.useRef<L.Marker | null>(null);
   const userCircleRef = React.useRef<L.Circle | null>(null);
+  const coordsCircleRef = React.useRef<L.Circle | null>(null);
   const userLocationRef = React.useRef<{ lat: number; lng: number } | null>(userLocation);
   const coordsRef = React.useRef<{ lat: number; lng: number } | null>(coords);
   const [isLocating, setIsLocating] = useState(false);
@@ -705,8 +706,8 @@ function LocationPickerMap({
         const dragLatLng = e.target.getLatLng();
         if (userLocationRef.current) {
           const dist = getDistanceInMeters(userLocationRef.current.lat, userLocationRef.current.lng, dragLatLng.lat, dragLatLng.lng);
-          if (dist > 500) {
-            alert(`คุณสามารถเลือกตำแหน่งได้เฉพาะในระยะไม่เกิน 500 เมตรรอบตัวคุณเท่านั้น (ระยะปัจจุบัน: ${Math.round(dist)} เมตร)`);
+          if (dist > 200) {
+            alert(`คุณสามารถเลือกตำแหน่งได้เฉพาะในระยะไม่เกิน 200 เมตรรอบตัวคุณเท่านั้น (ระยะปัจจุบัน: ${Math.round(dist)} เมตร)`);
             if (coordsRef.current) {
               marker.setLatLng([coordsRef.current.lat, coordsRef.current.lng]);
             } else if (userLocationRef.current) {
@@ -721,14 +722,14 @@ function LocationPickerMap({
       storeMarkerRef.current = marker;
     }
 
-    // Manual map click: update red store pin & form state with 500m radius validation
+    // Manual map click: update red store pin & form state with 200m radius validation
     map.on("click", (e: L.LeafletMouseEvent) => {
       const { lat, lng } = e.latlng;
 
       if (userLocationRef.current) {
         const dist = getDistanceInMeters(userLocationRef.current.lat, userLocationRef.current.lng, lat, lng);
-        if (dist > 500) {
-          alert(`คุณสามารถเลือกตำแหน่งได้เฉพาะในระยะไม่เกิน 500 เมตรรอบตัวคุณเท่านั้น (ระยะปัจจุบัน: ${Math.round(dist)} เมตร)`);
+        if (dist > 200) {
+          alert(`คุณสามารถเลือกตำแหน่งได้เฉพาะในระยะไม่เกิน 200 เมตรรอบตัวคุณเท่านั้น (ระยะปัจจุบัน: ${Math.round(dist)} เมตร)`);
           return;
         }
       }
@@ -743,8 +744,8 @@ function LocationPickerMap({
           const dragLatLng = event.target.getLatLng();
           if (userLocationRef.current) {
             const dragDist = getDistanceInMeters(userLocationRef.current.lat, userLocationRef.current.lng, dragLatLng.lat, dragLatLng.lng);
-            if (dragDist > 500) {
-              alert(`คุณสามารถเลือกตำแหน่งได้เฉพาะในระยะไม่เกิน 500 เมตรรอบตัวคุณเท่านั้น (ระยะปัจจุบัน: ${Math.round(dragDist)} เมตร)`);
+            if (dragDist > 200) {
+              alert(`คุณสามารถเลือกตำแหน่งได้เฉพาะในระยะไม่เกิน 200 เมตรรอบตัวคุณเท่านั้น (ระยะปัจจุบัน: ${Math.round(dragDist)} เมตร)`);
               if (coordsRef.current) {
                 marker.setLatLng([coordsRef.current.lat, coordsRef.current.lng]);
               }
@@ -767,10 +768,11 @@ function LocationPickerMap({
       clearTimeout(timer);
       map.remove();
       mapRef.current = null;
+      coordsCircleRef.current = null;
     };
   }, []);
 
-  // Render Visual 500m Radius Circle around user's GPS location
+  // Render Visual 200m Radius Circle around user's GPS location
   useEffect(() => {
     if (!mapRef.current || !userLocation) return;
     const map = mapRef.current;
@@ -787,7 +789,7 @@ function LocationPickerMap({
       userCircleRef.current.setLatLng([userLocation.lat, userLocation.lng]);
     } else {
       const circle = L.circle([userLocation.lat, userLocation.lng], {
-        radius: 500,
+        radius: 200,
         ...circleStyle,
       }).addTo(map);
       userCircleRef.current = circle;
@@ -796,8 +798,10 @@ function LocationPickerMap({
 
   // Update red store pin when coords prop changes
   useEffect(() => {
-    if (!mapRef.current || !coords) return;
+    if (!mapRef.current) return;
     const map = mapRef.current;
+
+    if (!coords) return;
     map.flyTo([coords.lat, coords.lng], 16, { animate: true, duration: 1.2 });
 
     const storeIcon = L.divIcon({
@@ -815,8 +819,8 @@ function LocationPickerMap({
         const dragLatLng = event.target.getLatLng();
         if (userLocationRef.current) {
           const dragDist = getDistanceInMeters(userLocationRef.current.lat, userLocationRef.current.lng, dragLatLng.lat, dragLatLng.lng);
-          if (dragDist > 500) {
-            alert(`คุณสามารถเลือกตำแหน่งได้เฉพาะในระยะไม่เกิน 500 เมตรรอบตัวคุณเท่านั้น (ระยะปัจจุบัน: ${Math.round(dragDist)} เมตร)`);
+          if (dragDist > 200) {
+            alert(`คุณสามารถเลือกตำแหน่งได้เฉพาะในระยะไม่เกิน 200 เมตรรอบตัวคุณเท่านั้น (ระยะปัจจุบัน: ${Math.round(dragDist)} เมตร)`);
             if (coordsRef.current) {
               marker.setLatLng([coordsRef.current.lat, coordsRef.current.lng]);
             }
@@ -916,6 +920,7 @@ export function AddPlaceModal({
   const [street, setStreet] = useState("");
   const [website, setWebsite] = useState("");
   const [description, setDescription] = useState("");
+  const [descriptionJp, setDescriptionJp] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -925,7 +930,39 @@ export function AddPlaceModal({
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [imageError, setImageError] = useState("");
+  const [descriptionError, setDescriptionError] = useState("");
+  const [nameEnError, setNameEnError] = useState("");
+  const [streetError, setStreetError] = useState("");
+  const [gpsError, setGpsError] = useState("");
   const { t } = useLang();
+
+  // Prefecture states
+  const [prefecture, setPrefecture] = useState("");
+  const [customPrefecture, setCustomPrefecture] = useState("");
+  const [dbPrefectures, setDbPrefectures] = useState<string[]>([]);
+
+  // Ownership proof states
+  const [ownershipFile, setOwnershipFile] = useState<File | null>(null);
+  const [ownershipUrl, setOwnershipUrl] = useState<string>("");
+  const [ownershipError, setOwnershipError] = useState("");
+
+  // Fetch prefectures from DB when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      async function fetchPrefectures() {
+        const { data, error } = await supabase
+          .from("prefecture_regions")
+          .select("prefecture")
+          .order("prefecture", { ascending: true });
+        if (error) {
+          console.error("Error fetching prefectures:", error);
+        } else if (data) {
+          setDbPrefectures(data.map(p => p.prefecture));
+        }
+      }
+      fetchPrefectures();
+    }
+  }, [isOpen]);
 
   // Fetch current user GPS location when modal opens
   useEffect(() => {
@@ -937,47 +974,78 @@ export function AddPlaceModal({
             lng: position.coords.longitude,
           };
           setUserLocation(uLoc);
-          if (!targetData && !coords) {
+          setGpsError("");
+          if (!targetData && !editSubmission && !coords) {
             setCoords(uLoc);
           }
         },
         (error) => {
           console.warn("Could not retrieve GPS location:", error);
+          setGpsError(
+            error.code === error.PERMISSION_DENIED
+              ? "Location access denied. Tap 'Set store location' below and allow access, or select a spot on the map manually."
+              : "Could not detect your location automatically. Tap 'Set store location' to try again, or select a spot on the map manually."
+          );
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     }
   }, [isOpen]);
 
-  // Populate form fields when targetData prop is passed
+  // Populate form fields when targetData or editSubmission prop is passed
   useEffect(() => {
-    if (targetData && isOpen) {
-      setName(targetData.shop_name || targetData.name_en || targetData.name || "");
-      setJapaneseName(targetData.shop_name_jp || targetData.name_jp || "");
-      setStreet(targetData.address || targetData.street || "");
-      setWebsite(targetData.website || "");
-      setDescription(targetData.description || "");
-      setCat(targetData.category || "food");
-      if (targetData.lat && targetData.lng) {
-        setCoords({ lat: Number(targetData.lat), lng: Number(targetData.lng) });
+    const activeData = targetData || editSubmission;
+    if (activeData && isOpen) {
+      setName(activeData.shop_name || activeData.name_en || activeData.name || "");
+      setJapaneseName(activeData.shop_name_jp || activeData.name_jp || "");
+      setStreet(activeData.address || activeData.street || "");
+      setWebsite(activeData.website || "");
+      setDescription(activeData.description || "");
+      setDescriptionJp(activeData.description_jp || "");
+      setCat(activeData.category || "food");
+      if (activeData.lat && activeData.lng) {
+        setCoords({ lat: Number(activeData.lat), lng: Number(activeData.lng) });
       } else {
         setCoords(null);
       }
 
-      if (targetData.image_urls && targetData.image_urls.length > 0) {
-        setPreviewUrls(targetData.image_urls);
-      } else if (targetData.image_url) {
-        setPreviewUrls([targetData.image_url]);
+      if (activeData.image_urls && activeData.image_urls.length > 0) {
+        setPreviewUrls(activeData.image_urls);
+      } else if (activeData.image_url) {
+        setPreviewUrls([activeData.image_url]);
       } else {
         setPreviewUrls([]);
       }
       setSelectedFiles([]);
       setImageError("");
       setLocationError("");
-    } else if (isOpen && !targetData) {
+      setDescriptionError("");
+      setNameEnError("");
+      setStreetError("");
+
+      // Populate prefecture fields
+      const editPref = activeData.prefecture || "";
+      if (editPref) {
+        if (dbPrefectures.includes(editPref)) {
+          setPrefecture(editPref);
+          setCustomPrefecture("");
+        } else {
+          setPrefecture("custom");
+          setCustomPrefecture(editPref);
+        }
+      } else {
+        setPrefecture("");
+        setCustomPrefecture("");
+      }
+
+      // Populate ownership proof file fields
+      setOwnershipFile(null);
+      setOwnershipUrl(activeData.ownership_proof_url || "");
+      setOwnershipError("");
+    } else if (isOpen && !targetData && !editSubmission) {
       resetForm();
     }
-  }, [targetData, isOpen]);
+  }, [targetData, editSubmission, isOpen, dbPrefectures]);
 
   // Cleanup object URLs on unmount
   useEffect(() => {
@@ -1005,14 +1073,14 @@ export function AddPlaceModal({
         };
         setUserLocation(uLoc);
         setCoords(uLoc);
+        setGpsError("");
         setLocating(false);
       },
       (error) => {
-        setLocationError(
-          error.code === error.PERMISSION_DENIED
-            ? t("add.permDenied")
-            : t("add.locFail")
-        );
+        const errorMsg = error.code === error.PERMISSION_DENIED
+          ? t("add.permDenied")
+          : t("add.locFail");
+        setGpsError(errorMsg);
         setLocating(false);
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
@@ -1058,15 +1126,50 @@ export function AddPlaceModal({
     setStreet("");
     setWebsite("");
     setDescription("");
+    setDescriptionJp("");
     setCat("food");
     setCoords(null);
     setLocationError("");
     setImageError("");
+    setDescriptionError("");
+    setNameEnError("");
+    setStreetError("");
+    setGpsError("");
     previewUrls.forEach(url => {
       if (url.startsWith("blob:")) URL.revokeObjectURL(url);
     });
     setSelectedFiles([]);
     setPreviewUrls([]);
+
+    // Reset prefecture
+    setPrefecture("");
+    setCustomPrefecture("");
+
+    // Reset ownership proof
+    setOwnershipFile(null);
+    if (ownershipUrl && ownershipUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(ownershipUrl);
+    }
+    setOwnershipUrl("");
+    setOwnershipError("");
+  };
+
+  const handleOwnershipFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    setOwnershipFile(file);
+    setOwnershipUrl(URL.createObjectURL(file));
+    setOwnershipError("");
+  };
+
+  const handleRemoveOwnershipFile = () => {
+    if (ownershipUrl && ownershipUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(ownershipUrl);
+    }
+    setOwnershipFile(null);
+    setOwnershipUrl("");
+    setOwnershipError("");
   };
 
   const handleClose = () => {
@@ -1077,31 +1180,47 @@ export function AddPlaceModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!name.trim()) {
+      setNameEnError("Spot Name (English) is required.");
+      return;
+    }
+
+    if (!street.trim()) {
+      setStreetError("Address is required.");
+      return;
+    }
+
+    if (!description.trim()) {
+      setDescriptionError("Description (English) is required.");
+      return;
+    }
+
     if (previewUrls.length === 0 && selectedFiles.length === 0) {
       setImageError("Please add at least one photo of the location.");
       return;
     }
 
     if (!coords) {
-      setLocationError("กรุณาเลือกตำแหน่งบนแผนที่");
+      setLocationError("Please select a location on the map.");
       return;
     }
 
     if (!userLocation) {
-      setLocationError("ไม่สามารถยืนยันตำแหน่ง GPS ของคุณได้ กรุณาเปิดใช้งานตำแหน่งที่ตั้ง (GPS)");
-      alert("ไม่สามารถยืนยันตำแหน่ง GPS ของคุณได้ กรุณาเปิดใช้งานตำแหน่งที่ตั้ง (GPS)");
+      setLocationError("Unable to retrieve your GPS location. Please enable location services.");
+      alert("Unable to retrieve your GPS location. Please enable location services.");
       return;
     }
 
     const distFromUser = getDistanceInMeters(userLocation.lat, userLocation.lng, coords.lat, coords.lng);
-    if (distFromUser > 500) {
-      alert(`คุณสามารถเลือกตำแหน่งได้เฉพาะในระยะไม่เกิน 500 เมตรรอบตัวคุณเท่านั้น (ระยะปัจจุบัน: ${Math.round(distFromUser)} เมตร)`);
-      setLocationError(`ตำแหน่งที่เลือกอยู่นอกรัศมี 500 เมตร (${Math.round(distFromUser)} m)`);
+    if (distFromUser > 200) {
+      alert(`You can only select a location within 200 meters of your current position. (Current distance: ${Math.round(distFromUser)} meters)`);
+      setLocationError(`Selected location is outside the 200m radius (${Math.round(distFromUser)} m)`);
       return;
     }
 
     setSubmitting(true);
     setImageError("");
+    setDescriptionError("");
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -1127,6 +1246,26 @@ export function AddPlaceModal({
           .getPublicUrl(filePath);
 
         uploadedUrls.push(publicUrlData.publicUrl);
+      }
+
+      // Handle ownership proof file upload
+      let uploadedOwnershipUrl = ownershipUrl;
+      if (ownershipFile) {
+        const fileExt = ownershipFile.name.split(".").pop();
+        const timestamp = Date.now();
+        const filePath = `ownership-proof/${user.id}/${timestamp}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("place-photos")
+          .upload(filePath, ownershipFile);
+
+        if (uploadError) throw new Error("Failed to upload ownership proof document.");
+
+        const { data: publicUrlData } = supabase.storage
+          .from("place-photos")
+          .getPublicUrl(filePath);
+
+        uploadedOwnershipUrl = publicUrlData.publicUrl;
       }
 
       setUploading(false);
@@ -1220,125 +1359,156 @@ export function AddPlaceModal({
         onSuccess?.();
         if (onSubmissionUpdated) onSubmissionUpdated();
         handleClose();
-      } else if (editSubmission) {
-        // UPDATE existing place_submission & reset status to pending
-        const payload: Record<string, any> = {
-          name_en: name,
-          name_jp: japaneseName || null,
-          category: cat,
-          street: street || null,
-          description: description || null,
-          lat: coords?.lat ?? null,
-          lng: coords?.lng ?? null,
-          image_url: finalImageUrls[0] || null,
-          image_urls: finalImageUrls,
-          status: "pending", // Reset status back to pending for review
-          rejection_reason: null,
-        };
+      } else {
+        const selectedPrefecture = prefecture === "custom" ? customPrefecture.trim() || null : prefecture || null;
 
-        if (website) {
-          payload.website = website;
-        }
+        if (editSubmission) {
+          // UPDATE existing place_submission & reset status to pending
+          const payload: Record<string, any> = {
+            name_en: name,
+            name_jp: japaneseName || null,
+            category: cat,
+            street: street || null,
+            description: description || null,
+            description_jp: descriptionJp || null,
+            lat: coords?.lat ?? null,
+            lng: coords?.lng ?? null,
+            image_url: finalImageUrls[0] || null,
+            image_urls: finalImageUrls,
+            status: "pending", // Reset status back to pending for review
+            rejection_reason: null,
+            prefecture: selectedPrefecture,
+            ownership_proof_url: uploadedOwnershipUrl || null,
+          };
 
-        // Resilient update: Retry stripping optional/schema-cached columns if DB errors occur
-        const executeUpdate = async (p: Record<string, any>): Promise<void> => {
-          const { error: err } = await supabase
-            .from("place_submissions")
-            .update(p)
-            .eq("id", editSubmission.id);
+          if (website) {
+            payload.website = website;
+          }
 
-          if (err) {
-            const msg = err.message || "";
-            if (msg.includes("admin_comment") || err.code === "PGRST204") {
-              delete p.admin_comment;
-            }
-            if (msg.includes("website")) {
-              delete p.website;
-            }
-            if (msg.includes("street")) {
-              delete p.street;
-            }
-            if (msg.includes("rejection_reason")) {
-              delete p.rejection_reason;
-            }
-
-            const { error: retryErr } = await supabase
+          // Resilient update: Retry stripping optional/schema-cached columns if DB errors occur
+          const executeUpdate = async (p: Record<string, any>): Promise<void> => {
+            const { error: err } = await supabase
               .from("place_submissions")
               .update(p)
               .eq("id", editSubmission.id);
 
-            if (retryErr) throw retryErr;
+            if (err) {
+              const msg = err.message || "";
+              if (msg.includes("admin_comment") || err.code === "PGRST204") {
+                delete p.admin_comment;
+              }
+              if (msg.includes("website")) {
+                delete p.website;
+              }
+              if (msg.includes("street")) {
+                delete p.street;
+              }
+              if (msg.includes("rejection_reason")) {
+                delete p.rejection_reason;
+              }
+
+              const { error: retryErr } = await supabase
+                .from("place_submissions")
+                .update(p)
+                .eq("id", editSubmission.id);
+
+              if (retryErr) throw retryErr;
+            }
+          };
+
+          await executeUpdate(payload);
+
+          alert("ส่งข้อมูลที่แก้ไขให้แอดมินเรียบร้อยแล้ว! (Updated submission sent to admin successfully!)");
+          onSuccess?.();
+          if (onSubmissionUpdated) onSubmissionUpdated();
+          handleClose();
+        } else if (isAdmin) {
+          // ADMIN DIRECT INSERT INTO century_shops WITHOUT APPROVAL
+          const cleanShopPayload: Record<string, any> = {
+            shop_name: name,
+            shop_name_jp: japaneseName || null,
+            category: cat || "food",
+            address: street || null,
+            description: description || null,
+            description_jp: descriptionJp || null,
+            lat: coords?.lat ?? null,
+            lng: coords?.lng ?? null,
+            image_url: finalImageUrls[0] || null,
+            owner_id: null,
+            prefecture: selectedPrefecture,
+          };
+
+          if (website) {
+            cleanShopPayload.website = website;
           }
-        };
 
-        await executeUpdate(payload);
-
-        alert("ส่งข้อมูลที่แก้ไขให้แอดมินเรียบร้อยแล้ว! (Updated submission sent to admin successfully!)");
-        onSuccess?.();
-        if (onSubmissionUpdated) onSubmissionUpdated();
-        handleClose();
-      } else if (isAdmin) {
-        // ADMIN DIRECT INSERT INTO century_shops WITHOUT APPROVAL
-        const cleanShopPayload: Record<string, any> = {
-          shop_name: name,
-          shop_name_jp: japaneseName || null,
-          category: cat || "food",
-          address: street || null,
-          description: description || null,
-          lat: coords?.lat ?? null,
-          lng: coords?.lng ?? null,
-          image_url: finalImageUrls[0] || null,
-        };
-
-        if (website) {
-          cleanShopPayload.website = website;
-        }
-
-        const executeAdminShopInsert = async (p: Record<string, any>): Promise<void> => {
-          const { error: err } = await supabase
-            .from("century_shops")
-            .insert([p]);
-
-          if (err) {
-            console.warn("Insert error into century_shops:", err.message);
-            const msg = err.message || "";
-            if (msg.includes("website")) delete p.website;
-            if (msg.includes("shop_name_jp")) delete p.shop_name_jp;
-
-            const { error: retryErr } = await supabase
+          const executeAdminShopInsert = async (p: Record<string, any>): Promise<any> => {
+            const { data, error: err } = await supabase
               .from("century_shops")
-              .insert([p]);
+              .insert([p])
+              .select()
+              .single();
 
-            if (retryErr) throw retryErr;
+            if (err) {
+              console.warn("Insert error into century_shops:", err.message);
+              const msg = err.message || "";
+              if (msg.includes("website")) delete p.website;
+              if (msg.includes("shop_name_jp")) delete p.shop_name_jp;
+
+              const { data: retryData, error: retryErr } = await supabase
+                .from("century_shops")
+                .insert([p])
+                .select()
+                .single();
+
+              if (retryErr) throw retryErr;
+              return retryData;
+            }
+            return data;
+          };
+
+          const newShop = await executeAdminShopInsert(cleanShopPayload);
+
+          const { data: { user: currentUser } } = await supabase.auth.getUser();
+          const adminId = currentUser?.id || null;
+
+          if (adminId && newShop) {
+            await supabase.from("admin_action_log").insert({
+              admin_id: adminId,
+              action_type: "auto_approve_own_submission",
+              target_table: "century_shops",
+              target_id: newShop.id,
+              detail: { shop_name: name, note: "Admin self-approved on creation" }
+            });
           }
-        };
 
-        await executeAdminShopInsert(cleanShopPayload);
-
-        alert("เพิ่มร้านค้าใหม่เข้าสู่ระบบเรียบร้อยแล้ว");
-        onSuccess?.();
-        if (onSubmissionUpdated) onSubmissionUpdated();
-        handleClose();
-      } else {
-        // CREATE new place_submission for regular users
-        const submission = await createPlaceSubmission({
-          name_en: name,
-          name_jp: japaneseName || undefined,
-          category: cat,
-          street: street || undefined,
-          description: description || undefined,
-          website: website || undefined,
-          lat: coords?.lat,
-          lng: coords?.lng,
-          image_urls: finalImageUrls,
-        });
+          alert("เพิ่มร้านค้าใหม่เข้าสู่ระบบเรียบร้อยแล้ว");
+          onSuccess?.();
+          if (onSubmissionUpdated) onSubmissionUpdated();
+          handleClose();
+        } else {
+          // CREATE new place_submission for regular users
+          const submission = await createPlaceSubmission({
+            name_en: name,
+            name_jp: japaneseName || undefined,
+            category: cat,
+            street: street || undefined,
+            description: description || undefined,
+            description_jp: descriptionJp || undefined,
+            website: website || undefined,
+            lat: coords?.lat,
+            lng: coords?.lng,
+            image_urls: finalImageUrls,
+            prefecture: selectedPrefecture,
+            ownership_proof_url: uploadedOwnershipUrl || undefined,
+          });
 
         // Isolated non-blocking secondary admin notification insert with actor_id & shop_name safeguards
         try {
-          const shopNameText = name || japaneseName || "ร้านค้าใหม่";
+          const shopNameText = name || japaneseName || "New shop";
           const notifPayload: Record<string, any> = {
-            title: "มีการส่งร้านค้าใหม่",
-            message: `มีสถานที่ใหม่ส่งเข้ามาตรวจสอบ: ${shopNameText}`,
+            title: "New shop submission",
+            message: `A new location has been submitted: ${shopNameText}`,
             shop_name: shopNameText,
             actor_id: user?.id || null,
             type: "place_submission",
@@ -1363,9 +1533,10 @@ export function AddPlaceModal({
           console.warn("Notification failed silently:", notifErr);
         }
 
-        alert(t("add.thankYou"));
-        onSuccess?.();
-        handleClose();
+          alert(t("add.thankYou"));
+          onSuccess?.();
+          handleClose();
+        }
       }
     } catch (error: any) {
       alert(error.message || t("add.submitFail"));
@@ -1407,19 +1578,29 @@ export function AddPlaceModal({
         {/* Scrollable Form Content */}
         <form onSubmit={handleSubmit} className="p-6 overflow-y-auto flex-1 space-y-4">
           <div>
-            <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">{t("add.nameEn")}</label>
+            <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">
+              {t("add.nameEn")} <span style={{ color: C.accent }}>*</span>
+            </label>
             <input
               required
               placeholder={t("add.namePlaceholder")}
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value);
+                setNameEnError("");
+              }}
               className="w-full px-3.5 py-2 rounded-xl text-xs border outline-none bg-stone-50/30 focus:border-[#E0533C] transition-all"
-              style={{ borderColor: C.line, color: C.ink }}
+              style={{ borderColor: nameEnError ? "#E0533C" : C.line, color: C.ink }}
             />
+            {nameEnError && (
+              <p className="text-[10px] text-[#E0533C] font-semibold mt-1.5">{nameEnError}</p>
+            )}
           </div>
 
           <div>
-            <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">{t("place.japaneseName")}</label>
+            <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">
+              Spot Name (Japanese) <span className="text-[8px] text-gray-400 font-semibold lowercase italic">(optional)</span>
+            </label>
             <input
               placeholder="例：東京駅"
               value={japaneseName}
@@ -1429,23 +1610,67 @@ export function AddPlaceModal({
             />
           </div>
 
-          {/* ชื่อถนน / Street Name */}
+          {/* Address */}
           <div>
             <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">
-              ชื่อถนน / ที่อยู่ (Street Name)
+              Address <span style={{ color: C.accent }}>*</span>
             </label>
             <input
+              required
               type="text"
               value={street}
-              onChange={(e) => setStreet(e.target.value)}
-              placeholder="เช่น Chuo-dori Ave, Takeshita Street"
+              onChange={(e) => {
+                setStreet(e.target.value);
+                setStreetError("");
+              }}
+              placeholder="e.g. Chuo-dori Ave, Takeshita Street"
+              className="w-full px-3.5 py-2 rounded-xl text-xs border outline-none bg-stone-50/30 focus:border-[#E0533C] transition-all"
+              style={{ borderColor: streetError ? "#E0533C" : C.line, color: C.ink }}
+            />
+            {streetError && (
+              <p className="text-[10px] text-[#E0533C] font-semibold mt-1.5">
+                {streetError}
+              </p>
+            )}
+          </div>
+
+          {/* Prefecture Selector */}
+          <div>
+            <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">Prefecture</label>
+            <select
+              value={prefecture}
+              onChange={(e) => {
+                setPrefecture(e.target.value);
+                if (e.target.value !== "custom") setCustomPrefecture("");
+              }}
               className="w-full px-3.5 py-2 rounded-xl text-xs border outline-none bg-stone-50/30 focus:border-[#E0533C] transition-all"
               style={{ borderColor: C.line, color: C.ink }}
-            />
+            >
+              <option value="">Unknown</option>
+              {dbPrefectures.map((pref) => (
+                <option key={pref} value={pref}>{pref}</option>
+              ))}
+              <option value="custom">Type manually</option>
+            </select>
+            {prefecture === "custom" && (
+              <div className="mt-2 space-y-1">
+                <input
+                  type="text"
+                  placeholder="Enter prefecture name manually (e.g. Tokyo)"
+                  value={customPrefecture}
+                  onChange={(e) => setCustomPrefecture(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl text-xs border outline-none bg-stone-50/30 focus:border-[#E0533C] transition-all"
+                  style={{ borderColor: C.line, color: C.ink }}
+                />
+                <p className="text-[9px] text-gray-400 font-semibold italic">Please spell the prefecture name correctly to ensure proper regional grouping.</p>
+              </div>
+            )}
           </div>
 
           <div>
-            <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">Website URL / ลิงก์เว็บไซต์</label>
+            <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">
+              Website URL <span className="text-[8px] text-gray-400 font-semibold lowercase italic">(optional)</span>
+            </label>
             <div className="relative flex items-center">
               <Globe size={14} className="absolute left-3 text-[#8A7870]" />
               <input
@@ -1468,7 +1693,7 @@ export function AddPlaceModal({
                   key={c.id}
                   onClick={() => setCat(c.id)}
                   className="px-3.5 py-1.5 rounded-full text-[10px] font-black flex items-center gap-1.5 border transition-all duration-150"
-                  style={cat === c.id ? { background: C.accent, color: "#fff", borderColor: C.accent } : { background: "#fff", color: C.inkSoft, borderColor: C.line }}
+                  style={cat === c.id ? { background: "#F0FDF4", color: "#166534", borderColor: "#BBF7D0" } : { background: "#fff", color: C.inkSoft, borderColor: C.line }}
                 >
                   {c.emoji} {t(c.labelKey)}
                 </button>
@@ -1477,17 +1702,41 @@ export function AddPlaceModal({
           </div>
 
           <div>
-            <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">{t("place.description")}</label>
+            <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">
+              Description (English) <span style={{ color: C.accent }}>*</span>
+            </label>
             <textarea
+              required
               rows={3}
               placeholder={t("add.descPlaceholder")}
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => {
+                setDescription(e.target.value);
+                setDescriptionError("");
+              }}
+              className="w-full px-3.5 py-2 rounded-xl text-xs border outline-none resize-none bg-stone-50/30 focus:border-[#E0533C] transition-all"
+              style={{ borderColor: descriptionError ? "#E0533C" : C.line, color: C.ink }}
+            />
+            {descriptionError && (
+              <p className="text-[10px] text-[#E0533C] font-semibold mt-1.5">{descriptionError}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">
+              Description (Japanese) <span className="text-[8px] text-gray-400 font-semibold lowercase italic">(optional)</span>
+            </label>
+            <textarea
+              rows={3}
+              placeholder="Enter description in Japanese (e.g. 日本語での説明)"
+              value={descriptionJp}
+              onChange={(e) => setDescriptionJp(e.target.value)}
               className="w-full px-3.5 py-2 rounded-xl text-xs border outline-none resize-none bg-stone-50/30 focus:border-[#E0533C] transition-all"
               style={{ borderColor: C.line, color: C.ink }}
             />
           </div>
 
+          {/* Location Photos Upload */}
           <div>
             <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">
               {t("add.photo")} <span style={{ color: C.accent }}>*</span>
@@ -1531,10 +1780,53 @@ export function AddPlaceModal({
             )}
           </div>
 
+          {/* Ownership Proof upload field */}
+          <div>
+            <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">
+              Ownership Proof <span className="text-[8px] text-gray-400 font-semibold lowercase italic">(optional)</span>
+            </label>
+            <div className="max-w-xs">
+              {ownershipUrl ? (
+                <div className="relative h-20 rounded-xl border overflow-hidden" style={{ borderColor: C.line }}>
+                  <div className="w-full h-full flex items-center justify-center bg-stone-50 text-[10px] font-bold text-[#231C18] p-3 text-center truncate">
+                    📄 {ownershipFile ? ownershipFile.name : "Ownership Document"}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRemoveOwnershipFile}
+                    className="absolute top-1.5 right-1.5 w-5.5 h-5.5 rounded-full bg-white/95 flex items-center justify-center shadow-md hover:scale-105 transition border"
+                    style={{ borderColor: C.line }}
+                  >
+                    <X size={10} color={C.ink} />
+                  </button>
+                </div>
+              ) : (
+                <label
+                  className="h-20 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-stone-50 transition p-2 text-center"
+                  style={{ borderColor: ownershipError ? "#E0533C" : C.line }}
+                >
+                  <input
+                    type="file"
+                    accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+                    onChange={handleOwnershipFileChange}
+                    className="hidden"
+                  />
+                  <FileText size={18} color={C.accentDeep} />
+                  <span className="text-[8px] font-bold text-[#8A7870]">
+                    Upload Proof File (PDF, PNG, JPG)
+                  </span>
+                </label>
+              )}
+            </div>
+            {ownershipError && (
+              <p className="text-[10px] text-[#E0533C] font-semibold mt-1.5">{ownershipError}</p>
+            )}
+          </div>
+
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label className="text-[9px] font-black uppercase tracking-wider block text-[#8A7870]">
-                Location on Map / เลือกตำแหน่งบนแผนที่
+                Location on Map
               </label>
               {coords && (
                 <span className="text-[9px] font-bold text-[#E0533C]">
@@ -1542,6 +1834,12 @@ export function AddPlaceModal({
                 </span>
               )}
             </div>
+
+            {gpsError && (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[10px] text-amber-800 font-semibold leading-relaxed mb-2">
+                ⚠️ {gpsError}
+              </div>
+            )}
 
             <LocationPickerMap coords={coords} userLocation={userLocation} onSelectCoords={(c) => setCoords(c)} />
 
@@ -1563,10 +1861,10 @@ export function AddPlaceModal({
               )}
               <span>
                 {locating
-                  ? "กำลังค้นหาตำแหน่ง..."
+                  ? "Locating..."
                   : coords
-                    ? `📍 ปักตำแหน่งปัจจุบัน (${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)})`
-                    : "📍 ปักตำแหน่งปัจจุบัน"}
+                    ? `📍 Set store location (${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)})`
+                    : "📍 Set store location"}
               </span>
             </button>
             {locationError && (
@@ -1580,7 +1878,7 @@ export function AddPlaceModal({
             className="w-full py-3 rounded-xl text-xs font-black text-[#231C18] bg-amber-400 hover:bg-amber-500 shadow-md transition disabled:opacity-70 flex items-center justify-center gap-2"
           >
             {uploading
-              ? t("add.uploading")
+              ? "Uploading..."
               : submitting
               ? t("common.submitting")
               : isEditShop
