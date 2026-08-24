@@ -11,6 +11,7 @@ import ProfileView from "./components/views/ProfileView";
 import AdminReviewView from "./components/views/AdminReviewView";
 import UserManagementPage from "./components/views/UserManagementPage";
 import ManageShopsPage from "./components/views/ManageShopsPage";
+import StoreManagementPage from "./pages/store/StoreManagementPage";
 import AuthView from "./components/views/AuthView";
 import { PlaceDetailModal, AddPlaceModal } from "./components/Modals";
 import { ReviewStampProvider } from "./context/ReviewStampContext";
@@ -312,10 +313,7 @@ export default function App() {
                 </ProtectedRoute>
               )}
               {tab === "store_manage" && (
-                <ManageShopsPage
-                  onGoHome={() => setTab("explore")}
-                  onAddNewPlaceClick={() => setIsAddOpen(true)}
-                />
+                <StoreManagementPage onOpenAddPlace={() => setIsAddOpen(true)} />
               )}
               {tab === "users_manage" && <UserManagementPage />}
               {tab === "admin_log" && (

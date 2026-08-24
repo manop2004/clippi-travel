@@ -622,7 +622,9 @@ interface AddPlaceModalProps {
   isOpen: boolean;
   onClose: () => void;
   editSubmission?: any | null;
+  initialData?: any | null;
   onSubmissionUpdated?: () => void;
+  onSuccess?: () => void;
 }
 
 // Haversine Distance Calculator helper function in meters
@@ -774,10 +776,11 @@ function LocationPickerMap({
     const map = mapRef.current;
 
     const circleStyle = {
-      color: "#ef4444",
-      fillColor: "#ef4444",
-      fillOpacity: 0.12,
+      color: "#E0533C",
+      fillColor: "#E0533C",
+      fillOpacity: 0.15,
       weight: 2,
+      dashArray: "4, 4",
     };
 
     if (userCircleRef.current) {
@@ -895,8 +898,18 @@ function LocationPickerMap({
   );
 }
 
-export function AddPlaceModal({ isOpen, onClose, editSubmission, onSubmissionUpdated }: AddPlaceModalProps) {
+export function AddPlaceModal({
+  isOpen,
+  onClose,
+  editSubmission,
+  initialData,
+  onSubmissionUpdated,
+  onSuccess,
+}: AddPlaceModalProps) {
   const { role, isAdmin } = useUserRole();
+  const targetData = initialData || editSubmission;
+  const isEditShop = !!initialData || (targetData && (targetData.shop_name || targetData.id));
+
   const [cat, setCat] = useState("food");
   const [name, setName] = useState("");
   const [japaneseName, setJapaneseName] = useState("");
@@ -924,7 +937,7 @@ export function AddPlaceModal({ isOpen, onClose, editSubmission, onSubmissionUpd
             lng: position.coords.longitude,
           };
           setUserLocation(uLoc);
-          if (!editSubmission && !coords) {
+          if (!targetData && !coords) {
             setCoords(uLoc);
           }
         },
@@ -936,35 +949,35 @@ export function AddPlaceModal({ isOpen, onClose, editSubmission, onSubmissionUpd
     }
   }, [isOpen]);
 
-  // Populate form fields when editSubmission prop is passed
+  // Populate form fields when targetData prop is passed
   useEffect(() => {
-    if (editSubmission && isOpen) {
-      setName(editSubmission.name_en || "");
-      setJapaneseName(editSubmission.name_jp || "");
-      setStreet(editSubmission.street || "");
-      setWebsite(editSubmission.website || "");
-      setDescription(editSubmission.description || "");
-      setCat(editSubmission.category || "food");
-      if (editSubmission.lat && editSubmission.lng) {
-        setCoords({ lat: Number(editSubmission.lat), lng: Number(editSubmission.lng) });
+    if (targetData && isOpen) {
+      setName(targetData.shop_name || targetData.name_en || targetData.name || "");
+      setJapaneseName(targetData.shop_name_jp || targetData.name_jp || "");
+      setStreet(targetData.address || targetData.street || "");
+      setWebsite(targetData.website || "");
+      setDescription(targetData.description || "");
+      setCat(targetData.category || "food");
+      if (targetData.lat && targetData.lng) {
+        setCoords({ lat: Number(targetData.lat), lng: Number(targetData.lng) });
       } else {
         setCoords(null);
       }
 
-      if (editSubmission.image_urls && editSubmission.image_urls.length > 0) {
-        setPreviewUrls(editSubmission.image_urls);
-      } else if (editSubmission.image_url) {
-        setPreviewUrls([editSubmission.image_url]);
+      if (targetData.image_urls && targetData.image_urls.length > 0) {
+        setPreviewUrls(targetData.image_urls);
+      } else if (targetData.image_url) {
+        setPreviewUrls([targetData.image_url]);
       } else {
         setPreviewUrls([]);
       }
       setSelectedFiles([]);
       setImageError("");
       setLocationError("");
-    } else if (isOpen && !editSubmission) {
+    } else if (isOpen && !targetData) {
       resetForm();
     }
-  }, [editSubmission, isOpen]);
+  }, [targetData, isOpen]);
 
   // Cleanup object URLs on unmount
   useEffect(() => {
@@ -1121,7 +1134,93 @@ export function AddPlaceModal({ isOpen, onClose, editSubmission, onSubmissionUpd
       const existingUrls = previewUrls.filter(url => !url.startsWith("blob:"));
       const finalImageUrls = [...existingUrls, ...uploadedUrls];
 
-      if (editSubmission) {
+      if (isEditShop && targetData?.id) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("ไม่พบข้อมูลผู้ใช้งาน กรุณาล็อกอินใหม่");
+
+        const itemId = targetData.submissionId || targetData.id;
+        const oldName = targetData.shop_name || targetData.name_en;
+
+        const nameEn = name || targetData.shop_name || targetData.name_en;
+        const nameJp = japaneseName || targetData.shop_name_jp || targetData.name_jp || null;
+        const addressStr = street || targetData.address || targetData.street || "";
+
+        // 1. UPDATE `place_submissions` IF ITEM IS FROM SUBMISSIONS
+        if (targetData.isSubmission || (typeof itemId === "string" && String(itemId).includes("-"))) {
+          const submissionPayload: Record<string, any> = {
+            name_en: nameEn,
+            name_jp: nameJp,
+            street: addressStr,
+            website: website || null,
+            category: cat || "shop",
+            description: description || null,
+            image_url: finalImageUrls[0] || null,
+            lat: coords?.lat ? parseFloat(String(coords.lat)) : null,
+            lng: coords?.lng ? parseFloat(String(coords.lng)) : null,
+            status: "approved", // Maintain approved status
+          };
+
+          const { error: subErr } = await supabase
+            .from("place_submissions")
+            .update(submissionPayload)
+            .eq("id", String(itemId));
+
+          if (subErr) console.warn("Error updating place_submissions:", subErr.message);
+        }
+
+        // 2. ALWAYS UPDATE/SYNC `century_shops` (Updates Live App & Main Feed / Home Page!)
+        const centuryPayload: Record<string, any> = {
+          shop_name: nameEn,
+          shop_name_jp: nameJp,
+          address: addressStr,
+          website: website || null,
+          category: cat || "shop",
+          description: description || null,
+          image_url: finalImageUrls[0] || null,
+          lat: coords?.lat ? parseFloat(String(coords.lat)) : null,
+          lng: coords?.lng ? parseFloat(String(coords.lng)) : null,
+          owner_id: user.id,
+        };
+
+        const isNumberId = typeof itemId === "number" || (!isNaN(Number(itemId)) && !String(itemId).includes("-"));
+
+        if (isNumberId) {
+          const { error: updateErr } = await supabase
+            .from("century_shops")
+            .update(centuryPayload)
+            .eq("id", Number(itemId));
+
+          if (updateErr) {
+            console.warn("Update century_shops retry fallback:", updateErr.message);
+            const msg = updateErr.message || "";
+            if (msg.includes("website")) delete centuryPayload.website;
+            if (msg.includes("shop_name_jp")) delete centuryPayload.shop_name_jp;
+            if (msg.includes("owner_id")) delete centuryPayload.owner_id;
+
+            const { error: retryErr } = await supabase
+              .from("century_shops")
+              .update(centuryPayload)
+              .eq("id", Number(itemId));
+
+            if (retryErr) console.warn("Retry update century_shops failed:", retryErr.message);
+          }
+        } else {
+          // Sync live shop in century_shops created from this submission
+          if (oldName) {
+            const { error: syncErr } = await supabase
+              .from("century_shops")
+              .update(centuryPayload)
+              .or(`owner_id.eq.${user.id},shop_name.eq.${oldName}`);
+
+            if (syncErr) console.warn("Sync century_shops error:", syncErr.message);
+          }
+        }
+
+        alert("อัปเดตข้อมูลร้านค้าเรียบร้อยแล้ว!");
+        onSuccess?.();
+        if (onSubmissionUpdated) onSubmissionUpdated();
+        handleClose();
+      } else if (editSubmission) {
         // UPDATE existing place_submission & reset status to pending
         const payload: Record<string, any> = {
           name_en: name,
@@ -1163,7 +1262,6 @@ export function AddPlaceModal({ isOpen, onClose, editSubmission, onSubmissionUpd
               delete p.rejection_reason;
             }
 
-            // Retry after removing failing column
             const { error: retryErr } = await supabase
               .from("place_submissions")
               .update(p)
@@ -1176,6 +1274,7 @@ export function AddPlaceModal({ isOpen, onClose, editSubmission, onSubmissionUpd
         await executeUpdate(payload);
 
         alert("ส่งข้อมูลที่แก้ไขให้แอดมินเรียบร้อยแล้ว! (Updated submission sent to admin successfully!)");
+        onSuccess?.();
         if (onSubmissionUpdated) onSubmissionUpdated();
         handleClose();
       } else if (isAdmin) {
@@ -1217,6 +1316,7 @@ export function AddPlaceModal({ isOpen, onClose, editSubmission, onSubmissionUpd
         await executeAdminShopInsert(cleanShopPayload);
 
         alert("เพิ่มร้านค้าใหม่เข้าสู่ระบบเรียบร้อยแล้ว");
+        onSuccess?.();
         if (onSubmissionUpdated) onSubmissionUpdated();
         handleClose();
       } else {
@@ -1264,6 +1364,7 @@ export function AddPlaceModal({ isOpen, onClose, editSubmission, onSubmissionUpd
         }
 
         alert(t("add.thankYou"));
+        onSuccess?.();
         handleClose();
       }
     } catch (error: any) {
@@ -1286,7 +1387,13 @@ export function AddPlaceModal({ isOpen, onClose, editSubmission, onSubmissionUpd
           style={{ borderColor: C.line }}
         >
           <h3 className="text-lg font-bold text-gray-900">
-            {editSubmission ? "แก้ไขข้อมูลและส่งตรวจใหม่ (Edit & Resubmit Spot)" : isAdmin ? "เพิ่มร้านค้าใหม่เข้าสู่ระบบ (Add Shop to System)" : t("action.submitSpot")}
+            {isEditShop
+              ? "แก้ไขข้อมูลร้านค้า (Edit Shop Details)"
+              : editSubmission
+              ? "แก้ไขข้อมูลและส่งตรวจใหม่ (Edit & Resubmit Spot)"
+              : isAdmin
+              ? "เพิ่มร้านค้าใหม่เข้าสู่ระบบ (Add Shop to System)"
+              : t("action.submitSpot")}
           </h3>
           <button
             type="button"
@@ -1476,6 +1583,8 @@ export function AddPlaceModal({ isOpen, onClose, editSubmission, onSubmissionUpd
               ? t("add.uploading")
               : submitting
               ? t("common.submitting")
+              : isEditShop
+              ? "บันทึกการแก้ไข"
               : editSubmission
               ? "บันทึกและส่งตรวจใหม่ (Save & Resubmit)"
               : isAdmin
