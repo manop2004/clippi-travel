@@ -171,7 +171,7 @@ export default function AdminLogPage() {
         <div className="space-y-3">
           {filteredLogs.map((log) => {
             const admin = normalizeEmbed(log.profiles);
-            const adminName = admin?.display_name || "Unknown admin";
+            const adminName = admin?.display_name || admin?.full_name || admin?.username || "Unknown admin";
             const detailSummary = summarizeDetail(log.detail);
 
             return (

@@ -41,17 +41,35 @@ export default function ActivityFeedModal({ isOpen, onClose }: ActivityFeedModal
       .from("activity_log")
       .select(`
         id,
+        user_id,
         activity_type,
         detail,
         created_at,
-        profiles ( display_name ),
+        profiles ( display_name, avatar_url ),
         century_shops ( shop_name, image_url )
       `)
       .order("created_at", { ascending: false })
       .range(from, to);
 
     if (error) {
-      console.error("Error fetching activity log:", error);
+      console.warn("Retrying loadActivities without profiles join:", error.message);
+      const { data: fallbackData } = await supabase
+        .from("activity_log")
+        .select(`
+          id,
+          user_id,
+          activity_type,
+          detail,
+          created_at,
+          century_shops ( shop_name, image_url )
+        `)
+        .order("created_at", { ascending: false })
+        .range(from, to);
+
+      if (fallbackData) {
+        setItems((prev) => (isFirst ? (fallbackData as unknown as ActivityLogRow[]) : [...prev, ...(fallbackData as unknown as ActivityLogRow[])]));
+        setHasMore(fallbackData.length === PAGE_SIZE);
+      }
     } else if (data) {
       setItems((prev) => (isFirst ? (data as unknown as ActivityLogRow[]) : [...prev, ...(data as unknown as ActivityLogRow[])]));
       setHasMore(data.length === PAGE_SIZE);

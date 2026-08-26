@@ -333,15 +333,16 @@ export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }:
                       const reviewerProfile = Array.isArray(r.profiles)
                         ? r.profiles[0]
                         : r.profiles;
+                      const reviewerName = reviewerProfile?.display_name || reviewerProfile?.full_name || reviewerProfile?.username || t("reviews.user");
                       return (
                         <div key={r.id} className="p-3 rounded-xl bg-white border" style={{ borderColor: C.line }}>
                           <div className="flex items-center justify-between mb-1.5 select-none">
                             <div className="flex items-center gap-1.5">
                               <div className="w-5 h-5 rounded-full bg-[#231C18] text-white flex items-center justify-center text-[9px] font-bold">
-                                {reviewerProfile?.display_name?.[0]?.toUpperCase() ?? "U"}
+                                {reviewerName[0]?.toUpperCase() ?? "U"}
                               </div>
                               <span className="text-xs font-bold" style={{ color: C.ink }}>
-                                {reviewerProfile?.display_name ?? t("reviews.user")}
+                                {reviewerName}
                               </span>
                             </div>
                             <StarRow value={r.rating} size={9} />

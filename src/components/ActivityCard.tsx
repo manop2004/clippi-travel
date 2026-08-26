@@ -7,7 +7,9 @@ export default function ActivityCard({ activity: a }: { activity: ActivityLogRow
   const { t, lang } = useLang();
   const profile = normalizeEmbed(a.profiles);
   const shop = normalizeEmbed(a.century_shops);
-  const displayName = profile?.display_name ?? t("reviews.user");
+  const profileId = profile?.id || (a as any).user_id;
+  const cachedName = profileId ? localStorage.getItem(`user_display_name_${profileId}`) : null;
+  const displayName = cachedName || profile?.display_name || profile?.full_name || profile?.username || t("reviews.user");
   // localized() จะใช้ shop_name_jp ถ้ามีใน embed (ยังไม่ได้ดึงตอนนี้ → fallback เป็นอังกฤษ)
   const shopName = localized(shop as any, "shop_name", lang) || shop?.shop_name || t("activity.aPlace");
   const isBadge = a.activity_type === "badge";

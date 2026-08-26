@@ -80,14 +80,18 @@ export default function App() {
 
   const fetchHeaderProfile = async (uid: string) => {
     try {
+      const cached = localStorage.getItem(`user_display_name_${uid}`);
       const { data } = await supabase
         .from("profiles")
-        .select("display_name, avatar_url")
+        .select("*")
         .eq("id", uid)
         .maybeSingle();
       if (data) {
-        setUserProfile({ display_name: data.display_name, avatar_url: data.avatar_url });
+        const resolved = cached || data.display_name || data.full_name || data.username || null;
+        setUserProfile({ display_name: resolved, avatar_url: data.avatar_url });
         setHeaderImgError(false);
+      } else if (cached) {
+        setUserProfile((prev) => ({ ...prev, display_name: cached }));
       }
     } catch (e) {
       console.warn("Failed to fetch header profile:", e);
@@ -99,13 +103,24 @@ export default function App() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setAuthLoading(false);
-      if (session?.user?.id) fetchHeaderProfile(session.user.id);
+      if (session?.user?.id) {
+        if (session.user.email) {
+          localStorage.setItem(`user_email_${session.user.id}`, session.user.email);
+          supabase.from("profiles").update({ email: session.user.email }).eq("id", session.user.id).then(() => {});
+        }
+        fetchHeaderProfile(session.user.id);
+      }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      setAuthLoading(false);
-      if (session?.user?.id) fetchHeaderProfile(session.user.id);
+      if (session?.user?.id) {
+        if (session.user.email) {
+          localStorage.setItem(`user_email_${session.user.id}`, session.user.email);
+          supabase.from("profiles").update({ email: session.user.email }).eq("id", session.user.id).then(() => {});
+        }
+        fetchHeaderProfile(session.user.id);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -117,12 +132,13 @@ export default function App() {
 
     const handleProfileUpdated = (e: any) => {
       if (e?.detail) {
-        setUserProfile({
-          display_name: e.detail.display_name !== undefined ? e.detail.display_name : userProfile.display_name,
-          avatar_url: e.detail.avatar_url !== undefined ? e.detail.avatar_url : userProfile.avatar_url,
-        });
+        setUserProfile((prev) => ({
+          display_name: e.detail.display_name !== undefined ? e.detail.display_name : prev.display_name,
+          avatar_url: e.detail.avatar_url !== undefined ? e.detail.avatar_url : prev.avatar_url,
+        }));
         setHeaderImgError(false);
-      } else {
+      }
+      if (session?.user?.id) {
         fetchHeaderProfile(session.user.id);
       }
     };

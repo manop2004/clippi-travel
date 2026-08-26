@@ -18,7 +18,10 @@ import {
   Calendar,
   Stamp,
   Award,
-  Clock
+  Clock,
+  Mail,
+  MessageSquare,
+  MapPin
 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 import { C } from "../../constants/mockData";
@@ -39,7 +42,7 @@ function UserManagementContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "banned">("all");
   const [roleFilter, setRoleFilter] = useState<"all" | "admin" | "store" | "user">("all");
-  const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "name">("newest");
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "name" | "most_stamps" | "most_reviews">("newest");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [banningId, setBanningId] = useState<string | null>(null);
   const [currentAdmin, setCurrentAdmin] = useState<any>(null);
@@ -51,6 +54,96 @@ function UserManagementContent() {
   const [shopSearch, setShopSearch] = useState("");
   const [selectedShopId, setSelectedShopId] = useState<string>("");
   const [assigning, setAssigning] = useState(false);
+
+  // States for User Activity Detail Modal
+  const [selectedUserForActivity, setSelectedUserForActivity] = useState<any | null>(null);
+  const [activeDetailTab, setActiveDetailTab] = useState<"stamps" | "reviews">("stamps");
+  const [userActivityStamps, setUserActivityStamps] = useState<any[]>([]);
+  const [userActivityReviews, setUserActivityReviews] = useState<any[]>([]);
+  const [loadingUserActivity, setLoadingUserActivity] = useState(false);
+
+  const handleInspectUserActivity = async (userObj: any, initialTab: "stamps" | "reviews" = "stamps") => {
+    setSelectedUserForActivity(userObj);
+    setActiveDetailTab(initialTab);
+    setLoadingUserActivity(true);
+    setUserActivityStamps([]);
+    setUserActivityReviews([]);
+
+    try {
+      const possibleUserIds = Array.from(new Set([
+        userObj.id,
+        userObj.user_id,
+        userObj.uuid,
+        userObj.auth_id,
+      ].filter(Boolean).map(String)));
+
+      // 1. Fetch shops lookup map
+      const { data: shopsData } = await supabase
+        .from("century_shops")
+        .select("id, shop_name, shop_name_jp, category, image_url, address");
+
+      const shopMap = new Map<number, any>();
+      (shopsData || []).forEach((s: any) => {
+        if (s.id !== undefined && s.id !== null) {
+          shopMap.set(Number(s.id), s);
+        }
+      });
+
+      // 2. Query user stamps (check-ins) from `user_stamps` (column: collected_at, shop_id)
+      let stampsList: any[] = [];
+      const { data: userStampsData, error: stampsErr } = await supabase
+        .from("user_stamps")
+        .select("id, collected_at, shop_id, user_id")
+        .in("user_id", possibleUserIds)
+        .order("collected_at", { ascending: false });
+
+      if (!stampsErr && userStampsData && userStampsData.length > 0) {
+        stampsList = userStampsData;
+      } else {
+        // Fallback to activity_log for checkins if user_stamps is empty
+        const { data: actLogStamps } = await supabase
+          .from("activity_log")
+          .select("id, created_at, shop_id, user_id, detail")
+          .eq("activity_type", "checkin")
+          .in("user_id", possibleUserIds)
+          .order("created_at", { ascending: false });
+        if (actLogStamps) stampsList = actLogStamps;
+      }
+
+      const mappedStamps = stampsList.map((st) => {
+        const sId = Number(st.shop_id);
+        const shopObj = shopMap.get(sId) || null;
+        return {
+          ...st,
+          century_shops: shopObj,
+          collected_at: st.collected_at || st.created_at,
+        };
+      });
+
+      // 3. Query user reviews & comments from `reviews` (column: place_id)
+      const { data: userReviewsData } = await supabase
+        .from("reviews")
+        .select("id, rating, comment, created_at, place_id, user_id")
+        .in("user_id", possibleUserIds)
+        .order("created_at", { ascending: false });
+
+      const mappedReviews = (userReviewsData || []).map((rev) => {
+        const pId = Number(rev.place_id);
+        const shopObj = shopMap.get(pId) || null;
+        return {
+          ...rev,
+          century_shops: shopObj,
+        };
+      });
+
+      setUserActivityStamps(mappedStamps);
+      setUserActivityReviews(mappedReviews);
+    } catch (err) {
+      console.error("Error fetching user activity details:", err);
+    } finally {
+      setLoadingUserActivity(false);
+    }
+  };
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -112,10 +205,21 @@ function UserManagementContent() {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const [profilesRes, rolesRes, stampsRes, storeOwnersRes] = await Promise.all([
-        supabase.from("profiles").select("*"),
+      // 1. Try RPC get_admin_user_list to fetch real registration emails from auth.users
+      let rawProfiles: any[] = [];
+      const { data: rpcProfiles, error: rpcErr } = await supabase.rpc("get_admin_user_list");
+
+      if (!rpcErr && rpcProfiles && rpcProfiles.length > 0) {
+        rawProfiles = rpcProfiles;
+      } else {
+        const { data: standardProfiles } = await supabase.from("profiles").select("*");
+        rawProfiles = standardProfiles || [];
+      }
+
+      const [rolesRes, stampsRes, reviewsRes, storeOwnersRes] = await Promise.all([
         supabase.from("user_roles").select("*"),
         supabase.from("user_stamps").select("user_id"),
+        supabase.from("reviews").select("user_id"),
         supabase.from("store_owners").select("user_id, shop_id"),
       ]);
 
@@ -128,6 +232,23 @@ function UserManagementContent() {
           stampCountsMap.set(s.user_id, (stampCountsMap.get(s.user_id) || 0) + 1);
         }
       });
+      // Fallback check for alternate stamps table
+      if (stampsRes.error || !stampsRes.data || stampsRes.data.length === 0) {
+        const { data: altStamps } = await supabase.from("stamps").select("user_id");
+        (altStamps || []).forEach((s: any) => {
+          if (s.user_id) {
+            stampCountsMap.set(s.user_id, (stampCountsMap.get(s.user_id) || 0) + 1);
+          }
+        });
+      }
+
+      // Count reviews per user
+      const reviewCountsMap = new Map<string, number>();
+      (reviewsRes.data || []).forEach((r: any) => {
+        if (r.user_id) {
+          reviewCountsMap.set(r.user_id, (reviewCountsMap.get(r.user_id) || 0) + 1);
+        }
+      });
 
       // Count owned shops per user
       const ownedShopsMap = new Map<string, number>();
@@ -137,13 +258,31 @@ function UserManagementContent() {
         }
       });
 
-      const combined = (profilesRes.data || []).map((p: any) => ({
-        ...p,
-        is_banned: Boolean(p.is_banned),
-        role: (rolesMap.get(p.id) || p.role || "user") as UserRole,
-        stamps_count: stampCountsMap.get(p.id) || 0,
-        owned_shops_count: ownedShopsMap.get(p.id) || 0,
-      }));
+      const combined = rawProfiles.map((p: any) => {
+        const cachedName = localStorage.getItem(`user_display_name_${p.id}`) || (p.user_id ? localStorage.getItem(`user_display_name_${p.user_id}`) : null);
+        const cachedEmail = localStorage.getItem(`user_email_${p.id}`) || (p.user_id ? localStorage.getItem(`user_email_${p.user_id}`) : null);
+        const resolvedDisplayName = cachedName || p.display_name || p.full_name || p.username || null;
+        const selfEmail = currentAdmin && (p.id === currentAdmin.id || p.user_id === currentAdmin.id) ? currentAdmin.email : null;
+        const resolvedEmail = p.email || cachedEmail || selfEmail || null;
+
+        const pIdStr = String(p.id);
+        const pUserIdStr = p.user_id ? String(p.user_id) : "";
+
+        const stampCountVal = (stampCountsMap.get(pIdStr) || 0) + (pUserIdStr && pUserIdStr !== pIdStr ? (stampCountsMap.get(pUserIdStr) || 0) : 0);
+        const reviewCountVal = (reviewCountsMap.get(pIdStr) || 0) + (pUserIdStr && pUserIdStr !== pIdStr ? (reviewCountsMap.get(pUserIdStr) || 0) : 0);
+        const ownedShopVal = (ownedShopsMap.get(pIdStr) || 0) + (pUserIdStr && pUserIdStr !== pIdStr ? (ownedShopsMap.get(pUserIdStr) || 0) : 0);
+
+        return {
+          ...p,
+          email: resolvedEmail,
+          display_name: resolvedDisplayName,
+          is_banned: Boolean(p.is_banned),
+          role: (rolesMap.get(p.id) || (p.user_id && rolesMap.get(p.user_id)) || p.role || "user") as UserRole,
+          stamps_count: stampCountVal,
+          reviews_count: reviewCountVal,
+          owned_shops_count: ownedShopVal,
+        };
+      });
 
       setUsers(combined);
     } catch (err) {
@@ -344,6 +483,12 @@ function UserManagementContent() {
         const nameA = a.display_name || a.username || "";
         const nameB = b.display_name || b.username || "";
         return nameA.localeCompare(nameB);
+      }
+      if (sortOrder === "most_stamps") {
+        return (b.stamps_count || 0) - (a.stamps_count || 0);
+      }
+      if (sortOrder === "most_reviews") {
+        return (b.reviews_count || 0) - (a.reviews_count || 0);
       }
       return 0;
     });
@@ -619,6 +764,34 @@ function UserManagementContent() {
             >
               <span>🔤 ตามชื่อ (A-Z)</span>
             </button>
+
+            {/* Sort by Most Stamps (Check-ins) */}
+            <button
+              type="button"
+              onClick={() => setSortOrder("most_stamps")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border flex items-center gap-1.5 ${
+                sortOrder === "most_stamps"
+                  ? "bg-amber-500 text-stone-950 font-black border-amber-500 shadow-xs"
+                  : "bg-white text-amber-900 hover:bg-amber-50 border-amber-300"
+              }`}
+            >
+              <MapPin size={13} className={sortOrder === "most_stamps" ? "text-stone-950" : "text-amber-600"} />
+              <span>📍 เช็คอินเยอะสุด</span>
+            </button>
+
+            {/* Sort by Most Reviews */}
+            <button
+              type="button"
+              onClick={() => setSortOrder("most_reviews")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border flex items-center gap-1.5 ${
+                sortOrder === "most_reviews"
+                  ? "bg-blue-600 text-white font-black border-blue-600 shadow-xs"
+                  : "bg-white text-blue-900 hover:bg-blue-50 border-blue-300"
+              }`}
+            >
+              <MessageSquare size={13} className={sortOrder === "most_reviews" ? "text-white" : "text-blue-600"} />
+              <span>💬 รีวิวเยอะสุด</span>
+            </button>
           </div>
 
           <div className="text-[11px] font-semibold text-[#8A7870]">
@@ -664,14 +837,14 @@ function UserManagementContent() {
               : "ไม่ระบุ";
 
             return (
-              <div key={u.id} className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-stone-50/50 transition">
-                {/* User Information */}
-                <div className="flex items-center gap-3.5 min-w-0">
+              <div key={u.id} className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-stone-50/70 transition">
+                {/* Left: User Avatar & Essential Info */}
+                <div className="flex items-center gap-3.5 min-w-0 flex-1">
                   {u.avatar_url ? (
                     <img
                       src={u.avatar_url}
                       alt={mainDisplayName}
-                      className="w-11 h-11 rounded-2xl object-cover border shrink-0 bg-stone-100"
+                      className="w-11 h-11 rounded-2xl object-cover border shrink-0 bg-stone-100 shadow-2xs"
                       style={{ borderColor: C.line }}
                     />
                   ) : (
@@ -680,80 +853,92 @@ function UserManagementContent() {
                     </div>
                   )}
 
-                  <div className="min-w-0 space-y-1">
+                  <div className="min-w-0 space-y-0.5">
+                    {/* Primary Name & Badges Row */}
                     <div className="flex items-center gap-2 flex-wrap">
-                      {/* Main Display Name */}
                       <h4 className="text-sm font-black text-[#231C18] truncate">{mainDisplayName}</h4>
-
-                      {/* Username Handle Tag */}
-                      {usernameTag && (
-                        <span className="text-[11px] font-semibold text-[#8A7870] bg-stone-100 px-2 py-0.5 rounded-lg border border-stone-200">
-                          @{usernameTag}
-                        </span>
-                      )}
 
                       {/* Role Badge */}
                       {u.role === "admin" && (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-stone-950 shadow-2xs flex items-center gap-1">
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-400 text-stone-950 flex items-center gap-1 shadow-2xs">
                           <Crown size={10} /> Admin
                         </span>
                       )}
                       {u.role === "store" && (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-indigo-100 text-indigo-800 border border-indigo-200 flex items-center gap-1">
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-indigo-100 text-indigo-800 border border-indigo-200 flex items-center gap-1">
                           <Store size={10} /> Store Owner
                         </span>
                       )}
                       {u.role === "user" && (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-stone-100 text-stone-700 border border-stone-200">
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-stone-100 text-stone-700 border border-stone-200">
                           User
                         </span>
                       )}
 
                       {/* Status Badge */}
                       {u.is_banned ? (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-700 border border-rose-200 flex items-center gap-1">
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-100 text-rose-700 border border-rose-200">
                           🔴 ถูกแบน
                         </span>
                       ) : (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200">
                           🟢 ใช้งานปกติ
                         </span>
                       )}
 
                       {isSelf && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                        <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
                           (คุณ)
                         </span>
                       )}
                     </div>
 
-                    {/* Personal Activity Badges */}
-                    <div className="flex items-center gap-2 flex-wrap text-[11px] font-bold">
-                      {u.stamps_count > 0 && (
-                        <span className="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1">
-                          <Stamp size={11} className="text-amber-600" /> สะสม {u.stamps_count} Stamp
-                        </span>
-                      )}
-                      {u.role === "store" && u.owned_shops_count > 0 && (
-                        <span className="px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-800 border border-indigo-200 flex items-center gap-1">
-                          <Store size={11} className="text-indigo-600" /> ดูแล {u.owned_shops_count} ร้าน
-                        </span>
-                      )}
-                    </div>
+                    {/* Subtitle Line 1: Clean Registration Email */}
+                    {u.email && (
+                      <p className="text-xs text-stone-600 font-medium flex items-center gap-1 truncate">
+                        <Mail size={12} className="text-stone-400 shrink-0" />
+                        <span className="truncate">{u.email}</span>
+                      </p>
+                    )}
 
-                    <div className="text-[11px] text-[#8A7870] font-semibold flex flex-wrap items-center gap-x-3 gap-y-0.5">
-                      {u.email && <span className="truncate">📧 {u.email}</span>}
+                    {/* Subtitle Line 2: Activity Stats & Registration Date */}
+                    <div className="text-[11px] text-[#8A7870] font-medium flex items-center gap-2.5 flex-wrap pt-0.5">
+                      <button
+                        type="button"
+                        onClick={() => handleInspectUserActivity(u, "stamps")}
+                        className="hover:text-amber-700 hover:underline transition cursor-pointer flex items-center gap-1 font-semibold"
+                        title="คลิกเพื่อดูประวัติการเช็คอิน"
+                      >
+                        <MapPin size={11} className="text-amber-600" />
+                        <span>เช็คอิน: <strong className="text-amber-800">{u.stamps_count}</strong></span>
+                      </button>
+
+                      <span className="text-stone-300">•</span>
+
+                      <button
+                        type="button"
+                        onClick={() => handleInspectUserActivity(u, "reviews")}
+                        className="hover:text-blue-700 hover:underline transition cursor-pointer flex items-center gap-1 font-semibold"
+                        title="คลิกเพื่อดูประวัติการเขียนรีวิว"
+                      >
+                        <MessageSquare size={11} className="text-blue-600" />
+                        <span>รีวิว: <strong className="text-blue-800">{u.reviews_count}</strong></span>
+                      </button>
+
+                      <span className="text-stone-300">•</span>
+
                       <span>📅 สมัครเมื่อ: {regDateFormatted}</span>
+
                       {u.is_banned && (
-                        <span className="text-rose-600 font-bold w-full block">
-                          ⚠️ สาเหตุการแบน: {u.ban_reason || "ละเมิดเงื่อนไขการใช้งานระบบ"}
+                        <span className="text-rose-600 font-bold ml-1">
+                          ⚠️ ({u.ban_reason || "ละเมิดเงื่อนไข"})
                         </span>
                       )}
                     </div>
                   </div>
                 </div>
 
-                {/* Actions: Role Selector & Ban Button */}
+                {/* Right: Actions Column */}
                 <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
                   {/* Assign Shop Button (only for user / store) */}
                   {(u.role === "store" || u.role === "user") && (
@@ -905,6 +1090,208 @@ function UserManagementContent() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 🔍 User Activity Detail Modal (Check-ins & Reviews Inspector) */}
+      {selectedUserForActivity && (
+        <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+          <div
+            className="bg-white rounded-3xl w-full max-w-2xl border shadow-2xl overflow-hidden flex flex-col max-h-[85vh] my-auto transition-all"
+            style={{ borderColor: C.line }}
+          >
+            {/* Modal Header */}
+            <div className="p-5 border-b flex items-center justify-between bg-[#FAF6F0]" style={{ borderColor: C.line }}>
+              <div className="flex items-center gap-3">
+                {selectedUserForActivity.avatar_url ? (
+                  <img
+                    src={selectedUserForActivity.avatar_url}
+                    alt="avatar"
+                    className="w-10 h-10 rounded-2xl object-cover border bg-stone-100"
+                    style={{ borderColor: C.line }}
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-2xl flex items-center justify-center font-black text-[#E7A93C] bg-[#231C18] text-sm">
+                    {(selectedUserForActivity.display_name || selectedUserForActivity.username || "U")[0].toUpperCase()}
+                  </div>
+                )}
+                <div>
+                  <h3 className="text-base font-black text-[#231C18]">
+                    {selectedUserForActivity.display_name || selectedUserForActivity.full_name || selectedUserForActivity.username || "User Details"}
+                  </h3>
+                  {selectedUserForActivity.email && (
+                    <p className="text-xs text-stone-600 font-semibold flex items-center gap-1">
+                      <Mail size={12} className="text-stone-400" />
+                      {selectedUserForActivity.email}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedUserForActivity(null)}
+                className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-stone-200 transition cursor-pointer font-bold text-stone-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Tabs Navigation */}
+            <div className="flex items-center border-b bg-stone-50 px-5 pt-3 gap-2" style={{ borderColor: C.line }}>
+              <button
+                type="button"
+                onClick={() => setActiveDetailTab("stamps")}
+                className={`px-4 py-2.5 rounded-t-xl text-xs font-black transition flex items-center gap-2 border-b-2 ${
+                  activeDetailTab === "stamps"
+                    ? "border-[#E0533C] text-[#E0533C] bg-white shadow-2xs"
+                    : "border-transparent text-[#8A7870] hover:text-[#231C18]"
+                }`}
+              >
+                <MapPin size={14} />
+                <span>ประวัติการเช็คอิน ({userActivityStamps.length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveDetailTab("reviews")}
+                className={`px-4 py-2.5 rounded-t-xl text-xs font-black transition flex items-center gap-2 border-b-2 ${
+                  activeDetailTab === "reviews"
+                    ? "border-[#E0533C] text-[#E0533C] bg-white shadow-2xs"
+                    : "border-transparent text-[#8A7870] hover:text-[#231C18]"
+                }`}
+              >
+                <MessageSquare size={14} />
+                <span>ประวัติการรีวิว ({userActivityReviews.length})</span>
+              </button>
+            </div>
+
+            {/* Modal Content Body */}
+            <div className="p-5 overflow-y-auto flex-1 space-y-3 bg-[#FAF6F0]/30 min-h-[300px]">
+              {loadingUserActivity ? (
+                <div className="py-12 text-center text-xs font-bold text-[#8A7870] flex flex-col items-center gap-2 animate-pulse">
+                  <Loader2 size={24} className="animate-spin text-[#E0533C]" />
+                  <span>กำลังดึงข้อมูลประวัติกิจกรรมผู้ใช้งาน...</span>
+                </div>
+              ) : activeDetailTab === "stamps" ? (
+                /* TAB 1: STAMPS / CHECK-INS LIST */
+                userActivityStamps.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {userActivityStamps.map((item: any) => {
+                      const shop = item.century_shops || {};
+                      const shopName = shop.shop_name || `ร้านค้า #${item.shop_id || item.stamp_id}`;
+                      return (
+                        <div
+                          key={item.id}
+                          className="bg-white p-3.5 rounded-2xl border flex items-center gap-3 shadow-xs hover:border-[#E0533C]/40 transition"
+                          style={{ borderColor: C.line }}
+                        >
+                          {shop.image_url ? (
+                            <img
+                              src={shop.image_url}
+                              alt={shopName}
+                              className="w-12 h-12 rounded-xl object-cover border shrink-0 bg-stone-100"
+                              style={{ borderColor: C.line }}
+                            />
+                          ) : (
+                            <div className="w-12 h-12 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold text-lg shrink-0">
+                              ⛩️
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1 leading-tight">
+                            <h4 className="text-xs font-black text-[#231C18] truncate">{shopName}</h4>
+                            {shop.category && (
+                              <span className="text-[9px] font-bold text-stone-500 uppercase tracking-wider block mt-0.5">
+                                {shop.category}
+                              </span>
+                            )}
+                            <p className="text-[10px] text-amber-700 font-semibold mt-1 flex items-center gap-1">
+                              <Calendar size={10} />
+                              {new Date(item.created_at).toLocaleDateString("th-TH", {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="py-12 text-center text-xs font-semibold text-[#8A7870] bg-white rounded-2xl border p-6" style={{ borderColor: C.line }}>
+                    📍 ยังไม่มีประวัติการเช็คอินสถานที่
+                  </div>
+                )
+              ) : (
+                /* TAB 2: REVIEWS & COMMENTS LIST */
+                userActivityReviews.length > 0 ? (
+                  <div className="space-y-3">
+                    {userActivityReviews.map((rev: any) => {
+                      const shop = rev.century_shops || {};
+                      const shopName = shop.shop_name || `ร้านค้า #${rev.place_id}`;
+                      const rating = Number(rev.rating) || 5;
+                      return (
+                        <div
+                          key={rev.id}
+                          className="bg-white p-4 rounded-2xl border space-y-2 shadow-xs"
+                          style={{ borderColor: C.line }}
+                        >
+                          <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: C.line }}>
+                            <div className="flex items-center gap-2.5">
+                              {shop.image_url && (
+                                <img
+                                  src={shop.image_url}
+                                  alt={shopName}
+                                  className="w-8 h-8 rounded-lg object-cover border"
+                                  style={{ borderColor: C.line }}
+                                />
+                              )}
+                              <div>
+                                <h4 className="text-xs font-black text-[#231C18]">{shopName}</h4>
+                                <p className="text-[9px] text-[#8A7870] font-semibold">
+                                  {new Date(rev.created_at).toLocaleDateString("th-TH", {
+                                    year: "numeric",
+                                    month: "short",
+                                    day: "numeric",
+                                  })}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200 text-amber-700 text-xs font-bold">
+                              <span>★ {rating}.0</span>
+                            </div>
+                          </div>
+
+                          <p className="text-xs text-[#231C18] leading-relaxed bg-[#FAF6F0] p-3 rounded-xl border border-stone-200/60 font-medium">
+                            "{rev.comment}"
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="py-12 text-center text-xs font-semibold text-[#8A7870] bg-white rounded-2xl border p-6" style={{ borderColor: C.line }}>
+                    💬 ยังไม่มีประวัติการเขียนรีวิวหรือคอมเมนต์
+                  </div>
+                )
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t bg-stone-50 flex items-center justify-end" style={{ borderColor: C.line }}>
+              <button
+                type="button"
+                onClick={() => setSelectedUserForActivity(null)}
+                className="px-5 py-2 rounded-xl border text-xs font-bold hover:bg-stone-200 transition cursor-pointer bg-white"
+                style={{ borderColor: C.line }}
+              >
+                ปิดหน้าต่าง
+              </button>
+            </div>
           </div>
         </div>
       )}
