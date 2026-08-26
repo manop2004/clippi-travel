@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { X, Navigation, Crosshair, Landmark, MapPin, ExternalLink, Send, Loader2, Star, Camera, Edit3, Trash2, Globe, FileText } from "lucide-react";
+import { X, Navigation, Crosshair, Landmark, MapPin, ExternalLink, Send, Loader2, Star, Camera, Edit3, Trash2, Globe, FileText, AlertCircle, AlertTriangle, CheckCircle2 } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { C, categories } from "../constants/mockData";
@@ -912,7 +912,7 @@ export function AddPlaceModal({
 }: AddPlaceModalProps) {
   const { role, isAdmin } = useUserRole();
   const targetData = initialData || editSubmission;
-  const isEditShop = !!initialData || (targetData && (targetData.shop_name || targetData.id));
+  const isEditShop = !!initialData;
 
   const [cat, setCat] = useState("food");
   const [name, setName] = useState("");
@@ -1318,7 +1318,7 @@ export function AddPlaceModal({
           image_url: finalImageUrls[0] || null,
           lat: coords?.lat ? parseFloat(String(coords.lat)) : null,
           lng: coords?.lng ? parseFloat(String(coords.lng)) : null,
-          owner_id: user.id,
+          owner_id: targetData?.owner_id || user.id,
         };
 
         const isNumberId = typeof itemId === "number" || (!isNaN(Number(itemId)) && !String(itemId).includes("-"));
@@ -1342,6 +1342,28 @@ export function AddPlaceModal({
               .eq("id", Number(itemId));
 
             if (retryErr) console.warn("Retry update century_shops failed:", retryErr.message);
+          }
+
+          // Sync corresponding place_submissions if exists by shop_id or user_id + old name
+          if (oldName) {
+            try {
+              await supabase
+                .from("place_submissions")
+                .update({
+                  name_en: nameEn,
+                  name_jp: nameJp,
+                  street: addressStr,
+                  website: website || null,
+                  category: cat || "shop",
+                  description: description || null,
+                  image_url: finalImageUrls[0] || null,
+                  lat: coords?.lat ? parseFloat(String(coords.lat)) : null,
+                  lng: coords?.lng ? parseFloat(String(coords.lng)) : null,
+                })
+                .or(`shop_id.eq.${Number(itemId)},and(user_id.eq.${user.id},name_en.eq.${oldName})`);
+            } catch (syncSubErr) {
+              console.warn("Sync place_submissions error:", syncSubErr);
+            }
           }
         } else {
           // Sync live shop in century_shops created from this submission
@@ -1577,6 +1599,24 @@ export function AddPlaceModal({
 
         {/* Scrollable Form Content */}
         <form onSubmit={handleSubmit} className="p-6 overflow-y-auto flex-1 space-y-4">
+          {editSubmission && editSubmission.status === "rejected" && (
+            <div className="bg-rose-50 border-2 border-rose-300 p-4 rounded-2xl space-y-2 text-xs text-rose-900 shadow-2xs">
+              <div className="flex items-center gap-2 text-rose-700 font-black">
+                <AlertCircle size={17} />
+                <span>คำขอนี้ถูกปฏิเสธโดยผู้ดูแลระบบ (Rejected Submission)</span>
+              </div>
+              {editSubmission.rejection_reason && (
+                <div className="bg-white/80 p-3 rounded-xl border border-rose-200 text-rose-950 font-medium">
+                  <span className="font-bold text-rose-900 block text-[11px] mb-0.5">⚠️ เหตุผลที่แอดมินปฏิเสธ:</span>
+                  "{editSubmission.rejection_reason}"
+                </div>
+              )}
+              <p className="text-[11px] text-rose-700 font-semibold">
+                💡 กรุณาแก้ไขหรือปรับปรุงข้อมูลตามคำแนะนำข้างต้น แล้วกดปุ่ม <strong>"บันทึกและส่งตรวจใหม่ (Save & Resubmit)"</strong> ด้านล่างเพื่อส่งให้แอดมินตรวจสอบอีกครั้ง
+              </p>
+            </div>
+          )}
+
           <div>
             <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">
               {t("add.nameEn")} <span style={{ color: C.accent }}>*</span>

@@ -26,7 +26,16 @@ import {
   XCircle,
   AlertCircle,
   ArrowRight,
-  FileText
+  FileText,
+  Crown,
+  Flame,
+  TrendingUp,
+  BarChart3,
+  Filter,
+  RotateCcw,
+  SlidersHorizontal,
+  Trophy,
+  MessageSquare
 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 import { C, categories } from "../../constants/mockData";
@@ -36,6 +45,7 @@ import { AddPlaceModal } from "../../components/Modals";
 export interface ShopRecord {
   id: number | string;
   shop_name: string;
+  name_en?: string;
   shop_name_jp?: string | null;
   category: string;
   prefecture?: string | null;
@@ -51,6 +61,7 @@ export interface ShopRecord {
   owner_id?: string | null;
   rating?: number | null;
   reviews_count?: number | null;
+  stamps_count?: number;
   isSubmission?: boolean;
   submissionId?: string;
   status?: string;
@@ -76,6 +87,18 @@ export interface SubmissionItem {
   shop_id?: string | number | null;
 }
 
+export interface CustomerReviewItem {
+  id: string;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+  place_id: number | string;
+  user_id: string;
+  shop_name?: string;
+  reviewer_name?: string;
+  reviewer_avatar?: string | null;
+}
+
 export interface StoreManagementPageProps {
   onOpenAddPlace?: () => void;
 }
@@ -92,9 +115,11 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
   const [shops, setShops] = useState<ShopRecord[]>([]);
   const [submissions, setSubmissions] = useState<SubmissionItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"shops" | "submissions">("shops");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "shops" | "submissions">("dashboard");
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [recentReviews, setRecentReviews] = useState<CustomerReviewItem[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingShop, setEditingShop] = useState<ShopRecord | null>(null);
@@ -102,14 +127,99 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
   const [deletingSubId, setDeletingSubId] = useState<string | null>(null);
   const [qrShop, setQrShop] = useState<ShopRecord | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [sortOption, setSortOption] = useState<"stamps" | "rating" | "newest" | "name">("stamps");
+  const [selectedSummaryShop, setSelectedSummaryShop] = useState<ShopRecord | null>(null);
+
+  // Advanced Filter state (Prefecture, Rating, Category)
+  const [selectedPrefecture, setSelectedPrefecture] = useState<string>("all");
+  const [selectedMinRating, setSelectedMinRating] = useState<number>(0);
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
   // Stats state
   const [totalStamps, setTotalStamps] = useState(0);
   const [avgRating, setAvgRating] = useState<number | string>(0);
 
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Customer Reviews Analytics Modal state
+  const [isReviewsModalOpen, setIsReviewsModalOpen] = useState(false);
+  const [reviewShopFilter, setReviewShopFilter] = useState("all");
+  const [reviewRatingFilter, setReviewRatingFilter] = useState(0);
+  const [reviewSearch, setReviewSearch] = useState("");
+  const [reviewSort, setReviewSort] = useState<"newest" | "oldest" | "highest" | "lowest">("newest");
+
+  // Review Analytics calculations
+  const totalReviewsCount = recentReviews.length;
+  const avgReviewScore = totalReviewsCount > 0
+    ? (recentReviews.reduce((acc, curr) => acc + curr.rating, 0) / totalReviewsCount).toFixed(1)
+    : "N/A";
+
+  const ratingDistribution = {
+    5: recentReviews.filter((r) => Math.floor(r.rating) === 5).length,
+    4: recentReviews.filter((r) => Math.floor(r.rating) === 4).length,
+    3: recentReviews.filter((r) => Math.floor(r.rating) === 3).length,
+    2: recentReviews.filter((r) => Math.floor(r.rating) === 2).length,
+    1: recentReviews.filter((r) => Math.floor(r.rating) === 1).length,
+  };
+
+  const fiveStarRatio = totalReviewsCount > 0
+    ? Math.round((ratingDistribution[5] / totalReviewsCount) * 100)
+    : 0;
+
+  const uniqueShopsReviewedCount = new Set(recentReviews.map((r) => String(r.place_id))).size;
+
+  const filteredModalReviews = recentReviews
+    .filter((rev) => {
+      const matchesShop = reviewShopFilter === "all" || String(rev.place_id) === String(reviewShopFilter);
+      const matchesRating = reviewRatingFilter === 0 || Math.floor(rev.rating) === reviewRatingFilter;
+      const q = reviewSearch.toLowerCase().trim();
+      const matchesSearch =
+        !q ||
+        rev.reviewer_name.toLowerCase().includes(q) ||
+        rev.shop_name.toLowerCase().includes(q) ||
+        (rev.comment && rev.comment.toLowerCase().includes(q));
+      return matchesShop && matchesRating && matchesSearch;
+    })
+    .sort((a, b) => {
+      if (reviewSort === "oldest") return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      if (reviewSort === "highest") return b.rating - a.rating;
+      if (reviewSort === "lowest") return a.rating - b.rating;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+
   useEffect(() => {
     loadData();
   }, []);
+
+  const checkIsAdmin = async (userId: string): Promise<boolean> => {
+    try {
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (roleData?.role === "admin") return true;
+
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("role, is_admin")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (profileData?.role === "admin" || profileData?.is_admin === true) return true;
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (
+        user?.user_metadata?.role === "admin" ||
+        user?.app_metadata?.role === "admin"
+      ) return true;
+
+      return false;
+    } catch {
+      return false;
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -120,8 +230,14 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
       if (!user) return;
       setCurrentUser(user);
 
-      const userSubs = await fetchSubmissions(user.id);
-      await fetchOwnedShops(user.id, userSubs);
+      const adminFlag = await checkIsAdmin(user.id);
+      setIsAdmin(adminFlag);
+      if (adminFlag && activeTab === "submissions") {
+        setActiveTab("shops");
+      }
+
+      const userSubs = await fetchSubmissions(user.id, adminFlag);
+      await fetchOwnedShops(user.id, adminFlag, userSubs);
     } catch (err: any) {
       console.error("Failed to load merchant dashboard data:", err);
     } finally {
@@ -129,101 +245,167 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
     }
   };
 
-  const fetchOwnedShops = async (userId: string, userSubs?: SubmissionItem[]) => {
+  const fetchOwnedShops = async (userId?: string, isAdminUser?: boolean, userSubs?: SubmissionItem[]) => {
+    setLoading(true);
     try {
-      // 1. Fetch user's approved submissions
-      const { data: approvedSubs } = await supabase
-        .from("place_submissions")
-        .select("*")
-        .eq("user_id", userId)
-        .eq("status", "approved");
+      const { data: { user } } = await supabase.auth.getUser();
+      const uid = userId || user?.id || currentUser?.id;
+      if (!uid) {
+        setShops([]);
+        setSubmissions([]);
+        return;
+      }
 
-      // 2. Fetch direct century_shops owned by user
-      let ownedShops: any[] = [];
-      const { data: shopsData, error: shopsError } = await supabase
-        .from("century_shops")
-        .select("*")
-        .or(`owner_id.eq.${userId},submitted_by.eq.${userId},created_by.eq.${userId},user_id.eq.${userId}`)
-        .order("created_at", { ascending: false });
+      const adminFlag = isAdminUser !== undefined ? isAdminUser : isAdmin;
+      let allLiveShops: any[] = [];
 
-      if (shopsError) {
-        console.warn("Direct OR query fallback:", shopsError.message);
-        const { data: fallbackData } = await supabase
+      if (adminFlag) {
+        // ADMIN: Fetch ALL shops from century_shops in the entire system!
+        const { data: allShopsData, error: allErr } = await supabase
           .from("century_shops")
           .select("*")
-          .eq("owner_id", userId)
           .order("created_at", { ascending: false });
-        ownedShops = fallbackData || [];
+
+        if (allErr) console.warn("Admin fetch all century_shops error:", allErr.message);
+        allLiveShops = allShopsData || [];
       } else {
-        ownedShops = shopsData || [];
-      }
+        // STORE OWNER: Fetch owned shops
+        const { data: liveShops } = await supabase
+          .from("century_shops")
+          .select("*")
+          .eq("owner_id", uid);
 
-      // 3. Fetch linked shops via store_owners
-      let linkedShops: any[] = [];
-      try {
-        const { data: storeOwnerLinks } = await supabase
-          .from("store_owners")
-          .select("shop_id, century_shops(*)")
-          .eq("user_id", userId);
+        const { data: fallbackShops } = await supabase
+          .from("century_shops")
+          .select("*")
+          .or(`submitted_by.eq.${uid},created_by.eq.${uid},user_id.eq.${uid}`);
 
-        if (storeOwnerLinks) {
-          linkedShops = storeOwnerLinks.map((item: any) => item.century_shops).filter(Boolean);
+        let linkedShops: any[] = [];
+        try {
+          const { data: storeOwnerLinks } = await supabase
+            .from("store_owners")
+            .select("shop_id, century_shops(*)")
+            .eq("user_id", uid);
+
+          if (storeOwnerLinks) {
+            linkedShops = storeOwnerLinks.map((item: any) => item.century_shops).filter(Boolean);
+          }
+        } catch (soErr) {
+          console.warn("store_owners query fallback:", soErr);
         }
-      } catch (soErr) {
-        console.warn("store_owners query fallback:", soErr);
+
+        allLiveShops = [...(liveShops || []), ...(fallbackShops || []), ...linkedShops];
       }
 
-      // Combine all approved items into a unified format
-      const combinedApproved = [
-        ...(approvedSubs || []).map((s) => ({
-          id: s.shop_id || s.id,
-          submissionId: s.id,
+      const liveShopIds = new Set(allLiveShops.map((s) => s.id));
+      const liveShopNames = new Set(
+        allLiveShops.map((s) => (s.shop_name || s.name_en || "").trim().toLowerCase())
+      );
+
+      // 3. Fetch approved submissions ONLY if not already present in liveShops
+      let approvedSubQuery = supabase
+        .from("place_submissions")
+        .select("*")
+        .eq("status", "approved");
+
+      if (!adminFlag) {
+        approvedSubQuery = approvedSubQuery.eq("user_id", uid);
+      }
+
+      const { data: approvedSubs } = await approvedSubQuery;
+
+      const fallbackSubs = (approvedSubs || [])
+        .filter((sub) => {
+          const subName = (sub.name_en || sub.name_jp || "").trim().toLowerCase();
+          if (sub.shop_id && liveShopIds.has(sub.shop_id)) return false;
+          if (subName && liveShopNames.has(subName)) return false;
+          return true;
+        })
+        .map((sub) => ({
+          id: sub.id,
+          submissionId: sub.id,
           isSubmission: true,
-          shop_name: s.name_en || s.name_jp || "ร้านค้าที่อนุมัติแล้ว",
-          shop_name_jp: s.name_jp,
-          address: s.street || s.address || "",
-          website: s.website || "",
-          category: s.category || "shop",
-          description: s.description || "",
-          image_url: s.image_urls?.[0] || s.image_url || "",
-          lat: s.lat,
-          lng: s.lng,
+          shop_name: sub.name_en || sub.name_jp || "Approved Spot",
+          shop_name_jp: sub.name_jp,
+          address: sub.street || sub.prefecture || "",
+          website: sub.website || "",
+          category: sub.category || "shop",
+          description: sub.description || "",
+          image_url: sub.image_url || sub.image_urls?.[0] || "",
+          lat: sub.lat,
+          lng: sub.lng,
           status: "approved",
-          owner_id: userId,
-        })),
-        ...(ownedShops || []).map((s) => ({
-          ...s,
-          isSubmission: false,
-          status: "approved",
-        })),
-        ...(linkedShops || []).map((s) => ({
-          ...s,
-          isSubmission: false,
-          status: "approved",
-        })),
+          owner_id: sub.user_id,
+        }));
+
+      // Map stamp check-ins count per shop
+      let stampMap: Record<string, number> = {};
+      try {
+        const { data: allStampsData } = await supabase
+          .from("user_stamps")
+          .select("shop_id");
+
+        if (allStampsData) {
+          allStampsData.forEach((st: any) => {
+            if (st.shop_id) {
+              const sid = String(st.shop_id);
+              stampMap[sid] = (stampMap[sid] || 0) + 1;
+            }
+          });
+        }
+      } catch (stErr) {
+        console.warn("user_stamps map error:", stErr);
+      }
+
+      // Deduplicate live shops first
+      const uniqueLiveShopsMap = new Map();
+      allLiveShops.forEach((s) => {
+        if (s && s.id) uniqueLiveShopsMap.set(String(s.id), s);
+      });
+      const uniqueLiveShopsList = Array.from(uniqueLiveShopsMap.values());
+
+      const finalApprovedList = [
+        ...uniqueLiveShopsList.map((s) => ({ ...s, isSubmission: false, status: "approved" })),
+        ...fallbackSubs,
       ];
 
-      // Remove duplicates by shop_name / id
+      const finalApprovedListWithStamps = finalApprovedList.map((shop) => ({
+        ...shop,
+        stamps_count: stampMap[String(shop.id)] || 0,
+      }));
+
+      // Deduplicate by ID / Name
       const uniqueApproved = Array.from(
-        new Map(combinedApproved.map((item) => [String(item.id || item.shop_name).toLowerCase(), item])).values()
+        new Map(
+          finalApprovedListWithStamps.map((item) => [
+            String(item.id || item.submissionId || item.shop_name).toLowerCase(),
+            item,
+          ])
+        ).values()
       );
 
       setShops(uniqueApproved);
+      fetchMerchantReviews(uniqueApproved, adminFlag);
 
+      // Calculate stats (total stamps & avg rating)
       if (uniqueApproved.length > 0) {
-        const shopIds = uniqueApproved.map((s) => s.id).filter(Boolean);
+        const shopIds = uniqueApproved
+          .map((s) => s.id)
+          .filter((id) => typeof id === "number" || (!isNaN(Number(id)) && !String(id).includes("-")));
 
         if (shopIds.length > 0) {
           const { count, error: stampErr } = await supabase
             .from("user_stamps")
             .select("id", { count: "exact", head: true })
-            .in("shop_id", shopIds);
+            .in("shop_id", shopIds.map(Number));
 
           if (!stampErr && count !== null) {
             setTotalStamps(count);
           } else {
             setTotalStamps(0);
           }
+        } else {
+          setTotalStamps(0);
         }
 
         const validRatings = uniqueApproved
@@ -243,16 +425,95 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
     } catch (err: any) {
       console.error("Error fetching shops:", err.message);
       setShops([]);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const fetchSubmissions = async (userId: string): Promise<SubmissionItem[]> => {
+  const fetchMerchantReviews = async (ownedShopsList: ShopRecord[], isAdminUser?: boolean) => {
     try {
-      const { data, error } = await supabase
+      setReviewsLoading(true);
+      const isSuperAdmin = isAdminUser !== undefined ? isAdminUser : isAdmin;
+
+      const shopNameMap = new Map<number, string>();
+      ownedShopsList.forEach((s) => {
+        if (s.id && !isNaN(Number(s.id))) {
+          shopNameMap.set(Number(s.id), s.shop_name || s.name_en || "ร้านค้า");
+        }
+      });
+
+      let query = supabase
+        .from("reviews")
+        .select(`
+          id,
+          rating,
+          comment,
+          created_at,
+          place_id,
+          user_id,
+          profiles (
+            display_name,
+            avatar_url
+          )
+        `)
+        .order("created_at", { ascending: false })
+        .limit(200);
+
+      if (!isSuperAdmin) {
+        const shopIds = ownedShopsList
+          .map((s) => s.id)
+          .filter((id) => typeof id === "number" || (!isNaN(Number(id)) && !String(id).includes("-")))
+          .map(Number);
+
+        if (shopIds.length === 0) {
+          setRecentReviews([]);
+          return;
+        }
+
+        query = query.in("place_id", shopIds);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.warn("Fetch merchant reviews notice:", error.message);
+        setRecentReviews([]);
+        return;
+      }
+
+      const mapped: CustomerReviewItem[] = (data || []).map((rev: any) => ({
+        id: rev.id,
+        rating: Number(rev.rating) || 5,
+        comment: rev.comment,
+        created_at: rev.created_at,
+        place_id: String(rev.place_id),
+        user_id: rev.user_id,
+        shop_name: shopNameMap.get(Number(rev.place_id)) || `ร้านค้า #${rev.place_id}`,
+        reviewer_name: rev.profiles?.display_name || "นักท่องเที่ยว",
+        reviewer_avatar: rev.profiles?.avatar_url || null,
+      }));
+
+      setRecentReviews(mapped);
+    } catch (err) {
+      console.warn("Failed to fetch merchant reviews:", err);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
+  const fetchSubmissions = async (userId: string, isAdminUser?: boolean): Promise<SubmissionItem[]> => {
+    try {
+      const adminFlag = isAdminUser !== undefined ? isAdminUser : isAdmin;
+      let query = supabase
         .from("place_submissions")
         .select("*")
-        .eq("user_id", userId)
         .order("created_at", { ascending: false });
+
+      if (!adminFlag) {
+        query = query.eq("user_id", userId);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         console.error("Error fetching place_submissions:", error);
@@ -275,43 +536,170 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
       if (!user) throw new Error("ไม่พบข้อมูลผู้ใช้งาน กรุณาล็อกอินใหม่");
 
       const item = typeof itemOrId === "object" ? itemOrId : { id: itemOrId, shop_name: shopName };
-      const itemId = item.id;
-      const name = item.shop_name || item.name_en || shopName || "ร้านค้านี้";
+      const itemId = item.id || item.submissionId;
+      const shopTitle = item.shop_name || item.name_en || shopName || "";
       const isNumberId = typeof itemId === "number" || (!isNaN(Number(itemId)) && !String(itemId).includes("-"));
 
-      if (!window.confirm(`คุณต้องการลบร้าน "${name}" ใช่หรือไม่?`)) return;
+      if (!window.confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบ "${shopTitle || "ร้านนี้"}"?`)) return;
+
+      setLoading(true);
 
       if (isNumberId) {
-        // Delete from store_owners first if relation exists
+        const numericId = Number(itemId);
+
+        // Try RPC delete_owned_shop first for atomic cascade deletion
+        const { error: rpcErr } = await supabase.rpc("delete_owned_shop", { p_shop_id: numericId });
+
+        if (rpcErr) {
+          console.warn("RPC delete_owned_shop notice:", rpcErr.message);
+
+          // 1. Unlink & Delete place_submissions FIRST
+          try {
+            await supabase
+              .from("place_submissions")
+              .update({ shop_id: null, status: "deleted" })
+              .eq("shop_id", numericId);
+
+            await supabase
+              .from("place_submissions")
+              .delete()
+              .eq("shop_id", numericId);
+
+            if (shopTitle) {
+              await supabase
+                .from("place_submissions")
+                .update({ status: "deleted" })
+                .eq("user_id", user.id)
+                .ilike("name_en", shopTitle);
+
+              await supabase
+                .from("place_submissions")
+                .delete()
+                .eq("user_id", user.id)
+                .ilike("name_en", shopTitle);
+            }
+          } catch (subErr) {
+            console.warn("place_submissions cleanup notice:", subErr);
+          }
+
+          // 2. Clean up FK tables
+          try {
+            await supabase.from("store_owners").delete().eq("shop_id", numericId);
+          } catch (err) {
+            console.warn("store_owners cleanup notice:", err);
+          }
+
+          try {
+            await supabase.from("activity_log").delete().eq("shop_id", numericId);
+          } catch (err) {
+            console.warn("activity_log cleanup notice:", err);
+          }
+
+          try {
+            await supabase.from("user_stamps").delete().eq("shop_id", numericId);
+          } catch (err) {
+            console.warn("user_stamps cleanup notice:", err);
+          }
+
+          try {
+            await supabase.from("reviews").delete().eq("place_id", numericId);
+            await supabase.from("reviews").delete().eq("shop_id", numericId);
+          } catch (err) {
+            console.warn("reviews cleanup notice:", err);
+          }
+
+          // 3. Delete main shop from century_shops with .select() verification
+          const { data: deletedRows, error: shopErr } = await supabase
+            .from("century_shops")
+            .delete()
+            .eq("id", numericId)
+            .select();
+
+          if (shopErr) throw shopErr;
+
+          if (!deletedRows || deletedRows.length === 0) {
+            // Retry delete matching owner_id & shop_name
+            if (shopTitle) {
+              const { data: retryRows, error: retryErr } = await supabase
+                .from("century_shops")
+                .delete()
+                .eq("owner_id", user.id)
+                .ilike("shop_name", shopTitle)
+                .select();
+
+              if (retryErr) throw retryErr;
+              if (!retryRows || retryRows.length === 0) {
+                throw new Error("Supabase RLS Policy ป้องกันการลบร้านค้า (ลบสำเร็จ 0 รายการ) กรุณาเพิ่ม DELETE Policy ใน Supabase");
+              }
+            } else {
+              throw new Error("Supabase RLS Policy ป้องกันการลบร้านค้า (ลบสำเร็จ 0 รายการ) กรุณาเพิ่ม DELETE Policy ใน Supabase");
+            }
+          }
+        }
+      } else {
+        // Delete from place_submissions (UUID string)
+        const subId = String(itemId);
+
         try {
-          await supabase.from("store_owners").delete().eq("shop_id", Number(itemId)).eq("user_id", user.id);
-        } catch (soErr) {
-          console.warn("store_owners deletion notice:", soErr);
+          await supabase
+            .from("place_submissions")
+            .update({ status: "deleted" })
+            .eq("id", subId)
+            .eq("user_id", user.id);
+        } catch (err) {
+          console.warn("Update status deleted warning:", err);
         }
 
-        // Delete from century_shops
-        const { error } = await supabase
-          .from("century_shops")
-          .delete()
-          .eq("id", Number(itemId));
-
-        if (error) throw error;
-      } else {
-        // Delete from place_submissions
-        const { error } = await supabase
+        const { data: subDeleted, error: subErr } = await supabase
           .from("place_submissions")
           .delete()
-          .eq("id", String(itemId))
-          .eq("user_id", user.id);
+          .eq("id", subId)
+          .eq("user_id", user.id)
+          .select();
 
-        if (error) throw error;
+        if (subErr) throw subErr;
+
+        // Also clean up matching century_shops if exists
+        if (shopTitle) {
+          try {
+            await supabase
+              .from("century_shops")
+              .delete()
+              .eq("owner_id", user.id)
+              .ilike("shop_name", shopTitle);
+          } catch (cErr) {
+            console.warn("century_shops matching delete notice:", cErr);
+          }
+        }
       }
 
+      // 4. Optimistically remove item from UI state immediately
+      setShops((prev) =>
+        prev.filter((s) => {
+          const sId = s.id || s.submissionId;
+          const sTitle = s.shop_name || s.name_en || "";
+          if (String(sId) === String(itemId)) return false;
+          if (shopTitle && sTitle.trim().toLowerCase() === shopTitle.trim().toLowerCase()) return false;
+          return true;
+        })
+      );
+      setSubmissions((prev) =>
+        prev.filter((sub) => {
+          if (String(sub.id) === String(itemId)) return false;
+          if (sub.shop_id && String(sub.shop_id) === String(itemId)) return false;
+          if (shopTitle && sub.name_en?.trim().toLowerCase() === shopTitle.trim().toLowerCase()) return false;
+          return true;
+        })
+      );
+
       alert("ลบร้านค้าเรียบร้อยแล้ว");
-      fetchOwnedShops(user.id);
+      await fetchOwnedShops(user.id);
+      await fetchSubmissions(user.id);
     } catch (err: any) {
       console.error("Delete Error:", err);
       alert("ไม่สามารถลบร้านค้าได้: " + (err.message || "กรุณาตรวจสอบ permissions (RLS policy) ใน Supabase"));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -344,15 +732,83 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
     }
   };
 
-  const filteredShops = shops.filter((shop) => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    const name = (shop.shop_name || "").toLowerCase();
-    const nameJp = (shop.shop_name_jp || "").toLowerCase();
-    const pref = (shop.prefecture || "").toLowerCase();
-    const cat = (shop.category || "").toLowerCase();
-    return name.includes(q) || nameJp.includes(q) || pref.includes(q) || cat.includes(q);
-  });
+  const topPopularShops = [...shops]
+    .sort((a, b) => (b.stamps_count || 0) - (a.stamps_count || 0))
+    .slice(0, 5);
+
+  // Extract unique list of Prefectures dynamically from shops data
+  const availablePrefectures = Array.from(
+    new Set(
+      shops
+        .map((s) => (s.prefecture || "").trim())
+        .filter((p) => p.length > 0)
+    )
+  ).sort();
+
+  const filteredShops = [...shops]
+    .filter((shop) => {
+      // 1. Search Query Filter
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const name = (shop.shop_name || "").toLowerCase();
+        const nameJp = (shop.shop_name_jp || "").toLowerCase();
+        const pref = (shop.prefecture || "").toLowerCase();
+        const cat = (shop.category || "").toLowerCase();
+        const addr = (shop.address || "").toLowerCase();
+        const matchesSearch =
+          name.includes(q) ||
+          nameJp.includes(q) ||
+          pref.includes(q) ||
+          cat.includes(q) ||
+          addr.includes(q);
+        if (!matchesSearch) return false;
+      }
+
+      // 2. Prefecture Filter
+      if (selectedPrefecture && selectedPrefecture !== "all") {
+        const p = (shop.prefecture || "").trim().toLowerCase();
+        if (p !== selectedPrefecture.trim().toLowerCase()) return false;
+      }
+
+      // 3. Category Filter
+      if (selectedCategory && selectedCategory !== "all") {
+        const c = (shop.category || "").trim().toLowerCase();
+        if (c !== selectedCategory.trim().toLowerCase()) return false;
+      }
+
+      // 4. Min Rating Filter
+      if (selectedMinRating > 0) {
+        const r = Number(shop.rating) || 0;
+        if (r < selectedMinRating) return false;
+      }
+
+      return true;
+    })
+    .sort((a, b) => {
+      if (sortOption === "stamps") {
+        return (b.stamps_count || 0) - (a.stamps_count || 0);
+      }
+      if (sortOption === "rating") {
+        return (Number(b.rating) || 0) - (Number(a.rating) || 0);
+      }
+      if (sortOption === "name") {
+        return (a.shop_name || "").localeCompare(b.shop_name || "");
+      }
+      return 0; // Default created_at
+    });
+
+  const isAnyFilterActive =
+    searchQuery.trim() !== "" ||
+    selectedPrefecture !== "all" ||
+    selectedCategory !== "all" ||
+    selectedMinRating > 0;
+
+  const handleResetFilters = () => {
+    setSearchQuery("");
+    setSelectedPrefecture("all");
+    setSelectedCategory("all");
+    setSelectedMinRating(0);
+  };
 
   const filteredSubmissions = submissions.filter((item) => {
     const matchesStatus = statusFilter === "all" || item.status === statusFilter;
@@ -373,504 +829,953 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
     return (
       <div className="p-16 text-center flex flex-col items-center justify-center gap-3">
         <Loader2 className="animate-spin text-[#E0533C]" size={32} />
-        <span className="text-xs font-bold text-[#8A7870]">กำลังโหลดข้อมูลร้านค้าของคุณ...</span>
+        <span className="text-xs font-bold text-[#8A7870]">กำลังโหลดข้อมูลระบบร้านค้า...</span>
+      </div>
+    );
+  }
+
+  // 📊 DEDICATED PAGE: CUSTOMER REVIEWS ANALYTICS & FILTER DASHBOARD
+  if (isReviewsModalOpen) {
+    return (
+      <div className="space-y-6 text-[#231C18] w-full min-w-0 animate-in fade-in duration-200">
+        {/* 👑 Dedicated Header Banner for Customer Reviews Analytics Page */}
+        <div className="bg-gradient-to-r from-stone-900 via-stone-900 to-amber-950 p-6 rounded-3xl border border-amber-500/30 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative overflow-hidden">
+          <div className="flex items-center gap-4 relative z-10">
+            <button
+              onClick={() => setIsReviewsModalOpen(false)}
+              className="p-3 rounded-2xl bg-white/10 hover:bg-white/20 text-amber-400 hover:text-white transition cursor-pointer shrink-0 border border-amber-400/30 flex items-center gap-1.5 font-bold text-xs"
+              title="กลับสู่หน้าหลักจัดการร้านค้า"
+            >
+              <ArrowRight size={18} className="rotate-180 text-amber-400" />
+              <span className="hidden sm:inline">กลับหน้าหลัก</span>
+            </button>
+
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-xl font-black tracking-tight text-white">
+                  ศูนย์วิเคราะห์รีวิว & เสียงตอบรับจากลูกค้า (Customer Reviews Feed & Analytics)
+                </h2>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-400/20 text-amber-300 border border-amber-400/40">
+                  💬 {totalReviewsCount} รีวิวในระบบ
+                </span>
+              </div>
+              <p className="text-xs text-amber-200/80 font-medium mt-1">
+                แดชบอดสรุปสถิติคะแนนดาว ตัวกรองความคิดเห็น และติดตามเสียงตอบรับนักท่องเที่ยวแบบเจาะลึก
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setIsReviewsModalOpen(false)}
+            className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black rounded-xl flex items-center gap-2 transition cursor-pointer shrink-0 shadow-md self-start md:self-auto"
+          >
+            <span>← กลับสู่หน้าหลักการจัดการร้านค้า</span>
+          </button>
+        </div>
+
+        {/* 📈 Analytics KPI Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white p-5 rounded-3xl border shadow-2xs space-y-1.5" style={{ borderColor: C.line }}>
+            <span className="text-[10px] font-black uppercase text-[#8A7870] tracking-wider">Average Rating Score</span>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-black text-amber-600">{avgReviewScore}</span>
+              <span className="text-xs font-bold text-stone-400">/ 5.0</span>
+            </div>
+            <div className="flex items-center gap-1 text-amber-400">
+              {[1, 2, 3, 4, 5].map((s) => (
+                <Star
+                  key={s}
+                  size={15}
+                  className={s <= Math.round(Number(avgReviewScore) || 0) ? "fill-amber-400 text-amber-400" : "text-stone-200"}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-white p-5 rounded-3xl border shadow-2xs space-y-1.5" style={{ borderColor: C.line }}>
+            <span className="text-[10px] font-black uppercase text-[#8A7870] tracking-wider">Total Customer Reviews</span>
+            <div className="text-3xl font-black text-[#231C18]">{totalReviewsCount}</div>
+            <p className="text-xs text-[#8A7870] font-semibold">ความคิดเห็นจากนักท่องเที่ยวทั้งหมด</p>
+          </div>
+
+          <div className="bg-white p-5 rounded-3xl border shadow-2xs space-y-1.5" style={{ borderColor: C.line }}>
+            <span className="text-[10px] font-black uppercase text-[#8A7870] tracking-wider">5-Star Satisfaction Ratio</span>
+            <div className="text-3xl font-black text-emerald-600">{fiveStarRatio}%</div>
+            <p className="text-xs text-[#8A7870] font-semibold">สัดส่วนลูกค้ารีวิว 5 ดาว ({ratingDistribution[5]} รายการ)</p>
+          </div>
+
+          <div className="bg-white p-5 rounded-3xl border shadow-2xs space-y-1.5" style={{ borderColor: C.line }}>
+            <span className="text-[10px] font-black uppercase text-[#8A7870] tracking-wider">Shops Covered</span>
+            <div className="text-3xl font-black text-indigo-600">{uniqueShopsReviewedCount}</div>
+            <p className="text-xs text-[#8A7870] font-semibold">จำนวนร้านค้าที่มีรีวิวเข้ามา</p>
+          </div>
+        </div>
+
+        {/* 📊 Star Rating Breakdown Progress Bars */}
+        <div className="bg-white p-6 rounded-3xl border shadow-2xs space-y-4" style={{ borderColor: C.line }}>
+          <h4 className="text-xs font-black uppercase tracking-wider text-[#8A7870] flex items-center gap-2">
+            <TrendingUp size={16} className="text-amber-600" /> สถิติการกระจายของคะแนนดาว (Star Rating Distribution)
+          </h4>
+
+          <div className="space-y-2.5">
+            {[5, 4, 3, 2, 1].map((star) => {
+              const count = ratingDistribution[star as keyof typeof ratingDistribution] || 0;
+              const pct = totalReviewsCount > 0 ? Math.round((count / totalReviewsCount) * 100) : 0;
+
+              return (
+                <div key={star} className="flex items-center gap-3 text-xs">
+                  <button
+                    onClick={() => setReviewRatingFilter(reviewRatingFilter === star ? 0 : star)}
+                    className="flex items-center gap-1 font-bold text-stone-700 w-16 hover:text-amber-600 transition cursor-pointer"
+                  >
+                    <span>{star}</span>
+                    <Star size={13} className="fill-amber-400 text-amber-400" />
+                  </button>
+
+                  <div className="flex-1 h-3.5 rounded-full bg-stone-100 overflow-hidden relative border" style={{ borderColor: C.line }}>
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        star === 5 ? "bg-emerald-500" : star === 4 ? "bg-amber-400" : star === 3 ? "bg-amber-500" : star === 2 ? "bg-orange-400" : "bg-rose-500"
+                      }`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+
+                  <span className="w-24 text-right font-bold text-stone-600 text-xs">
+                    {count} ({pct}%)
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 🔍 Multi-Filter & Search Bar */}
+        <div className="bg-white p-5 rounded-3xl border shadow-2xs space-y-4" style={{ borderColor: C.line }}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-0">
+              <span className="text-xs font-black text-[#231C18] flex items-center gap-1.5 mr-1">
+                <Filter size={15} className="text-amber-600" /> ตัวกรองรีวิว:
+              </span>
+
+              <div className="relative">
+                <select
+                  value={reviewShopFilter}
+                  onChange={(e) => setReviewShopFilter(e.target.value)}
+                  className={`pl-8 pr-7 py-2 rounded-xl text-xs font-bold outline-none border transition cursor-pointer appearance-none ${
+                    reviewShopFilter !== "all" ? "bg-amber-500 text-stone-950 border-amber-500 font-black" : "bg-stone-50 text-[#231C18]"
+                  }`}
+                  style={reviewShopFilter === "all" ? { borderColor: C.line } : undefined}
+                >
+                  <option value="all">📍 ทุกร้านค้า (All Shops)</option>
+                  {shops.map((s) => (
+                    <option key={s.id} value={String(s.id)}>📍 {s.shop_name}</option>
+                  ))}
+                </select>
+                <Building2 size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-amber-600" />
+              </div>
+
+              <div className="relative">
+                <select
+                  value={reviewSort}
+                  onChange={(e: any) => setReviewSort(e.target.value)}
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold outline-none border bg-stone-50 text-[#231C18] transition cursor-pointer"
+                  style={{ borderColor: C.line }}
+                >
+                  <option value="newest">🕒 ล่าสุดก่อน (Newest)</option>
+                  <option value="oldest">⌛ เก่าสุดก่อน (Oldest)</option>
+                  <option value="highest">⭐ คะแนนสูงสุด (Highest)</option>
+                  <option value="lowest">🔻 คะแนนต่ำสุด (Lowest)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl border bg-stone-50/70 w-full sm:w-64" style={{ borderColor: C.line }}>
+              <Search size={14} className="text-[#8A7870] shrink-0" />
+              <input
+                type="text"
+                value={reviewSearch}
+                onChange={(e) => setReviewSearch(e.target.value)}
+                placeholder="ค้นหาข้อความ, ชื่อลูกค้า..."
+                className="bg-transparent text-xs outline-none w-full font-medium"
+              />
+              {reviewSearch && (
+                <button onClick={() => setReviewSearch("")} className="text-[#8A7870] hover:text-[#231C18] cursor-pointer">
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Rating Filter Pills */}
+          <div className="flex items-center gap-2 overflow-x-auto pt-1">
+            <button
+              onClick={() => setReviewRatingFilter(0)}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                reviewRatingFilter === 0 ? "bg-[#231C18] text-white" : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+              }`}
+            >
+              ทั้งหมด ({recentReviews.length})
+            </button>
+            {[5, 4, 3, 2, 1].map((star) => (
+              <button
+                key={star}
+                onClick={() => setReviewRatingFilter(reviewRatingFilter === star ? 0 : star)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
+                  reviewRatingFilter === star
+                    ? "bg-amber-500 text-stone-950 font-black"
+                    : "bg-stone-100 text-stone-700 hover:bg-stone-200"
+                }`}
+              >
+                <Star size={12} className={reviewRatingFilter === star ? "fill-stone-950" : "fill-amber-400 text-amber-400"} />
+                <span>{star} ดาว ({ratingDistribution[star as keyof typeof ratingDistribution] || 0})</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 💬 Filtered Reviews Feed Cards */}
+        {filteredModalReviews.length === 0 ? (
+          <div className="p-14 text-center bg-white rounded-3xl border flex flex-col items-center justify-center gap-3 text-stone-400" style={{ borderColor: C.line }}>
+            <MessageSquare size={36} className="text-stone-300" />
+            <h3 className="text-base font-black text-[#231C18]">ไม่พบข้อมูลรีวิวที่ตรงตามเงื่อนไข</h3>
+            <button
+              onClick={() => {
+                setReviewShopFilter("all");
+                setReviewRatingFilter(0);
+                setReviewSearch("");
+                setReviewSort("newest");
+              }}
+              className="px-4 py-2 bg-[#231C18] text-white text-xs font-black rounded-xl cursor-pointer"
+            >
+              ล้างการกรองทั้งหมด
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3.5">
+            {filteredModalReviews.map((rev) => (
+              <div
+                key={rev.id}
+                className="p-5 rounded-3xl border bg-white shadow-2xs space-y-3 hover:shadow-md transition"
+                style={{ borderColor: C.line }}
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-3" style={{ borderColor: C.line }}>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-800 font-bold flex items-center justify-center text-xs overflow-hidden shrink-0 shadow-xs">
+                      {rev.reviewer_avatar ? (
+                        <img src={rev.reviewer_avatar} alt={rev.reviewer_name} className="w-full h-full object-cover" />
+                      ) : (
+                        (rev.reviewer_name || "U")[0].toUpperCase()
+                      )}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-black text-[#231C18]">{rev.reviewer_name}</span>
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-200">
+                          📍 {rev.shop_name}
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#8A7870] font-semibold mt-0.5">
+                        {new Date(rev.created_at).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1 text-amber-500 bg-amber-50 px-3 py-1 rounded-xl border border-amber-200 self-start sm:self-auto">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <Star
+                        key={s}
+                        size={13}
+                        className={s <= Math.round(rev.rating) ? "fill-amber-400 text-amber-400" : "text-stone-200"}
+                      />
+                    ))}
+                    <span className="text-xs font-black text-amber-900 ml-1">{rev.rating}.0</span>
+                  </div>
+                </div>
+
+                {rev.comment ? (
+                  <div className="bg-stone-50/70 p-3.5 rounded-2xl border text-xs text-[#231C18] font-medium leading-relaxed" style={{ borderColor: C.line }}>
+                    "{rev.comment}"
+                  </div>
+                ) : (
+                  <p className="text-xs text-stone-400 italic">ไม่มีข้อความรีวิวเพิ่มเติม</p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     );
   }
 
   return (
     <div className="space-y-6 text-[#231C18] w-full min-w-0">
-      {/* 👑 Header Banner */}
-      <div
-        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border shadow-xs"
-        style={{ borderColor: C.line }}
-      >
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 text-[#E7A93C] flex items-center justify-center shrink-0">
-            <Store size={24} />
+      {/* 👑 Header Banner: Admin Executive Mode vs Merchant Mode */}
+      {isAdmin ? (
+        <div className="relative overflow-hidden bg-gradient-to-r from-stone-900 via-stone-900 to-amber-950 p-6 rounded-3xl border border-amber-500/30 text-white shadow-xl">
+          <div className="absolute top-0 right-0 -mt-8 -mr-8 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative z-10">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-400/30 text-amber-400 flex items-center justify-center shrink-0 shadow-inner">
+                <Crown size={28} />
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-xl font-black tracking-tight text-white">ระบบบริหารจัดการร้านค้าภาพรวม (Admin Command Center)</h2>
+                  <span className="px-3 py-1 rounded-full text-[11px] font-black bg-amber-400/20 text-amber-300 border border-amber-400/40 flex items-center gap-1.5 shadow-xs">
+                    <ShieldCheck size={13} className="text-amber-400" /> 👑 ผู้ดูแลระบบสูงสุด (System Admin)
+                  </span>
+                </div>
+                <p className="text-xs text-amber-200/80 font-medium mt-1">
+                  ภาพรวมร้านค้าทั้งหมดในระบบ ({shops.length} ร้าน) | วิเคราะห์ร้านค้ายอดฮิต สถิติการสะสมแสตมป์ และจัดการร้านค้าได้โดยตรง
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5 flex-wrap shrink-0 self-start md:self-auto">
+              <button
+                onClick={() => setIsReviewsModalOpen(true)}
+                className="px-4 py-2.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-400/40 text-xs font-black rounded-xl flex items-center gap-2 transition cursor-pointer"
+              >
+                <BarChart3 size={15} />
+                <span>💬 ศูนย์วิเคราะห์รีวิว ({recentReviews.length})</span>
+              </button>
+              <button
+                onClick={handleAddClick}
+                className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black rounded-xl flex items-center gap-2 transition shadow-lg shrink-0 cursor-pointer"
+              >
+                <Plus size={16} strokeWidth={3} />
+                <span>เพิ่มร้านค้าใหม่ในระบบ</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div
+          className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-gradient-to-r from-stone-900 via-stone-850 to-stone-900 p-6 rounded-3xl border border-stone-800 text-white shadow-md relative overflow-hidden"
+        >
+          <div className="flex items-center gap-4 relative z-10">
+            <div className="w-13 h-13 rounded-2xl bg-amber-400/20 border border-amber-400/30 text-amber-400 flex items-center justify-center shrink-0 shadow-inner">
+              <Store size={26} />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-xl font-black tracking-tight text-white">Merchant Portal & Dashboard</h2>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
+                  <ShieldCheck className="text-emerald-400" size={12} /> เจ้าของร้านค้า
+                </span>
+              </div>
+              <p className="text-xs text-stone-300 font-medium mt-1">
+                แดชบอดสรุปสถิติการเช็คอิน เสียงตอบรับจากลูกค้า และจัดการร้านค้าในความดูแลของคุณ ({shops.length} ร้าน)
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap shrink-0 self-start sm:self-auto relative z-10">
+            <button
+              onClick={() => setIsReviewsModalOpen(true)}
+              className="px-4 py-2.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-400/40 text-xs font-black rounded-xl flex items-center gap-2 transition cursor-pointer"
+            >
+              <BarChart3 size={15} />
+              <span>💬 ศูนย์วิเคราะห์รีวิว ({recentReviews.length})</span>
+            </button>
+            <button
+              onClick={handleAddClick}
+              className="px-4 py-2.5 bg-[#E0533C] hover:bg-[#c8432d] text-white text-xs font-black rounded-xl flex items-center gap-1.5 transition shadow-sm cursor-pointer"
+            >
+              <Plus size={16} strokeWidth={2.5} />
+              <span>เพิ่มร้านค้าใหม่</span>
+            </button>
+            {shops.length > 0 && (
+              <button
+                onClick={() => setQrShop(shops[0])}
+                className="px-3.5 py-2.5 bg-stone-800 hover:bg-stone-700 text-amber-300 border border-stone-700 text-xs font-bold rounded-xl flex items-center gap-1.5 transition cursor-pointer"
+              >
+                <QrCode size={15} />
+                <span>QR Code ร้าน</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ⚠️ REJECTED SUBMISSIONS ALERT CARD (FOR REGULAR STORE OWNERS ONLY) */}
+      {!isAdmin && countRejected > 0 && (
+        <div className="bg-rose-50 border-2 border-rose-300 p-5 rounded-3xl space-y-3.5 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-rose-200 pb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-rose-500 text-white flex items-center justify-center font-black shrink-0 shadow-xs">
+                <AlertCircle size={22} />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-rose-950 flex items-center gap-2">
+                  คุณมีคำขอถูกปฏิเสธโดยแอดมิน ({countRejected} รายการ)
+                </h3>
+                <p className="text-xs text-rose-700 font-semibold mt-0.5">
+                  แอดมินได้ระบุเหตุผลที่ปฏิเสธไว้ คุณสามารถกดแก้ไขข้อมูลเพื่อปรับปรุงและส่งกลับไปให้แอดมินตรวจสอบใหม่ได้ทันที
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {submissions.filter((s) => s.status === "rejected").map((rejSub) => (
+              <div key={rejSub.id} className="bg-white p-4 rounded-2xl border border-rose-200 space-y-2.5 shadow-2xs flex flex-col justify-between">
+                <div className="space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-10 h-10 rounded-xl bg-stone-100 overflow-hidden shrink-0">
+                        <img
+                          src={rejSub.image_url || rejSub.image_urls?.[0] || "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&q=80&w=400"}
+                          alt={rejSub.name_en}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-black text-[#231C18] leading-tight">{rejSub.name_en}</h4>
+                        {rejSub.name_jp && <p className="text-xs text-[#8A7870] font-semibold">{rejSub.name_jp}</p>}
+                      </div>
+                    </div>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300 shrink-0">
+                      ✕ ถูกปฏิเสธ
+                    </span>
+                  </div>
+
+                  {rejSub.rejection_reason && (
+                    <div className="bg-rose-50 p-2.5 rounded-xl border border-rose-200 text-xs text-rose-900 font-medium">
+                      <span className="font-bold block text-[11px] text-rose-950 mb-0.5">⚠️ เหตุผลที่แอดมินปฏิเสธ:</span>
+                      "{rejSub.rejection_reason}"
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => setEditingSubmission(rejSub)}
+                  className="w-full mt-1 py-2.5 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-black flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs"
+                >
+                  <Edit3 size={14} />
+                  <span>แก้ไขและส่งให้แอดมินตรวจสอบใหม่</span>
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 📊 4 Quick KPI Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white p-4.5 rounded-3xl border shadow-2xs flex items-center gap-3.5" style={{ borderColor: C.line }}>
+          <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center shrink-0">
+            <Building2 size={22} />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-black text-[#231C18]">ระบบจัดการร้านค้า (Merchant Portal)</h2>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
-                <ShieldCheck className="text-emerald-600" size={12} /> เจ้าของร้านค้า
-              </span>
-            </div>
-            <p className="text-xs text-[#8A7870] font-semibold mt-0.5">
-              จัดการ เพิ่ม แก้ไข และติดตามสถานะการอนุมัติร้านค้าในความดูแลของคุณ
+            <p className="text-[9px] font-black uppercase text-[#8A7870] tracking-wider">
+              {isAdmin ? "System Live Shops" : "Managed Shops"}
+            </p>
+            <h3 className="text-xl font-black text-[#231C18]">{shops.length} ร้าน</h3>
+            <p className="text-[10px] text-[#8A7870] font-semibold">
+              {isAdmin ? "ร้านค้าทั้งหมดในระบบ" : "ร้านค้าในความดูแลของคุณ"}
             </p>
           </div>
         </div>
 
-        <button
-          onClick={handleAddClick}
-          className="px-4 py-2.5 bg-[#E0533C] hover:bg-[#c8432d] text-white text-xs font-black rounded-xl flex items-center gap-2 transition shadow-xs shrink-0 cursor-pointer self-start sm:self-auto"
-        >
-          <Plus size={16} strokeWidth={2.5} />
-          <span>เพิ่มร้านค้าใหม่</span>
-        </button>
-      </div>
-
-      {/* 📊 Quick Stats Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-3xl border shadow-2xs flex items-center gap-3.5" style={{ borderColor: C.line }}>
-          <div className="w-11 h-11 rounded-2xl bg-stone-100 flex items-center justify-center text-[#231C18] shrink-0">
-            <Building2 size={20} />
+        <div className="bg-white p-4.5 rounded-3xl border shadow-2xs flex items-center gap-3.5" style={{ borderColor: C.line }}>
+          <div className="w-12 h-12 rounded-2xl bg-rose-50 text-[#E0533C] border border-rose-100 flex items-center justify-center shrink-0">
+            <Stamp size={22} />
           </div>
           <div>
-            <p className="text-[9px] font-black uppercase text-[#8A7870] tracking-wider">Managed Shops</p>
-            <h3 className="text-lg font-black text-[#231C18]">{shops.length} ร้าน</h3>
-            <p className="text-[10px] text-[#8A7870] font-semibold">ร้านค้าในความดูแล</p>
+            <p className="text-[9px] font-black uppercase text-[#8A7870] tracking-wider">Total Stamps Issued</p>
+            <h3 className="text-xl font-black text-[#E0533C]">{totalStamps} ดวง</h3>
+            <p className="text-[10px] text-[#8A7870] font-semibold">
+              {isAdmin ? "แสตมป์เช็คอินรวมทั้งระบบ" : "สถิติเช็คอินรวมจากลูกค้า"}
+            </p>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-3xl border shadow-2xs flex items-center gap-3.5" style={{ borderColor: C.line }}>
-          <div className="w-11 h-11 rounded-2xl bg-red-50 text-[#E0533C] border border-red-100 flex items-center justify-center shrink-0">
-            <Stamp size={20} />
+        <div className="bg-white p-4.5 rounded-3xl border shadow-2xs flex items-center gap-3.5" style={{ borderColor: C.line }}>
+          <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center shrink-0">
+            <Star size={22} />
           </div>
           <div>
-            <p className="text-[9px] font-black uppercase text-[#8A7870] tracking-wider">Stamps Issued</p>
-            <h3 className="text-lg font-black text-[#E0533C]">{totalStamps} ดวง</h3>
-            <p className="text-[10px] text-[#8A7870] font-semibold">สะสมแล้ว</p>
-          </div>
-        </div>
-
-        <div className="bg-white p-4 rounded-3xl border shadow-2xs flex items-center gap-3.5" style={{ borderColor: C.line }}>
-          <div className="w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center shrink-0">
-            <Star size={20} />
-          </div>
-          <div>
-            <p className="text-[9px] font-black uppercase text-[#8A7870] tracking-wider">Shop Rating</p>
-            <h3 className="text-lg font-black text-amber-600">
+            <p className="text-[9px] font-black uppercase text-[#8A7870] tracking-wider">Average Shop Rating</p>
+            <h3 className="text-xl font-black text-amber-600">
               {avgRating !== "N/A" ? `${avgRating} / 5.0` : "ยังไม่มีคะแนน"}
             </h3>
-            <p className="text-[10px] text-[#8A7870] font-semibold">คะแนนรีวิวเฉลี่ย</p>
+            <p className="text-[10px] text-[#8A7870] font-semibold">คะแนนรีวิวเฉลี่ยร้านค้า</p>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-3xl border shadow-2xs flex items-center gap-3.5" style={{ borderColor: C.line }}>
-          <div className="w-11 h-11 rounded-2xl bg-sky-50 text-sky-600 border border-sky-100 flex items-center justify-center shrink-0">
-            <FileText size={20} />
+        <div className="bg-white p-4.5 rounded-3xl border shadow-2xs flex items-center gap-3.5" style={{ borderColor: C.line }}>
+          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shrink-0">
+            <Trophy size={22} />
           </div>
           <div>
-            <p className="text-[9px] font-black uppercase text-[#8A7870] tracking-wider">Submissions</p>
-            <h3 className="text-lg font-black text-sky-600">{submissions.length} รายการ</h3>
-            <p className="text-[10px] text-[#8A7870] font-semibold">
-              {countPending > 0 ? `⏳ รออนุมัติ ${countPending} ร้าน` : "ประวัติการส่ง"}
-            </p>
+            <p className="text-[9px] font-black uppercase text-[#8A7870] tracking-wider">Customer Feedback</p>
+            <h3 className="text-xl font-black text-emerald-700">
+              {recentReviews.length} รีวิว
+            </h3>
+            <p className="text-[10px] text-[#8A7870] font-semibold">เสียงตอบรับจากนักท่องเที่ยว</p>
           </div>
         </div>
       </div>
 
-      {/* 🗂️ Main Navigation Tabs: Approved Shops vs Submission Status Tracking */}
-      <div className="flex items-center gap-2 border-b pb-2 select-none" style={{ borderColor: C.line }}>
-        <button
-          onClick={() => setActiveTab("shops")}
-          className={`px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-2 ${
-            activeTab === "shops"
-              ? "bg-[#231C18] text-white shadow-xs"
-              : "bg-white text-[#8A7870] hover:text-[#231C18] border"
-          }`}
-          style={activeTab !== "shops" ? { borderColor: C.line } : undefined}
-        >
-          <span>ร้านค้าที่อนุมัติแล้ว (Approved Shops)</span>
-          <span className="px-1.5 py-0.2 text-[10px] rounded-full bg-emerald-600 text-white font-bold">
-            {shops.length}
-          </span>
-        </button>
+      {/* 🔥 ADMIN EXCLUSIVE: TOP POPULAR SHOPS LEADERBOARD */}
+      {isAdmin && topPopularShops.length > 0 && (
+        <div className="bg-gradient-to-br from-stone-950 via-stone-900 to-amber-950 p-6 rounded-3xl border border-amber-500/30 text-white shadow-xl space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-500/20 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-400/30 text-amber-400 flex items-center justify-center shrink-0">
+                <Flame size={22} className="animate-bounce text-amber-400" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-white flex items-center gap-2">
+                  5 อันดับร้านค้ายอดฮิต (Top Stamp Check-in Spots)
+                </h3>
+                <p className="text-xs text-amber-200/70 font-medium">
+                  สรุปร้านค้าที่นักท่องเที่ยวเดินทางมาเช็คอินสะสมแสตมป์มากที่สุดในระบบ
+                </p>
+              </div>
+            </div>
 
-        <button
-          onClick={() => setActiveTab("submissions")}
-          className={`px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-2 ${
-            activeTab === "submissions"
-              ? "bg-[#231C18] text-white shadow-xs"
-              : "bg-white text-[#8A7870] hover:text-[#231C18] border"
-          }`}
-          style={activeTab !== "submissions" ? { borderColor: C.line } : undefined}
-        >
-          <span>ประวัติการส่งและติดตามสถานะ (Submission Tracking)</span>
-          <span className="px-1.5 py-0.2 text-[10px] rounded-full bg-[#E0533C] text-white font-bold">
-            {submissions.length}
-          </span>
-        </button>
-      </div>
+            <span className="px-3 py-1 rounded-full text-[10px] font-black bg-amber-400/20 text-amber-300 border border-amber-400/30 self-start sm:self-auto">
+              🏆 Ranking Leaderboard
+            </span>
+          </div>
 
-      {/* 🔍 Search & Status Filter Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-2xl border" style={{ borderColor: C.line }}>
-        {activeTab === "submissions" ? (
-          <div className="flex flex-wrap items-center gap-1.5 select-none">
-            <button
-              onClick={() => setStatusFilter("all")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer border ${
-                statusFilter === "all"
-                  ? "bg-[#E0533C] text-white border-[#E0533C]"
-                  : "bg-white text-[#8A7870] hover:bg-stone-50"
-              }`}
-              style={statusFilter !== "all" ? { borderColor: C.line } : undefined}
-            >
-              ทั้งหมด ({submissions.length})
-            </button>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+            {topPopularShops.map((popShop, index) => {
+              const rankMedals = ["🥇 อันดับ #1", "🥈 อันดับ #2", "🥉 อันดับ #3", "🏅 อันดับ #4", "🎖️ อันดับ #5"];
+              const rankStyles = [
+                "bg-amber-400 text-stone-950 font-black border-amber-300",
+                "bg-slate-300 text-slate-950 font-black border-slate-200",
+                "bg-amber-700 text-white font-black border-amber-600",
+                "bg-stone-800 text-stone-300 font-bold border-stone-700",
+                "bg-stone-800 text-stone-300 font-bold border-stone-700",
+              ];
 
-            <button
-              onClick={() => setStatusFilter("pending")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer border ${
-                statusFilter === "pending"
-                  ? "bg-amber-500 text-white border-amber-500"
-                  : "bg-white text-amber-700 hover:bg-amber-50"
-              }`}
-              style={statusFilter !== "pending" ? { borderColor: C.line } : undefined}
-            >
-              ⏳ รออนุมัติ ({countPending})
-            </button>
+              return (
+                <div
+                  key={popShop.id}
+                  onClick={() => setSelectedSummaryShop(popShop)}
+                  className="bg-stone-900/80 hover:bg-stone-800 border border-amber-500/20 hover:border-amber-400/50 p-3.5 rounded-2xl transition cursor-pointer flex flex-col justify-between group relative overflow-hidden shadow-lg"
+                >
+                  <div className="space-y-2">
+                    <div className="relative h-24 w-full rounded-xl overflow-hidden bg-stone-950">
+                      <img
+                        src={popShop.image_url || "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&q=80&w=400"}
+                        alt={popShop.shop_name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                      />
+                      <div className="absolute top-2 left-2">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] border shadow-xs ${rankStyles[index] || "bg-stone-800 text-white"}`}>
+                          {rankMedals[index]}
+                        </span>
+                      </div>
+                    </div>
 
-            <button
-              onClick={() => setStatusFilter("approved")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer border ${
-                statusFilter === "approved"
-                  ? "bg-emerald-600 text-white border-emerald-600"
-                  : "bg-white text-emerald-700 hover:bg-emerald-50"
-              }`}
-              style={statusFilter !== "approved" ? { borderColor: C.line } : undefined}
-            >
-              ✓ อนุมัติแล้ว ({countApproved})
-            </button>
+                    <div>
+                      <h4 className="text-xs font-black text-white truncate leading-tight group-hover:text-amber-300 transition">
+                        {popShop.shop_name}
+                      </h4>
+                      <p className="text-[10px] text-amber-200/70 truncate mt-0.5">
+                        📍 {popShop.prefecture || "Japan"} • {popShop.category}
+                      </p>
+                    </div>
+                  </div>
 
-            <button
-              onClick={() => setStatusFilter("rejected")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer border ${
-                statusFilter === "rejected"
-                  ? "bg-red-600 text-white border-red-600"
-                  : "bg-white text-red-700 hover:bg-red-50"
-              }`}
-              style={statusFilter !== "rejected" ? { borderColor: C.line } : undefined}
-            >
-              ✕ ไม่อนุมัติ ({countRejected})
+                  <div className="mt-3 pt-2 border-t border-stone-700/60 flex items-center justify-between">
+                    <div className="flex items-center gap-1 text-amber-400 text-[11px] font-black">
+                      <Stamp size={13} />
+                      <span>{popShop.stamps_count || 0} Stamp</span>
+                    </div>
+
+                    <span className="text-[10px] text-amber-300/90 font-bold group-hover:underline">
+                      สรุปสถิติ →
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 🏪 SHOPS MANAGEMENT SECTION (SEARCH, FILTERS & SHOPS GRID) */}
+      <div className="space-y-4">
+        {/* Section Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-[#231C18] text-amber-400 flex items-center justify-center font-bold">
+              <Building2 size={16} />
+            </div>
+            <div>
+              <h3 className="text-base font-black text-[#231C18]">
+                {isAdmin ? "รายการร้านค้าทั้งหมดในระบบ" : "รายการร้านค้าในความดูแลของคุณ"} ({shops.length} ร้าน)
+              </h3>
+              <p className="text-xs text-[#8A7870] font-semibold">
+                {isAdmin ? "จัดการ ค้นหา และแก้ไขข้อมูลร้านค้าทั้งหมดในระบบ" : "จัดการ ค้นหา พิมพ์ QR Code และดูสถิติลึกของร้านค้าของคุณ"}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Filter & Sort Bar for Shops */}
+        <div className="bg-white p-4 rounded-3xl border shadow-2xs space-y-3.5" style={{ borderColor: C.line }}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-0">
+              <span className="text-xs font-black text-[#231C18] flex items-center gap-1.5 mr-1">
+                <Filter size={14} className="text-amber-600" /> ตัวกรองค้นหา:
+              </span>
+
+              <div className="relative">
+                <select
+                  value={selectedPrefecture}
+                  onChange={(e) => setSelectedPrefecture(e.target.value)}
+                  className={`pl-8 pr-7 py-2 rounded-xl text-xs font-bold outline-none border transition cursor-pointer appearance-none ${
+                    selectedPrefecture !== "all" ? "bg-amber-500 text-stone-950 border-amber-500 font-black" : "bg-stone-50 text-[#231C18]"
+                  }`}
+                  style={selectedPrefecture === "all" ? { borderColor: C.line } : undefined}
+                >
+                  <option value="all">📍 ทุกจังหวัด (All Prefectures)</option>
+                  {availablePrefectures.map((pref) => (
+                    <option key={pref} value={pref}>📍 {pref}</option>
+                  ))}
+                </select>
+                <MapPin size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-amber-600" />
+              </div>
+
+              <div className="relative">
+                <select
+                  value={selectedMinRating}
+                  onChange={(e) => setSelectedMinRating(Number(e.target.value))}
+                  className={`pl-8 pr-7 py-2 rounded-xl text-xs font-bold outline-none border transition cursor-pointer appearance-none ${
+                    selectedMinRating > 0 ? "bg-amber-500 text-stone-950 border-amber-500 font-black" : "bg-stone-50 text-[#231C18]"
+                  }`}
+                  style={selectedMinRating === 0 ? { borderColor: C.line } : undefined}
+                >
+                  <option value={0}>⭐ ทุกระดับคะแนน</option>
+                  <option value={4.5}>⭐ 4.5 ดาวขึ้นไป</option>
+                  <option value={4.0}>⭐ 4.0 ดาวขึ้นไป</option>
+                  <option value={3.0}>⭐ 3.0 ดาวขึ้นไป</option>
+                </select>
+                <Star size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-amber-500" />
+              </div>
+
+              <div className="relative">
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className={`pl-8 pr-7 py-2 rounded-xl text-xs font-bold outline-none border transition cursor-pointer appearance-none ${
+                    selectedCategory !== "all" ? "bg-amber-500 text-stone-950 border-amber-500 font-black" : "bg-stone-50 text-[#231C18]"
+                  }`}
+                  style={selectedCategory === "all" ? { borderColor: C.line } : undefined}
+                >
+                  <option value="all">🏷️ ทุกหมวดหมู่</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>{c.label}</option>
+                  ))}
+                </select>
+                <Compass size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-amber-600" />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl border bg-stone-50/70 w-full sm:w-64" style={{ borderColor: C.line }}>
+              <Search size={14} className="text-[#8A7870] shrink-0" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="ค้นหารายชื่อร้าน, จังหวัด..."
+                className="bg-transparent text-xs outline-none w-full font-medium"
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery("")} className="text-[#8A7870] hover:text-[#231C18] cursor-pointer">
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Shops Grid */}
+        {filteredShops.length === 0 ? (
+          <div className="p-14 text-center bg-white rounded-3xl border flex flex-col items-center justify-center gap-3" style={{ borderColor: C.line }}>
+            <Store size={32} className="text-stone-300" />
+            <h3 className="text-base font-black text-[#231C18]">ไม่พบร้านค้าที่ตรงตามเงื่อนไข</h3>
+            <button onClick={handleResetFilters} className="px-4 py-2 bg-[#231C18] text-white text-xs font-black rounded-xl">
+              ล้างการกรองทั้งหมด
             </button>
           </div>
         ) : (
-          <div className="text-xs font-bold text-[#8A7870] pl-2">
-            รายการร้านค้าในการดูแลของคุณ ({filteredShops.length} รายการ)
-          </div>
-        )}
-
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border bg-stone-50/50 w-full sm:w-60" style={{ borderColor: C.line }}>
-          <Search size={14} className="text-[#8A7870]" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="ค้นหารายชื่อร้าน..."
-            className="bg-transparent text-xs outline-none w-full"
-          />
-        </div>
-      </div>
-
-      {/* 🏬 TAB 1: APPROVED SHOPS GRID */}
-      {activeTab === "shops" && (
-        <>
-          {shops.length === 0 ? (
-            <div
-              className="p-16 text-center bg-white rounded-3xl border flex flex-col items-center justify-center gap-3 shadow-2xs"
-              style={{ borderColor: C.line }}
-            >
-              <div className="w-16 h-16 rounded-full bg-stone-100 flex items-center justify-center text-stone-400 mb-1">
-                <Store size={32} />
-              </div>
-              <h3 className="text-base font-black text-[#231C18]">คุณยังไม่มีรายการร้านค้าในระบบ</h3>
-              <p className="text-xs font-semibold text-[#8A7870] max-w-sm">
-                คุณสามารถเพิ่มร้านค้าแรกของคุณเพื่อเริ่มต้นใช้งานระบบ Stamp Check-in สำหรับนักท่องเที่ยว
-              </p>
-              <button
-                onClick={handleAddClick}
-                className="mt-2 px-5 py-2.5 bg-[#231C18] text-white text-xs font-black rounded-xl flex items-center gap-2 hover:bg-black transition cursor-pointer shadow-xs"
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {filteredShops.map((shop) => (
+              <div
+                key={shop.id}
+                className="bg-white rounded-3xl border overflow-hidden shadow-2xs hover:shadow-md transition flex flex-col justify-between"
+                style={{ borderColor: C.line }}
               >
-                <Plus size={16} />
-                <span>เพิ่มร้านค้าแรกของคุณ</span>
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {filteredShops.map((shop) => (
-                <div
-                  key={shop.id}
-                  className="bg-white rounded-3xl border overflow-hidden shadow-2xs hover:shadow-md transition flex flex-col justify-between"
-                  style={{ borderColor: C.line }}
-                >
-                  <div>
-                    <div className="relative h-44 w-full bg-stone-100 overflow-hidden">
-                      <img
-                        src={
-                          shop.image_url ||
-                          "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&q=80&w=800"
-                        }
-                        alt={shop.shop_name}
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap">
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-black/70 backdrop-blur-md text-white uppercase tracking-wider">
-                          {shop.category}
+                <div>
+                  <div className="relative h-44 w-full bg-stone-100 overflow-hidden">
+                    <img
+                      src={shop.image_url || "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&q=80&w=800"}
+                      alt={shop.shop_name}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap">
+                      <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-black/70 backdrop-blur-md text-white uppercase">
+                        {shop.category}
+                      </span>
+                      {shop.prefecture && (
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-white/90 backdrop-blur-md text-[#231C18]">
+                          📍 {shop.prefecture}
                         </span>
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500 text-white shadow-xs">
-                          ✓ อนุมัติแล้ว
-                        </span>
-                        {shop.prefecture && (
-                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-white/90 backdrop-blur-md text-[#231C18]">
-                            📍 {shop.prefecture}
-                          </span>
-                        )}
-                      </div>
-
-                      <button
-                        onClick={() => setQrShop(shop)}
-                        className="absolute top-3 right-3 px-2.5 py-1 rounded-full text-[10px] font-black bg-[#E0533C] text-white flex items-center gap-1 shadow-md hover:bg-[#c8432d] transition cursor-pointer"
-                        title="แสดง QR Code แสตมป์สำหรับร้านนี้"
-                      >
-                        <QrCode size={12} /> QR Code
-                      </button>
-                    </div>
-
-                    <div className="p-5 space-y-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <h3 className="text-base font-black text-[#231C18] truncate leading-tight">
-                          {shop.shop_name}
-                        </h3>
-                      </div>
-
-                      {shop.shop_name_jp && (
-                        <p className="text-xs font-semibold text-[#8A7870] truncate">{shop.shop_name_jp}</p>
-                      )}
-
-                      {shop.address && (
-                        <p className="text-xs text-[#8A7870] font-semibold flex items-center gap-1 truncate">
-                          <MapPin size={12} className="shrink-0 text-amber-600" />
-                          <span className="truncate">{shop.address}</span>
-                        </p>
-                      )}
-
-                      {shop.description && (
-                        <p className="text-xs text-[#8A7870] line-clamp-2 mt-1">{shop.description}</p>
-                      )}
-
-                      {shop.website && (
-                        <a
-                          href={shop.website}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-[11px] font-bold text-[#E0533C] hover:underline mt-1"
-                        >
-                          <Globe size={11} /> {shop.website.replace(/^https?:\/\//, "")}
-                        </a>
                       )}
                     </div>
                   </div>
 
-                  <div
-                    className="p-4 border-t flex items-center justify-between gap-2 bg-stone-50/50"
-                    style={{ borderColor: C.line }}
-                  >
-                    <div className="flex items-center gap-2 flex-1">
-                      <button
-                        onClick={() => setEditingShop(shop)}
-                        className="flex-1 py-2 px-3 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
-                      >
-                        <Edit3 size={13} /> แก้ไขข้อมูล
-                      </button>
-                      <button
-                        onClick={() => setQrShop(shop)}
-                        className="py-2 px-3 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
-                      >
-                        <QrCode size={13} /> QR
-                      </button>
-                    </div>
-
-                    <button
-                      onClick={() => handleDeleteShop(shop)}
-                      className="py-2 px-3 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
-                    >
-                      <Trash2 size={13} /> ลบ
-                    </button>
+                  <div className="p-5 space-y-2">
+                    <h3 className="text-base font-black text-[#231C18] truncate">{shop.shop_name}</h3>
+                    {shop.shop_name_jp && <p className="text-xs font-semibold text-[#8A7870] truncate">{shop.shop_name_jp}</p>}
+                    {shop.address && (
+                      <p className="text-xs text-[#8A7870] font-semibold flex items-center gap-1 truncate">
+                        <MapPin size={12} className="shrink-0 text-amber-600" />
+                        <span className="truncate">{shop.address}</span>
+                      </p>
+                    )}
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
 
-      {/* 📋 TAB 2: SUBMISSION STATUS TRACKING SYSTEM */}
-      {activeTab === "submissions" && (
-        <div className="space-y-4">
-          {filteredSubmissions.length === 0 ? (
-            <div
-              className="p-16 text-center bg-white rounded-3xl border flex flex-col items-center justify-center gap-3 shadow-2xs"
-              style={{ borderColor: C.line }}
-            >
-              <FileText size={32} className="text-stone-300 mb-1" />
-              <h3 className="text-base font-black text-[#231C18]">ไม่พบประวัติการส่งร้านค้าในหมวดนี้</h3>
-              <p className="text-xs font-semibold text-[#8A7870] max-w-sm">
-                คุณสามารถส่งสถานที่ใหม่เพื่อให้แอดมินตรวจสอบอนุมัติเข้าระบบได้
-              </p>
-              <button
-                onClick={handleAddClick}
-                className="mt-2 px-5 py-2.5 bg-[#E0533C] text-white text-xs font-black rounded-xl flex items-center gap-2 hover:bg-[#c8432d] transition cursor-pointer shadow-xs"
-              >
-                <Plus size={16} />
-                <span>ส่งร้านค้าใหม่ (Add Spot)</span>
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredSubmissions.map((item) => {
-                const img =
-                  item.image_urls?.[0] ||
-                  item.image_url ||
-                  "https://images.unsplash.com/photo-1542044896530-05d85be9b11a?auto=format&fit=crop&q=80&w=600";
-
-                return (
-                  <div
-                    key={item.id}
-                    className="bg-white rounded-3xl p-5 border flex flex-col md:flex-row md:items-center justify-between gap-5 shadow-2xs hover:shadow-sm transition"
-                    style={{ borderColor: C.line }}
-                  >
-                    <div className="flex items-start gap-4 min-w-0">
-                      <img
-                        src={img}
-                        alt={item.name_en}
-                        className="w-20 h-20 rounded-2xl object-cover border shrink-0 bg-stone-100"
-                        style={{ borderColor: C.line }}
-                      />
-                      <div className="space-y-1.5 min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="text-sm font-black text-[#231C18] truncate">{item.name_en}</h3>
-                          {item.name_jp && (
-                            <span className="text-xs text-[#8A7870] font-semibold">({item.name_jp})</span>
-                          )}
-
-                          {/* Status Badge */}
-                          {item.status === "pending" && (
-                            <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1">
-                              <Clock size={10} />
-                              <span>PENDING / รออนุมัติ</span>
-                            </span>
-                          )}
-                          {item.status === "approved" && (
-                            <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
-                              <CheckCircle2 size={10} />
-                              <span>APPROVED / อนุมัติแล้ว</span>
-                            </span>
-                          )}
-                          {item.status === "rejected" && (
-                            <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black bg-red-100 text-red-800 border border-red-300 flex items-center gap-1">
-                              <XCircle size={10} />
-                              <span>REJECTED / ไม่อนุมัติ</span>
-                            </span>
-                          )}
-                          {item.status === "deleted" && (
-                            <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black bg-stone-200 text-stone-700 border border-stone-400 flex items-center gap-1">
-                              <AlertCircle size={10} />
-                              <span>DELETED / ถูกลบ</span>
-                            </span>
-                          )}
-                        </div>
-
-                        {item.street && (
-                          <p className="text-xs text-[#8A7870] font-semibold flex items-center gap-1">
-                            <span>📍 {item.street}</span>
-                          </p>
-                        )}
-                        {item.description && (
-                          <p className="text-[11px] text-[#8A7870] line-clamp-1">{item.description}</p>
-                        )}
-
-                        {/* Rejection Reason Warning Box */}
-                        {item.status === "rejected" && item.rejection_reason && (
-                          <div className="mt-2 p-3 rounded-2xl bg-red-50 border border-red-200 text-xs text-red-700 font-semibold space-y-0.5">
-                            <p className="font-black text-red-800 flex items-center gap-1">
-                              <AlertTriangle size={13} className="text-red-600" />
-                              <span>เหตุผลที่ไม่ผ่านการอนุมัติ:</span>
-                            </p>
-                            <p className="pl-4">{item.rejection_reason}</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Action Controls for Submissions */}
-                    <div
-                      className="flex flex-wrap items-center gap-2 shrink-0 border-t md:border-t-0 pt-3 md:pt-0"
-                      style={{ borderColor: C.line }}
+                <div className="p-3.5 border-t bg-stone-50/50 flex items-center gap-2" style={{ borderColor: C.line }}>
+                  {isAdmin && (
+                    <button
+                      onClick={() => setSelectedSummaryShop(shop)}
+                      className="flex-1 py-2 px-2.5 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shrink-0"
                     >
-                      {item.status === "rejected" && (
-                        <>
-                          <button
-                            onClick={() => setEditingSubmission(item)}
-                            className="px-3.5 py-2 rounded-xl text-xs font-black text-white bg-[#E0533C] hover:bg-[#c8432d] transition flex items-center gap-1.5 cursor-pointer shadow-xs"
-                          >
-                            <Edit3 size={13} />
-                            <span>แก้ไขและส่งตรวจใหม่</span>
-                          </button>
+                      <BarChart3 size={13} /> สถิติ
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setEditingShop(shop)}
+                    className="flex-1 py-2 px-2.5 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shrink-0"
+                  >
+                    <Edit3 size={13} /> แก้ไข
+                  </button>
+                  <button
+                    onClick={() => setQrShop(shop)}
+                    className="flex-1 py-2 px-2.5 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shrink-0"
+                  >
+                    <QrCode size={13} /> QR
+                  </button>
+                  <button
+                    onClick={() => handleDeleteShop(shop)}
+                    className="flex-1 py-2 px-2.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shrink-0"
+                  >
+                    <Trash2 size={13} /> ลบ
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
-                          <button
-                            onClick={() => handleDeleteSubmission(item.id)}
-                            disabled={deletingSubId === item.id}
-                            className="px-3 py-2 rounded-xl text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition flex items-center gap-1 cursor-pointer"
-                          >
-                            <Trash2 size={13} />
-                            <span>{deletingSubId === item.id ? "กำลังลบ..." : "ลบประวัติ"}</span>
-                          </button>
-                        </>
+      {/* ⭐ CUSTOMER REVIEWS & FEEDBACK FEED */}
+      <div className="bg-white p-6 rounded-3xl border space-y-4 shadow-2xs" style={{ borderColor: C.line }}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-4" style={{ borderColor: C.line }}>
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center font-bold shrink-0 shadow-2xs">
+              <Star size={22} className="fill-amber-400 text-amber-500" />
+            </div>
+            <div>
+              <h3 className="text-base font-black text-[#231C18]">เสียงตอบรับและรีวิวล่าสุดจากลูกค้า (Customer Reviews Feed)</h3>
+              <p className="text-xs text-[#8A7870] font-semibold">ความคิดเห็นที่นักท่องเที่ยวเขียนถึงร้านค้าในระบบ</p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setIsReviewsModalOpen(true)}
+            className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black rounded-2xl flex items-center justify-center gap-2 transition shadow-md cursor-pointer shrink-0 self-start sm:self-auto"
+          >
+            <BarChart3 size={15} />
+            <span>เปิดหน้าศูนย์วิเคราะห์และดูรีวิวทั้งหมด ({recentReviews.length}) →</span>
+          </button>
+        </div>
+
+        {reviewsLoading ? (
+          <div className="p-8 text-center flex items-center justify-center gap-2 text-xs font-bold text-[#8A7870]">
+            <Loader2 size={16} className="animate-spin text-[#E0533C]" />
+            <span>กำลังโหลดรีวิวล่าสุด...</span>
+          </div>
+        ) : recentReviews.length === 0 ? (
+          <div className="p-8 text-center bg-stone-50/50 rounded-2xl border border-dashed text-stone-400 space-y-1" style={{ borderColor: C.line }}>
+            <p className="text-xs font-bold text-[#231C18]">ยังไม่มีรีวิวล่าสุดสำหรับร้านของคุณ</p>
+            <p className="text-[11px] text-[#8A7870]">เมื่อมีนักท่องเที่ยวเดินทางมาเช็คอินและเขียนรีวิว ข้อมูลความคิดเห็นจะมาปรากฏที่นี่โดยอัตโนมัติ</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {recentReviews.slice(0, 4).map((rev) => (
+              <div
+                key={rev.id}
+                className="p-4 rounded-2xl border bg-stone-50/40 hover:bg-stone-50 transition space-y-2"
+                style={{ borderColor: C.line }}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-800 font-bold flex items-center justify-center text-xs overflow-hidden shrink-0">
+                      {rev.reviewer_avatar ? (
+                        <img src={rev.reviewer_avatar} alt={rev.reviewer_name} className="w-full h-full object-cover" />
+                      ) : (
+                        (rev.reviewer_name || "U")[0].toUpperCase()
                       )}
-
-                      {item.status === "pending" && (
-                        <>
-                          <button
-                            onClick={() => setEditingSubmission(item)}
-                            className="px-3.5 py-2 rounded-xl text-xs font-bold text-[#231C18] bg-stone-100 hover:bg-stone-200 transition flex items-center gap-1.5 cursor-pointer"
-                          >
-                            <Edit3 size={13} />
-                            <span>แก้ไขข้อมูลที่ส่ง</span>
-                          </button>
-                          <button
-                            onClick={() => handleDeleteSubmission(item.id)}
-                            className="px-3 py-2 rounded-xl text-xs font-bold text-stone-500 hover:text-red-600 transition cursor-pointer"
-                          >
-                            ยกเลิก
-                          </button>
-                        </>
-                      )}
-
-                      {item.status === "approved" && (
-                        <>
-                          <button
-                            onClick={() => {
-                              const matchedShop = shops.find(
-                                (s) => String(s.id) === String(item.shop_id) || (s.shop_name || "").toLowerCase() === (item.name_en || "").toLowerCase()
-                              );
-                              if (matchedShop) {
-                                setEditingShop(matchedShop);
-                              } else {
-                                setEditingShop({ ...item, isSubmission: true, shop_name: item.name_en || item.name_jp });
-                              }
-                            }}
-                            className="flex-1 py-2 px-3 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
-                          >
-                            ✏️ แก้ไขข้อมูล
-                          </button>
-
-                          <button
-                            onClick={() => handleDeleteShop({ ...item, isSubmission: true })}
-                            className="py-2 px-3 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
-                          >
-                            🗑️ ลบ
-                          </button>
-                        </>
-                      )}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black text-[#231C18]">{rev.reviewer_name}</span>
+                        <span className="px-2 py-0.2 rounded-full text-[9px] font-black bg-amber-100 text-amber-900">
+                          📍 {rev.shop_name}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-[#8A7870] font-semibold">
+                        {new Date(rev.created_at).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      </p>
                     </div>
                   </div>
-                );
-              })}
+
+                  <div className="flex items-center gap-0.5 text-amber-500 bg-amber-50 px-2 py-1 rounded-xl border border-amber-200 shrink-0">
+                    <Star size={12} className="fill-amber-400" />
+                    <span className="text-xs font-black text-amber-900">{rev.rating}.0</span>
+                  </div>
+                </div>
+
+                {rev.comment && (
+                  <p className="text-xs text-[#231C18] font-medium leading-relaxed pl-10">"{rev.comment}"</p>
+                )}
+              </div>
+            ))}
+
+            {recentReviews.length > 4 && (
+              <div className="pt-2 text-center">
+                <button
+                  onClick={() => setIsReviewsModalOpen(true)}
+                  className="px-5 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-[#231C18] text-xs font-bold transition cursor-pointer inline-flex items-center gap-1.5"
+                >
+                  <span>ดูรีวิวทั้งหมดอีก {recentReviews.length - 4} รายการ และเข้าสู่หน้าสรุปสถิติแดชบอด →</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* 📝 SUBMISSIONS STATUS SECTION (FOR REGULAR STORE OWNERS ONLY) */}
+      {!isAdmin && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          <div className="bg-white p-6 rounded-3xl border space-y-4 shadow-2xs" style={{ borderColor: C.line }}>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-4" style={{ borderColor: C.line }}>
+              <div>
+                <h3 className="text-base font-black text-[#231C18]">ติดตามสถานะคำขอลงทะเบียนร้านค้า (Submissions Status)</h3>
+                <p className="text-xs text-[#8A7870] font-semibold">รายการร้านค้าที่คุณส่งขออนุมัติ และสถานะการพิจารณาจากผู้ดูแลระบบ</p>
+              </div>
+
+              <button
+                onClick={handleAddClick}
+                className="px-4 py-2 bg-[#E0533C] text-white text-xs font-black rounded-xl flex items-center gap-1.5 hover:bg-[#c8432d] transition self-start sm:self-auto cursor-pointer"
+              >
+                <Plus size={14} /> ส่งคำขอเพิ่มร้านใหม่
+              </button>
             </div>
-          )}
+
+            {/* Filter buttons */}
+            <div className="flex items-center gap-2 overflow-x-auto">
+              <button
+                onClick={() => setStatusFilter("all")}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${statusFilter === "all" ? "bg-[#231C18] text-white" : "bg-stone-100 text-stone-600 hover:bg-stone-200"}`}
+              >
+                ทั้งหมด ({submissions.length})
+              </button>
+              <button
+                onClick={() => setStatusFilter("pending")}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${statusFilter === "pending" ? "bg-amber-500 text-white" : "bg-amber-50 text-amber-700 border border-amber-200"}`}
+              >
+                ⏳ รออนุมัติ ({countPending})
+              </button>
+              <button
+                onClick={() => setStatusFilter("approved")}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${statusFilter === "approved" ? "bg-emerald-600 text-white" : "bg-emerald-50 text-emerald-700 border border-emerald-200"}`}
+              >
+                ✓ อนุมัติแล้ว ({countApproved})
+              </button>
+              <button
+                onClick={() => setStatusFilter("rejected")}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${statusFilter === "rejected" ? "bg-rose-600 text-white" : "bg-rose-50 text-rose-700 border border-rose-200"}`}
+              >
+                ✕ ถูกปฏิเสธ ({countRejected})
+              </button>
+            </div>
+
+            {/* Submissions List */}
+            {filteredSubmissions.length === 0 ? (
+              <div className="p-12 text-center bg-stone-50/50 rounded-2xl border border-dashed text-stone-400 space-y-2">
+                <FileText size={32} className="mx-auto text-stone-300" />
+                <p className="text-xs font-bold text-[#231C18]">ไม่พบประวัติการส่งคำขอตามเงื่อนไข</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredSubmissions.map((sub) => {
+                  const statusBadges: Record<string, any> = {
+                    pending: <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1">⏳ รอการตรวจสอบ</span>,
+                    approved: <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">✓ อนุมัติแล้ว</span>,
+                    rejected: <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300 flex items-center gap-1">✕ ถูกปฏิเสธ</span>,
+                  };
+
+                  return (
+                    <div key={sub.id} className="p-4 rounded-2xl border bg-white space-y-3 shadow-2xs" style={{ borderColor: C.line }}>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-xl bg-stone-100 overflow-hidden shrink-0">
+                            <img src={sub.image_url || sub.image_urls?.[0] || "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&q=80&w=400"} alt={sub.name_en} className="w-full h-full object-cover" />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-black text-[#231C18] leading-tight">{sub.name_en}</h4>
+                            {sub.name_jp && <p className="text-[11px] text-[#8A7870] font-semibold">{sub.name_jp}</p>}
+                            <p className="text-[10px] text-[#8A7870] font-semibold mt-0.5">
+                              🏷️ {sub.category} • ส่งเมื่อ {new Date(sub.created_at).toLocaleDateString("th-TH")}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 self-start sm:self-auto">
+                          {statusBadges[sub.status] || statusBadges.pending}
+                          {sub.status === "rejected" && (
+                            <button
+                              onClick={() => setEditingSubmission(sub)}
+                              className="px-3 py-1 rounded-xl bg-amber-500 text-white text-[11px] font-black hover:bg-amber-600 transition cursor-pointer"
+                            >
+                              แก้ไขและส่งใหม่
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleDeleteSubmission(sub.id)}
+                            className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                            title="ลบคำขอ"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {sub.status === "rejected" && sub.rejection_reason && (
+                        <div className="bg-rose-50 p-3 rounded-xl border border-rose-200 text-xs text-rose-800 font-medium">
+                          <span className="font-bold text-rose-900 block mb-0.5">⚠️ เหตุผลที่ปฏิเสธ:</span>
+                          {sub.rejection_reason}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -924,6 +1829,18 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
           isOpen={!!qrShop}
           shop={qrShop}
           onClose={() => setQrShop(null)}
+        />
+      )}
+
+      {/* 📊 Modal: Admin Shop Summary Analytics */}
+      {selectedSummaryShop && (
+        <AdminShopSummaryModal
+          isOpen={!!selectedSummaryShop}
+          shop={selectedSummaryShop}
+          onClose={() => setSelectedSummaryShop(null)}
+          onEdit={(shop) => setEditingShop(shop)}
+          onDelete={(shop) => handleDeleteShop(shop)}
+          onViewQr={(shop) => setQrShop(shop)}
         />
       )}
     </div>
@@ -1653,6 +2570,181 @@ function MerchantQrModal({ isOpen, shop, onClose }: MerchantQrModalProps) {
             className="px-5 py-2.5 rounded-xl bg-[#231C18] text-white hover:bg-black text-xs font-black transition cursor-pointer"
           >
             ปิดหน้าต่าง
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ===================================================================
+   ADMIN SHOP ANALYTICS SUMMARY MODAL
+   =================================================================== */
+interface AdminShopSummaryModalProps {
+  isOpen: boolean;
+  shop: ShopRecord | null;
+  onClose: () => void;
+  onEdit: (shop: ShopRecord) => void;
+  onDelete: (shop: ShopRecord) => void;
+  onViewQr: (shop: ShopRecord) => void;
+}
+
+function AdminShopSummaryModal({
+  isOpen,
+  shop,
+  onClose,
+  onEdit,
+  onDelete,
+  onViewQr,
+}: AdminShopSummaryModalProps) {
+  if (!isOpen || !shop) return null;
+
+  const totalStamps = shop.stamps_count || 0;
+  const ratingVal = shop.rating !== undefined && shop.rating !== null ? Number(shop.rating) : 0;
+  const reviewsCount = shop.reviews_count || 0;
+
+  return (
+    <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+      <div
+        className="bg-white rounded-3xl w-full max-w-lg border border-amber-500/30 shadow-2xl overflow-hidden flex flex-col"
+        style={{ borderColor: C.line }}
+      >
+        {/* Cover Header */}
+        <div className="relative h-48 w-full bg-stone-900 overflow-hidden">
+          <img
+            src={
+              shop.image_url ||
+              "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&q=80&w=800"
+            }
+            alt={shop.shop_name}
+            className="w-full h-full object-cover opacity-80"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-stone-950 via-stone-950/40 to-transparent" />
+
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black transition cursor-pointer backdrop-blur-xs"
+          >
+            <X size={18} />
+          </button>
+
+          <div className="absolute bottom-4 left-5 right-5 text-white space-y-1">
+            <div className="flex items-center gap-2 flex-wrap mb-1">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-stone-950 uppercase tracking-wider">
+                {shop.category || "Shop"}
+              </span>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500 text-white">
+                ✓ Live System Approved
+              </span>
+              {shop.prefecture && (
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/20 backdrop-blur-md text-white">
+                  📍 {shop.prefecture}
+                </span>
+              )}
+            </div>
+            <h3 className="text-xl font-black truncate">{shop.shop_name}</h3>
+            {shop.shop_name_jp && (
+              <p className="text-xs font-medium text-stone-300">{shop.shop_name_jp}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Analytics Body */}
+        <div className="p-6 space-y-5">
+          {/* Key Metrics Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="bg-amber-50/80 border border-amber-200/80 p-3.5 rounded-2xl">
+              <div className="flex items-center gap-1.5 text-amber-700 text-xs font-bold mb-1">
+                <Stamp size={15} />
+                <span>Stamp Check-ins</span>
+              </div>
+              <p className="text-xl font-black text-amber-900">{totalStamps} ครั้ง</p>
+              <p className="text-[10px] text-amber-700/80 font-semibold mt-0.5">ยอดแสตมป์ที่ออกแล้ว</p>
+            </div>
+
+            <div className="bg-emerald-50/80 border border-emerald-200/80 p-3.5 rounded-2xl">
+              <div className="flex items-center gap-1.5 text-emerald-700 text-xs font-bold mb-1">
+                <Star size={15} />
+                <span>คะแนนรีวิว</span>
+              </div>
+              <p className="text-xl font-black text-emerald-900">
+                {ratingVal > 0 ? `${ratingVal.toFixed(1)} / 5.0` : "ยังไม่มีคะแนน"}
+              </p>
+              <p className="text-[10px] text-emerald-700/80 font-semibold mt-0.5">จาก {reviewsCount} รีวิว</p>
+            </div>
+
+            <div className="bg-sky-50/80 border border-sky-200/80 p-3.5 rounded-2xl col-span-2 sm:col-span-1">
+              <div className="flex items-center gap-1.5 text-sky-700 text-xs font-bold mb-1">
+                <Building2 size={15} />
+                <span>ID ร้านค้า</span>
+              </div>
+              <p className="text-sm font-mono font-black text-sky-900 truncate">#{shop.id}</p>
+              <p className="text-[10px] text-sky-700/80 font-semibold mt-0.5">รหัสอ้างอิงระบบ</p>
+            </div>
+          </div>
+
+          {/* Details list */}
+          <div className="bg-stone-50 p-4 rounded-2xl border space-y-2.5 text-xs text-[#231C18]" style={{ borderColor: C.line }}>
+            <div className="flex items-start justify-between gap-2 border-b pb-2" style={{ borderColor: C.line }}>
+              <span className="font-bold text-[#8A7870]">ที่อยู่ร้านค้า:</span>
+              <span className="font-semibold text-right max-w-[240px] truncate">{shop.address || "ไม่ได้ระบุที่อยู่"}</span>
+            </div>
+
+            {shop.website && (
+              <div className="flex items-center justify-between gap-2 border-b pb-2" style={{ borderColor: C.line }}>
+                <span className="font-bold text-[#8A7870]">เว็บไซต์:</span>
+                <a
+                  href={shop.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-[#E0533C] hover:underline truncate max-w-[240px]"
+                >
+                  {shop.website}
+                </a>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-bold text-[#8A7870]">เจ้าของร้าน (Owner ID):</span>
+              <span className="font-mono text-[11px] text-stone-600 truncate max-w-[220px]">
+                {shop.owner_id || "ระบบ (Admin/Unassigned)"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Modal Actions */}
+        <div className="p-5 border-t bg-stone-50/50 flex flex-wrap items-center justify-between gap-3" style={{ borderColor: C.line }}>
+          <div className="flex items-center gap-2 flex-1">
+            <button
+              onClick={() => {
+                onClose();
+                onEdit(shop);
+              }}
+              className="flex-1 py-2.5 px-3 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-black flex items-center justify-center gap-1.5 transition cursor-pointer"
+            >
+              <Edit3 size={14} /> แก้ไขข้อมูล
+            </button>
+
+            <button
+              onClick={() => {
+                onClose();
+                onViewQr(shop);
+              }}
+              className="py-2.5 px-3.5 rounded-xl border border-stone-300 bg-white hover:bg-stone-50 text-stone-800 text-xs font-black flex items-center justify-center gap-1.5 transition cursor-pointer"
+            >
+              <QrCode size={14} /> QR
+            </button>
+          </div>
+
+          <button
+            onClick={() => {
+              onClose();
+              onDelete(shop);
+            }}
+            className="py-2.5 px-4 rounded-xl border border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-black flex items-center justify-center gap-1.5 transition cursor-pointer"
+          >
+            <Trash2 size={14} /> ลบร้าน
           </button>
         </div>
       </div>
