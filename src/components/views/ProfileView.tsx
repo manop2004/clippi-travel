@@ -28,7 +28,7 @@ import { supabase } from "../../supabaseClient";
 import { User as AuthUser } from "@supabase/supabase-js";
 import { useLang } from "../../lib/i18n";
 import { useUserRole } from "../../hooks/useUserRole";
-import { resolveUserDisplayName } from "../../lib/activityHelpers";
+import { resolveUserDisplayName, resolveUserAvatarUrl } from "../../lib/activityHelpers";
 
 // ─── Level / XP helpers (Calculates Level based on XP: Level = floor(xp / 100) + 1) ───
 const levelFromXp = (xp: number) => Math.floor(xp / 100) + 1;
@@ -170,7 +170,12 @@ export default function ProfileView() {
             user?.email || p.email,
             user?.user_metadata?.display_name || user?.user_metadata?.full_name
           );
-          const resolvedAvatar = cachedAvatar || p.avatar_url || user?.user_metadata?.avatar_url || "";
+          const resolvedAvatar = resolveUserAvatarUrl(
+            cachedAvatar,
+            p.avatar_url,
+            user?.user_metadata?.custom_avatar_url,
+            user?.user_metadata?.avatar_url
+          ) || "";
           setDisplayName(resolvedName);
           setAvatarUrl(resolvedAvatar);
           setDbXp(p.xp ?? null);
@@ -182,7 +187,12 @@ export default function ProfileView() {
             user?.email,
             user?.user_metadata?.display_name || user?.user_metadata?.full_name
           );
-          const resolvedAvatar = cachedAvatar || user?.user_metadata?.avatar_url || "";
+          const resolvedAvatar = resolveUserAvatarUrl(
+            cachedAvatar,
+            null,
+            user?.user_metadata?.custom_avatar_url,
+            user?.user_metadata?.avatar_url
+          ) || "";
           setDisplayName(resolvedName);
           setAvatarUrl(resolvedAvatar);
           setDbXp(null);
@@ -215,25 +225,64 @@ export default function ProfileView() {
     setIsEditModalOpen(true);
   };
 
-  // Handle local file selection for avatar preview (using FileReader Base64 Data URL)
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const compressAvatarImage = (file: File): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const maxDim = 200;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > maxDim) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            }
+          } else {
+            if (height > maxDim) {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL("image/jpeg", 0.85));
+          } else {
+            resolve(event.target?.result as string);
+          }
+        };
+        img.onerror = () => resolve(event.target?.result as string);
+        img.src = event.target?.result as string;
+      };
+      reader.onerror = () => resolve("");
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Handle local file selection for avatar preview
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        showToast("ขนาดไฟล์ต้องไม่เกิน 5MB", "error");
+      if (file.size > 10 * 1024 * 1024) {
+        showToast("ขนาดไฟล์ต้องไม่เกิน 10MB", "error");
         return;
       }
       setSelectedFile(file);
 
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const base64Url = event.target?.result as string;
-        if (base64Url) {
-          setAvatarPreview(base64Url);
-          setAvatarImgError(false);
-        }
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressedDataUrl = await compressAvatarImage(file);
+        setAvatarPreview(compressedDataUrl);
+        setAvatarImgError(false);
+      } catch (err) {
+        console.warn("Avatar compression exception:", err);
+      }
     }
   };
 
@@ -257,7 +306,12 @@ export default function ProfileView() {
       // Step A: Upload image to Supabase Storage if file selected
       if (selectedFile) {
         try {
-          const fileExt = selectedFile.name.split(".").pop();
+          const compressedDataUrl = await compressAvatarImage(selectedFile);
+          if (compressedDataUrl) {
+            finalAvatarUrl = compressedDataUrl;
+          }
+
+          const fileExt = selectedFile.name.split(".").pop() || "jpg";
           const filePath = `${user.id}/${Date.now()}.${fileExt}`;
 
           const { error: uploadErr } = await supabase.storage
@@ -273,10 +327,10 @@ export default function ProfileView() {
               finalAvatarUrl = publicUrlData.publicUrl;
             }
           } else {
-            console.warn("Storage upload warning (using Data URL fallback):", uploadErr.message);
+            console.warn("[ProfileView] Storage upload notice (using compressed image fallback):", uploadErr.message);
           }
         } catch (stgErr) {
-          console.warn("Storage upload exception:", stgErr);
+          console.warn("[ProfileView] Storage upload exception:", stgErr);
         }
       }
 
@@ -285,40 +339,46 @@ export default function ProfileView() {
       }
 
       // Step B: Upsert/Update into Supabase `profiles` table
-      const profilePayload = {
+      const profilePayload: any = {
         id: user.id,
+        email: user.email || undefined,
         display_name: cleanName,
         avatar_url: finalAvatarUrl,
-        updated_at: new Date().toISOString(),
+        custom_avatar_url: finalAvatarUrl,
       };
 
       const { error: profileErr } = await supabase
         .from("profiles")
-        .upsert(profilePayload);
+        .upsert(profilePayload, { onConflict: "id" });
 
       if (profileErr) {
-        console.warn("Profiles table upsert notice:", profileErr.message);
-        const { error: updateErr } = await supabase
-          .from("profiles")
-          .update({
-            display_name: cleanName,
-            avatar_url: finalAvatarUrl,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", user.id);
+        console.warn("[ProfileView] Upsert notice with custom_avatar_url, trying fallback without it:", profileErr.message);
+        const fallbackPayload = {
+          id: user.id,
+          email: user.email || undefined,
+          display_name: cleanName,
+          avatar_url: finalAvatarUrl,
+        };
 
-        if (updateErr) {
-          console.warn("Profiles table update fallback notice:", updateErr.message);
+        const { error: fallbackErr } = await supabase
+          .from("profiles")
+          .upsert(fallbackPayload, { onConflict: "id" });
+
+        if (fallbackErr) {
+          console.error("[ProfileView] Fallback profiles upsert error:", fallbackErr.message);
+          showToast(`เกิดข้อผิดพลาดในการบันทึกรูปใน DB: ${fallbackErr.message}`, "error");
         }
       }
 
-      // Step C: Update user metadata in Supabase Auth (display_name, full_name, name, avatar_url)
+      // Step C: Update user metadata in Supabase Auth (display_name, full_name, name, avatar_url, custom_avatar_url, picture)
       const { error: authErr } = await supabase.auth.updateUser({
         data: {
           display_name: cleanName,
           full_name: cleanName,
           name: cleanName,
           avatar_url: finalAvatarUrl,
+          custom_avatar_url: finalAvatarUrl,
+          picture: finalAvatarUrl,
         },
       });
 

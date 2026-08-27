@@ -71,3 +71,21 @@ export function resolveUserDisplayName(
 
   return "ผู้ใช้งาน";
 }
+
+export function resolveUserAvatarUrl(
+  cachedAvatar?: string | null,
+  dbAvatar?: string | null,
+  metaCustomAvatar?: string | null,
+  metaAvatar?: string | null
+): string | null {
+  const isGoogle = (url?: string | null) => !!url && url.includes("googleusercontent.com");
+
+  if (cachedAvatar && cachedAvatar.trim()) return cachedAvatar.trim();
+  if (metaCustomAvatar && metaCustomAvatar.trim()) return metaCustomAvatar.trim();
+  if (dbAvatar && dbAvatar.trim() && !isGoogle(dbAvatar)) return dbAvatar.trim();
+  if (metaAvatar && metaAvatar.trim() && !isGoogle(metaAvatar)) return metaAvatar.trim();
+
+  if (dbAvatar && dbAvatar.trim()) return dbAvatar.trim();
+  if (metaAvatar && metaAvatar.trim()) return metaAvatar.trim();
+  return null;
+}

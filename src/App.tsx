@@ -23,7 +23,7 @@ import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { EditShopModal } from "./components/EditShopModal";
 import { BannedGuard } from "./components/auth/BannedGuard";
 import AdminLogPage from "./components/views/AdminLogPage";
-import { resolveUserDisplayName } from "./lib/activityHelpers";
+import { resolveUserDisplayName, resolveUserAvatarUrl } from "./lib/activityHelpers";
 import NotificationBell from "./components/NotificationBell";
 
 export default function App() {
@@ -97,7 +97,12 @@ export default function App() {
           authUser?.email || data.email,
           authUser?.user_metadata?.display_name || authUser?.user_metadata?.full_name
         );
-        const resolvedAvatar = cachedAvatar || data.avatar_url || null;
+        const resolvedAvatar = resolveUserAvatarUrl(
+          cachedAvatar,
+          data.avatar_url,
+          authUser?.user_metadata?.custom_avatar_url,
+          authUser?.user_metadata?.avatar_url
+        );
         setUserProfile({ display_name: resolvedName, avatar_url: resolvedAvatar });
         setHeaderImgError(false);
       } else {
@@ -108,9 +113,15 @@ export default function App() {
           authUser?.email,
           authUser?.user_metadata?.display_name || authUser?.user_metadata?.full_name
         );
+        const resolvedAvatar = resolveUserAvatarUrl(
+          cachedAvatar,
+          null,
+          authUser?.user_metadata?.custom_avatar_url,
+          authUser?.user_metadata?.avatar_url
+        );
         setUserProfile((prev) => ({
           display_name: resolvedName,
-          avatar_url: cachedAvatar || prev.avatar_url,
+          avatar_url: resolvedAvatar || prev.avatar_url,
         }));
       }
     } catch (e) {
@@ -297,7 +308,12 @@ export default function App() {
     session.user.email,
     session.user.user_metadata?.display_name
   );
-  const headerAvatarUrl = userProfile.avatar_url || session.user.user_metadata?.avatar_url || "";
+  const headerAvatarUrl = resolveUserAvatarUrl(
+    userProfile.avatar_url,
+    null,
+    session.user.user_metadata?.custom_avatar_url,
+    session.user.user_metadata?.avatar_url
+  ) || "";
   const headerUserInitial = (headerDisplayName || userEmail)[0].toUpperCase();
 
   return (

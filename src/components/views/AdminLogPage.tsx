@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 import { C } from "../../constants/mockData";
-import { timeAgo } from "../../lib/activityHelpers";
+import { timeAgo, resolveUserAvatarUrl } from "../../lib/activityHelpers";
 
 interface UnifiedLogRow {
   id: string;
@@ -98,18 +98,20 @@ export default function AdminLogPage() {
         }
       });
 
-      // 2. Fetch profiles map with real emails from auth.users (via get_admin_user_list RPC)
-      let rawProfiles: any[] = [];
-      const { data: rpcProfiles, error: rpcErr } = await supabase.rpc("get_admin_user_list");
+      // 2. Fetch profiles map (merging auth.users RPC & public.profiles DB table & current Auth session)
+      const [rpcRes, standardRes, authUserRes] = await Promise.all([
+        supabase.rpc("get_admin_user_list"),
+        supabase.from("profiles").select("*"),
+        supabase.auth.getUser()
+      ]);
 
-      if (!rpcErr && rpcProfiles && rpcProfiles.length > 0) {
-        rawProfiles = rpcProfiles;
-      } else {
-        const { data: standardProfiles } = await supabase
-          .from("profiles")
-          .select("id, display_name, full_name, username, avatar_url, email, role, is_admin, is_banned, ban_reason");
-        rawProfiles = standardProfiles || [];
-      }
+      const rpcProfiles = rpcRes.data || [];
+      const standardProfiles = standardRes.data || [];
+      const authUser = authUserRes.data?.user;
+      const authUserUid = authUser ? String(authUser.id) : null;
+      const authUserEmail = authUser?.email ? authUser.email.toLowerCase() : null;
+      const authMetaCustom = authUser?.user_metadata?.custom_avatar_url;
+      const authMetaAvatar = authUser?.user_metadata?.avatar_url || authUser?.user_metadata?.picture;
 
       // Fetch user_roles table to resolve explicit roles
       const { data: userRolesData } = await supabase.from("user_roles").select("user_id, role");
@@ -121,11 +123,81 @@ export default function AdminLogPage() {
       });
 
       const profileMap = new Map<string, any>();
-      (rawProfiles || []).forEach((p: any) => {
+
+      // A. Populate from standard public.profiles DB table
+      standardProfiles.forEach((p: any) => {
         const key = p.id || p.user_id;
         if (key) {
-          const explicitRole = userRolesMap.get(String(key)) || (p.is_admin ? "admin" : p.role || "user");
-          profileMap.set(String(key), { ...p, resolved_role: explicitRole });
+          const keyStr = String(key);
+          const cachedAvatar = localStorage.getItem(`user_avatar_${keyStr}`);
+          const cachedName = localStorage.getItem(`user_display_name_${keyStr}`);
+          const explicitRole = userRolesMap.get(keyStr) || (p.is_admin ? "admin" : p.role || "user");
+          const profObj = {
+            ...p,
+            avatar_url: cachedAvatar || p.custom_avatar_url || p.avatar_url || null,
+            display_name: cachedName || p.display_name || null,
+            resolved_role: explicitRole,
+          };
+          profileMap.set(keyStr, profObj);
+          if (p.email) {
+            profileMap.set(p.email.toLowerCase(), profObj);
+          }
+        }
+      });
+
+      // B. Merge with rpcProfiles (auth.users registration info)
+      rpcProfiles.forEach((rpcP: any) => {
+        const key = rpcP.id || rpcP.user_id;
+        if (key) {
+          const keyStr = String(key);
+          const existingById = profileMap.get(keyStr);
+          const existingByEmail = rpcP.email ? profileMap.get(rpcP.email.toLowerCase()) : null;
+          const existing = existingById || existingByEmail || {};
+
+          const cachedAvatar = localStorage.getItem(`user_avatar_${keyStr}`);
+          const cachedName = localStorage.getItem(`user_display_name_${keyStr}`);
+          const explicitRole = userRolesMap.get(keyStr) || existing.resolved_role || (rpcP.is_admin ? "admin" : rpcP.role || "user");
+
+          const isGoogleAvatar = (url?: string | null) => !!url && url.includes("googleusercontent.com");
+
+          const metaCustomAvatar = rpcP.raw_user_meta_data?.custom_avatar_url || rpcP.user_metadata?.custom_avatar_url;
+          const metaAvatar = rpcP.raw_user_meta_data?.avatar_url || rpcP.user_metadata?.avatar_url || rpcP.raw_user_meta_data?.picture || rpcP.user_metadata?.picture;
+          const metaName = rpcP.raw_user_meta_data?.display_name || rpcP.user_metadata?.display_name || rpcP.raw_user_meta_data?.full_name || rpcP.user_metadata?.full_name;
+
+          const isAuthUser = (authUserUid && keyStr === authUserUid) || (rpcP.email && authUserEmail && rpcP.email.toLowerCase() === authUserEmail);
+          const selfCustom = isAuthUser ? authMetaCustom : null;
+          const selfAvatar = isAuthUser && authMetaAvatar ? authMetaAvatar : null;
+
+          const chosenAvatar =
+            (cachedAvatar && cachedAvatar.trim()) ||
+            (selfCustom && selfCustom.trim()) ||
+            (selfAvatar && selfAvatar.trim()) ||
+            (metaCustomAvatar && metaCustomAvatar.trim()) ||
+            (existing.custom_avatar_url && existing.custom_avatar_url.trim()) ||
+            (existing.avatar_url && !isGoogleAvatar(existing.avatar_url) ? existing.avatar_url : null) ||
+            (metaAvatar && !isGoogleAvatar(metaAvatar) ? metaAvatar : null) ||
+            (rpcP.avatar_url && !isGoogleAvatar(rpcP.avatar_url) ? rpcP.avatar_url : null) ||
+            existing.avatar_url ||
+            metaAvatar ||
+            rpcP.avatar_url ||
+            null;
+
+          const finalDisplayName = cachedName || existing.display_name || metaName || rpcP.display_name || null;
+          const finalEmail = rpcP.email || existing.email || null;
+
+          const mergedObj = {
+            ...existing,
+            ...rpcP,
+            email: finalEmail,
+            avatar_url: chosenAvatar,
+            display_name: finalDisplayName,
+            resolved_role: explicitRole,
+          };
+
+          profileMap.set(keyStr, mergedObj);
+          if (finalEmail) {
+            profileMap.set(finalEmail.toLowerCase(), mergedObj);
+          }
         }
       });
 
@@ -185,8 +257,11 @@ export default function AdminLogPage() {
               ? String(row.detail?.admin_id || row.detail?.user_id || row.detail?.updated_by || shop?.owner_id)
               : undefined);
 
-        const actor = uid ? profileMap.get(uid) || {} : {};
         const detailEmail = row.detail?.email || row.detail?.admin_email || row.detail?.actor_email || row.detail?.owner_email;
+        const actor = uid
+          ? profileMap.get(uid) || (detailEmail ? profileMap.get(detailEmail.toLowerCase()) : {})
+          : (detailEmail ? profileMap.get(detailEmail.toLowerCase()) || {} : {});
+
         const actorName = resolveActorIdentifier(uid, detailEmail, actor, row.action_type === "user_login" ? "ผู้ใช้งานระบบ" : "แอดมินระบบ");
 
         let actionTitle = row.action_type || "ดำเนินการระบบ";
@@ -252,8 +327,11 @@ export default function AdminLogPage() {
             }
           }
           const uid = row.user_id ? String(row.user_id) : undefined;
-          const actor = uid ? profileMap.get(uid) || {} : {};
-          const actorName = resolveActorIdentifier(uid, detailObj?.email, actor, "ผู้ใช้งานระบบ");
+          const detailEmail = detailObj?.email || detailObj?.admin_email;
+          const actor = uid
+            ? profileMap.get(uid) || (detailEmail ? profileMap.get(detailEmail.toLowerCase()) : {})
+            : (detailEmail ? profileMap.get(detailEmail.toLowerCase()) || {} : {});
+          const actorName = resolveActorIdentifier(uid, detailEmail, actor, "ผู้ใช้งานระบบ");
 
           unified.push({
             id: `act_${row.id}`,
@@ -391,6 +469,20 @@ export default function AdminLogPage() {
         supabase.from("place_submissions").select("id", { count: "exact" }).eq("user_id", actorId),
       ]);
 
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const isCurrentUser = currentUser && (currentUser.id === actorId || (profile?.email && currentUser.email && profile.email.toLowerCase() === currentUser.email.toLowerCase()));
+
+      const cachedAvatar = localStorage.getItem(`user_avatar_${actorId}`);
+      const selfCustom = isCurrentUser ? currentUser.user_metadata?.custom_avatar_url : null;
+      const selfAvatar = isCurrentUser ? currentUser.user_metadata?.avatar_url || currentUser.user_metadata?.picture : null;
+
+      const resolvedAvatar = resolveUserAvatarUrl(
+        cachedAvatar,
+        profile?.custom_avatar_url || profile?.avatar_url,
+        selfCustom,
+        selfAvatar
+      );
+
       const email = profile?.email || localStorage.getItem(`user_email_${actorId}`) || actorNameFallback;
       const roleVal = roleRow?.role || (profile?.is_admin ? "admin" : profile?.role || "user");
       const cachedDisplayName = localStorage.getItem(`user_display_name_${actorId}`);
@@ -400,7 +492,7 @@ export default function AdminLogPage() {
         id: actorId,
         display_name: resolvedDisplayName,
         email: email || "ไม่ระบุอีเมล",
-        avatar_url: profile?.avatar_url || null,
+        avatar_url: resolvedAvatar,
         role: roleVal,
         is_banned: profile?.is_banned || false,
         ban_reason: profile?.ban_reason || null,
