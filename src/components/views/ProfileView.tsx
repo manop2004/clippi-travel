@@ -1,8 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
 import { 
-  Award, 
-  Star, 
-  Lock, 
   Share2, 
   HelpCircle, 
   ShieldCheck, 
@@ -43,17 +40,6 @@ const LEVEL_TITLE_KEYS: Record<number, string> = {
 const getLevelTitleKey = (level: number) =>
   LEVEL_TITLE_KEYS[level] ?? (level >= 6 ? "level.legendary" : "level.wanderer");
 
-// ─── Badge catalog: badge_type → { labelKey, descKey, icon } ───────────────
-const BADGE_CATALOG: Record<
-  string,
-  { labelKey: string; descKey: string; icon: React.ComponentType<any> }
-> = {
-  tokyo_explorer:   { labelKey: "badge.tokyo_explorer.label",   descKey: "badge.tokyo_explorer.desc",   icon: Award },
-  quality_reviewer: { labelKey: "badge.quality_reviewer.label", descKey: "badge.quality_reviewer.desc", icon: Star  },
-  secret_badge:     { labelKey: "badge.secret_badge.label",     descKey: "badge.secret_badge.desc",     icon: Lock  },
-};
-
-const ALL_BADGE_KEYS = ["tokyo_explorer", "quality_reviewer", "secret_badge"];
 
 export default function ProfileView() {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -67,6 +53,7 @@ export default function ProfileView() {
   const [reviewCount, setReviewCount] = useState<number | null>(null);
   const [dbXp,        setDbXp]        = useState<number | null>(null);
   const [unlockedBadgeKeys, setUnlockedBadgeKeys] = useState<string[] | null>(null);
+  const [allAchievements, setAllAchievements] = useState<any[]>([]);
   const [loadingStats, setLoadingStats] = useState(true);
 
   // ─── Modal states ────────────────────────────────────────────────────────
@@ -111,7 +98,7 @@ export default function ProfileView() {
     async function fetchProfileData() {
       setLoadingStats(true);
       try {
-        const [stampsRes, reviewsRes, profileRes, badgesRes] = await Promise.all([
+        const [stampsRes, reviewsRes, profileRes, badgesRes, achievementsRes] = await Promise.all([
           // Query stamps count from user_stamps
           supabase
             .from("user_stamps")
@@ -136,6 +123,12 @@ export default function ProfileView() {
             .from("user_badges")
             .select("badge_type")
             .eq("user_id", uid),
+          // Query all active achievement definitions (สำหรับ badge แบบ dynamic)
+          supabase
+            .from("achievements")
+            .select("code, name, description, icon, is_active, sort_order")
+            .eq("is_active", true)
+            .order("sort_order", { ascending: true }),
         ]);
 
         // 1. Stamps Count
@@ -179,6 +172,11 @@ export default function ProfileView() {
           setUnlockedBadgeKeys(
             (badgesRes.data ?? []).map((row: any) => row.badge_type as string)
           );
+        }
+
+        // เก็บนิยาม achievement ทั้งหมด (dynamic badge)
+        if (!achievementsRes.error && achievementsRes.data) {
+          setAllAchievements(achievementsRes.data);
         }
       } catch (err) {
         console.error("Error loading profile data:", err);
@@ -368,12 +366,15 @@ export default function ProfileView() {
 
   // Badges
   const unlockedSet = new Set(unlockedBadgeKeys ?? []);
-  const badgeList = ALL_BADGE_KEYS.map((key) => {
-    const meta   = BADGE_CATALOG[key];
-    const locked = !unlockedSet.has(key);
-    return { key, ...meta, locked };
-  });
-  const unlockedBadgeCount = unlockedBadgeKeys?.length ?? 0;
+  // สร้างรายการ badge จากตาราง achievements (dynamic) แทน hardcode
+  const badgeList = allAchievements.map((ach) => ({
+    key: ach.code,
+    icon: ach.icon || "🏆",
+    name: ach.name,
+    desc: ach.description || "",
+    locked: !unlockedSet.has(ach.code),
+  }));
+  const unlockedBadgeCount = badgeList.filter((b) => !b.locked).length;
 
   // Stat skeleton loader component
   const StatNum = ({ val }: { val: number | null }) =>
@@ -515,7 +516,7 @@ export default function ProfileView() {
           <div className="flex items-center justify-between mb-4 select-none">
             <h3 className="text-xs font-black uppercase tracking-wider text-[#8A7870]">{t("profile.unlockedBadges")}</h3>
             <span className="text-[10px] font-bold text-[#E0533C]">
-              {unlockedBadgeCount} / {ALL_BADGE_KEYS.length}
+              {unlockedBadgeCount} / {badgeList.length}
             </span>
           </div>
 
@@ -543,7 +544,7 @@ export default function ProfileView() {
                     className="w-11 h-11 rounded-full flex items-center justify-center mb-2 shadow-2xs select-none relative"
                     style={{ background: b.locked ? "#EFE5DD" : C.accentSoft }}
                   >
-                    <b.icon size={18} color={b.locked ? C.inkSoft : C.accentDeep} strokeWidth={2.2} />
+                    <span className="text-xl" style={{ filter: b.locked ? "grayscale(1) opacity(0.5)" : "none" }}>{b.icon}</span>
                     {!b.locked && (
                       <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 text-white rounded-full flex items-center justify-center text-[8px]">
                         ✓
@@ -551,10 +552,10 @@ export default function ProfileView() {
                     )}
                   </div>
                   <p className="text-[10px] font-black leading-tight truncate w-full" style={{ color: b.locked ? C.inkSoft : C.ink }}>
-                    {t(b.labelKey)}
+                    {b.name}
                   </p>
                   <p className="text-[8px] font-semibold text-[#8A7870] mt-0.5 hidden sm:block truncate w-full">
-                    {t(b.descKey)}
+                    {b.desc}
                   </p>
                 </div>
               ))}

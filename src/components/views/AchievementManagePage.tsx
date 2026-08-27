@@ -1,7 +1,8 @@
-import React, { useState } from "react";
-import { Trophy, Plus, Trash2, Eye, EyeOff, X } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Trophy, Plus, Trash2, Eye, EyeOff, X, Pencil, Loader2 } from "lucide-react";
 import { C } from "../../constants/mockData";
 import { ProtectedRoute } from "../auth/ProtectedRoute";
+import { supabase } from "../../supabaseClient";
 
 // ============================================================================
 // ชนิดเงื่อนไข (template) — ลูกค้า/แอดมินเลือกจาก dropdown ไม่ต้องรู้ column DB
@@ -55,16 +56,6 @@ interface Achievement {
   is_active: boolean;
 }
 
-// ── MOCK DATA (เฟสแรก) — สลับเป็น Supabase ทีหลังได้ที่ loadAchievements ──
-const MOCK_ACHIEVEMENTS: Achievement[] = [
-  { code: "stamp_first", name: "ก้าวแรก", description: "เก็บแสตมป์ดวงแรก", icon: "🎯", rule_type: "stamp_count", rule_target: 1, rule_param: null, is_active: true },
-  { code: "stamp_10", name: "นักสะสมตัวจริง", description: "เก็บครบ 10 ดวง", icon: "🥈", rule_type: "stamp_count", rule_target: 10, rule_param: null, is_active: true },
-  { code: "stamp_50", name: "เจ้าพ่อแสตมป์", description: "เก็บครบ 50 ดวง", icon: "👑", rule_type: "stamp_count", rule_target: 50, rule_param: null, is_active: true },
-  { code: "region_all", name: "นักเดินทางทั่วญี่ปุ่น", description: "เก็บครบทุกภูมิภาค", icon: "🗾", rule_type: "region_any", rule_target: null, rule_param: null, is_active: true },
-  { code: "food_10", name: "นักชิม", description: "เก็บร้านอาหารครบ 10 ร้าน", icon: "🍜", rule_type: "category_count", rule_target: 10, rule_param: "food", is_active: true },
-  { code: "quality_reviewer", name: "นักรีวิวคุณภาพ", description: "เขียนรีวิวครบ 5 ครั้ง", icon: "✍️", rule_type: "review_count", rule_target: 5, rule_param: null, is_active: true },
-  { code: "old_1900", name: "นักโบราณคดี", description: "เก็บร้านก่อตั้งก่อนปี 1900", icon: "🏛️", rule_type: "founded_before", rule_target: 1900, rule_param: null, is_active: false },
-];
 
 export default function AchievementManagePage() {
   return (
@@ -75,28 +66,64 @@ export default function AchievementManagePage() {
 }
 
 function AchievementManageContent() {
-  const [achievements, setAchievements] = useState<Achievement[]>(MOCK_ACHIEVEMENTS);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<Achievement | null>(null);
   const [filter, setFilter] = useState<"all" | "active" | "inactive">("all");
 
-  // TODO(phase 2): แทน MOCK ด้วย supabase.from("achievements").select("*").order("sort_order")
-  // async function loadAchievements() { ... setAchievements(data) }
+  useEffect(() => { loadAchievements(); }, []);
 
-  const toggleActive = (code: string) => {
-    setAchievements((prev) => prev.map((a) => a.code === code ? { ...a, is_active: !a.is_active } : a));
-    // TODO(phase 2): supabase.from("achievements").update({ is_active }).eq("code", code)
+  async function loadAchievements() {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("achievements")
+      .select("*")
+      .order("sort_order", { ascending: true });
+    if (error) {
+      console.error("โหลด achievements ไม่สำเร็จ:", error);
+      alert("โหลดข้อมูลไม่สำเร็จ: " + error.message);
+    } else if (data) {
+      setAchievements(data as Achievement[]);
+    }
+    setLoading(false);
+  }
+
+  const toggleActive = async (code: string) => {
+    const current = achievements.find((a) => a.code === code);
+    if (!current) return;
+    const next = !current.is_active;
+    setAchievements((prev) => prev.map((a) => a.code === code ? { ...a, is_active: next } : a)); // optimistic
+    const { error } = await supabase.from("achievements").update({ is_active: next }).eq("code", code);
+    if (error) { alert("อัปเดตไม่สำเร็จ: " + error.message); loadAchievements(); }
   };
 
-  const deleteAchievement = (code: string) => {
+  const deleteAchievement = async (code: string) => {
     if (!confirm("ลบ achievement นี้ถาวร? (user ที่เคยปลดจะหายไปด้วย)")) return;
+    const { error } = await supabase.from("achievements").delete().eq("code", code);
+    if (error) { alert("ลบไม่สำเร็จ: " + error.message); return; }
     setAchievements((prev) => prev.filter((a) => a.code !== code));
-    // TODO(phase 2): supabase.from("achievements").delete().eq("code", code)
   };
 
-  const addAchievement = (a: Achievement) => {
-    setAchievements((prev) => [...prev, a]);
+  const addAchievement = async (a: Achievement) => {
+    const { error } = await supabase.from("achievements").insert({
+      code: a.code, name: a.name, description: a.description, icon: a.icon,
+      rule_type: a.rule_type, rule_target: a.rule_target, rule_param: a.rule_param,
+      is_active: a.is_active, sort_order: 0,
+    });
+    if (error) { alert("เพิ่มไม่สำเร็จ: " + error.message); return; }
     setShowForm(false);
-    // TODO(phase 2): supabase.from("achievements").insert(a)
+    loadAchievements();
+  };
+
+  const updateAchievement = async (a: Achievement) => {
+    const { error } = await supabase.from("achievements").update({
+      name: a.name, description: a.description, icon: a.icon,
+      rule_type: a.rule_type, rule_target: a.rule_target, rule_param: a.rule_param,
+    }).eq("code", a.code);
+    if (error) { alert("แก้ไขไม่สำเร็จ: " + error.message); return; }
+    setEditing(null);
+    loadAchievements();
   };
 
   const filtered = achievements.filter((a) =>
@@ -142,7 +169,12 @@ function AchievementManageContent() {
 
       {/* List */}
       <div className="space-y-2.5">
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div className="p-8 rounded-2xl bg-white border text-center" style={{ borderColor: C.line }}>
+            <Loader2 size={20} className="animate-spin mx-auto text-[#8A7870]" />
+            <p className="text-xs text-[#8A7870] mt-2">กำลังโหลด...</p>
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="p-6 rounded-2xl bg-white border text-center" style={{ borderColor: C.line }}>
             <p className="text-xs text-[#8A7870] italic">ยังไม่มี achievement ในหมวดนี้</p>
           </div>
@@ -161,10 +193,18 @@ function AchievementManageContent() {
                   <h3 className="text-sm font-black truncate" style={{ color: C.ink }}>{a.name}</h3>
                   {!a.is_active && <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-stone-100 text-[#8A7870]">ปิดอยู่</span>}
                 </div>
-                <p className="text-[11px] text-[#8A7870] truncate">{RULE_TYPES[a.rule_type].summary(a.rule_target, a.rule_param)}</p>
+                <p className="text-[11px] text-[#8A7870] truncate">{RULE_TYPES[a.rule_type]?.summary(a.rule_target, a.rule_param) ?? a.description ?? a.rule_type}</p>
                 <code className="text-[9px]" style={{ color: "#B7A99A" }}>{a.code}</code>
               </div>
               <div className="flex items-center gap-1 shrink-0">
+                <button
+                  onClick={() => setEditing(a)}
+                  title="แก้ไข"
+                  className="w-8 h-8 rounded-lg flex items-center justify-center border hover:bg-stone-50 transition"
+                  style={{ borderColor: C.line, color: C.inkSoft }}
+                >
+                  <Pencil size={15} />
+                </button>
                 <button
                   onClick={() => toggleActive(a.code)}
                   title={a.is_active ? "ปิดใช้งาน" : "เปิดใช้งาน"}
@@ -187,11 +227,12 @@ function AchievementManageContent() {
         )}
       </div>
 
-      {showForm && (
+      {(showForm || editing) && (
         <AchievementForm
           existingCodes={achievements.map((a) => a.code)}
-          onCancel={() => setShowForm(false)}
-          onSave={addAchievement}
+          initial={editing}
+          onCancel={() => { setShowForm(false); setEditing(null); }}
+          onSave={editing ? updateAchievement : addAchievement}
         />
       )}
     </div>
@@ -199,24 +240,26 @@ function AchievementManageContent() {
 }
 
 // ── ฟอร์มเพิ่ม achievement (rule_type = dropdown template) ──────────────────
-function AchievementForm({ existingCodes, onCancel, onSave }: {
+function AchievementForm({ existingCodes, initial, onCancel, onSave }: {
   existingCodes: string[];
+  initial?: Achievement | null;
   onCancel: () => void;
   onSave: (a: Achievement) => void;
 }) {
-  const [name, setName] = useState("");
-  const [code, setCode] = useState("");
-  const [icon, setIcon] = useState("🏆");
-  const [ruleType, setRuleType] = useState<RuleType>("stamp_count");
-  const [target, setTarget] = useState<string>("");
-  const [param, setParam] = useState<string>("");
+  const isEdit = !!initial;
+  const [name, setName] = useState(initial?.name ?? "");
+  const [code, setCode] = useState(initial?.code ?? "");
+  const [icon, setIcon] = useState(initial?.icon ?? "🏆");
+  const [ruleType, setRuleType] = useState<RuleType>(initial?.rule_type ?? "stamp_count");
+  const [target, setTarget] = useState<string>(initial?.rule_target != null ? String(initial.rule_target) : "");
+  const [param, setParam] = useState<string>(initial?.rule_param ?? "");
 
   const cfg = RULE_TYPES[ruleType];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !code.trim()) { alert("กรุณากรอกชื่อและ code"); return; }
-    if (existingCodes.includes(code.trim())) { alert("code นี้มีอยู่แล้ว ใช้ code อื่น"); return; }
+    if (!isEdit && existingCodes.includes(code.trim())) { alert("code นี้มีอยู่แล้ว ใช้ code อื่น"); return; }
     if (cfg.needsTarget && !target) { alert("กรุณากรอกตัวเลขเป้าหมาย"); return; }
     if (cfg.paramOptions && !param) { alert("กรุณาเลือก" + (cfg.paramLabel || "ตัวเลือก")); return; }
 
@@ -239,7 +282,7 @@ function AchievementForm({ existingCodes, onCancel, onSave }: {
         <button onClick={onCancel} className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center bg-stone-50 border hover:scale-105 transition" style={{ borderColor: C.line }}>
           <X size={16} color={C.ink} />
         </button>
-        <h2 className="text-lg font-black mb-4" style={{ color: C.ink }}>เพิ่ม Achievement</h2>
+        <h2 className="text-lg font-black mb-4" style={{ color: C.ink }}>{isEdit ? "แก้ไข Achievement" : "เพิ่ม Achievement"}</h2>
 
         <form onSubmit={handleSubmit} className="space-y-3.5">
           <Field label="ชื่อ">
@@ -247,7 +290,7 @@ function AchievementForm({ existingCodes, onCancel, onSave }: {
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Code (อังกฤษ ห้ามซ้ำ)">
-              <input value={code} onChange={(e) => setCode(e.target.value.replace(/\s/g, "_").toLowerCase())} placeholder="stamp_10" className={inputCls} style={{ borderColor: C.line }} />
+              <input value={code} onChange={(e) => setCode(e.target.value.replace(/\s/g, "_").toLowerCase())} placeholder="stamp_10" disabled={isEdit} className={inputCls} style={{ borderColor: C.line, opacity: isEdit ? 0.5 : 1 }} />
             </Field>
             <Field label="ไอคอน (emoji)">
               <input value={icon} onChange={(e) => setIcon(e.target.value)} placeholder="🏆" className={inputCls} style={{ borderColor: C.line }} />
