@@ -336,6 +336,23 @@ export default function ProfileView() {
   };
 
   const handleSignOut = async () => {
+    if (user?.id) {
+      try {
+        await supabase.from("admin_action_log").insert({
+          admin_id: user.id,
+          action_type: "user_logout",
+          target_table: "profiles",
+          target_id: user.id,
+          detail: {
+            note: "ออกจากระบบสำเร็จ",
+            email: user.email || undefined,
+          },
+        });
+      } catch (err) {
+        console.warn("Failed to log logout activity:", err);
+      }
+    }
+
     const { error } = await supabase.auth.signOut();
     if (error) {
       showToast(`Sign out error: ${error.message}`, "error");
