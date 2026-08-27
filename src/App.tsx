@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Compass, MapPin, BookOpen, User, Plus, Search, X, ShieldCheck, Store, Users, ScrollText } from "lucide-react";
+import { Compass, MapPin, BookOpen, User, Plus, Search, X, ShieldCheck, Store, Users, ScrollText, Trophy } from "lucide-react";
 import { C } from "./constants/mockData";
 import { supabase } from "./supabaseClient";
 import { Session } from "@supabase/supabase-js";
@@ -23,6 +23,7 @@ import { EditShopModal } from "./components/EditShopModal";
 import { BannedGuard } from "./components/auth/BannedGuard";
 import AdminLogPage from "./components/views/AdminLogPage";
 import NotificationBell from "./components/NotificationBell";
+import AchievementManagePage from "./components/views/AchievementManagePage";
 
 export default function App() {
   const [tab, setTab] = useState("explore");
@@ -66,6 +67,7 @@ export default function App() {
     { id: "admin", label: "Admin Review", icon: ShieldCheck, roles: ["admin"] },
     { id: "users_manage", label: "User Management", icon: Users, roles: ["admin"] },
     { id: "admin_log", label: "Activity Log", icon: ScrollText, roles: ["admin"] },
+    { id: "achievements", label: "Achievements", icon: Trophy, roles: ["admin"] },
   ];
 
   const navTabs = allNavTabs.filter((item) => item.roles.includes(role));
@@ -309,6 +311,11 @@ export default function App() {
               {(tab === "admin" || tab === "admin_review") && (
                 <ProtectedRoute allowedRoles={["admin"]} onGoHome={() => setTab("explore")}>
                   <AdminReviewView />
+                </ProtectedRoute>
+              )}
+              {tab === "achievements" && (
+                <ProtectedRoute allowedRoles={["admin"]} onGoHome={() => setTab("explore")}>
+                  <AchievementManagePage />
                 </ProtectedRoute>
               )}
               {tab === "store_manage" && (
