@@ -320,8 +320,10 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
           const subName = (sub.name_en || sub.name_jp || "").trim().toLowerCase();
           if (sub.shop_id && liveShopIds.has(sub.shop_id)) return false;
           if (subName && liveShopNames.has(subName)) return false;
-          if (sub.shop_id && !liveShopIds.has(sub.shop_id)) return false;
-          return true;
+          
+          // If shop is not present in century_shops, it was deleted from the system
+          // Do NOT bring it back into live managed shops
+          return false;
         })
         .map((sub) => ({
           id: sub.id,
@@ -608,7 +610,23 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
       setLoading(true);
 
       if (isNumberId) {
-        const numericId = Number(itemId);
+        // Always mark place_submissions as deleted for this shop
+        try {
+          if (numericId) {
+            await supabase
+              .from("place_submissions")
+              .update({ status: "deleted" })
+              .eq("shop_id", numericId);
+          }
+          if (shopTitle) {
+            await supabase
+              .from("place_submissions")
+              .update({ status: "deleted" })
+              .ilike("name_en", shopTitle);
+          }
+        } catch (subUpdateErr) {
+          console.warn("place_submissions update deleted status notice:", subUpdateErr);
+        }
 
         // Try RPC delete_owned_shop first for atomic cascade deletion
         const { error: rpcErr } = await supabase.rpc("delete_owned_shop", { p_shop_id: numericId });
