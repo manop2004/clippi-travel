@@ -3,7 +3,10 @@ export interface ActivityLogRow {
   activity_type: "review" | "checkin" | "badge";
   detail: string | null;
   created_at: string;
-  profiles?: { display_name: string } | { display_name: string }[] | null;
+  profiles?: 
+    | { id?: string; display_name?: string; full_name?: string; username?: string } 
+    | { id?: string; display_name?: string; full_name?: string; username?: string }[] 
+    | null;
   century_shops?: { shop_name: string; image_url: string | null } | { shop_name: string; image_url: string | null }[] | null;
 }
 

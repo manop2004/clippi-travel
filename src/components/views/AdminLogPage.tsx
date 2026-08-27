@@ -14,7 +14,10 @@ interface AdminActionLogRow {
   target_id: string | null;
   detail: Record<string, any> | null;
   created_at: string;
-  profiles?: { display_name: string | null } | { display_name: string | null }[] | null;
+  profiles?: 
+    | { id?: string; display_name?: string | null; full_name?: string | null; username?: string | null } 
+    | { id?: string; display_name?: string | null; full_name?: string | null; username?: string | null }[] 
+    | null;
 }
 
 // B3: friendly labels for known action types. Falls back to a
