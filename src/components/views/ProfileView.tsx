@@ -28,6 +28,7 @@ import { supabase } from "../../supabaseClient";
 import { User as AuthUser } from "@supabase/supabase-js";
 import { useLang } from "../../lib/i18n";
 import { useUserRole } from "../../hooks/useUserRole";
+import { resolveUserDisplayName } from "../../lib/activityHelpers";
 
 // ─── Level / XP helpers (Calculates Level based on XP: Level = floor(xp / 100) + 1) ───
 const levelFromXp = (xp: number) => Math.floor(xp / 100) + 1;
@@ -162,13 +163,25 @@ export default function ProfileView() {
         const cachedAvatar = localStorage.getItem(`user_avatar_${uid}`);
         if (profileRes.data) {
           const p = profileRes.data;
-          const resolvedName = cachedName || p.display_name || p.full_name || p.username || user?.user_metadata?.display_name || user?.user_metadata?.full_name || "";
+          const resolvedName = resolveUserDisplayName(
+            cachedName || p.display_name,
+            p.full_name,
+            p.username,
+            user?.email || p.email,
+            user?.user_metadata?.display_name || user?.user_metadata?.full_name
+          );
           const resolvedAvatar = cachedAvatar || p.avatar_url || user?.user_metadata?.avatar_url || "";
           setDisplayName(resolvedName);
           setAvatarUrl(resolvedAvatar);
           setDbXp(p.xp ?? null);
         } else {
-          const resolvedName = cachedName || user?.user_metadata?.display_name || user?.user_metadata?.full_name || "";
+          const resolvedName = resolveUserDisplayName(
+            cachedName,
+            null,
+            null,
+            user?.email,
+            user?.user_metadata?.display_name || user?.user_metadata?.full_name
+          );
           const resolvedAvatar = cachedAvatar || user?.user_metadata?.avatar_url || "";
           setDisplayName(resolvedName);
           setAvatarUrl(resolvedAvatar);

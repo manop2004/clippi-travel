@@ -31,3 +31,43 @@ export function normalizeEmbed<T>(val: T | T[] | null | undefined): T | null {
   if (!val) return null;
   return Array.isArray(val) ? val[0] ?? null : val;
 }
+
+export function resolveUserDisplayName(
+  rawDisplayName?: string | null,
+  fullName?: string | null,
+  username?: string | null,
+  email?: string | null,
+  metadataDisplayName?: string | null
+): string {
+  const cleanName = (rawDisplayName || "").trim();
+  if (cleanName && cleanName !== "ชื่อเล่น" && cleanName !== "User") {
+    return cleanName;
+  }
+
+  const cleanFull = (fullName || "").trim();
+  if (cleanFull && cleanFull !== "ชื่อเล่น" && cleanFull !== "User") {
+    return cleanFull;
+  }
+
+  const cleanUser = (username || "").trim();
+  if (cleanUser && cleanUser !== "ชื่อเล่น" && cleanUser !== "User") {
+    return cleanUser;
+  }
+
+  const cleanMeta = (metadataDisplayName || "").trim();
+  if (cleanMeta && cleanMeta !== "ชื่อเล่น" && cleanMeta !== "User") {
+    return cleanMeta;
+  }
+
+  if (email && email.includes("@")) {
+    const prefix = email.split("@")[0].trim();
+    if (prefix) return prefix;
+    return email;
+  }
+
+  if (email && email.trim()) {
+    return email.trim();
+  }
+
+  return "ผู้ใช้งาน";
+}

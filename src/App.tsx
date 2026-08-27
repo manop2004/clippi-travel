@@ -23,6 +23,7 @@ import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { EditShopModal } from "./components/EditShopModal";
 import { BannedGuard } from "./components/auth/BannedGuard";
 import AdminLogPage from "./components/views/AdminLogPage";
+import { resolveUserDisplayName } from "./lib/activityHelpers";
 import NotificationBell from "./components/NotificationBell";
 
 export default function App() {
@@ -87,14 +88,28 @@ export default function App() {
         .select("*")
         .eq("id", uid)
         .maybeSingle();
+      const { data: { user: authUser } } = await supabase.auth.getUser();
       if (data) {
-        const resolvedName = cachedName || data.display_name || data.full_name || data.username || null;
+        const resolvedName = resolveUserDisplayName(
+          cachedName || data.display_name,
+          data.full_name,
+          data.username,
+          authUser?.email || data.email,
+          authUser?.user_metadata?.display_name || authUser?.user_metadata?.full_name
+        );
         const resolvedAvatar = cachedAvatar || data.avatar_url || null;
         setUserProfile({ display_name: resolvedName, avatar_url: resolvedAvatar });
         setHeaderImgError(false);
-      } else if (cachedName || cachedAvatar) {
+      } else {
+        const resolvedName = resolveUserDisplayName(
+          cachedName,
+          null,
+          null,
+          authUser?.email,
+          authUser?.user_metadata?.display_name || authUser?.user_metadata?.full_name
+        );
         setUserProfile((prev) => ({
-          display_name: cachedName || prev.display_name,
+          display_name: resolvedName,
           avatar_url: cachedAvatar || prev.avatar_url,
         }));
       }
@@ -275,7 +290,13 @@ export default function App() {
   }
 
   const userEmail = session.user.email || "Traveler";
-  const headerDisplayName = userProfile.display_name || session.user.user_metadata?.display_name || userEmail.split("@")[0];
+  const headerDisplayName = resolveUserDisplayName(
+    userProfile.display_name,
+    session.user.user_metadata?.full_name,
+    session.user.user_metadata?.username,
+    session.user.email,
+    session.user.user_metadata?.display_name
+  );
   const headerAvatarUrl = userProfile.avatar_url || session.user.user_metadata?.avatar_url || "";
   const headerUserInitial = (headerDisplayName || userEmail)[0].toUpperCase();
 
