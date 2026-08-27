@@ -80,18 +80,23 @@ export default function App() {
 
   const fetchHeaderProfile = async (uid: string) => {
     try {
-      const cached = localStorage.getItem(`user_display_name_${uid}`);
+      const cachedName = localStorage.getItem(`user_display_name_${uid}`);
+      const cachedAvatar = localStorage.getItem(`user_avatar_${uid}`);
       const { data } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", uid)
         .maybeSingle();
       if (data) {
-        const resolved = cached || data.display_name || data.full_name || data.username || null;
-        setUserProfile({ display_name: resolved, avatar_url: data.avatar_url });
+        const resolvedName = cachedName || data.display_name || data.full_name || data.username || null;
+        const resolvedAvatar = cachedAvatar || data.avatar_url || null;
+        setUserProfile({ display_name: resolvedName, avatar_url: resolvedAvatar });
         setHeaderImgError(false);
-      } else if (cached) {
-        setUserProfile((prev) => ({ ...prev, display_name: cached }));
+      } else if (cachedName || cachedAvatar) {
+        setUserProfile((prev) => ({
+          display_name: cachedName || prev.display_name,
+          avatar_url: cachedAvatar || prev.avatar_url,
+        }));
       }
     } catch (e) {
       console.warn("Failed to fetch header profile:", e);
