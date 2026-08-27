@@ -11,6 +11,8 @@ const { data, error } = await supabase
     profiles (
       id,
       display_name,
+      full_name,
+      username,
       avatar_url
     )
   `)

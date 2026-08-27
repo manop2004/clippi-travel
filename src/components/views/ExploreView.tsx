@@ -19,25 +19,47 @@ export default function ExploreView({ openPlace, onViewMap, onSeeAllTrending, se
   useEffect(() => {
     async function fetchActivity() {
       setLoadingActivity(true);
-      const { data, error } = await supabase
-        .from("activity_log")
-        .select(`
-          id,
-          activity_type,
-          detail,
-          created_at,
-          profiles ( display_name ),
-          century_shops ( shop_name, image_url )
-        `)
-        .order("created_at", { ascending: false })
-        .limit(6);
+      try {
+        const { data, error } = await supabase
+          .from("activity_log")
+          .select(`
+            id,
+            user_id,
+            activity_type,
+            detail,
+            created_at,
+            profiles ( display_name, avatar_url ),
+            century_shops ( shop_name, image_url )
+          `)
+          .order("created_at", { ascending: false })
+          .limit(6);
 
-      if (error) {
-        console.error("Error fetching activity log:", error);
-      } else if (data) {
-        setActivityFeed(data as unknown as ActivityLogRow[]);
+        if (error) {
+          console.warn("Retrying fetchActivity without profiles join:", error.message);
+          const { data: fallbackData } = await supabase
+            .from("activity_log")
+            .select(`
+              id,
+              user_id,
+              activity_type,
+              detail,
+              created_at,
+              century_shops ( shop_name, image_url )
+            `)
+            .order("created_at", { ascending: false })
+            .limit(6);
+
+          if (fallbackData) {
+            setActivityFeed(fallbackData as unknown as ActivityLogRow[]);
+          }
+        } else if (data) {
+          setActivityFeed(data as unknown as ActivityLogRow[]);
+        }
+      } catch (err) {
+        console.error("Error fetching activity log:", err);
+      } finally {
+        setLoadingActivity(false);
       }
-      setLoadingActivity(false);
     }
     fetchActivity();
   }, []);

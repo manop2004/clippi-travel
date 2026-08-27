@@ -124,10 +124,10 @@ export default function ProfileView() {
             .select("id", { count: "exact", head: true })
             .eq("user_id", uid),
 
-          // Query profile row (display_name, avatar_url, xp, level)
+          // Query profile row (display_name, full_name, username, avatar_url, xp, level)
           supabase
             .from("profiles")
-            .select("display_name, avatar_url, xp, level")
+            .select("*")
             .eq("id", uid)
             .maybeSingle(),
 
@@ -152,14 +152,22 @@ export default function ProfileView() {
         // 2. Reviews Count
         setReviewCount(reviewsRes.count ?? 0);
 
+        if (user?.id && user?.email) {
+          localStorage.setItem(`user_email_${user.id}`, user.email);
+          supabase.from("profiles").update({ email: user.email }).eq("id", user.id).then(() => {});
+        }
+
         // 3. Profile details (display_name, avatar_url, DB XP)
+        const cachedName = localStorage.getItem(`user_display_name_${uid}`);
         if (profileRes.data) {
           const p = profileRes.data;
-          setDisplayName(p.display_name || user?.user_metadata?.display_name || "");
+          const resolvedName = cachedName || p.display_name || p.full_name || p.username || user?.user_metadata?.display_name || user?.user_metadata?.full_name || "";
+          setDisplayName(resolvedName);
           setAvatarUrl(p.avatar_url || user?.user_metadata?.avatar_url || "");
           setDbXp(p.xp ?? null);
         } else {
-          setDisplayName(user?.user_metadata?.display_name || "");
+          const resolvedName = cachedName || user?.user_metadata?.display_name || user?.user_metadata?.full_name || "";
+          setDisplayName(resolvedName);
           setAvatarUrl(user?.user_metadata?.avatar_url || "");
           setDbXp(null);
         }
@@ -210,6 +218,13 @@ export default function ProfileView() {
     const cleanName = editDisplayName.trim();
     let finalAvatarUrl = avatarUrl;
 
+    if (user?.id) {
+      localStorage.setItem(`user_display_name_${user.id}`, cleanName);
+      if (user.email) {
+        localStorage.setItem(`user_email_${user.id}`, user.email);
+      }
+    }
+
     try {
       // Step A: Upload image to Supabase Storage if file selected
       if (selectedFile) {
@@ -235,24 +250,40 @@ export default function ProfileView() {
         }
       }
 
-      // Step B: Upsert into Supabase `profiles` table
+      // Step B: Upsert/Update into Supabase `profiles` table
+      const profilePayload = {
+        id: user.id,
+        display_name: cleanName,
+        avatar_url: finalAvatarUrl,
+        updated_at: new Date().toISOString(),
+      };
+
       const { error: profileErr } = await supabase
         .from("profiles")
-        .upsert({
-          id: user.id,
-          display_name: cleanName,
-          avatar_url: finalAvatarUrl,
-          updated_at: new Date().toISOString(),
-        });
+        .upsert(profilePayload);
 
       if (profileErr) {
-        console.warn("Profiles table update warning:", profileErr.message);
+        console.warn("Profiles table upsert notice:", profileErr.message);
+        const { error: updateErr } = await supabase
+          .from("profiles")
+          .update({
+            display_name: cleanName,
+            avatar_url: finalAvatarUrl,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", user.id);
+
+        if (updateErr) {
+          console.warn("Profiles table update fallback notice:", updateErr.message);
+        }
       }
 
-      // Step C: Update user metadata in Supabase Auth
+      // Step C: Update user metadata in Supabase Auth (display_name, full_name, name)
       const { error: authErr } = await supabase.auth.updateUser({
         data: {
           display_name: cleanName,
+          full_name: cleanName,
+          name: cleanName,
           avatar_url: finalAvatarUrl,
         },
       });
@@ -261,12 +292,17 @@ export default function ProfileView() {
         console.warn("Auth metadata update warning:", authErr.message);
       }
 
-      // Step D: Update local state
+      // Save cleanName into localStorage for instant cross-navigation persistence
+      if (user?.id) {
+        localStorage.setItem(`user_display_name_${user.id}`, cleanName);
+      }
+
+      // Step D: Update local state immediately
       setDisplayName(cleanName);
       setAvatarUrl(finalAvatarUrl);
       setIsEditModalOpen(false);
 
-      // Dispatch custom event to auto-refresh top header instantly
+      // Dispatch custom event to auto-refresh top header & app layout instantly
       window.dispatchEvent(
         new CustomEvent("profileUpdated", {
           detail: { display_name: cleanName, avatar_url: finalAvatarUrl },

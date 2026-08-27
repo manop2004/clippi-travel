@@ -37,7 +37,7 @@ export default function AdminReviewView() {
     try {
       const { data, error } = await supabase
         .from("place_submissions")
-        .select("*, profiles!place_submissions_user_id_fkey ( display_name )")
+        .select("*, profiles!place_submissions_user_id_fkey ( display_name, full_name, username )")
         .eq("status", "pending")
         .order("created_at", { ascending: false });
 
@@ -374,7 +374,7 @@ export default function AdminReviewView() {
                     {sub.street && <p className="text-xs text-[#8A7870] font-semibold">📍 {sub.street}</p>}
                     {sub.description && <p className="text-xs text-[#8A7870] line-clamp-2">{sub.description}</p>}
                     <p className="text-[10px] text-gray-400 font-semibold">
-                      Submitted by: <span className="text-[#231C18] font-bold">{sub.profiles?.display_name || "Unknown user"}</span> · {new Date(sub.created_at).toLocaleDateString()}
+                      Submitted by: <span className="text-[#231C18] font-bold">{sub.profiles?.display_name || sub.profiles?.full_name || sub.profiles?.username || "Unknown user"}</span> · {new Date(sub.created_at).toLocaleDateString()}
                     </p>
                   </div>
                 </div>
@@ -653,7 +653,7 @@ export default function AdminReviewView() {
                   </label>
                   {selectedSubmission.ownership_proof_url ? (
                     <p className="text-[10px] text-[#8A7870] font-semibold ml-6">
-                      Grant {selectedSubmission.profiles?.display_name || "this user"} ownership of this shop after approval
+                      Grant {selectedSubmission.profiles?.display_name || selectedSubmission.profiles?.full_name || selectedSubmission.profiles?.username || "this user"} ownership of this shop after approval
                     </p>
                   ) : (
                     <p className="text-[10px] text-amber-600 font-semibold ml-6">
@@ -665,7 +665,7 @@ export default function AdminReviewView() {
                 <div className="grid grid-cols-2 gap-4 bg-stone-50/50 p-4 rounded-2xl border" style={{ borderColor: C.line }}>
                   <div>
                     <label className="text-[9px] font-black uppercase tracking-wider block text-[#8A7870]">Submitted By</label>
-                    <p className="text-xs font-bold text-[#231C18] mt-0.5">{selectedSubmission.profiles?.display_name || "Unknown user"}</p>
+                    <p className="text-xs font-bold text-[#231C18] mt-0.5">{selectedSubmission.profiles?.display_name || selectedSubmission.profiles?.full_name || selectedSubmission.profiles?.username || "Unknown user"}</p>
                   </div>
                   <div>
                     <label className="text-[9px] font-black uppercase tracking-wider block text-[#8A7870]">Submitted On</label>

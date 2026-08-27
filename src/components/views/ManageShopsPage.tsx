@@ -108,18 +108,22 @@ export default function ManageShopsPage({ onGoHome, onAddNewPlaceClick }: Manage
     }
   };
 
-  // 2. Fetch Submission History (place_submissions) filtered strictly by user_id
-  const fetchSubmissions = async (currentUid?: string) => {
-    if (!currentUid) {
+  const fetchSubmissions = async (currentUid?: string, isUserAdmin?: boolean) => {
+    if (!currentUid && !isUserAdmin) {
       setSubmissions([]);
       return [];
     }
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("place_submissions")
         .select("*")
-        .eq("user_id", currentUid)
         .order("created_at", { ascending: false });
+
+      if (!isUserAdmin && currentUid) {
+        query = query.eq("user_id", currentUid);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         console.error("Error fetching place_submissions:", error);

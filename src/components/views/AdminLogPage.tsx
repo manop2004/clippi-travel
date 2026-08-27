@@ -14,7 +14,10 @@ interface AdminActionLogRow {
   target_id: string | null;
   detail: Record<string, any> | null;
   created_at: string;
-  profiles?: { display_name: string | null } | { display_name: string | null }[] | null;
+  profiles?: 
+    | { id?: string; display_name?: string | null; full_name?: string | null; username?: string | null } 
+    | { id?: string; display_name?: string | null; full_name?: string | null; username?: string | null }[] 
+    | null;
 }
 
 // B3: friendly labels for known action types. Falls back to a
@@ -171,7 +174,7 @@ export default function AdminLogPage() {
         <div className="space-y-3">
           {filteredLogs.map((log) => {
             const admin = normalizeEmbed(log.profiles);
-            const adminName = admin?.display_name || "Unknown admin";
+            const adminName = admin?.display_name || admin?.full_name || admin?.username || "Unknown admin";
             const detailSummary = summarizeDetail(log.detail);
 
             return (
