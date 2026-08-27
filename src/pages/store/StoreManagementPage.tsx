@@ -435,6 +435,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
       setReviewsLoading(true);
       const isSuperAdmin = isAdminUser !== undefined ? isAdminUser : isAdmin;
 
+      // 1. Build shop name lookup map
       const shopNameMap = new Map<number, string>();
       ownedShopsList.forEach((s) => {
         if (s.id && !isNaN(Number(s.id))) {
@@ -442,22 +443,40 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
         }
       });
 
+      // Fetch all century_shops names for fallback
+      const { data: allShops } = await supabase
+        .from("century_shops")
+        .select("id, shop_name, name_en");
+      (allShops || []).forEach((s: any) => {
+        if (s.id !== undefined && s.id !== null) {
+          shopNameMap.set(Number(s.id), s.shop_name || s.name_en || `ร้านค้า #${s.id}`);
+        }
+      });
+
+      // 2. Fetch profiles lookup map (handles auth.users & profiles)
+      let rawProfiles: any[] = [];
+      const { data: rpcProfiles, error: rpcErr } = await supabase.rpc("get_admin_user_list");
+      if (!rpcErr && rpcProfiles && rpcProfiles.length > 0) {
+        rawProfiles = rpcProfiles;
+      } else {
+        const { data: standardProfiles } = await supabase
+          .from("profiles")
+          .select("id, display_name, full_name, username, avatar_url, email");
+        rawProfiles = standardProfiles || [];
+      }
+
+      const profileMap = new Map<string, any>();
+      (rawProfiles || []).forEach((p: any) => {
+        const key = p.id || p.user_id;
+        if (key) profileMap.set(String(key), p);
+      });
+
+      // 3. Query reviews WITHOUT relational join on profiles
       let query = supabase
         .from("reviews")
-        .select(`
-          id,
-          rating,
-          comment,
-          created_at,
-          place_id,
-          user_id,
-          profiles (
-            display_name,
-            avatar_url
-          )
-        `)
+        .select("id, rating, comment, created_at, place_id, user_id")
         .order("created_at", { ascending: false })
-        .limit(200);
+        .limit(300);
 
       if (!isSuperAdmin) {
         const shopIds = ownedShopsList
@@ -476,26 +495,40 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
       const { data, error } = await query;
 
       if (error) {
-        console.warn("Fetch merchant reviews notice:", error.message);
+        console.warn("Fetch merchant reviews error:", error.message);
         setRecentReviews([]);
         return;
       }
 
-      const mapped: CustomerReviewItem[] = (data || []).map((rev: any) => ({
-        id: rev.id,
-        rating: Number(rev.rating) || 5,
-        comment: rev.comment,
-        created_at: rev.created_at,
-        place_id: String(rev.place_id),
-        user_id: rev.user_id,
-        shop_name: shopNameMap.get(Number(rev.place_id)) || `ร้านค้า #${rev.place_id}`,
-        reviewer_name: rev.profiles?.display_name || "นักท่องเที่ยว",
-        reviewer_avatar: rev.profiles?.avatar_url || null,
-      }));
+      const mapped: CustomerReviewItem[] = (data || []).map((rev: any) => {
+        const uid = String(rev.user_id);
+        const profile = profileMap.get(uid) || {};
+        const cachedDisplayName = localStorage.getItem(`user_display_name_${uid}`);
+        const reviewerName =
+          cachedDisplayName ||
+          profile.display_name ||
+          profile.full_name ||
+          profile.username ||
+          (profile.email ? profile.email.split("@")[0] : null) ||
+          (uid ? `นักท่องเที่ยว #${uid.slice(0, 6)}` : "นักท่องเที่ยว");
+
+        return {
+          id: String(rev.id),
+          rating: Number(rev.rating) || 5,
+          comment: rev.comment,
+          created_at: rev.created_at,
+          place_id: String(rev.place_id),
+          user_id: rev.user_id,
+          shop_name: shopNameMap.get(Number(rev.place_id)) || `ร้านค้า #${rev.place_id}`,
+          reviewer_name: reviewerName,
+          reviewer_avatar: profile.avatar_url || null,
+        };
+      });
 
       setRecentReviews(mapped);
     } catch (err) {
       console.warn("Failed to fetch merchant reviews:", err);
+      setRecentReviews([]);
     } finally {
       setReviewsLoading(false);
     }
