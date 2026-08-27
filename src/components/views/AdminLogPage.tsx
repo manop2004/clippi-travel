@@ -177,10 +177,17 @@ export default function AdminLogPage() {
 
       // A. Admin & System Action Logs (Login & Logout included)
       (adminLogsRes.data || []).forEach((row: any) => {
-        const uid = row.admin_id ? String(row.admin_id) : undefined;
+        const shop = row.detail?.shop_id ? shopMap.get(Number(row.detail.shop_id)) : (row.target_id && !isNaN(Number(row.target_id)) ? shopMap.get(Number(row.target_id)) : null);
+
+        const uid = row.admin_id
+          ? String(row.admin_id)
+          : (row.detail?.admin_id || row.detail?.user_id || row.detail?.updated_by || shop?.owner_id
+              ? String(row.detail?.admin_id || row.detail?.user_id || row.detail?.updated_by || shop?.owner_id)
+              : undefined);
+
         const actor = uid ? profileMap.get(uid) || {} : {};
-        const actorName = resolveActorIdentifier(uid, row.detail?.email, actor, row.action_type === "user_login" ? "ผู้ใช้งานระบบ" : "แอดมินผู้ดูแล");
-        const shop = row.detail?.shop_id ? shopMap.get(Number(row.detail.shop_id)) : null;
+        const detailEmail = row.detail?.email || row.detail?.admin_email || row.detail?.actor_email || row.detail?.owner_email;
+        const actorName = resolveActorIdentifier(uid, detailEmail, actor, row.action_type === "user_login" ? "ผู้ใช้งานระบบ" : "แอดมินระบบ");
 
         let actionTitle = row.action_type || "ดำเนินการระบบ";
         let category: UnifiedLogRow["category"] = "admin";
@@ -406,6 +413,98 @@ export default function AdminLogPage() {
       console.error("Error fetching user summary:", e);
     } finally {
       setLoadingUserSummary(false);
+    }
+  };
+
+  const [banningUserId, setBanningUserId] = useState<string | null>(null);
+
+  const handleToggleBanInModal = async () => {
+    if (!summaryUserObj?.id) return;
+    const userId = summaryUserObj.id;
+    const currentBannedState = !!summaryUserObj.is_banned;
+
+    if (!currentBannedState) {
+      // Ban User
+      const inputReason = window.prompt("ระบุสาเหตุการแบนสมาชิก:", "ละเมิดเงื่อนไขการใช้งานระบบ");
+      if (inputReason === null) return; // Cancelled
+
+      const banReasonText = inputReason.trim() || "ละเมิดเงื่อนไขการใช้งานระบบ";
+      setBanningUserId(userId);
+
+      try {
+        const { error } = await supabase
+          .from("profiles")
+          .update({ is_banned: true, ban_reason: banReasonText })
+          .eq("id", userId);
+
+        if (error) throw error;
+
+        // Record admin audit log
+        const { data: { user: currentAdmin } } = await supabase.auth.getUser();
+        if (currentAdmin?.id) {
+          await supabase.from("admin_action_log").insert({
+            admin_id: currentAdmin.id,
+            action_type: "ban_user",
+            target_table: "profiles",
+            target_id: userId,
+            detail: {
+              note: `แบนสมาชิก: ${summaryUserObj.email}`,
+              reason: banReasonText,
+              banned_user_id: userId,
+            },
+          });
+        }
+
+        setSummaryUserObj((prev: any) =>
+          prev ? { ...prev, is_banned: true, ban_reason: banReasonText } : prev
+        );
+        alert(`สั่งระงับสิทธิ์ (แบน) ผู้ใช้งาน ${summaryUserObj.email} เรียบร้อยแล้ว`);
+        fetchUnifiedLogs();
+      } catch (err: any) {
+        console.error("Ban error:", err);
+        alert("ไม่สามารถแบนผู้ใช้ได้: " + (err.message || "Failed"));
+      } finally {
+        setBanningUserId(null);
+      }
+    } else {
+      // Unban User
+      if (!window.confirm(`คุณต้องการปลดแบนผู้ใช้งาน ${summaryUserObj.email} ใช่หรือไม่?`)) return;
+
+      setBanningUserId(userId);
+      try {
+        const { error } = await supabase
+          .from("profiles")
+          .update({ is_banned: false, ban_reason: null })
+          .eq("id", userId);
+
+        if (error) throw error;
+
+        // Record admin audit log
+        const { data: { user: currentAdmin } } = await supabase.auth.getUser();
+        if (currentAdmin?.id) {
+          await supabase.from("admin_action_log").insert({
+            admin_id: currentAdmin.id,
+            action_type: "unban_user",
+            target_table: "profiles",
+            target_id: userId,
+            detail: {
+              note: `ปลดแบนสมาชิก: ${summaryUserObj.email}`,
+              banned_user_id: userId,
+            },
+          });
+        }
+
+        setSummaryUserObj((prev: any) =>
+          prev ? { ...prev, is_banned: false, ban_reason: null } : prev
+        );
+        alert(`ปลดระงับสิทธิ์ (ปลดแบน) ผู้ใช้งาน ${summaryUserObj.email} เรียบร้อยแล้ว`);
+        fetchUnifiedLogs();
+      } catch (err: any) {
+        console.error("Unban error:", err);
+        alert("ไม่สามารถปลดแบนได้: " + (err.message || "Failed"));
+      } finally {
+        setBanningUserId(null);
+      }
     }
   };
 
@@ -801,17 +900,43 @@ export default function AdminLogPage() {
                       <span>{summaryUserObj.email}</span>
                     </p>
 
-                    {/* Account Status Badge */}
-                    <div className="pt-0.5">
+                    {/* Account Status Badge & Ban Toggle Action */}
+                    <div className="pt-1 flex items-center justify-between gap-3 flex-wrap">
                       {summaryUserObj.is_banned ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-100 text-rose-900 border border-rose-300">
-                          <Ban size={10} /> 🛑 บัญชีถูกระงับ (เหตุผล: {summaryUserObj.ban_reason || "ละเมิดเงื่อนไข"})
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold bg-rose-100 text-rose-900 border border-rose-300">
+                          <Ban size={11} /> 🛑 บัญชีถูกระงับ (เหตุผล: {summaryUserObj.ban_reason || "ละเมิดเงื่อนไข"})
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
-                          <CheckCircle2 size={10} /> 🟢 บัญชีปกติ (Active)
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
+                          <CheckCircle2 size={11} /> 🟢 บัญชีปกติ (Active)
                         </span>
                       )}
+
+                      <button
+                        type="button"
+                        onClick={handleToggleBanInModal}
+                        disabled={!!banningUserId}
+                        className={`px-3 py-1 rounded-xl text-xs font-black transition flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50 ${
+                          summaryUserObj.is_banned
+                            ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                            : "bg-rose-600 hover:bg-rose-700 text-white"
+                        }`}
+                        title={summaryUserObj.is_banned ? "ปลดระงับการใช้งานสมาชิกคนนี้" : "สั่งระงับสิทธิ์การใช้งาน (แบน)"}
+                      >
+                        {banningUserId ? (
+                          <Loader2 size={12} className="animate-spin" />
+                        ) : summaryUserObj.is_banned ? (
+                          <>
+                            <CheckCircle2 size={12} />
+                            <span>ปลดแบนสมาชิก</span>
+                          </>
+                        ) : (
+                          <>
+                            <Ban size={12} />
+                            <span>แบนผู้ใช้งานนี้</span>
+                          </>
+                        )}
+                      </button>
                     </div>
                   </div>
                 </div>
