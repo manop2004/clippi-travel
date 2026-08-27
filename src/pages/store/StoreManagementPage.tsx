@@ -316,9 +316,11 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
 
       const fallbackSubs = (approvedSubs || [])
         .filter((sub) => {
+          if (sub.status === "deleted") return false;
           const subName = (sub.name_en || sub.name_jp || "").trim().toLowerCase();
           if (sub.shop_id && liveShopIds.has(sub.shop_id)) return false;
           if (subName && liveShopNames.has(subName)) return false;
+          if (sub.shop_id && !liveShopIds.has(sub.shop_id)) return false;
           return true;
         })
         .map((sub) => ({
@@ -553,7 +555,35 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
         setSubmissions([]);
         return [];
       }
-      const items = data || [];
+      let items: SubmissionItem[] = data || [];
+
+      // Check which approved submissions have had their century_shops entry deleted
+      try {
+        const { data: currentShops } = await supabase
+          .from("century_shops")
+          .select("id, shop_name, name_en");
+        const currentShopIds = new Set((currentShops || []).map((s) => s.id));
+        const currentShopNames = new Set(
+          (currentShops || []).map((s) => (s.shop_name || s.name_en || "").trim().toLowerCase())
+        );
+
+        items = items.map((sub) => {
+          if (sub.status === "approved") {
+            const subName = (sub.name_en || sub.name_jp || "").trim().toLowerCase();
+            const shopIdExists = sub.shop_id ? currentShopIds.has(Number(sub.shop_id)) : false;
+            const shopNameExists = subName ? currentShopNames.has(subName) : false;
+
+            if (!shopIdExists && !shopNameExists && (sub.shop_id || subName)) {
+              supabase.from("place_submissions").update({ status: "deleted" }).eq("id", sub.id).then(() => {});
+              return { ...sub, status: "deleted" as const };
+            }
+          }
+          return sub;
+        });
+      } catch (cErr) {
+        console.warn("Century shops check in fetchSubmissions:", cErr);
+      }
+
       setSubmissions(items);
       return items;
     } catch (err) {
@@ -1759,6 +1789,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                     pending: <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1">⏳ รอการตรวจสอบ</span>,
                     approved: <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">✓ อนุมัติแล้ว</span>,
                     rejected: <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300 flex items-center gap-1">✕ ถูกปฏิเสธ</span>,
+                    deleted: <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-stone-200 text-stone-700 border border-stone-400 flex items-center gap-1">🗑️ ถูกลบแล้ว</span>,
                   };
 
                   return (
