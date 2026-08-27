@@ -46,6 +46,10 @@ interface UnifiedLogRow {
   raw_detail: Record<string, any> | null;
   created_at: string;
   badge_color: string;
+  profiles?: 
+    | { id?: string; display_name?: string | null; full_name?: string | null; username?: string | null } 
+    | { id?: string; display_name?: string | null; full_name?: string | null; username?: string | null }[] 
+    | null;
 }
 
 function formatAdminDetailText(detail: any): string | null {

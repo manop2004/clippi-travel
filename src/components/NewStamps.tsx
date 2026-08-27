@@ -28,7 +28,7 @@ export default function NewStamps({ openPlace }: NewStampsProps) {
       setLoading(true);
       const { data, error } = await supabase
         .from("century_shops")
-        .select("id, shop_name, shop_name_jp, prefecture, region, lat, lng, image_url, created_at")
+        .select("id, shop_name, shop_name_jp, prefecture, region, lat, lng, image_url, created_at, description, description_jp")
         .order("created_at", { ascending: false })
         .limit(10);
       if (error) {
