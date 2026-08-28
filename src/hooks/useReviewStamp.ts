@@ -8,7 +8,7 @@ const { data, error } = await supabase
   .from("reviews")
   .select(`
     *,
-    profiles (
+    profiles!reviews_user_id_fkey (
       id,
       display_name,
       full_name,

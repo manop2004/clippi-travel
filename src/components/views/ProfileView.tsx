@@ -152,16 +152,19 @@ export default function ProfileView() {
 
         // 3. Profile details (display_name, avatar_url, DB XP)
         const cachedName = localStorage.getItem(`user_display_name_${uid}`);
+        const cachedAvatar = localStorage.getItem(`user_avatar_${uid}`);
         if (profileRes.data) {
           const p = profileRes.data;
           const resolvedName = cachedName || p.display_name || p.full_name || p.username || user?.user_metadata?.display_name || user?.user_metadata?.full_name || "";
+          const resolvedAvatar = cachedAvatar || p.avatar_url || user?.user_metadata?.avatar_url || "";
           setDisplayName(resolvedName);
-          setAvatarUrl(p.avatar_url || user?.user_metadata?.avatar_url || "");
+          setAvatarUrl(resolvedAvatar);
           setDbXp(p.xp ?? null);
         } else {
           const resolvedName = cachedName || user?.user_metadata?.display_name || user?.user_metadata?.full_name || "";
+          const resolvedAvatar = cachedAvatar || user?.user_metadata?.avatar_url || "";
           setDisplayName(resolvedName);
-          setAvatarUrl(user?.user_metadata?.avatar_url || "");
+          setAvatarUrl(resolvedAvatar);
           setDbXp(null);
         }
 
@@ -197,24 +200,36 @@ export default function ProfileView() {
     setIsEditModalOpen(true);
   };
 
-  // Handle local file selection for avatar preview
+  // Handle local file selection for avatar preview (using FileReader Base64 Data URL)
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        showToast("ขนาดไฟล์ต้องไม่เกิน 5MB", "error");
+        return;
+      }
       setSelectedFile(file);
-      const previewUrl = URL.createObjectURL(file);
-      setAvatarPreview(previewUrl);
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64Url = event.target?.result as string;
+        if (base64Url) {
+          setAvatarPreview(base64Url);
+          setAvatarImgError(false);
+        }
+      };
+      reader.readAsDataURL(file);
     }
   };
 
-  // ─── 3. Update Profile Submit Handler (File Upload to Supabase Storage) ───
+  // ─── 3. Update Profile Submit Handler (File Upload to Supabase Storage + Data URL Fallback) ───
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user?.id) return;
 
     setIsSavingProfile(true);
     const cleanName = editDisplayName.trim();
-    let finalAvatarUrl = avatarUrl;
+    let finalAvatarUrl = avatarPreview || avatarUrl;
 
     if (user?.id) {
       localStorage.setItem(`user_display_name_${user.id}`, cleanName);
@@ -226,26 +241,32 @@ export default function ProfileView() {
     try {
       // Step A: Upload image to Supabase Storage if file selected
       if (selectedFile) {
-        const fileExt = selectedFile.name.split(".").pop();
-        const filePath = `${user.id}/${Date.now()}.${fileExt}`;
+        try {
+          const fileExt = selectedFile.name.split(".").pop();
+          const filePath = `${user.id}/${Date.now()}.${fileExt}`;
 
-        const { error: uploadErr } = await supabase.storage
-          .from("avatars")
-          .upload(filePath, selectedFile, { upsert: true });
-
-        if (uploadErr) {
-          console.warn("Storage upload warning:", uploadErr.message);
-          // If storage bucket doesn't exist or errors out, fallback to previewUrl
-          if (avatarPreview) finalAvatarUrl = avatarPreview;
-        } else {
-          const { data: publicUrlData } = supabase.storage
+          const { error: uploadErr } = await supabase.storage
             .from("avatars")
-            .getPublicUrl(filePath);
+            .upload(filePath, selectedFile, { upsert: true });
 
-          if (publicUrlData?.publicUrl) {
-            finalAvatarUrl = publicUrlData.publicUrl;
+          if (!uploadErr) {
+            const { data: publicUrlData } = supabase.storage
+              .from("avatars")
+              .getPublicUrl(filePath);
+
+            if (publicUrlData?.publicUrl) {
+              finalAvatarUrl = publicUrlData.publicUrl;
+            }
+          } else {
+            console.warn("Storage upload warning (using Data URL fallback):", uploadErr.message);
           }
+        } catch (stgErr) {
+          console.warn("Storage upload exception:", stgErr);
         }
+      }
+
+      if (user?.id && finalAvatarUrl) {
+        localStorage.setItem(`user_avatar_${user.id}`, finalAvatarUrl);
       }
 
       // Step B: Upsert/Update into Supabase `profiles` table
@@ -276,7 +297,7 @@ export default function ProfileView() {
         }
       }
 
-      // Step C: Update user metadata in Supabase Auth (display_name, full_name, name)
+      // Step C: Update user metadata in Supabase Auth (display_name, full_name, name, avatar_url)
       const { error: authErr } = await supabase.auth.updateUser({
         data: {
           display_name: cleanName,
@@ -307,7 +328,7 @@ export default function ProfileView() {
         })
       );
 
-      showToast("บันทึกโปรไฟล์เรียบร้อยแล้ว!", "success");
+      showToast("บันทึกโปรไฟล์และรูปภาพเรียบร้อยแล้ว!", "success");
     } catch (err: any) {
       console.error("Error saving profile:", err);
       showToast(err.message || "เกิดข้อผิดพลาดในการบันทึกข้อมูล", "error");
@@ -334,6 +355,23 @@ export default function ProfileView() {
   };
 
   const handleSignOut = async () => {
+    if (user?.id) {
+      try {
+        await supabase.from("admin_action_log").insert({
+          admin_id: user.id,
+          action_type: "user_logout",
+          target_table: "profiles",
+          target_id: user.id,
+          detail: {
+            note: "ออกจากระบบสำเร็จ",
+            email: user.email || undefined,
+          },
+        });
+      } catch (err) {
+        console.warn("Failed to log logout activity:", err);
+      }
+    }
+
     const { error } = await supabase.auth.signOut();
     if (error) {
       showToast(`Sign out error: ${error.message}`, "error");

@@ -82,21 +82,90 @@ export default function App() {
 
   const fetchHeaderProfile = async (uid: string) => {
     try {
-      const cached = localStorage.getItem(`user_display_name_${uid}`);
+      const cachedName = localStorage.getItem(`user_display_name_${uid}`);
+      const cachedAvatar = localStorage.getItem(`user_avatar_${uid}`);
       const { data } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", uid)
         .maybeSingle();
       if (data) {
-        const resolved = cached || data.display_name || data.full_name || data.username || null;
-        setUserProfile({ display_name: resolved, avatar_url: data.avatar_url });
+        const resolvedName = cachedName || data.display_name || data.full_name || data.username || null;
+        const resolvedAvatar = cachedAvatar || data.avatar_url || null;
+        setUserProfile({ display_name: resolvedName, avatar_url: resolvedAvatar });
         setHeaderImgError(false);
-      } else if (cached) {
-        setUserProfile((prev) => ({ ...prev, display_name: cached }));
+      } else if (cachedName || cachedAvatar) {
+        setUserProfile((prev) => ({
+          display_name: cachedName || prev.display_name,
+          avatar_url: cachedAvatar || prev.avatar_url,
+        }));
       }
     } catch (e) {
       console.warn("Failed to fetch header profile:", e);
+    }
+  };
+
+  const recordLogoutLog = async (previousSession: Session | null) => {
+    if (!previousSession?.user?.id) return;
+    const uid = previousSession.user.id;
+    const email = previousSession.user.email || undefined;
+    try {
+      await supabase.from("admin_action_log").insert({
+        admin_id: uid,
+        action_type: "user_logout",
+        target_table: "profiles",
+        target_id: uid,
+        detail: {
+          note: "ออกจากระบบสำเร็จ",
+          email: email,
+        },
+      });
+    } catch (e) {
+      console.warn("Logout log exception:", e);
+    }
+  };
+
+  const recordLoginLog = async (currentSession: Session) => {
+    if (!currentSession?.user?.id) return;
+    const tokenSnippet = currentSession.access_token ? currentSession.access_token.slice(-16) : currentSession.user.id;
+    const sessionKey = `login_logged_${tokenSnippet}`;
+    if (sessionStorage.getItem(sessionKey)) return;
+
+    sessionStorage.setItem(sessionKey, "true");
+
+    const email = currentSession.user.email || undefined;
+    const userId = currentSession.user.id;
+    const detailObj = {
+      note: "เข้าสู่ระบบสำเร็จ",
+      email: email,
+    };
+
+    // Ensure profile row exists so FK admin_action_log_admin_id_fkey is satisfied
+    try {
+      await supabase.from("profiles").upsert({
+        id: userId,
+        email: email,
+        display_name: currentSession.user.user_metadata?.display_name || currentSession.user.user_metadata?.full_name || (email ? email.split("@")[0] : "User"),
+        avatar_url: currentSession.user.user_metadata?.avatar_url || null,
+      }, { onConflict: "id" });
+    } catch (e) {
+      console.warn("Profiles upsert during login log:", e);
+    }
+
+    // Log to admin_action_log
+    try {
+      const { error: logErr } = await supabase.from("admin_action_log").insert({
+        admin_id: userId,
+        action_type: "user_login",
+        target_table: "profiles",
+        target_id: userId,
+        detail: detailObj,
+      });
+      if (logErr) {
+        console.warn("admin_action_log insert error:", logErr.message);
+      }
+    } catch (err) {
+      console.warn("admin_action_log insert exception:", err);
     }
   };
 
@@ -111,17 +180,25 @@ export default function App() {
           supabase.from("profiles").update({ email: session.user.email }).eq("id", session.user.id).then(() => {});
         }
         fetchHeaderProfile(session.user.id);
+        recordLoginLog(session);
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session?.user?.id) {
-        if (session.user.email) {
-          localStorage.setItem(`user_email_${session.user.id}`, session.user.email);
-          supabase.from("profiles").update({ email: session.user.email }).eq("id", session.user.id).then(() => {});
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+      if (event === "SIGNED_OUT" && session?.user?.id) {
+        recordLogoutLog(session);
+      }
+      setSession(currentSession);
+      if (currentSession?.user?.id) {
+        if (currentSession.user.email) {
+          localStorage.setItem(`user_email_${currentSession.user.id}`, currentSession.user.email);
+          supabase.from("profiles").update({ email: currentSession.user.email }).eq("id", currentSession.user.id).then(() => {});
         }
-        fetchHeaderProfile(session.user.id);
+        fetchHeaderProfile(currentSession.user.id);
+
+        if (event === "SIGNED_IN" || event === "INITIAL_SESSION") {
+          recordLoginLog(currentSession);
+        }
       }
     });
 
