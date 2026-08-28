@@ -23,6 +23,7 @@ import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { EditShopModal } from "./components/EditShopModal";
 import { BannedGuard } from "./components/auth/BannedGuard";
 import AdminLogPage from "./components/views/AdminLogPage";
+import { resolveUserDisplayName, resolveUserAvatarUrl } from "./lib/activityHelpers";
 import NotificationBell from "./components/NotificationBell";
 import AchievementManagePage from "./components/views/AchievementManagePage";
 
@@ -89,15 +90,40 @@ export default function App() {
         .select("*")
         .eq("id", uid)
         .maybeSingle();
+      const { data: { user: authUser } } = await supabase.auth.getUser();
       if (data) {
-        const resolvedName = cachedName || data.display_name || data.full_name || data.username || null;
-        const resolvedAvatar = cachedAvatar || data.avatar_url || null;
+        const resolvedName = resolveUserDisplayName(
+          cachedName || data.display_name,
+          data.full_name,
+          data.username,
+          authUser?.email || data.email,
+          authUser?.user_metadata?.display_name || authUser?.user_metadata?.full_name
+        );
+        const resolvedAvatar = resolveUserAvatarUrl(
+          cachedAvatar,
+          data.avatar_url,
+          authUser?.user_metadata?.custom_avatar_url,
+          authUser?.user_metadata?.avatar_url
+        );
         setUserProfile({ display_name: resolvedName, avatar_url: resolvedAvatar });
         setHeaderImgError(false);
-      } else if (cachedName || cachedAvatar) {
+      } else {
+        const resolvedName = resolveUserDisplayName(
+          cachedName,
+          null,
+          null,
+          authUser?.email,
+          authUser?.user_metadata?.display_name || authUser?.user_metadata?.full_name
+        );
+        const resolvedAvatar = resolveUserAvatarUrl(
+          cachedAvatar,
+          null,
+          authUser?.user_metadata?.custom_avatar_url,
+          authUser?.user_metadata?.avatar_url
+        );
         setUserProfile((prev) => ({
-          display_name: cachedName || prev.display_name,
-          avatar_url: cachedAvatar || prev.avatar_url,
+          display_name: resolvedName,
+          avatar_url: resolvedAvatar || prev.avatar_url,
         }));
       }
     } catch (e) {
@@ -277,8 +303,19 @@ export default function App() {
   }
 
   const userEmail = session.user.email || "Traveler";
-  const headerDisplayName = userProfile.display_name || session.user.user_metadata?.display_name || userEmail.split("@")[0];
-  const headerAvatarUrl = userProfile.avatar_url || session.user.user_metadata?.avatar_url || "";
+  const headerDisplayName = resolveUserDisplayName(
+    userProfile.display_name,
+    session.user.user_metadata?.full_name,
+    session.user.user_metadata?.username,
+    session.user.email,
+    session.user.user_metadata?.display_name
+  );
+  const headerAvatarUrl = resolveUserAvatarUrl(
+    userProfile.avatar_url,
+    null,
+    session.user.user_metadata?.custom_avatar_url,
+    session.user.user_metadata?.avatar_url
+  ) || "";
   const headerUserInitial = (headerDisplayName || userEmail)[0].toUpperCase();
 
   return (

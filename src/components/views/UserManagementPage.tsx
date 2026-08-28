@@ -27,6 +27,7 @@ import { supabase } from "../../supabaseClient";
 import { C } from "../../constants/mockData";
 import { ProtectedRoute } from "../auth/ProtectedRoute";
 import { UserRole } from "../../hooks/useUserRole";
+import { resolveUserDisplayName, resolveUserAvatarUrl } from "../../lib/activityHelpers";
 
 export default function UserManagementPage() {
   return (
@@ -205,16 +206,44 @@ function UserManagementContent() {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      // 1. Try RPC get_admin_user_list to fetch real registration emails from auth.users
-      let rawProfiles: any[] = [];
-      const { data: rpcProfiles, error: rpcErr } = await supabase.rpc("get_admin_user_list");
+      // 1. Fetch RPC get_admin_user_list & standard profiles DB table & current Auth session
+      const [rpcRes, standardRes, authUserRes] = await Promise.all([
+        supabase.rpc("get_admin_user_list"),
+        supabase.from("profiles").select("*"),
+        supabase.auth.getUser()
+      ]);
 
-      if (!rpcErr && rpcProfiles && rpcProfiles.length > 0) {
-        rawProfiles = rpcProfiles;
-      } else {
-        const { data: standardProfiles } = await supabase.from("profiles").select("*");
-        rawProfiles = standardProfiles || [];
-      }
+      const rpcProfiles = rpcRes.data || [];
+      const standardProfiles = standardRes.data || [];
+      const authUser = authUserRes.data?.user;
+      const authUserUid = authUser ? String(authUser.id) : null;
+      const authUserEmail = authUser?.email ? authUser.email.toLowerCase() : null;
+      const authMetaCustom = authUser?.user_metadata?.custom_avatar_url;
+      const authMetaAvatar = authUser?.user_metadata?.avatar_url || authUser?.user_metadata?.picture;
+
+      const profileMap = new Map<string, any>();
+      standardProfiles.forEach((p: any) => {
+        const key = p.id || p.user_id;
+        if (key) {
+          const keyStr = String(key);
+          profileMap.set(keyStr, p);
+          if (p.email) {
+            profileMap.set(p.email.toLowerCase(), p);
+          }
+        }
+      });
+
+      const baseList = rpcProfiles.length > 0 ? rpcProfiles : standardProfiles;
+      const rawProfiles = baseList.map((rpcP: any) => {
+        const keyStr = String(rpcP.id || rpcP.user_id || "");
+        const dbP = profileMap.get(keyStr) || (rpcP.email ? profileMap.get(rpcP.email.toLowerCase()) : {}) || {};
+        return {
+          ...dbP,
+          ...rpcP,
+          custom_avatar_url: dbP.custom_avatar_url || rpcP.custom_avatar_url || rpcP.user_metadata?.custom_avatar_url || rpcP.raw_user_meta_data?.custom_avatar_url,
+          avatar_url: dbP.avatar_url || rpcP.avatar_url,
+        };
+      });
 
       const [rolesRes, stampsRes, reviewsRes, storeOwnersRes] = await Promise.all([
         supabase.from("user_roles").select("*"),
@@ -259,11 +288,32 @@ function UserManagementContent() {
       });
 
       const combined = rawProfiles.map((p: any) => {
-        const cachedName = localStorage.getItem(`user_display_name_${p.id}`) || (p.user_id ? localStorage.getItem(`user_display_name_${p.user_id}`) : null);
-        const cachedEmail = localStorage.getItem(`user_email_${p.id}`) || (p.user_id ? localStorage.getItem(`user_email_${p.user_id}`) : null);
-        const resolvedDisplayName = cachedName || p.display_name || p.full_name || p.username || null;
+        const keyStr = String(p.id || p.user_id || "");
+        const cachedName = localStorage.getItem(`user_display_name_${keyStr}`);
+        const cachedEmail = localStorage.getItem(`user_email_${keyStr}`);
+        const cachedAvatar = localStorage.getItem(`user_avatar_${keyStr}`);
+        const metaCustom = p.raw_user_meta_data?.custom_avatar_url || p.user_metadata?.custom_avatar_url;
+        const metaAvatar = p.raw_user_meta_data?.avatar_url || p.user_metadata?.avatar_url || p.raw_user_meta_data?.picture || p.user_metadata?.picture;
+
+        const isAuthUser = (authUserUid && keyStr === authUserUid) || (p.email && authUserEmail && p.email.toLowerCase() === authUserEmail);
+        const selfCustom = isAuthUser ? authMetaCustom : null;
+        const selfAvatar = isAuthUser ? authMetaAvatar : null;
+
         const selfEmail = currentAdmin && (p.id === currentAdmin.id || p.user_id === currentAdmin.id) ? currentAdmin.email : null;
         const resolvedEmail = p.email || cachedEmail || selfEmail || null;
+        const resolvedDisplayName = resolveUserDisplayName(
+          cachedName || p.display_name,
+          p.full_name,
+          p.username,
+          resolvedEmail
+        );
+
+        const resolvedAvatar = resolveUserAvatarUrl(
+          cachedAvatar,
+          p.custom_avatar_url || p.avatar_url,
+          selfCustom || metaCustom,
+          selfAvatar || metaAvatar
+        );
 
         const pIdStr = String(p.id);
         const pUserIdStr = p.user_id ? String(p.user_id) : "";
@@ -276,6 +326,7 @@ function UserManagementContent() {
           ...p,
           email: resolvedEmail,
           display_name: resolvedDisplayName,
+          avatar_url: resolvedAvatar,
           is_banned: Boolean(p.is_banned),
           role: (rolesMap.get(p.id) || (p.user_id && rolesMap.get(p.user_id)) || p.role || "user") as UserRole,
           stamps_count: stampCountVal,
