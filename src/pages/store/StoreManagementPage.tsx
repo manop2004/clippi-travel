@@ -443,17 +443,17 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
       const shopNameMap = new Map<number, string>();
       ownedShopsList.forEach((s) => {
         if (s.id && !isNaN(Number(s.id))) {
-          shopNameMap.set(Number(s.id), s.shop_name || s.name_en || "ร้านค้า");
+          shopNameMap.set(Number(s.id), s.shop_name || "ร้านค้า");
         }
       });
 
       // Fetch all century_shops names for fallback
       const { data: allShops } = await supabase
         .from("century_shops")
-        .select("id, shop_name, name_en");
+        .select("id, shop_name");
       (allShops || []).forEach((s: any) => {
         if (s.id !== undefined && s.id !== null) {
-          shopNameMap.set(Number(s.id), s.shop_name || s.name_en || `ร้านค้า #${s.id}`);
+          shopNameMap.set(Number(s.id), s.shop_name || `ร้านค้า #${s.id}`);
         }
       });
 
@@ -563,10 +563,10 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
       try {
         const { data: currentShops } = await supabase
           .from("century_shops")
-          .select("id, shop_name, name_en");
+          .select("id, shop_name");
         const currentShopIds = new Set((currentShops || []).map((s) => s.id));
         const currentShopNames = new Set(
-          (currentShops || []).map((s) => (s.shop_name || s.name_en || "").trim().toLowerCase())
+          (currentShops || []).map((s) => (s.shop_name || "").trim().toLowerCase())
         );
 
         items = items.map((sub) => {
@@ -612,11 +612,11 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
       if (isNumberId) {
         // Always mark place_submissions as deleted for this shop
         try {
-          if (numericId) {
+          if (itemId) {
             await supabase
               .from("place_submissions")
               .update({ status: "deleted" })
-              .eq("shop_id", numericId);
+              .eq("shop_id", itemId);
           }
           if (shopTitle) {
             await supabase
@@ -629,7 +629,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
         }
 
         // Try RPC delete_owned_shop first for atomic cascade deletion
-        const { error: rpcErr } = await supabase.rpc("delete_owned_shop", { p_shop_id: numericId });
+        const { error: rpcErr } = await supabase.rpc("delete_owned_shop", { p_shop_id: itemId });
 
         if (rpcErr) {
           console.warn("RPC delete_owned_shop notice:", rpcErr.message);
@@ -639,12 +639,12 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
             await supabase
               .from("place_submissions")
               .update({ shop_id: null, status: "deleted" })
-              .eq("shop_id", numericId);
+              .eq("shop_id", itemId);
 
             await supabase
               .from("place_submissions")
               .delete()
-              .eq("shop_id", numericId);
+              .eq("shop_id", itemId);
 
             if (shopTitle) {
               await supabase
@@ -665,26 +665,26 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
 
           // 2. Clean up FK tables
           try {
-            await supabase.from("store_owners").delete().eq("shop_id", numericId);
+            await supabase.from("store_owners").delete().eq("shop_id", itemId);
           } catch (err) {
             console.warn("store_owners cleanup notice:", err);
           }
 
           try {
-            await supabase.from("activity_log").delete().eq("shop_id", numericId);
+            await supabase.from("activity_log").delete().eq("shop_id", itemId);
           } catch (err) {
             console.warn("activity_log cleanup notice:", err);
           }
 
           try {
-            await supabase.from("user_stamps").delete().eq("shop_id", numericId);
+            await supabase.from("user_stamps").delete().eq("shop_id", itemId);
           } catch (err) {
             console.warn("user_stamps cleanup notice:", err);
           }
 
           try {
-            await supabase.from("reviews").delete().eq("place_id", numericId);
-            await supabase.from("reviews").delete().eq("shop_id", numericId);
+            await supabase.from("reviews").delete().eq("place_id", itemId);
+            await supabase.from("reviews").delete().eq("shop_id", itemId);
           } catch (err) {
             console.warn("reviews cleanup notice:", err);
           }
@@ -693,7 +693,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
           const { data: deletedRows, error: shopErr } = await supabase
             .from("century_shops")
             .delete()
-            .eq("id", numericId)
+            .eq("id", itemId)
             .select();
 
           if (shopErr) throw shopErr;
