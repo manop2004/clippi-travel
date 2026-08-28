@@ -278,7 +278,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
         const { data: fallbackShops } = await supabase
           .from("century_shops")
           .select("*")
-          .or(`submitted_by.eq.${uid},created_by.eq.${uid},user_id.eq.${uid}`);
+          .eq("owner_id", uid);
 
         let linkedShops: any[] = [];
         try {
