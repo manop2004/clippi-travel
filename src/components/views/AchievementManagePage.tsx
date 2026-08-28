@@ -10,7 +10,8 @@ import { supabase } from "../../supabaseClient";
 // ============================================================================
 type RuleType =
   | "stamp_count" | "category_count" | "prefecture_count" | "region_any"
-  | "region_complete" | "review_count" | "review_written" | "founded_before"
+  | "region_complete" | "review_count" | "review_written" 
+  | "review_quality_count" | "founded_before"
   | "landmark_checkin" | "hidden";
 
 const RULE_TYPES: Record<RuleType, {
@@ -37,6 +38,8 @@ const RULE_TYPES: Record<RuleType, {
                       summary: (t) => `เขียนรีวิวครบ ${t ?? "?"} ครั้ง` },
   review_written:   { label: "รีวิวพร้อมข้อความ (ครั้ง)", needsTarget: true, targetLabel: "จำนวนครั้ง",
                       summary: (t) => `เขียนรีวิวพร้อมข้อความครบ ${t ?? "?"} ครั้ง` },
+  review_quality_count: { label: "รีวิวคุณภาพ (เนื้อหา ≥20 ตัวอักษร)", needsTarget: true, targetLabel: "จำนวนครั้ง",
+                      summary: (t) => `เขียนรีวิวที่มีเนื้อหา ≥20 ตัวอักษร ครบ ${t ?? "?"} ครั้ง` },
   founded_before:   { label: "เก็บร้านก่อตั้งก่อนปี", needsTarget: true, targetLabel: "ปี ค.ศ.",
                       summary: (t) => `เก็บร้านที่ก่อตั้งก่อนปี ${t ?? "?"}` },
   landmark_checkin: { label: "เช็คอิน landmark", needsTarget: true, targetLabel: "จำนวน",
