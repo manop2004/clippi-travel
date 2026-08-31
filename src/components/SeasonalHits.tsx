@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Star } from "lucide-react";
+import { Star, Store } from "lucide-react";
 import { C } from "../constants/mockData";
 import { supabase } from "../supabaseClient";
 import { useLang, localized } from "../lib/i18n";
@@ -97,7 +97,9 @@ export default function SeasonalHits({ openPlace }: SeasonalHitsProps) {
                 {p.image_url ? (
                   <img src={p.image_url} alt={shopName} className="w-full h-full object-cover" loading="lazy" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-2xl md:text-3xl">🏬</div>
+                  <div className="w-full h-full flex items-center justify-center text-2xl md:text-3xl">
+                    <Store size={24} className="text-amber-800" />
+                  </div>
                 )}
               </div>
               <div className="p-2 md:p-3">

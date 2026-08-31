@@ -189,7 +189,7 @@ function AchievementManageContent() {
               style={{ borderColor: C.line, opacity: a.is_active ? 1 : 0.55 }}
             >
               <div className="w-11 h-11 rounded-xl flex items-center justify-center text-2xl shrink-0" style={{ background: C.accentSoft }}>
-                {a.icon || "🏆"}
+                {a.icon ? a.icon : <Trophy size={20} className="text-amber-600" />}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
@@ -252,7 +252,7 @@ function AchievementForm({ existingCodes, initial, onCancel, onSave }: {
   const isEdit = !!initial;
   const [name, setName] = useState(initial?.name ?? "");
   const [code, setCode] = useState(initial?.code ?? "");
-  const [icon, setIcon] = useState(initial?.icon ?? "🏆");
+  const [icon, setIcon] = useState(initial?.icon ?? "");
   const [ruleType, setRuleType] = useState<RuleType>(initial?.rule_type ?? "stamp_count");
   const [target, setTarget] = useState<string>(initial?.rule_target != null ? String(initial.rule_target) : "");
   const [param, setParam] = useState<string>(initial?.rule_param ?? "");
@@ -271,7 +271,7 @@ function AchievementForm({ existingCodes, initial, onCancel, onSave }: {
       code: code.trim(),
       name: name.trim(),
       description: cfg.summary(targetNum, param || null),
-      icon: icon || "🏆",
+      icon: icon || "",
       rule_type: ruleType,
       rule_target: targetNum,
       rule_param: (cfg.paramOptions || cfg.paramLabel) ? (param || null) : null,
@@ -295,8 +295,8 @@ function AchievementForm({ existingCodes, initial, onCancel, onSave }: {
             <Field label="Code (อังกฤษ ห้ามซ้ำ)">
               <input value={code} onChange={(e) => setCode(e.target.value.replace(/\s/g, "_").toLowerCase())} placeholder="stamp_10" disabled={isEdit} className={inputCls} style={{ borderColor: C.line, opacity: isEdit ? 0.5 : 1 }} />
             </Field>
-            <Field label="ไอคอน (emoji)">
-              <input value={icon} onChange={(e) => setIcon(e.target.value)} placeholder="🏆" className={inputCls} style={{ borderColor: C.line }} />
+            <Field label="ไอคอน (ข้อความ / สัญลักษณ์)">
+              <input value={icon} onChange={(e) => setIcon(e.target.value)} placeholder="เช่น Trophy" className={inputCls} style={{ borderColor: C.line }} />
             </Field>
           </div>
 

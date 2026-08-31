@@ -3,6 +3,7 @@ import { C } from "../constants/mockData";
 import { supabase } from "../supabaseClient";
 import { timeAgo } from "../lib/activityHelpers";
 import { useLang, localized } from "../lib/i18n";
+import { Store } from "lucide-react";
 
 interface NewStampsProps {
   openPlace: (place: any) => void;
@@ -92,7 +93,9 @@ export default function NewStamps({ openPlace }: NewStampsProps) {
                 {p.image_url ? (
                   <img src={p.image_url} alt={shopName} className="w-full h-full object-cover" loading="lazy" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-2xl">🏬</div>
+                  <div className="w-full h-full flex items-center justify-center text-2xl">
+                    <Store size={24} className="text-amber-800" />
+                  </div>
                 )}
               </div>
               <div className="p-2.5">

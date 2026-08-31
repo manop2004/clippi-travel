@@ -2,6 +2,7 @@
 // ระบบ 3 ภาษา (ไทย / อังกฤษ / ญี่ปุ่น) — วางไฟล์นี้ที่ src/lib/i18n.tsx
 // ครอบแอปด้วย <LangProvider> แล้วใช้ useLang() ในแต่ละหน้า
 import { createContext, useContext, useState, useRef, useEffect, ReactNode } from "react";
+import { Check } from "lucide-react";
 
 export type Lang = "th" | "en" | "jp";
 
@@ -67,8 +68,8 @@ const dict: Record<string, Record<Lang, string>> = {
   "filter.all":             { en: "All",                     th: "ทั้งหมด",                      jp: "すべて" },
   "seasonal.title":         { en: "Seasonal Hits",           th: "ฮิตประจำฤดู",                  jp: "季節のおすすめ" },
   "seasonal.sub":           { en: "Sweet & savory picks, refreshed regularly", th: "ของหวาน & ของคาว สลับหมุนเวียน", jp: "甘味・食事の一押し、随時更新" },
-  "seasonal.sweet":         { en: "🍡 Sweet",                th: "🍡 ของหวาน",                   jp: "🍡 甘味" },
-  "seasonal.savory":        { en: "🍜 Savory",               th: "🍜 ของคาว",                    jp: "🍜 食事" },
+  "seasonal.sweet":         { en: "Sweet",                th: "ของหวาน",                   jp: "甘味" },
+  "seasonal.savory":        { en: "Savory",               th: "ของคาว",                    jp: "食事" },
   "newstamps.title":        { en: "New Stamps",              th: "แสตมป์เข้าใหม่",               jp: "新着スタンプ" },
   "newstamps.sub":          { en: "Freshly added to the collection", th: "เพิ่งเพิ่มเข้าคอลเลกชัน",     jp: "コレクションに新登場" },
   "card.est":               { en: "Est.",                    th: "ก่อตั้ง",                      jp: "創業" },
@@ -85,7 +86,7 @@ const dict: Record<string, Record<Lang, string>> = {
   "collection.sub":         { en: "Your Eki-tag style digital collection", th: "คอลเลกชันดิจิทัลสไตล์ Eki-tag ของคุณ", jp: "Eki-tag スタイルのデジタルコレクション" },
   "collection.stampsCollectedSuffix": { en: "Stamps Collected", th: "แสตมป์ที่สะสม",             jp: "個 取得" },
   "collection.collected":   { en: "Collected Stamps",         th: "แสตมป์ที่สะสมแล้ว",            jp: "取得済みスタンプ" },
-  "collection.collectedTag":{ en: "✓ COLLECTED",             th: "✓ สะสมแล้ว",                   jp: "✓ 取得済み" },
+  "collection.collectedTag":{ en: "COLLECTED",             th: "สะสมแล้ว",                   jp: "取得済み" },
   "collection.remaining":   { en: "Remaining Places",         th: "ที่ยังไม่ได้สะสม",             jp: "未取得のスポット" },
   "collection.noPlacesLater":{ en: "No places available yet. Check back later!", th: "ยังไม่มีร้านในระบบ กลับมาเช็กใหม่ภายหลัง!", jp: "まだ店がありません。また後でご確認ください！" },
   "collection.noMatch":     { en: "No stamps match",          th: "ไม่มีแสตมป์ตรงกับ",            jp: "一致するスタンプがありません：" },
@@ -176,6 +177,29 @@ const dict: Record<string, Record<Lang, string>> = {
   "auth.sub":               { en: "Sign in to manage your digital stamp book", th: "เข้าสู่ระบบเพื่อจัดการสมุดแสตมป์ดิจิทัล", jp: "デジタルスタンプ帳を管理するにはサインイン" },
   "auth.connecting":        { en: "Connecting...",           th: "กำลังเชื่อมต่อ...",           jp: "接続中..." },
   "auth.tip":               { en: "Sign up to securely sync and backup your collected stamp books.", th: "สมัครเพื่อซิงค์และสำรองสมุดแสตมป์อย่างปลอดภัย", jp: "登録すると、集めたスタンプ帳を安全に同期・バックアップできます。" },
+  "auth.loginTab":          { en: "Log In",                  th: "เข้าสู่ระบบ",                  jp: "ログイン" },
+  "auth.userSignupTab":     { en: "General User Signup",     th: "สมัครสมาชิกทั่วไป",            jp: "一般会員登録" },
+  "auth.merchantSignupTab": { en: "Merchant Partner Signup",th: "สมัครสำหรับเจ้าของร้าน",        jp: "加盟店・店舗登録" },
+  "auth.loginTitle":        { en: "Welcome Back to CheckInJapan", th: "เข้าสู่ระบบ CheckInJapan", jp: "CheckInJapanへログイン" },
+  "auth.userSignupTitle":   { en: "Create Traveler Account", th: "สมัครสมาชิกผู้ใช้งานทั่วไป",   jp: "旅行者アカウント作成" },
+  "auth.merchantSignupTitle":{ en: "Merchant Partner Registration", th: "สมัครสมาชิกสำหรับเจ้าของร้านค้า", jp: "店舗オーナー登録" },
+  "auth.merchantSub":       { en: "Register to manage your shop, accept digital stamps, and access merchant analytics.", th: "ลงทะเบียนเพื่อเข้าใช้งานระบบจัดการร้านค้า เสนอร้านขึ้นระบบ และรับการรับรองดิจิทัลสแตมป์", jp: "店舗を管理し、デジタルスタンプと店舗ダッシュボードを利用するために登録します。" },
+  "auth.email":             { en: "Email Address",           th: "อีเมล",                       jp: "メールアドレス" },
+  "auth.password":          { en: "Password",                th: "รหัสผ่าน",                     jp: "パスワード" },
+  "auth.confirmPassword":   { en: "Confirm Password",        th: "ยืนยันรหัสผ่าน",               jp: "パスワード再入力" },
+  "auth.displayName":       { en: "Display Name / Full Name",th: "ชื่อ-นามสกุล / ชื่อแสดงผล",    jp: "表示名 / 氏名" },
+  "auth.shopName":          { en: "Shop / Store Name",       th: "ชื่อร้านค้า / สถานประกอบการ", jp: "店舗名 / 屋号" },
+  "auth.contactName":       { en: "Contact / Owner Name",    th: "ชื่อผู้ติดต่องาน / เจ้าของร้าน", jp: "担当者 / オーナー名" },
+  "auth.phone":             { en: "Contact Phone Number",    th: "เบอร์โทรศัพท์ติดต่อ",         jp: "電話番号" },
+  "auth.category":          { en: "Shop Category",           th: "หมวดหมู่ร้านค้า",              jp: "店舗カテゴリー" },
+  "auth.prefecture":         { en: "Prefecture / Region",     th: "จังหวัดที่ตั้งร้าน",             jp: "都道府県 / 地域" },
+  "auth.submitLogin":       { en: "Log In",                  th: "เข้าสู่ระบบ",                  jp: "ログイン" },
+  "auth.submitUserSignup":  { en: "Create Account",          th: "สมัครสมาชิก",                  jp: "アカウント作成" },
+  "auth.submitMerchantSignup":{ en: "Register Merchant Account", th: "ลงทะเบียนเจ้าของร้านค้า",   jp: "店舗アカウント登録" },
+  "auth.hasAccount":        { en: "Already have an account?",th: "มีบัญชีอยู่แล้ว?",               jp: "すでにアカウントをお持ちですか？" },
+  "auth.noAccount":         { en: "Don't have an account?",  th: "ยังไม่มีบัญชี?",               jp: "アカウントをお持ちでないですか？" },
+  "auth.merchantInvite":    { en: "Are you a store owner?",  th: "คุณเป็นเจ้าของร้านค้า?",        jp: "店舗のオーナー様ですか？" },
+  "auth.generalUserInvite": { en: "Want to sign up as a regular traveler?", th: "ต้องการสมัครเป็นผู้ใช้ทั่วไป?", jp: "一般旅行者として登録しますか？" },
   // ── ActivityFeed / ActivityCard ──
   "feed.noActivity":        { en: "No activity yet.",        th: "ยังไม่มีกิจกรรม",             jp: "まだ活動がありません。" },
   "activity.checkin":       { en: "checked in at {shop}",    th: "เช็คอินที่ {shop}",           jp: "{shop} にチェックイン" },
@@ -266,7 +290,7 @@ export function LangSwitcher() {
               style={{ color: o.code === lang ? "#E0533C" : "#231C18" }}
             >
               {o.label}
-              {o.code === lang && <span style={{ color: "#E0533C" }}>✓</span>}
+              {o.code === lang && <Check size={12} className="text-[#E0533C]" />}
             </button>
           ))}
         </div>

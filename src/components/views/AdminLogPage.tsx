@@ -31,6 +31,7 @@ import {
 import { supabase } from "../../supabaseClient";
 import { C } from "../../constants/mockData";
 import { timeAgo, resolveUserAvatarUrl } from "../../lib/activityHelpers";
+import { UserAvatar } from "../UserAvatar";
 
 interface UnifiedLogRow {
   id: string;
@@ -639,7 +640,7 @@ export default function AdminLogPage() {
       return (
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-stone-950 border border-amber-300 shadow-2xs shrink-0">
           <Crown size={10} className="text-stone-950" />
-          <span>👑 Admin</span>
+          <span>Admin</span>
         </span>
       );
     }
@@ -647,14 +648,14 @@ export default function AdminLogPage() {
       return (
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-900 border border-indigo-300 shrink-0">
           <Store size={10} className="text-indigo-700" />
-          <span>🏪 Store Owner</span>
+          <span>Store Owner</span>
         </span>
       );
     }
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-stone-100 text-stone-700 border border-stone-300 shrink-0">
         <User size={10} className="text-stone-500" />
-        <span>👤 User</span>
+        <span>User</span>
       </span>
     );
   };
@@ -724,7 +725,7 @@ export default function AdminLogPage() {
             }`}
             style={categoryFilter !== "all" ? { borderColor: C.line } : undefined}
           >
-            <span>🌐 ทั้งหมด ({categoryCounts.all})</span>
+            <span>ทั้งหมด ({categoryCounts.all})</span>
           </button>
 
           <button
@@ -737,7 +738,7 @@ export default function AdminLogPage() {
             style={categoryFilter !== "login" ? { borderColor: C.line } : undefined}
           >
             <LogIn size={13} className={categoryFilter === "login" ? "text-white" : "text-sky-600"} />
-            <span>🔑 เข้า/ออกจากระบบ ({categoryCounts.login})</span>
+            <span>เข้า/ออกจากระบบ ({categoryCounts.login})</span>
           </button>
 
           <button
@@ -750,7 +751,7 @@ export default function AdminLogPage() {
             style={categoryFilter !== "admin" ? { borderColor: C.line } : undefined}
           >
             <Crown size={13} className={categoryFilter === "admin" ? "text-stone-950" : "text-amber-600"} />
-            <span>👑 แอดมิน ({categoryCounts.admin})</span>
+            <span>แอดมิน ({categoryCounts.admin})</span>
           </button>
 
           <button
@@ -763,7 +764,7 @@ export default function AdminLogPage() {
             style={categoryFilter !== "checkin" ? { borderColor: C.line } : undefined}
           >
             <MapPin size={13} className={categoryFilter === "checkin" ? "text-white" : "text-emerald-600"} />
-            <span>📍 เช็คอิน ({categoryCounts.checkin})</span>
+            <span>เช็คอิน ({categoryCounts.checkin})</span>
           </button>
 
           <button
@@ -776,7 +777,7 @@ export default function AdminLogPage() {
             style={categoryFilter !== "review" ? { borderColor: C.line } : undefined}
           >
             <MessageSquare size={13} className={categoryFilter === "review" ? "text-white" : "text-blue-600"} />
-            <span>💬 รีวิว ({categoryCounts.review})</span>
+            <span>รีวิว ({categoryCounts.review})</span>
           </button>
 
           <button
@@ -789,7 +790,7 @@ export default function AdminLogPage() {
             style={categoryFilter !== "store" ? { borderColor: C.line } : undefined}
           >
             <Store size={13} className={categoryFilter === "store" ? "text-white" : "text-indigo-600"} />
-            <span>🏪 ร้านค้า ({categoryCounts.store})</span>
+            <span>ร้านค้า ({categoryCounts.store})</span>
           </button>
 
           <button
@@ -802,7 +803,7 @@ export default function AdminLogPage() {
             style={categoryFilter !== "submission" ? { borderColor: C.line } : undefined}
           >
             <FileText size={13} className={categoryFilter === "submission" ? "text-white" : "text-purple-600"} />
-            <span>📝 เสนอสถานที่ ({categoryCounts.submission})</span>
+            <span>เสนอสถานที่ ({categoryCounts.submission})</span>
           </button>
         </div>
       </div>
@@ -854,18 +855,14 @@ export default function AdminLogPage() {
                       className="shrink-0 cursor-pointer group"
                       title="คลิกเพื่อดูสรุปโปรไฟล์ผู้ใช้งาน"
                     >
-                      {log.actor_avatar ? (
-                        <img
-                          src={log.actor_avatar}
-                          alt={log.actor_name}
-                          className="w-9 h-9 rounded-xl object-cover border bg-stone-100 group-hover:scale-105 transition"
-                          style={{ borderColor: C.line }}
-                        />
-                      ) : (
-                        <div className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-[#E7A93C] bg-[#231C18] text-xs border border-stone-800 shadow-2xs group-hover:scale-105 transition">
-                          {log.actor_name[0]?.toUpperCase() ?? "?"}
-                        </div>
-                      )}
+                      <UserAvatar
+                        src={log.actor_avatar}
+                        name={log.actor_name}
+                        sizeClassName="w-9 h-9"
+                        className="group-hover:scale-105 transition"
+                        style={{ borderColor: C.line }}
+                        textClassName="text-xs"
+                      />
                     </button>
 
                     <div className="min-w-0 leading-snug">
@@ -899,7 +896,7 @@ export default function AdminLogPage() {
                           {timeAgo(log.created_at)}
                         </span>
                         <span>•</span>
-                        <span>📅 {fullDateStr}</span>
+                        <span className="flex items-center gap-1"><Calendar size={10} /> {fullDateStr}</span>
                       </div>
                     </div>
                   </div>
@@ -968,18 +965,13 @@ export default function AdminLogPage() {
               <>
                 {/* Header Profile Summary Info */}
                 <div className="flex items-center gap-4 border-b pb-5" style={{ borderColor: C.line }}>
-                  {summaryUserObj.avatar_url ? (
-                    <img
-                      src={summaryUserObj.avatar_url}
-                      alt={summaryUserObj.display_name}
-                      className="w-16 h-16 rounded-2xl object-cover border shadow-sm shrink-0 bg-stone-100"
-                      style={{ borderColor: C.line }}
-                    />
-                  ) : (
-                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center font-black text-[#E7A93C] bg-[#231C18] text-xl shrink-0 border border-stone-800 shadow-sm">
-                      {summaryUserObj.display_name[0]?.toUpperCase() ?? "?"}
-                    </div>
-                  )}
+                  <UserAvatar
+                    src={summaryUserObj.avatar_url}
+                    name={summaryUserObj.display_name}
+                    sizeClassName="w-16 h-16"
+                    style={{ borderColor: C.line }}
+                    textClassName="text-xl"
+                  />
 
                   <div className="min-w-0 leading-tight space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -996,11 +988,11 @@ export default function AdminLogPage() {
                     <div className="pt-1 flex items-center justify-between gap-3 flex-wrap">
                       {summaryUserObj.is_banned ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold bg-rose-100 text-rose-900 border border-rose-300">
-                          <Ban size={11} /> 🛑 บัญชีถูกระงับ (เหตุผล: {summaryUserObj.ban_reason || "ละเมิดเงื่อนไข"})
+                          <Ban size={11} /> บัญชีถูกระงับ (เหตุผล: {summaryUserObj.ban_reason || "ละเมิดเงื่อนไข"})
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
-                          <CheckCircle2 size={11} /> 🟢 บัญชีปกติ (Active)
+                          <CheckCircle2 size={11} /> บัญชีปกติ (Active)
                         </span>
                       )}
 

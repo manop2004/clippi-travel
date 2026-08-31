@@ -89,3 +89,138 @@ export function resolveUserAvatarUrl(
   if (metaAvatar && metaAvatar.trim()) return metaAvatar.trim();
   return null;
 }
+
+export function getDeletedUserIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem("deleted_user_ids");
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    return new Set(Array.isArray(parsed) ? parsed.map(String) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+export function recordDeletedUserId(userId: string) {
+  if (!userId) return;
+  try {
+    const set = getDeletedUserIds();
+    set.add(String(userId));
+    set.add(String(userId).toLowerCase());
+    localStorage.setItem("deleted_user_ids", JSON.stringify(Array.from(set)));
+  } catch (e) {
+    console.warn("recordDeletedUserId failed:", e);
+  }
+}
+
+export function removeDeletedUserId(idOrEmail: string) {
+  if (!idOrEmail) return;
+  try {
+    const set = getDeletedUserIds();
+    set.delete(String(idOrEmail).toLowerCase());
+    set.delete(String(idOrEmail));
+    localStorage.setItem("deleted_user_ids", JSON.stringify(Array.from(set)));
+  } catch (e) {
+    console.warn("removeDeletedUserId failed:", e);
+  }
+}
+
+export async function deleteUserCascade(userId: string): Promise<boolean> {
+  if (!userId) return false;
+
+  try {
+    const possibleUserIds = [userId];
+
+    // Record in local persistent storage filter
+    recordDeletedUserId(userId);
+
+    // 1. Delete check-ins / stamps
+    try {
+      await supabase.from("user_stamps").delete().in("user_id", possibleUserIds);
+    } catch (e) {
+      console.warn("user_stamps delete warning:", e);
+    }
+
+    // 2. Delete user coupons
+    try {
+      await supabase.from("user_coupons").delete().in("user_id", possibleUserIds);
+    } catch (e) {
+      console.warn("user_coupons delete warning:", e);
+    }
+
+    // 3. Delete user shop reviews
+    try {
+      await supabase.from("shop_reviews").delete().in("user_id", possibleUserIds);
+    } catch (e) {
+      console.warn("shop_reviews delete warning:", e);
+    }
+    try {
+      await supabase.from("reviews").delete().in("user_id", possibleUserIds);
+    } catch (e) {
+      console.warn("reviews delete warning:", e);
+    }
+
+    // 4. Delete merchant place submissions
+    try {
+      await supabase.from("place_submissions").delete().in("user_id", possibleUserIds);
+    } catch (e) {
+      console.warn("place_submissions delete warning:", e);
+    }
+
+    // 5. Delete store ownership links
+    try {
+      await supabase.from("store_owners").delete().in("user_id", possibleUserIds);
+    } catch (e) {
+      console.warn("store_owners delete warning:", e);
+    }
+
+    // 6. Unlink century_shops owned by user
+    try {
+      await supabase.from("century_shops").update({ owner_id: null }).eq("owner_id", userId);
+    } catch (e) {
+      console.warn("century_shops unlink warning:", e);
+    }
+
+    // 7. Delete user roles
+    try {
+      await supabase.from("user_roles").delete().eq("user_id", userId);
+    } catch (e) {
+      console.warn("user_roles delete warning:", e);
+    }
+
+    // 8. Mark profile as deleted
+    try {
+      await supabase
+        .from("profiles")
+        .update({ role: "deleted", is_deleted: true, ban_reason: "Account Deleted" })
+        .eq("id", userId);
+    } catch (e) {
+      console.warn("profiles update deleted status warning:", e);
+    }
+
+    // 9. Delete user profiles
+    try {
+      await supabase.from("profiles").delete().eq("id", userId);
+    } catch (e) {
+      console.warn("profiles delete by id warning:", e);
+    }
+    try {
+      await supabase.from("profiles").delete().eq("user_id", userId);
+    } catch (e) {
+      console.warn("profiles delete by user_id warning:", e);
+    }
+
+    // 10. Attempt RPC deletion if available
+    try {
+      await supabase.rpc("delete_user_admin", { p_user_id: userId });
+    } catch (e) {
+      // Ignored if RPC doesn't exist
+    }
+
+    return true;
+  } catch (err) {
+    console.error("deleteUserCascade failed:", err);
+    return false;
+  }
+}
+

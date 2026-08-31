@@ -206,7 +206,7 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
       iconAnchor: [10, 10],
     });
 
-    const popupContent = "<div style='font-size:11px;font-weight:bold;color:#231C18;padding:2px;'>📍 ตำแหน่งปัจจุบันของคุณ</div>";
+    const popupContent = "<div style='font-size:11px;font-weight:bold;color:#231C18;padding:2px;'>ตำแหน่งปัจจุบันของคุณ</div>";
 
     if (userMarkerRef.current) {
       userMarkerRef.current.setLatLng([lat, lng]);
@@ -338,7 +338,7 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
               ) : (
                 <Navigation size={12} className="text-[#2563EB]" />
               )}
-              <span>📍 Near Me / ใกล้ฉัน</span>
+              <span>Near Me / ใกล้ฉัน</span>
             </button>
 
             {REGION_FILTERS.map((r) => (
@@ -399,7 +399,7 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
             ) : (
               <Crosshair size={13} className="text-[#2563EB]" />
             )}
-            <span>📍 Near Me</span>
+            <span>Near Me</span>
           </button>
 
           {/* Active Near Me Radius Badge */}
@@ -439,8 +439,8 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
 
                       {/* Display distance if userCoords available */}
                       {selectedShop.distanceKm !== undefined && selectedShop.distanceKm !== null && (
-                        <p className="text-[10px] text-blue-700 font-black bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100 inline-block">
-                          📍 {selectedShop.distanceKm.toFixed(1)} km away
+                        <p className="text-[10px] text-blue-700 font-black bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100 inline-block flex items-center gap-1">
+                          <MapPin size={10} /> {selectedShop.distanceKm.toFixed(1)} km away
                         </p>
                       )}
                     </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Star } from "lucide-react";
+import { Star, Store } from "lucide-react";
 import { C } from "../constants/mockData";
 import { supabase } from "../supabaseClient";
 import Carousel from "./Carousel";
@@ -70,7 +70,9 @@ export default function RegionalBanners({ openPlace }: RegionalBannersProps) {
               {p.image_url ? (
                 <img src={p.image_url} alt={shopName} className="w-full h-full object-cover" loading="lazy" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-4xl" style={{ background: C.accentSoft }}>🏬</div>
+                <div className="w-full h-full flex items-center justify-center text-4xl" style={{ background: C.accentSoft }}>
+                  <Store size={32} className="text-amber-800" />
+                </div>
               )}
               <div
                 className="absolute inset-0 flex flex-col justify-end p-4"
@@ -80,7 +82,7 @@ export default function RegionalBanners({ openPlace }: RegionalBannersProps) {
                   className="text-[9px] font-black px-2.5 py-1 rounded-full bg-white/90 self-start mb-2"
                   style={{ color: C.accentDeep }}
                 >
-                  📍 {t("region.best").replace("{r}", p.region)}
+                  {t("region.best").replace("{r}", p.region)}
                 </span>
                 <h3 className="text-white text-sm font-black truncate">{shopName}</h3>
                 <div className="flex items-center gap-1 mt-1">

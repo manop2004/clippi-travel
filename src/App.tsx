@@ -23,7 +23,7 @@ import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { EditShopModal } from "./components/EditShopModal";
 import { BannedGuard } from "./components/auth/BannedGuard";
 import AdminLogPage from "./components/views/AdminLogPage";
-import { resolveUserDisplayName, resolveUserAvatarUrl } from "./lib/activityHelpers";
+import { resolveUserDisplayName, resolveUserAvatarUrl, getDeletedUserIds } from "./lib/activityHelpers";
 import NotificationBell from "./components/NotificationBell";
 import AchievementManagePage from "./components/views/AchievementManagePage";
 
@@ -39,7 +39,17 @@ export default function App() {
   const [showAllTrending, setShowAllTrending] = useState(false);
 
   const { t } = useLang();
-  const { role, isAdmin, isStoreOwner, isBanned, banReason } = useUserRole();
+  const {
+    role,
+    isAdmin,
+    isStoreOwner,
+    isBanned,
+    banReason,
+    isPendingMerchant,
+    isRejectedMerchant,
+    merchantRejectionReason,
+    refreshRole,
+  } = useUserRole();
 
   useEffect(() => {
     if (tab !== "explore") setShowAllTrending(false);
@@ -161,6 +171,13 @@ export default function App() {
 
     const email = currentSession.user.email || undefined;
     const userId = currentSession.user.id;
+
+    // Skip log & profile upsert if account was deleted
+    const deletedSet = getDeletedUserIds();
+    if (deletedSet.has(userId) || (email && deletedSet.has(email.toLowerCase()))) {
+      return;
+    }
+
     const detailObj = {
       note: "เข้าสู่ระบบสำเร็จ",
       email: email,
@@ -252,8 +269,8 @@ export default function App() {
     return () => window.removeEventListener("profileUpdated", handleProfileUpdated);
   }, [session]);
 
-  // Show a clean loading state to prevent flash of login screen
-  if (authLoading) {
+  // Show a clean loading state to prevent flash of login screen or overlays
+  if (authLoading || (session && roleLoading)) {
     return (
       <PasswordGate>
         <div className="min-h-screen w-full flex items-center justify-center bg-[#F2EBE1] text-xs font-black text-[#8A7870]">
@@ -293,6 +310,109 @@ export default function App() {
     );
   }
 
+  // ROOT-LEVEL PENDING MERCHANT INTERCEPTOR
+  if (session && isPendingMerchant && role !== "admin" && role !== "store") {
+    return (
+      <div className="fixed inset-0 z-[99999] bg-stone-950/85 backdrop-blur-md flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full text-center shadow-2xl border border-amber-200 animate-fade-in space-y-5">
+          <div className="w-20 h-20 bg-amber-100 rounded-3xl flex items-center justify-center mx-auto text-4xl shadow-xs">
+            ⏳
+          </div>
+          <div>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 text-[10px] font-black tracking-wider uppercase mb-2">
+              Pending Admin Approval
+            </span>
+            <h2 className="text-xl font-black text-stone-900">บัญชีเจ้าของร้านค้าอยู่ระหว่างการรออนุมัติ</h2>
+            <p className="text-stone-500 text-xs mt-1 leading-relaxed">
+              ข้อมูลการลงทะเบียนและเอกสารสิทธิ์ร้านค้าของคุณถูกส่งไปยังทีมงานแอดมินแล้ว<br />
+              <strong className="text-amber-900 font-bold">คุณต้องรอให้แอดมินอนุมัติสิทธิ์ก่อน ถึงจะสามารถเข้าสู่ระบบและจัดการร้านค้าได้</strong>
+            </p>
+          </div>
+
+          {/* Status timeline */}
+          <div className="bg-stone-50 rounded-2xl p-4 border border-stone-200 text-left space-y-3 select-none">
+            <div className="flex items-center gap-3 text-xs">
+              <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px] font-bold">✓</div>
+              <div>
+                <p className="font-extrabold text-stone-900">1. ลงทะเบียน & แนบเอกสารสิทธิ์</p>
+                <p className="text-[10px] text-stone-500">ส่งข้อมูลร้านค้าเข้าสู่ระบบเรียบร้อย</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 text-xs">
+              <div className="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-[10px] font-bold animate-pulse">2</div>
+              <div>
+                <p className="font-extrabold text-amber-900">2. แอดมินตรวจสอบเอกสาร (กำลังดำเนินการ)</p>
+                <p className="text-[10px] text-amber-700 font-semibold">เจ้าหน้าที่กำลังตรวจสอบข้อมูลร้านค้าของคุณ</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 text-xs opacity-50">
+              <div className="w-6 h-6 rounded-full bg-stone-300 text-stone-600 flex items-center justify-center text-[10px] font-bold">3</div>
+              <div>
+                <p className="font-extrabold text-stone-800">3. เข้าใช้งานระบบ (Merchant Portal)</p>
+                <p className="text-[10px] text-stone-500">เปิดใช้งาน dashboard และเพิ่มร้านค้าได้เต็มรูปแบบ</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={() => refreshRole()}
+              className="flex-1 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold py-3 px-4 rounded-xl text-xs transition cursor-pointer"
+            >
+              🔄 รีเฟรชสถานะ
+            </button>
+            <button
+              onClick={async () => {
+                await supabase.auth.signOut();
+                window.location.href = '/';
+              }}
+              className="flex-1 bg-[#E31E27] hover:bg-red-700 text-white font-bold py-3 px-4 rounded-xl text-xs transition shadow-md cursor-pointer"
+            >
+              ออกจากระบบ (Logout)
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ROOT-LEVEL REJECTED MERCHANT INTERCEPTOR
+  if (session && isRejectedMerchant && role !== "admin" && role !== "store") {
+    return (
+      <div className="fixed inset-0 z-[99999] bg-stone-950/85 backdrop-blur-md flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full text-center shadow-2xl border border-rose-200 animate-fade-in space-y-5">
+          <div className="w-20 h-20 bg-rose-100 rounded-3xl flex items-center justify-center mx-auto text-4xl shadow-xs">
+            ❌
+          </div>
+          <div>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-100 text-rose-800 text-[10px] font-black tracking-wider uppercase mb-2">
+              Registration Rejected
+            </span>
+            <h2 className="text-xl font-black text-stone-900">คำขอลงทะเบียนเจ้าของร้านค้าไม่ผ่านการอนุมัติ</h2>
+            <p className="text-stone-500 text-xs mt-1">
+              แอดมินปฏิเสธคำขอลงทะเบียนบัญชีร้านค้าของคุณ
+            </p>
+          </div>
+
+          <div className="bg-rose-50 text-rose-900 p-4 rounded-2xl border border-rose-200 text-left">
+            <p className="text-[10px] font-extrabold uppercase text-rose-600 mb-1">สาเหตุที่ไม่ผ่านการอนุมัติ:</p>
+            <p className="text-xs font-bold">{merchantRejectionReason || "ข้อมูลไม่ครบถ้วนหรือไม่ตรงตามเงื่อนไขที่กำหนด"}</p>
+          </div>
+
+          <button
+            onClick={async () => {
+              await supabase.auth.signOut();
+              window.location.href = '/';
+            }}
+            className="w-full bg-[#E31E27] hover:bg-red-700 text-white font-bold py-3.5 px-4 rounded-xl text-xs transition shadow-md cursor-pointer"
+          >
+            ออกจากระบบ (Logout)
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Auth gate
   if (!session) {
     return (
@@ -321,7 +441,7 @@ export default function App() {
   return (
     <PasswordGate>
       <ReviewStampProvider>
-        <div className="min-h-screen flex w-full bg-[#FAF6F0] text-[#231C18] font-sans overflow-x-hidden">
+        <div className="min-h-screen flex w-full bg-[#FAF9F8] text-[#000000] font-sans overflow-x-hidden">
           {/* 🧭 Desktop Sidebar Navigation */}
           <Sidebar activeTab={tab} onTabChange={setTab} onAddPlaceClick={() => setIsAddOpen(true)} />
 
@@ -329,35 +449,38 @@ export default function App() {
           <div className="flex-1 flex flex-col min-w-0 md:ml-64">
 
             {/* 📋 Top Header Bar */}
-            <header className="flex items-center justify-between py-4 px-4 md:px-8 border-b bg-white" style={{ borderColor: C.line }}>
-              {/* Left Greeting */}
+            <header className="flex items-center justify-between py-3.5 px-4 md:px-8 border-b bg-white shadow-xs" style={{ borderColor: C.line }}>
+              {/* Left Greeting & Mobile Logo */}
               <div className={`items-center gap-3 select-none ${showMobileSearch ? "hidden sm:flex" : "flex"}`}>
+                <img src="/clippi-logo.png" alt="Clippi Logo" className="md:hidden h-8 object-contain mr-1" />
+                
                 <div className="relative shrink-0">
                   {headerAvatarUrl && !headerImgError ? (
                     <img
                       src={headerAvatarUrl}
                       alt={headerDisplayName}
+                      referrerPolicy="no-referrer"
                       onError={() => setHeaderImgError(true)}
                       className="w-9 h-9 rounded-full object-cover border shadow-xs"
                       style={{ borderColor: C.accent }}
                     />
                   ) : (
-                    <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-[#E7A93C] bg-[#231C18] text-xs">
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-white bg-[#000000] text-xs">
                       {headerUserInitial}
                     </div>
                   )}
 
                   {/* ROLE BADGE: Display ADMIN badge ONLY if role === 'admin' */}
                   {role === "admin" && (
-                    <span className="absolute -bottom-0.5 -right-0.5 bg-[#E0533C] text-white text-[6px] font-black px-1 py-0.2 rounded-full border border-white uppercase tracking-wider">
+                    <span className="absolute -bottom-0.5 -right-0.5 bg-[#E31E27] text-white text-[6px] font-black px-1 py-0.2 rounded-full border border-white uppercase tracking-wider">
                       ADMIN
                     </span>
                   )}
                 </div>
                 <div className="leading-tight">
-                  <p className="text-[9px] font-extrabold tracking-wider uppercase text-[#E0533C]">{t("greeting.morning")}</p>
-                  <h2 className="text-xs font-black flex items-center gap-1">
-                    {headerDisplayName} <span className="text-[10px]">👋</span>
+                  <p className="text-[9px] font-extrabold tracking-wider uppercase text-[#FD775C]">{t("greeting.morning")}</p>
+                  <h2 className="text-xs font-black flex items-center gap-1 text-[#000000]">
+                    {headerDisplayName}
                   </h2>
                 </div>
               </div>

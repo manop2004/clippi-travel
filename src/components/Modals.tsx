@@ -642,8 +642,8 @@ const getDistanceInMeters = (lat1: number, lon1: number, lat2: number, lon2: num
 };
 
 const PIN_TYPES = [
-  { id: "food", labelKey: "cat.restaurantCafe", emoji: "🍜" },
-  { id: "shop", labelKey: "cat.serviceShop", emoji: "🎁" },
+  { id: "food", labelKey: "cat.restaurantCafe" },
+  { id: "shop", labelKey: "cat.serviceShop" },
 ];
 
 function LocationPickerMap({
@@ -859,7 +859,7 @@ function LocationPickerMap({
             iconAnchor: [10, 10],
           });
 
-          const popupContent = "<div style='font-size:11px;font-weight:bold;color:#231C18;padding:2px;'>📍 ตำแหน่งปัจจุบันของคุณ</div>";
+          const popupContent = "<div style='font-size:11px;font-weight:bold;color:#231C18;padding:2px;'>ตำแหน่งปัจจุบันของคุณ</div>";
 
           if (userLocationMarkerRef.current) {
             userLocationMarkerRef.current.setLatLng([latitude, longitude]);
@@ -897,7 +897,7 @@ function LocationPickerMap({
         ) : (
           <Crosshair size={13} className="text-[#2563EB]" />
         )}
-        <span>📍 Near Me</span>
+        <span>Near Me</span>
       </button>
     </div>
   );
@@ -1608,12 +1608,12 @@ export function AddPlaceModal({
               </div>
               {editSubmission.rejection_reason && (
                 <div className="bg-white/80 p-3 rounded-xl border border-rose-200 text-rose-950 font-medium">
-                  <span className="font-bold text-rose-900 block text-[11px] mb-0.5">⚠️ เหตุผลที่แอดมินปฏิเสธ:</span>
+                  <span className="font-bold text-rose-900 block text-[11px] mb-0.5">เหตุผลที่แอดมินปฏิเสธ:</span>
                   "{editSubmission.rejection_reason}"
                 </div>
               )}
               <p className="text-[11px] text-rose-700 font-semibold">
-                💡 กรุณาแก้ไขหรือปรับปรุงข้อมูลตามคำแนะนำข้างต้น แล้วกดปุ่ม <strong>"บันทึกและส่งตรวจใหม่ (Save & Resubmit)"</strong> ด้านล่างเพื่อส่งให้แอดมินตรวจสอบอีกครั้ง
+                กรุณาแก้ไขหรือปรับปรุงข้อมูลตามคำแนะนำข้างต้น แล้วกดปุ่ม <strong>"บันทึกและส่งตรวจใหม่ (Save & Resubmit)"</strong> ด้านล่างเพื่อส่งให้แอดมินตรวจสอบอีกครั้ง
               </p>
             </div>
           )}
@@ -1829,8 +1829,9 @@ export function AddPlaceModal({
             <div className="max-w-xs">
               {ownershipUrl ? (
                 <div className="relative h-20 rounded-xl border overflow-hidden" style={{ borderColor: C.line }}>
-                  <div className="w-full h-full flex items-center justify-center bg-stone-50 text-[10px] font-bold text-[#231C18] p-3 text-center truncate">
-                    📄 {ownershipFile ? ownershipFile.name : "Ownership Document"}
+                  <div className="w-full h-full flex items-center justify-center bg-stone-50 text-[10px] font-bold text-[#231C18] p-3 text-center truncate flex items-center justify-center gap-1">
+                    <FileText size={12} className="text-[#8A7870]" />
+                    <span>{ownershipFile ? ownershipFile.name : "Ownership Document"}</span>
                   </div>
                   <button
                     type="button"
@@ -1871,14 +1872,14 @@ export function AddPlaceModal({
               </label>
               {coords && (
                 <span className="text-[9px] font-bold text-[#E0533C]">
-                  📍 {coords.lat.toFixed(4)}, {coords.lng.toFixed(4)}
+                  {coords.lat.toFixed(4)}, {coords.lng.toFixed(4)}
                 </span>
               )}
             </div>
 
             {gpsError && (
               <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[10px] text-amber-800 font-semibold leading-relaxed mb-2">
-                ⚠️ {gpsError}
+                {gpsError}
               </div>
             )}
 
@@ -1904,8 +1905,8 @@ export function AddPlaceModal({
                 {locating
                   ? "Locating..."
                   : coords
-                    ? `📍 Set store location (${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)})`
-                    : "📍 Set store location"}
+                    ? `Set store location (${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)})`
+                    : "Set store location"}
               </span>
             </button>
             {locationError && (

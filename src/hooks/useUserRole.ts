@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
+import { getDeletedUserIds } from "../lib/activityHelpers";
 
-export type UserRole = "admin" | "store" | "user";
+export type UserRole = "admin" | "store" | "user" | "pending_store";
+export type MerchantStatus = "pending" | "approved" | "rejected" | null;
 
 export interface UserRoleState {
   user: any | null;
@@ -11,6 +13,10 @@ export interface UserRoleState {
   isUser: boolean;
   isBanned: boolean;
   banReason: string | null;
+  merchantStatus: MerchantStatus;
+  merchantRejectionReason: string | null;
+  isPendingMerchant: boolean;
+  isRejectedMerchant: boolean;
   loading: boolean;
   error: string | null;
   refreshRole: () => Promise<void>;
@@ -21,6 +27,8 @@ export function useUserRole(): UserRoleState {
   const [role, setRole] = useState<UserRole>("user");
   const [isBanned, setIsBanned] = useState<boolean>(false);
   const [banReason, setBanReason] = useState<string | null>(null);
+  const [merchantStatus, setMerchantStatus] = useState<MerchantStatus>(null);
+  const [merchantRejectionReason, setMerchantRejectionReason] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,21 +44,44 @@ export function useUserRole(): UserRoleState {
         setRole("user");
         setIsBanned(false);
         setBanReason(null);
+        setMerchantStatus(null);
+        setMerchantRejectionReason(null);
         setLoading(false);
         return;
       }
 
       setUser(session.user);
 
-      // Direct, standard async query to fetch profiles data (role, is_banned, ban_reason)
+      // Direct async query to fetch profiles data (role, is_banned, ban_reason, merchant_status, is_deleted)
       const { data: profileData, error: profileErr } = await supabase
         .from("profiles")
-        .select("role, is_banned, ban_reason")
+        .select("role, is_banned, ban_reason, merchant_status, is_deleted")
         .eq("id", session.user.id)
         .maybeSingle();
 
       if (profileErr) {
         console.error("Error fetching profile:", profileErr);
+      }
+
+      // Check if account has been deleted
+      const deletedSet = getDeletedUserIds();
+      const uEmail = session.user.email ? session.user.email.toLowerCase() : "";
+      const isAccountDeleted = 
+        profileData?.is_deleted ||
+        profileData?.role === "deleted" ||
+        deletedSet.has(session.user.id) ||
+        (uEmail && deletedSet.has(uEmail));
+
+      if (isAccountDeleted) {
+        await supabase.auth.signOut();
+        setUser(null);
+        setRole("user");
+        setIsBanned(false);
+        setBanReason(null);
+        setMerchantStatus(null);
+        setMerchantRejectionReason(null);
+        setLoading(false);
+        return;
       }
 
       if (profileData) {
@@ -68,15 +99,55 @@ export function useUserRole(): UserRoleState {
         .eq("user_id", session.user.id)
         .maybeSingle();
 
+      let detectedRole: UserRole = "user";
       if (roleData?.role) {
-        setRole(roleData.role as UserRole);
+        detectedRole = roleData.role as UserRole;
       } else if (profileData?.role) {
-        setRole(profileData.role as UserRole);
+        detectedRole = profileData.role as UserRole;
       } else if (session.user.user_metadata?.role) {
-        setRole(session.user.user_metadata.role as UserRole);
-      } else {
-        setRole("user");
+        detectedRole = session.user.user_metadata.role as UserRole;
       }
+
+      // Fetch latest merchant submission status from place_submissions
+      let mStatus: MerchantStatus = null;
+      let mRejection: string | null = null;
+
+      const { data: subData } = await supabase
+        .from("place_submissions")
+        .select("status, rejection_reason")
+        .eq("user_id", session.user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (subData) {
+        mStatus = subData.status as MerchantStatus;
+        mRejection = subData.rejection_reason || null;
+      } else if (profileData?.merchant_status) {
+        mStatus = profileData.merchant_status as MerchantStatus;
+      }
+
+      setMerchantStatus(mStatus);
+      setMerchantRejectionReason(mRejection);
+
+      // Overwrite role based on merchant approval status:
+      // Non-admin users MUST NOT have 'store' role unless explicitly approved by admin!
+      if (detectedRole !== "admin") {
+        if (mStatus === "pending") {
+          detectedRole = "pending_store";
+        } else if (mStatus === "rejected") {
+          detectedRole = "user";
+        } else if (mStatus === "approved") {
+          detectedRole = "store";
+        } else if (detectedRole === "store") {
+          // Fallback: If DB had role 'store' but no approval recorded, require approval
+          detectedRole = "pending_store";
+          mStatus = "pending";
+          setMerchantStatus("pending");
+        }
+      }
+
+      setRole(detectedRole);
     } catch (err: any) {
       console.error("Unexpected profile fetch error:", err);
       setError(err.message || "Failed to load user role.");
@@ -103,6 +174,9 @@ export function useUserRole(): UserRoleState {
     };
   }, []);
 
+  const isPendingMerchant = merchantStatus === "pending" && role !== "admin" && role !== "store";
+  const isRejectedMerchant = merchantStatus === "rejected" && role !== "admin" && role !== "store";
+
   return {
     user,
     role,
@@ -111,6 +185,10 @@ export function useUserRole(): UserRoleState {
     isUser: role === "user",
     isBanned,
     banReason,
+    merchantStatus,
+    merchantRejectionReason,
+    isPendingMerchant,
+    isRejectedMerchant,
     loading,
     error,
     refreshRole: fetchUserRole,

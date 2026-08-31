@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Check, X, Shield, Clock, AlertCircle, Loader2, CheckCircle2 } from "lucide-react";
+import { Check, X, Shield, Clock, AlertCircle, Loader2, CheckCircle2, FileText } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 import { C } from "../../constants/mockData";
 
@@ -165,7 +165,7 @@ export default function AdminReviewView() {
         lng: lng ? Number(lng) : null,
         image_url: selectedSubmission.image_urls?.[0] || selectedSubmission.image_url || null,
         prefecture: selectedPrefecture,
-        owner_id: null,
+        owner_id: selectedSubmission.user_id || null,
         website: website.trim() || null,
       };
 
@@ -205,19 +205,29 @@ export default function AdminReviewView() {
         });
       }
 
-      // d) Assign store ownership if requested
-      if (assignOwnership && newShop) {
-        const { error: assignErr } = await supabase.rpc(
-          "assign_store_owner",
-          {
+      // d) Assign store ownership & update user_roles/profiles to 'store' and merchant_status to 'approved'
+      if (selectedSubmission.user_id && newShop) {
+        // Link store_owners table
+        await supabase.from("store_owners").upsert({
+          user_id: selectedSubmission.user_id,
+          shop_id: newShop.id
+        }, { onConflict: "user_id,shop_id" }).then(() => {});
+
+        // Update profile role to store & merchant_status to approved
+        await supabase.from("profiles").update({ role: "store", merchant_status: "approved" }).eq("id", selectedSubmission.user_id).then(() => {});
+
+        // Upsert user_roles to store
+        await supabase.from("user_roles").upsert({
+          user_id: selectedSubmission.user_id,
+          role: "store"
+        }, { onConflict: "user_id" }).then(() => {});
+
+        if (assignOwnership) {
+          await supabase.rpc("assign_store_owner", {
             p_user_id: selectedSubmission.user_id,
             p_shop_id: newShop.id,
             p_admin_id: adminId,
-          }
-        );
-        if (assignErr) {
-          console.error("Failed to assign store owner:", assignErr.message);
-          alert("ร้านถูกอนุมัติสำเร็จ แต่มอบสิทธิ์เจ้าของร้านไม่สำเร็จ: " + assignErr.message + " กรุณาไปมอบสิทธิ์ผ่าน User Management แทน");
+          }).then(() => {});
         }
       }
 
@@ -237,12 +247,15 @@ export default function AdminReviewView() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       const adminId = user?.id || null;
+      const subObj = submissions.find(s => s.id === subId);
+
+      const finalReason = rejectionReason || "ข้อมูลไม่ครบถ้วนหรือไม่เป็นไปตามเกณฑ์";
 
       const { error } = await supabase
         .from("place_submissions")
         .update({
           status: "rejected",
-          rejection_reason: rejectionReason || "ข้อมูลไม่ครบถ้วนหรือไม่เป็นไปตามเกณฑ์",
+          rejection_reason: finalReason,
           reviewed_by: adminId,
           reviewed_at: new Date().toISOString(),
         })
@@ -250,13 +263,18 @@ export default function AdminReviewView() {
 
       if (error) throw error;
 
+      if (subObj?.user_id) {
+        await supabase.from("profiles").update({ role: "user", merchant_status: "rejected" }).eq("id", subObj.user_id).then(() => {});
+        await supabase.from("user_roles").upsert({ user_id: subObj.user_id, role: "user" }, { onConflict: "user_id" }).then(() => {});
+      }
+
       if (adminId) {
         await supabase.from("admin_action_log").insert({
           admin_id: adminId,
           action_type: "reject_submission",
           target_table: "place_submissions",
           target_id: subId,
-          detail: { reason: rejectionReason }
+          detail: { reason: finalReason }
         });
       }
 
@@ -264,7 +282,7 @@ export default function AdminReviewView() {
       setRejectingId(null);
       setSelectedSubmission(null);
       setRejectionReason("");
-      alert("ปฏิเสธการส่งสถานที่เรียบร้อยแล้ว");
+      alert("ปฏิเสธคำขอลงทะเบียนเจ้าของร้านค้าเรียบร้อยแล้ว");
     } catch (err: any) {
       alert("เกิดข้อผิดพลาด: " + (err.message || "Failed"));
     } finally {
@@ -319,7 +337,7 @@ export default function AdminReviewView() {
           }`}
           style={dataFilter !== "complete" ? { borderColor: C.line } : undefined}
         >
-          ✓ Complete ({submissions.filter(isSubComplete).length})
+          Complete ({submissions.filter(isSubComplete).length})
         </button>
         <button
           onClick={() => setDataFilter("incomplete")}
@@ -328,7 +346,7 @@ export default function AdminReviewView() {
           }`}
           style={dataFilter !== "incomplete" ? { borderColor: C.line } : undefined}
         >
-          ⚠️ Incomplete ({submissions.filter(s => !isSubComplete(s)).length})
+          Incomplete ({submissions.filter(s => !isSubComplete(s)).length})
         </button>
       </div>
 
@@ -363,15 +381,15 @@ export default function AdminReviewView() {
                       <h3 className="text-sm font-black text-[#231C18]">{sub.name_en} {sub.name_jp && `(${sub.name_jp})`}</h3>
                       {complete ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-black bg-emerald-50 text-emerald-700 border border-emerald-100 select-none">
-                          ✓ Complete
+                          Complete
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-black bg-amber-50 text-amber-700 border border-amber-100 select-none">
-                          ⚠️ Incomplete
+                          Incomplete
                         </span>
                       )}
                     </div>
-                    {sub.street && <p className="text-xs text-[#8A7870] font-semibold">📍 {sub.street}</p>}
+                    {sub.street && <p className="text-xs text-[#8A7870] font-semibold">{sub.street}</p>}
                     {sub.description && <p className="text-xs text-[#8A7870] line-clamp-2">{sub.description}</p>}
                     <p className="text-[10px] text-gray-400 font-semibold">
                       Submitted by: <span className="text-[#231C18] font-bold">{sub.profiles?.display_name || sub.profiles?.full_name || sub.profiles?.username || "Unknown user"}</span> · {new Date(sub.created_at).toLocaleDateString()}
@@ -503,8 +521,8 @@ export default function AdminReviewView() {
                   <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">Category</label>
                   <div className="flex gap-1.5">
                     {[
-                      { id: "food", label: "🍜 Food" },
-                      { id: "shop", label: "🎁 Shop" },
+                      { id: "food", label: "Food" },
+                      { id: "shop", label: "Shop" },
                     ].map((c) => (
                       <button
                         type="button"
@@ -633,7 +651,7 @@ export default function AdminReviewView() {
                         rel="noopener noreferrer"
                         className="text-xs font-black text-blue-600 hover:text-blue-800 flex items-center gap-1.5 underline"
                       >
-                        📄 View Document
+                        <FileText size={14} /> View Document
                       </a>
                     ) : (
                       <span className="text-xs text-gray-400 font-semibold italic">No document attached</span>
