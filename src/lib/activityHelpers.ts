@@ -1,3 +1,5 @@
+import { supabase } from "../supabaseClient";
+
 export interface ActivityLogRow {
   id: string;
   activity_type: "review" | "checkin" | "badge";

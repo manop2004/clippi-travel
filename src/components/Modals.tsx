@@ -642,8 +642,8 @@ const getDistanceInMeters = (lat1: number, lon1: number, lat2: number, lon2: num
 };
 
 const PIN_TYPES = [
-  { id: "food", labelKey: "cat.restaurantCafe" },
-  { id: "shop", labelKey: "cat.serviceShop" },
+  { id: "food", labelKey: "cat.restaurantCafe", emoji: "🍜" },
+  { id: "shop", labelKey: "cat.serviceShop", emoji: "🛍️" },
 ];
 
 function LocationPickerMap({

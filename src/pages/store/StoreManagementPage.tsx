@@ -86,6 +86,10 @@ export interface SubmissionItem {
   image_urls?: string[] | null;
   created_at: string;
   shop_id?: string | number | null;
+  shop_name?: string | null;
+  prefecture?: string | null;
+  contact_name?: string | null;
+  ownership_proof_url?: string | null;
 }
 
 export interface CustomerReviewItem {

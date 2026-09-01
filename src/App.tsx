@@ -49,6 +49,7 @@ export default function App() {
     isRejectedMerchant,
     merchantRejectionReason,
     refreshRole,
+    loading: roleLoading,
   } = useUserRole();
 
   useEffect(() => {

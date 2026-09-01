@@ -22,7 +22,13 @@ import {
 import { C } from "../../constants/mockData";
 import { supabase } from "../../supabaseClient";
 import { useLang } from "../../lib/i18n";
-import { getDeletedUserIds, removeDeletedUserId } from "../../lib/activityHelpers";
+import { getDeletedUserIds, removeDeletedUserId, recordDeletedUserId } from "../../lib/activityHelpers";
+import { 
+  evaluatePassword, 
+  isPasswordValid, 
+  getPasswordScore, 
+  getPasswordStrengthLabel 
+} from "../../lib/passwordValidation";
 import ClippiMascot from "../ClippiMascot";
 
 export type AuthMode = "login" | "signup" | "merchant";
@@ -65,6 +71,7 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [isPasswordFocused, setIsPasswordFocused] = useState(false);
 
   // User Signup Fields
   const [displayName, setDisplayName] = useState("");
@@ -78,7 +85,19 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
   const [ownershipFile, setOwnershipFile] = useState<File | null>(null);
   const [ownershipFileName, setOwnershipFileName] = useState<string>("");
 
-  const { t } = useLang();
+  const { t, lang } = useLang();
+
+  const passwordReqs = evaluatePassword(password);
+  const passwordScore = getPasswordScore(passwordReqs);
+  const strengthInfo = getPasswordStrengthLabel(passwordScore, lang as any);
+
+  const passwordRules = [
+    { label: t("auth.ruleMinLength"), passed: passwordReqs.minLength },
+    { label: t("auth.ruleLowercase"), passed: passwordReqs.hasLowercase },
+    { label: t("auth.ruleUppercase"), passed: passwordReqs.hasUppercase },
+    { label: t("auth.ruleNumber"), passed: passwordReqs.hasNumber },
+    { label: t("auth.ruleSpecial"), passed: passwordReqs.hasSpecial },
+  ];
 
   // Clear messages on mode switch
   const handleSwitchMode = (newMode: AuthMode) => {
@@ -435,8 +454,9 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
           }
 
           // 4. Create initial place_submission for this shop
-          await supabase.from("place_submissions").insert({
+          const { error: subInsertErr } = await supabase.from("place_submissions").insert({
             user_id: registeredUser.id,
+            name_en: shopName.trim(),
             shop_name: shopName.trim(),
             contact_name: contactName.trim(),
             contact_phone: phone.trim(),
@@ -446,6 +466,10 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
             ownership_proof_url: uploadedOwnershipUrl,
             status: "pending",
           });
+
+          if (subInsertErr) {
+            console.warn("Notice inserting place_submission:", subInsertErr.message);
+          }
 
           // Ensure user is signed out so they cannot enter app until approved
           await supabase.auth.signOut();
@@ -745,9 +769,11 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
               <input
                 type={showPassword ? "text" : "password"}
                 required
-                minLength={6}
+                minLength={mode !== "login" ? 6 : 1}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                onFocus={() => setIsPasswordFocused(true)}
+                onBlur={() => setIsPasswordFocused(false)}
                 placeholder="••••••••"
                 className="w-full pl-10 pr-10 py-2.5 rounded-xl border text-xs outline-none bg-stone-50/50 focus:bg-white focus:border-[#E0533C] transition"
                 style={{ borderColor: C.line }}
@@ -760,6 +786,57 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
                 {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
               </button>
             </div>
+
+            {/* Password security requirement indicators for Signup & Merchant (Show ONLY on Focus or Typing) */}
+            {mode !== "login" && (isPasswordFocused || password.length > 0) && (
+              <div className="mt-2 space-y-1.5 transition-all duration-200 animate-in fade-in slide-in-from-top-1">
+                {/* Thin 5-step progress bar & label */}
+                <div className="flex items-center gap-2">
+                  <div className="grid grid-cols-5 gap-1 h-1 flex-1 overflow-hidden rounded-full bg-stone-200/60">
+                    {[1, 2, 3, 4, 5].map((step) => (
+                      <div
+                        key={step}
+                        className={`h-full transition-all duration-300 ${
+                          password && step <= passwordScore
+                            ? strengthInfo.bgColor
+                            : "bg-stone-200/50"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  {password ? (
+                    <span className={`text-[10px] font-bold shrink-0 ${strengthInfo.color}`}>
+                      {strengthInfo.label}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-stone-400 font-medium shrink-0">
+                      {t("auth.passwordStrength")}
+                    </span>
+                  )}
+                </div>
+
+                {/* Sleek inline requirement badges */}
+                <div className="flex flex-wrap gap-1 pt-0.5">
+                  {passwordRules.map((rule, idx) => (
+                    <span
+                      key={idx}
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold transition-all duration-150 border ${
+                        rule.passed
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200/80"
+                          : "bg-stone-50 text-stone-400 border-stone-200/60"
+                      }`}
+                    >
+                      {rule.passed ? (
+                        <CheckCircle2 size={10} className="text-emerald-600 shrink-0" />
+                      ) : (
+                        <span className="w-1 h-1 rounded-full bg-stone-300 inline-block shrink-0" />
+                      )}
+                      {rule.label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Confirm Password (SIGNUP & MERCHANT ONLY) */}
@@ -773,7 +850,7 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
                 <input
                   type={showPassword ? "text" : "password"}
                   required
-                  minLength={6}
+                  minLength={8}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••"
