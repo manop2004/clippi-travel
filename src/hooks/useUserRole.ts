@@ -212,18 +212,29 @@ export function useUserRole(): UserRoleState {
       );
 
       // Determine authoritative merchant status
-      const isRejected = subData?.status === "rejected" || profileData?.merchant_status === "rejected" || localStatus === "rejected";
-      const isPending = subData?.status === "pending" || profileData?.merchant_status === "pending" || localStatus === "pending";
-      const isApproved = subData?.status === "approved" || profileData?.merchant_status === "approved";
+      // Database status (profiles or place_submissions) takes absolute precedence over local storage
+      const isDbApproved = profileData?.merchant_status === "approved" || subData?.status === "approved" || profileData?.role === "store";
+      const isDbRejected = profileData?.merchant_status === "rejected" || subData?.status === "rejected";
+      const isDbPending = profileData?.merchant_status === "pending" || subData?.status === "pending";
 
-      if (isRejected && !isResubmissionNewer) {
+      if (isDbApproved) {
+        mStatus = "approved";
+        mRejection = null;
+        try {
+          localStorage.removeItem("active_pending_merchant");
+          localStorage.removeItem("pending_merchant_session");
+        } catch (e) {}
+      } else if (isDbRejected && !isResubmissionNewer) {
         mStatus = "rejected";
         mRejection = subData?.rejection_reason || profileData?.ban_reason || localRejectionReason || "ข้อมูลเอกสารหรือหลักฐานสิทธิ์ร้านค้าไม่ตรงตามเงื่อนไขที่กำหนด";
-      } else if (isPending || isResubmissionNewer) {
+      } else if (isDbPending || (localStatus === "pending" && isResubmissionNewer)) {
         mStatus = "pending";
         mRejection = null;
-      } else if (isApproved) {
-        mStatus = "approved";
+      } else if (localStatus === "rejected") {
+        mStatus = "rejected";
+        mRejection = localRejectionReason || "ข้อมูลเอกสารหรือหลักฐานสิทธิ์ร้านค้าไม่ตรงตามเงื่อนไขที่กำหนด";
+      } else if (localStatus === "pending") {
+        mStatus = "pending";
         mRejection = null;
       } else if (subData) {
         mStatus = subData.status as MerchantStatus;
