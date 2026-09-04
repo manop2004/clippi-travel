@@ -5,12 +5,13 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { C, categories } from "../constants/mockData";
 import StarRow from "./StarRow";
-import { getReviews, createReview, collectStamp, hasUserCollectedStamp, getUserStamps, createPlaceSubmission } from "../hooks/useReviewStamp";
+import { getReviews, createReview, collectStamp, hasUserCollectedStamp, getUserStamps, createPlaceSubmission, getUserBadgeCodes, checkAndAwardAchievements, getAchievementsByCodes } from "../hooks/useReviewStamp";
 import { Review, UserStamp } from "../types/review-stamp";
 import { supabase } from "../supabaseClient";
 import { haversineDistance, formatDistance } from "../lib/geoHelpers";
 import { useLang, localized } from "../lib/i18n";
 import { useUserRole } from "../hooks/useUserRole";
+import AchievementCelebration, { CelebrationItem } from "./AchievementCelebration";
 
 interface PlaceDetailModalProps {
   place: any;
@@ -26,6 +27,7 @@ export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }:
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [userStamps, setUserStamps] = useState<UserStamp[]>([]);
   const [collectingStamp, setCollectingStamp] = useState<string | null>(null);
+  const [celebration, setCelebration] = useState<CelebrationItem[]>([]);
   const [user, setUser] = useState<any>(null);
   const [realRating, setRealRating] = useState<number | null>(null);
   const [realReviewsCount, setRealReviewsCount] = useState<number | null>(null);
@@ -130,14 +132,31 @@ export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }:
         try {
           const alreadyCollected = await hasUserCollectedStamp(user.id, placeId);
           if (!alreadyCollected) {
+            // จำ badge ที่มีอยู่ก่อน เพื่อเทียบว่ามี achievement ใหม่ปลดล็อกไหม
+            const badgesBefore = await getUserBadgeCodes(user.id);
+
             await collectStamp(placeId);
             const updated = await getUserStamps(user.id);
             setUserStamps(updated);
-            alert(
-              t("alert.checkinOk")
-                .replace("{shop}", shopName)
-                .replace("{d}", formatDistance(distance))
-            );
+
+            // สั่งให้ฝั่ง DB ประเมินเงื่อนไข achievement ใหม่ทันที (ก่อนหน้านี้ฟังก์ชันนี้
+            // มีอยู่แล้วบน Supabase แต่ไม่เคยถูกเรียกจากแอป จึงไม่มี badge ปลดล็อกอัตโนมัติ)
+            await checkAndAwardAchievements(user.id);
+            const badgesAfter = await getUserBadgeCodes(user.id);
+            const newCodes = badgesAfter.filter((c) => !badgesBefore.includes(c));
+            const newAchievements = newCodes.length > 0 ? await getAchievementsByCodes(newCodes) : [];
+
+            // คิว popup: การ์ด "เก็บสแตมป์สำเร็จ" ก่อน ตามด้วย achievement ใหม่ (ถ้ามี)
+            setCelebration([
+              { type: "stamp", shopName },
+              ...newAchievements.map((a) => ({
+                type: "achievement" as const,
+                code: a.code,
+                name: a.name,
+                icon: a.icon || "🏆",
+                description: a.description,
+              })),
+            ]);
           }
         } catch (error) {
           console.error("Error collecting stamp:", error);
@@ -384,12 +403,35 @@ export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }:
           placeId={placeId}
           placeName={shopName}
           onClose={() => setShowReviewForm(false)}
-          onSuccess={(newReview) => {
+          onSuccess={async (newReview) => {
             setDbReviews([newReview, ...dbReviews]);
             setShowReviewForm(false);
+
+            // รีวิวก็ปลดล็อก achievement ได้เหมือนกัน (เช่น review_count, review_quality_count)
+            if (user?.id) {
+              const badgesBefore = await getUserBadgeCodes(user.id);
+              await checkAndAwardAchievements(user.id);
+              const badgesAfter = await getUserBadgeCodes(user.id);
+              const newCodes = badgesAfter.filter((c) => !badgesBefore.includes(c));
+              if (newCodes.length > 0) {
+                const newAchievements = await getAchievementsByCodes(newCodes);
+                setCelebration(
+                  newAchievements.map((a) => ({
+                    type: "achievement" as const,
+                    code: a.code,
+                    name: a.name,
+                    icon: a.icon || "🏆",
+                    description: a.description,
+                  }))
+                );
+              }
+            }
           }}
         />
       )}
+
+      {/* 🎉 Stamp / Achievement celebration popup */}
+      <AchievementCelebration items={celebration} onClose={() => setCelebration([])} />
     </>
   );
 }
