@@ -84,9 +84,12 @@ export default function AdminReviewView() {
         const prof = s.profiles || profMap.get(s.user_id) || null;
         return {
           ...s,
+          ownership_proof_url: s.ownership_proof_url || prof?.ownership_proof_url || null,
           name_en: s.name_en || s.shop_name || prof?.shop_name || "Merchant Partner Application",
           street: s.street || s.address || (s.prefecture ? `Prefecture: ${s.prefecture}` : "Address Pending"),
           description: s.description || `Contact: ${s.contact_name || prof?.display_name || "N/A"} (${s.contact_phone || prof?.phone || "N/A"})`,
+          created_at: s.created_at || prof?.created_at || new Date().toISOString(),
+          updated_at: s.updated_at || prof?.updated_at || s.created_at || prof?.created_at || new Date().toISOString(),
           profiles: prof,
         };
       });
@@ -119,7 +122,9 @@ export default function AdminReviewView() {
               street: prof.prefecture ? `Prefecture: ${prof.prefecture}` : "Address Pending",
               description: `Pending Merchant Registration for ${prof.shop_name || prof.display_name || prof.email}. Contact: ${prof.phone || prof.email || "-"}`,
               status: "pending",
-              created_at: prof.created_at || new Date().toISOString(),
+              created_at: prof.updated_at || prof.created_at || new Date().toISOString(),
+              updated_at: prof.updated_at || prof.created_at || new Date().toISOString(),
+              ownership_proof_url: prof.ownership_proof_url || null,
               profiles: prof,
               is_profile_only: true,
             });
@@ -135,6 +140,7 @@ export default function AdminReviewView() {
             rawData.push({
               ...lSub,
               id: lSub.id || `local_${lSub.user_id || Date.now()}`,
+              ownership_proof_url: lSub.ownership_proof_url || lSub.profiles?.ownership_proof_url || null,
               name_en: lSub.shop_name || lSub.name_en || "Merchant Partner Application",
               shop_name: lSub.shop_name || lSub.name_en,
               contact_name: lSub.contact_name || "Merchant Owner",
@@ -145,7 +151,8 @@ export default function AdminReviewView() {
               street: lSub.prefecture ? `Prefecture: ${lSub.prefecture}` : "Address Pending",
               description: `Pending Merchant Registration for ${lSub.shop_name || lSub.contact_email}. Contact: ${lSub.contact_phone || lSub.contact_email}`,
               status: "pending",
-              created_at: lSub.created_at || new Date().toISOString(),
+              created_at: lSub.updated_at || lSub.created_at || new Date().toISOString(),
+              updated_at: lSub.updated_at || lSub.created_at || new Date().toISOString(),
               is_profile_only: true,
             });
           }
@@ -179,7 +186,7 @@ export default function AdminReviewView() {
   }, []);
 
   // Separate submissions into Merchant Applications vs Spot Submissions
-  const merchantSubmissions = submissions.filter(
+  const rawMerchantSubmissions = submissions.filter(
     (s) =>
       s.is_profile_only ||
       (typeof s.id === "string" && (s.id.startsWith("prof_") || s.id.startsWith("local_"))) ||
@@ -189,8 +196,30 @@ export default function AdminReviewView() {
       (Boolean(s.shop_name || s.name_en) && !s.lat)
   );
 
+  // Deduplicate merchant applications so each applicant user/email gets EXACTLY 1 card (the latest one)
+  const uniqueMerchantMap = new Map<string, any>();
+  rawMerchantSubmissions.forEach((sub) => {
+    const uidStr = sub.user_id ? String(sub.user_id) : "";
+    const emailStr = (sub.contact_email || sub.email || "").toLowerCase();
+    const key = uidStr || emailStr || String(sub.id);
+
+    if (!uniqueMerchantMap.has(key)) {
+      uniqueMerchantMap.set(key, sub);
+    } else {
+      const existing = uniqueMerchantMap.get(key)!;
+      const timeNew = new Date(sub.created_at || 0).getTime();
+      const timeOld = new Date(existing.created_at || 0).getTime();
+      // Prefer newer submission or submission with ownership document attached
+      if (timeNew > timeOld || (sub.ownership_proof_url && !existing.ownership_proof_url)) {
+        uniqueMerchantMap.set(key, sub);
+      }
+    }
+  });
+
+  const merchantSubmissions = Array.from(uniqueMerchantMap.values());
+
   const placeSubmissions = submissions.filter(
-    (s) => !merchantSubmissions.includes(s)
+    (s) => !rawMerchantSubmissions.includes(s)
   );
 
   // Filter places tab
@@ -219,17 +248,27 @@ export default function AdminReviewView() {
 
       // 1. Update profiles table
       if (uid && !uid.startsWith("local_")) {
-        await supabase
-          .from("profiles")
-          .update({ role: "store", merchant_status: "approved" })
-          .eq("id", uid);
+        const { data: targetProf } = await supabase.from("profiles").select("role, is_admin").eq("id", uid).maybeSingle();
+        const isTargetAdmin = targetProf?.role === "admin" || targetProf?.is_admin === true;
 
-        // 2. Upsert user_roles table
-        try {
+        if (!isTargetAdmin) {
           await supabase
-            .from("user_roles")
-            .upsert({ user_id: uid, role: "store" }, { onConflict: "user_id" });
-        } catch (e) {}
+            .from("profiles")
+            .update({ role: "store", merchant_status: "approved", ban_reason: null, updated_at: new Date().toISOString() })
+            .eq("id", uid);
+
+          // 2. Upsert user_roles table
+          try {
+            await supabase
+              .from("user_roles")
+              .upsert({ user_id: uid, role: "store" }, { onConflict: "user_id" });
+          } catch (e) {}
+        } else {
+          await supabase
+            .from("profiles")
+            .update({ merchant_status: "approved", ban_reason: null, updated_at: new Date().toISOString() })
+            .eq("id", uid);
+        }
       }
 
       // 3. Update place_submissions in Supabase
@@ -265,11 +304,16 @@ export default function AdminReviewView() {
             (email && item.contact_email?.toLowerCase() === email.toLowerCase()) ||
             item.id === sub.id;
           if (isMatch) {
-            return { ...item, status: "approved" };
+            return { ...item, status: "approved", role: "store" };
           }
           return item;
         });
         localStorage.setItem("merchant_pending_submissions", JSON.stringify(updatedLocal));
+
+        const activeLocal = JSON.parse(localStorage.getItem("active_pending_merchant") || "null");
+        if (activeLocal && (activeLocal.email?.toLowerCase() === email?.toLowerCase() || activeLocal.user_id === uid)) {
+          localStorage.setItem("active_pending_merchant", JSON.stringify({ ...activeLocal, status: "approved", role: "store" }));
+        }
       } catch (e) {}
 
       // 5. Log admin action
@@ -307,23 +351,43 @@ export default function AdminReviewView() {
 
       // 1. Update profiles table
       if (uid && !uid.startsWith("local_")) {
-        await supabase
-          .from("profiles")
-          .update({ role: "user", merchant_status: "rejected", ban_reason: null })
-          .eq("id", uid);
+        const { data: targetProf } = await supabase.from("profiles").select("role, is_admin").eq("id", uid).maybeSingle();
+        const isTargetAdmin = targetProf?.role === "admin" || targetProf?.is_admin === true;
 
-        // 2. Upsert user_roles table
-        try {
+        if (!isTargetAdmin) {
           await supabase
-            .from("user_roles")
-            .upsert({ user_id: uid, role: "user" }, { onConflict: "user_id" });
-        } catch (e) {}
+            .from("profiles")
+            .update({
+              role: "user",
+              merchant_status: "rejected",
+              ban_reason: finalReason,
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", uid);
+
+          // 2. Upsert user_roles table
+          try {
+            await supabase
+              .from("user_roles")
+              .upsert({ user_id: uid, role: "user" }, { onConflict: "user_id" });
+          } catch (e) {}
+        } else {
+          await supabase
+            .from("profiles")
+            .update({
+              merchant_status: "rejected",
+              ban_reason: finalReason,
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", uid);
+        }
       }
 
-      // 3. Update ALL matching place_submissions in Supabase
+      // 3. Update ALL matching place_submissions in Supabase or insert record
       try {
+        let updatedCount = 0;
         if (typeof subId === "string" && !subId.startsWith("prof_") && !subId.startsWith("local_")) {
-          await supabase
+          const { data } = await supabase
             .from("place_submissions")
             .update({
               status: "rejected",
@@ -331,11 +395,13 @@ export default function AdminReviewView() {
               reviewed_by: adminId,
               reviewed_at: new Date().toISOString()
             })
-            .eq("id", subId);
+            .eq("id", subId)
+            .select();
+          if (data && data.length > 0) updatedCount += data.length;
         }
 
         if (uid && !uid.startsWith("local_")) {
-          await supabase
+          const { data } = await supabase
             .from("place_submissions")
             .update({
               status: "rejected",
@@ -343,11 +409,13 @@ export default function AdminReviewView() {
               reviewed_by: adminId,
               reviewed_at: new Date().toISOString()
             })
-            .eq("user_id", uid);
+            .eq("user_id", uid)
+            .select();
+          if (data && data.length > 0) updatedCount += data.length;
         }
 
         if (email) {
-          await supabase
+          const { data } = await supabase
             .from("place_submissions")
             .update({
               status: "rejected",
@@ -355,7 +423,23 @@ export default function AdminReviewView() {
               reviewed_by: adminId,
               reviewed_at: new Date().toISOString()
             })
-            .ilike("contact_email", email.toLowerCase());
+            .ilike("contact_email", email.toLowerCase())
+            .select();
+          if (data && data.length > 0) updatedCount += data.length;
+        }
+
+        // If no existing place_submissions row was updated, insert a new record for history tracking
+        if (updatedCount === 0 && uid && !uid.startsWith("local_")) {
+          await supabase.from("place_submissions").insert({
+            user_id: uid,
+            contact_email: email || undefined,
+            status: "rejected",
+            rejection_reason: finalReason,
+            reviewed_by: adminId,
+            reviewed_at: new Date().toISOString(),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
         }
       } catch (e) {
         console.warn("place_submissions reject update notice:", e);
@@ -735,7 +819,7 @@ export default function AdminReviewView() {
                       </div>
 
                       <span className="text-[10px] font-semibold text-gray-400 shrink-0">
-                        ยื่นคำขอเมื่อ: {new Date(m.created_at).toLocaleDateString()}
+                        ยื่นคำขอเมื่อ: {new Date(m.updated_at || m.created_at).toLocaleDateString()}
                       </span>
                     </div>
 

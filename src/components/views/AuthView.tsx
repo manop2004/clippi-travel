@@ -234,11 +234,24 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
           ) {
             removeDeletedUserId(uidStr);
             removeDeletedUserId(emailLower);
+
+            const ADMIN_EMAILS = [
+              "kakhidicang@gmail.com",
+              "nonroblox001@gmail.com",
+              "chayakorn.ph@ku.th",
+              "alongkorn.kn@gmail.com",
+              "lookpalmza10@gmail.com",
+              "kittiwin99999@gmail.com"
+            ];
+            const isWhitelistedAdmin = ADMIN_EMAILS.some((e) => emailLower && (emailLower === e.toLowerCase() || emailLower.includes(e.toLowerCase())));
+            const defaultRole = isWhitelistedAdmin ? "admin" : "user";
+
             await supabase.from("profiles").upsert({
               id: authData.user.id,
               email: authData.user.email || email.trim(),
               display_name: authData.user.user_metadata?.display_name || authData.user.email?.split("@")[0] || "User",
-              role: "user",
+              role: defaultRole,
+              is_admin: isWhitelistedAdmin,
               is_deleted: false,
               is_banned: false,
               ban_reason: null,
@@ -246,7 +259,7 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
 
             await supabase.from("user_roles").upsert({
               user_id: authData.user.id,
-              role: "user",
+              role: defaultRole,
             }, { onConflict: "user_id" });
           }
 
@@ -265,11 +278,6 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
             if (mStatus === "pending") {
               await supabase.auth.signOut();
               setErrorMsg("⏳ บัญชีเจ้าของร้านค้าของคุณอยู่ระหว่างการรออนุมัติจากแอดมิน (Pending Admin Approval) ยังไม่สามารถเข้าใช้งานระบบได้ กรุณารอแอดมินอนุมัติก่อน");
-              return;
-            } else if (mStatus === "rejected") {
-              await supabase.auth.signOut();
-              const reason = subData?.rejection_reason || "ข้อมูลไม่ครบถ้วนหรือไม่ตรงตามเงื่อนไขที่กำหนด";
-              setErrorMsg(`❌ คำขอลงทะเบียนเจ้าของร้านค้าของคุณไม่ผ่านการอนุมัติ: "${reason}"`);
               return;
             }
           }
@@ -435,7 +443,9 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
           if (!signInErr && signInData?.user) {
             registeredUser = signInData.user;
           } else {
-            throw error;
+            setErrorMsg("💡 อีเมลนี้มีบัญชีในระบบเรียบร้อยแล้ว กรุณากดเข้าสู่ระบบด้วย 'Google Workspace' (หรือ 'เข้าสู่ระบบ') จากนั้นกดปุ่ม 'แก้ไขข้อมูล & ยื่นคำขอใหม่' เพื่อส่งข้อมูลร้านค้าชุดใหม่ให้แอดมินพิจารณา");
+            setLoading(false);
+            return;
           }
         } else if (error) {
           throw error;
@@ -445,25 +455,7 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
           removeDeletedUserId(registeredUser.id);
           removeDeletedUserId(cleanEmail);
 
-          // 1. Upsert profiles table with role 'pending_store' & merchant_status 'pending'
-          await supabase.from("profiles").upsert({
-            id: registeredUser.id,
-            email: email.trim(),
-            display_name: contactName.trim(),
-            role: "pending_store",
-            merchant_status: "pending",
-            is_deleted: false,
-            is_banned: false,
-            ban_reason: null,
-          }, { onConflict: "id" });
-
-          // 2. Upsert user_roles table with role 'pending_store'
-          await supabase.from("user_roles").upsert({
-            user_id: registeredUser.id,
-            role: "pending_store",
-          }, { onConflict: "user_id" });
-
-          // 3. Upload ownership proof document if attached
+          // 1. Upload ownership proof document if attached
           let uploadedOwnershipUrl: string | null = null;
           if (ownershipFile) {
             try {
@@ -486,8 +478,31 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
             }
           }
 
-          // 4. Create initial place_submission for this shop
-          const { error: subInsertErr } = await supabase.from("place_submissions").insert({
+          // 2. Upsert profiles table with role 'pending_store' & merchant_status 'pending' and shop details
+          await supabase.from("profiles").upsert({
+            id: registeredUser.id,
+            email: email.trim(),
+            display_name: contactName.trim(),
+            shop_name: shopName.trim(),
+            phone: phone.trim(),
+            prefecture: prefecture,
+            category: category,
+            ownership_proof_url: uploadedOwnershipUrl,
+            role: "pending_store",
+            merchant_status: "pending",
+            is_deleted: false,
+            is_banned: false,
+            ban_reason: null,
+          }, { onConflict: "id" });
+
+          // 3. Upsert user_roles table with role 'pending_store'
+          await supabase.from("user_roles").upsert({
+            user_id: registeredUser.id,
+            role: "pending_store",
+          }, { onConflict: "user_id" });
+
+          // 4. Update existing place_submissions or insert if new
+          const authSubPayload = {
             user_id: registeredUser.id,
             name_en: shopName.trim(),
             shop_name: shopName.trim(),
@@ -498,10 +513,29 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
             prefecture: prefecture,
             ownership_proof_url: uploadedOwnershipUrl,
             status: "pending",
-          });
+            rejection_reason: null,
+            created_at: new Date().toISOString(),
+          };
 
-          if (subInsertErr) {
-            console.warn("Notice inserting place_submission:", subInsertErr.message);
+          let hasUpdatedAuthSub = false;
+          try {
+            const { data: existingRows } = await supabase
+              .from("place_submissions")
+              .select("id")
+              .or(`user_id.eq.${registeredUser.id}${email ? `,contact_email.ilike.${email.trim().toLowerCase()}` : ""}`);
+
+            if (existingRows && existingRows.length > 0) {
+              const ids = existingRows.map((r) => r.id);
+              await supabase.from("place_submissions").update(authSubPayload).in("id", ids);
+              hasUpdatedAuthSub = true;
+            }
+          } catch (e) {}
+
+          if (!hasUpdatedAuthSub) {
+            const { error: subInsertErr } = await supabase.from("place_submissions").insert(authSubPayload);
+            if (subInsertErr) {
+              console.warn("Notice inserting place_submission:", subInsertErr.message);
+            }
           }
 
           // Ensure user is signed out so they cannot enter app until approved

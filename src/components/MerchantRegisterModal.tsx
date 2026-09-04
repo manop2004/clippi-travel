@@ -97,6 +97,8 @@ export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user
             data: {
               role: "pending_store",
               merchant_status: "pending",
+              rejection_reason: null,
+              last_submitted_at: new Date().toISOString(),
               shop_name: shopName.trim(),
               contact_name: contactName.trim(),
               phone: phone.trim(),
@@ -117,6 +119,7 @@ export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user
             category: category,
             ownership_proof_url: uploadedUrl,
             ban_reason: null,
+            updated_at: new Date().toISOString(),
           }).eq("id", uid);
 
           if (profErr) {
@@ -125,6 +128,7 @@ export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user
               role: "pending_store",
               merchant_status: "pending",
               ban_reason: null,
+              updated_at: new Date().toISOString(),
             }).eq("id", uid);
           }
         } catch (e) {
@@ -154,36 +158,45 @@ export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user
         status: "pending",
         rejection_reason: null,
         created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
         description: `Owner Contact: ${contactName.trim()} | Phone: ${phone.trim()} | Email: ${uEmail}`,
       };
 
-      // Also mark any existing submission rows for this user as pending to avoid old rejection conflict
+      // 4. Directly update place_submissions or insert if none exists
       try {
-        await supabase
+        const { data: updateRes } = await supabase
           .from("place_submissions")
-          .update({ status: "pending", rejection_reason: null })
-          .eq("user_id", uid);
+          .update(subPayload)
+          .eq("user_id", uid)
+          .select();
 
-        if (uEmail) {
-          await supabase
+        let updated = Boolean(updateRes && updateRes.length > 0);
+
+        if (!updated && uEmail) {
+          const { data: emailUpRes } = await supabase
             .from("place_submissions")
-            .update({ status: "pending", rejection_reason: null })
-            .ilike("contact_email", uEmail.toLowerCase());
+            .update(subPayload)
+            .ilike("contact_email", uEmail.toLowerCase())
+            .select();
+          updated = Boolean(emailUpRes && emailUpRes.length > 0);
         }
-      } catch (e) {}
 
-      try {
-        await supabase.from("place_submissions").insert(subPayload);
+        if (!updated) {
+          await supabase.from("place_submissions").insert(subPayload);
+        }
       } catch (e) {
-        console.warn("Notice: place_submissions insert fallback:", e);
+        console.warn("Notice: place_submissions update/insert fallback:", e);
       }
 
       // 4. Save local fallback
       const pendingInfo = {
+        user_id: uid,
         email: uEmail,
         shopName: shopName.trim(),
         contactName: contactName.trim(),
         status: "pending",
+        rejection_reason: null,
+        submitted_at: new Date().toISOString(),
       };
       try {
         localStorage.setItem("pending_merchant_session", JSON.stringify(pendingInfo));
