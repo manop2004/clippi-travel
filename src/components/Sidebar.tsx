@@ -1,5 +1,5 @@
 import React from "react";
-import { Compass, MapPin, BookOpen, User, Store, ShieldCheck, Users, Plus, ScrollText, Trophy } from "lucide-react";
+import { Compass, MapPin, BookOpen, User, Store, ShieldCheck, Users, Plus, ScrollText, Trophy, Puzzle } from "lucide-react";
 import { C } from "../constants/mockData";
 import { useLang } from "../lib/i18n";
 import { useUserRole, UserRole } from "../hooks/useUserRole";
@@ -19,6 +19,7 @@ export default function Sidebar({ activeTab, onTabChange, onAddPlaceClick }: Sid
     { id: "explore", label: t("nav.explore"), icon: Compass, roles: ["user", "store", "admin"] },
     { id: "map", label: t("nav.map"), icon: MapPin, roles: ["user", "store", "admin"] },
     { id: "collection", label: t("nav.collection"), icon: BookOpen, roles: ["user", "store", "admin"] },
+    { id: "jigsaw", label: "Jigsaw Quest", icon: Puzzle, roles: ["user", "store", "admin"] },
     { id: "profile", label: t("nav.profile"), icon: User, roles: ["user", "store", "admin"] },
     { id: "store_manage", label: "Manage My Shop", icon: Store, roles: ["store", "admin"] },
     { id: "admin", label: "Admin Review", icon: ShieldCheck, roles: ["admin"] },

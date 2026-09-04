@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Compass, MapPin, BookOpen, User, Plus, Search, X, ShieldCheck, Store, Users, ScrollText, Trophy } from "lucide-react";
+import { Compass, MapPin, BookOpen, User, Plus, Search, X, ShieldCheck, Store, Users, ScrollText, Trophy, Puzzle, QrCode } from "lucide-react";
 import { C } from "./constants/mockData";
 import { supabase } from "./supabaseClient";
 import { Session } from "@supabase/supabase-js";
@@ -14,6 +14,9 @@ import ManageShopsPage from "./components/views/ManageShopsPage";
 import StoreManagementPage from "./pages/store/StoreManagementPage";
 import AuthView from "./components/views/AuthView";
 import { PlaceDetailModal, AddPlaceModal } from "./components/Modals";
+import MerchantRegisterModal from "./components/MerchantRegisterModal";
+import JigsawBoardView from "./components/jigsaw/JigsawBoardView";
+import QRScannerModal from "./components/scanner/QRScannerModal";
 import { ReviewStampProvider } from "./context/ReviewStampContext";
 import PasswordGate from "./components/PasswordGate";
 import { LangSwitcher, useLang } from "./lib/i18n";
@@ -32,11 +35,30 @@ export default function App() {
   const [selectedPlace, setSelectedPlace] = useState<any>(null);
   const [editingShop, setEditingShop] = useState<any | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isMerchantApplyOpen, setIsMerchantApplyOpen] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [showAllTrending, setShowAllTrending] = useState(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [collectedPieceIds, setCollectedPieceIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem("collected_jigsaw_pieces");
+      return saved ? JSON.parse(saved) : ["p1", "p2"];
+    } catch {
+      return ["p1", "p2"];
+    }
+  });
+
+  const handlePieceCollected = (questId: string, pieceId: string, piece: any) => {
+    setCollectedPieceIds((prev) => {
+      if (prev.includes(pieceId)) return prev;
+      const updated = [...prev, pieceId];
+      localStorage.setItem("collected_jigsaw_pieces", JSON.stringify(updated));
+      return updated;
+    });
+  };
 
   const { t } = useLang();
   const {
@@ -67,6 +89,8 @@ export default function App() {
       setTab("users_manage");
     } else if (path.includes("store")) {
       setTab("store_manage");
+    } else if (path.includes("jigsaw")) {
+      setTab("jigsaw");
     }
   }, []);
 
@@ -75,6 +99,7 @@ export default function App() {
     { id: "explore", label: t("nav.explore"), icon: Compass, roles: ["user", "store", "admin"] },
     { id: "map", label: t("nav.map"), icon: MapPin, roles: ["user", "store", "admin"] },
     { id: "collection", label: t("nav.collection"), icon: BookOpen, roles: ["user", "store", "admin"] },
+    { id: "jigsaw", label: "Jigsaw Quest", icon: Puzzle, roles: ["user", "store", "admin"] },
     { id: "profile", label: t("nav.profile"), icon: User, roles: ["user", "store", "admin"] },
     { id: "store_manage", label: "Manage My Shop", icon: Store, roles: ["store", "admin"] },
     { id: "admin", label: "Admin Review", icon: ShieldCheck, roles: ["admin"] },
@@ -377,42 +402,7 @@ export default function App() {
     );
   }
 
-  // ROOT-LEVEL REJECTED MERCHANT INTERCEPTOR
-  if (session && isRejectedMerchant && role !== "admin" && role !== "store") {
-    return (
-      <div className="fixed inset-0 z-[99999] bg-stone-950/85 backdrop-blur-md flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full text-center shadow-2xl border border-rose-200 animate-fade-in space-y-5">
-          <div className="w-20 h-20 bg-rose-100 rounded-3xl flex items-center justify-center mx-auto text-4xl shadow-xs">
-            ❌
-          </div>
-          <div>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-100 text-rose-800 text-[10px] font-black tracking-wider uppercase mb-2">
-              Registration Rejected
-            </span>
-            <h2 className="text-xl font-black text-stone-900">คำขอลงทะเบียนเจ้าของร้านค้าไม่ผ่านการอนุมัติ</h2>
-            <p className="text-stone-500 text-xs mt-1">
-              แอดมินปฏิเสธคำขอลงทะเบียนบัญชีร้านค้าของคุณ
-            </p>
-          </div>
 
-          <div className="bg-rose-50 text-rose-900 p-4 rounded-2xl border border-rose-200 text-left">
-            <p className="text-[10px] font-extrabold uppercase text-rose-600 mb-1">สาเหตุที่ไม่ผ่านการอนุมัติ:</p>
-            <p className="text-xs font-bold">{merchantRejectionReason || "ข้อมูลไม่ครบถ้วนหรือไม่ตรงตามเงื่อนไขที่กำหนด"}</p>
-          </div>
-
-          <button
-            onClick={async () => {
-              await supabase.auth.signOut();
-              window.location.href = '/';
-            }}
-            className="w-full bg-[#E31E27] hover:bg-red-700 text-white font-bold py-3.5 px-4 rounded-xl text-xs transition shadow-md cursor-pointer"
-          >
-            ออกจากระบบ (Logout)
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   // Auth gate
   if (!session) {
@@ -425,14 +415,14 @@ export default function App() {
 
   const userEmail = session.user.email || "Traveler";
   const headerDisplayName = resolveUserDisplayName(
-    userProfile.display_name,
+    session.user.user_metadata?.display_name,
     session.user.user_metadata?.full_name,
     session.user.user_metadata?.username,
     session.user.email,
     session.user.user_metadata?.display_name
   );
   const headerAvatarUrl = resolveUserAvatarUrl(
-    userProfile.avatar_url,
+    session.user.user_metadata?.custom_avatar_url,
     null,
     session.user.user_metadata?.custom_avatar_url,
     session.user.user_metadata?.avatar_url
@@ -533,6 +523,18 @@ export default function App() {
                   </button>
                 )}
 
+                {/* QR Scanner Trigger Button */}
+                <button
+                  onClick={() => setIsScannerOpen(true)}
+                  className={`items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#FD775C] to-rose-600 hover:from-rose-600 hover:to-[#FD775C] text-white text-xs font-bold shadow-xs transition cursor-pointer active:scale-95 ${
+                    showMobileSearch ? "hidden sm:flex" : "flex"
+                  }`}
+                  title="เปิดกล้องสแกน QR Code / AR"
+                >
+                  <QrCode size={15} />
+                  <span className="hidden sm:inline">สแกน QR</span>
+                </button>
+
                 {/* Language Switcher */}
                 <span className={showMobileSearch ? "hidden sm:block" : "block"}>
                   <LangSwitcher />
@@ -545,6 +547,27 @@ export default function App() {
 
             {/* 📄 Main Workspace Pages */}
             <main className="flex-1 p-4 md:p-8 max-w-5xl mx-auto w-full pb-24 md:pb-8">
+              {isRejectedMerchant && (
+                <div className="mb-6 bg-rose-50 border border-rose-200 rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs animate-fade-in">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-10 h-10 rounded-2xl bg-rose-600 text-white flex items-center justify-center shrink-0 font-extrabold text-lg shadow-xs">
+                      ❌
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black text-rose-950">คำขอลงทะเบียนเจ้าของร้านค้าไม่ผ่านการอนุมัติ</h4>
+                      <p className="text-xs text-rose-800 mt-0.5">
+                        สาเหตุที่ไม่ผ่าน: <strong className="text-rose-950">{merchantRejectionReason || "ข้อมูลเอกสารหรือหลักฐานสิทธิ์ไม่ผ่านการตรวจสอบ"}</strong>
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setIsMerchantApplyOpen(true)}
+                    className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-2xl text-xs transition shadow-xs shrink-0 cursor-pointer flex items-center gap-2"
+                  >
+                    <span>🔄 แก้ไขข้อมูล & ยื่นคำขอใหม่</span>
+                  </button>
+                </div>
+              )}
               {tab === "explore" && (
                 showAllTrending ? (
                   <TrendingAllView
@@ -562,6 +585,13 @@ export default function App() {
               )}
               {tab === "map" && <MapView openPlace={(p: any) => setSelectedPlace(p)} searchQuery={searchQuery} />}
               {tab === "collection" && <CollectionView searchQuery={searchQuery} openPlace={(p: any) => setSelectedPlace(p)} />}
+              {tab === "jigsaw" && (
+                <JigsawBoardView
+                  collectedPieceIds={collectedPieceIds}
+                  onOpenScanner={() => setIsScannerOpen(true)}
+                  onResetProgress={() => setCollectedPieceIds([])}
+                />
+              )}
               {tab === "profile" && <ProfileView />}
               {(tab === "admin" || tab === "admin_review") && (
                 <ProtectedRoute allowedRoles={["admin"]} onGoHome={() => setTab("explore")}>
@@ -638,6 +668,24 @@ export default function App() {
             }}
           />
           <AddPlaceModal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} />
+          <MerchantRegisterModal
+            isOpen={isMerchantApplyOpen}
+            onClose={() => setIsMerchantApplyOpen(false)}
+            onSuccess={() => {
+              setIsMerchantApplyOpen(false);
+              refreshRole();
+            }}
+            user={session?.user}
+          />
+          <QRScannerModal
+            isOpen={isScannerOpen}
+            onClose={() => setIsScannerOpen(false)}
+            onPieceCollected={handlePieceCollected}
+            onViewBoard={() => {
+              setIsScannerOpen(false);
+              setTab("jigsaw");
+            }}
+          />
         </div>
       </ReviewStampProvider>
     </PasswordGate>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
-import { getDeletedUserIds } from "../lib/activityHelpers";
+import { getDeletedUserIds, removeDeletedUserId } from "../lib/activityHelpers";
 
 export type UserRole = "admin" | "store" | "user" | "pending_store";
 export type MerchantStatus = "pending" | "approved" | "rejected" | null;
@@ -63,18 +63,40 @@ export function useUserRole(): UserRoleState {
         console.error("Error fetching profile:", profileErr);
       }
 
-      // Check if account has been deleted
-      const deletedSet = getDeletedUserIds();
-      const uEmail = session.user.email ? session.user.email.toLowerCase() : "";
+      // Check if account has been explicitly marked as deleted in database
       const isAccountDeleted = 
-        profileData?.is_deleted ||
+        profileData?.is_deleted === true ||
         profileData?.role === "deleted" ||
-        deletedSet.has(session.user.id) ||
-        (uEmail && deletedSet.has(uEmail));
+        !profileData;
 
       if (isAccountDeleted) {
-        await supabase.auth.signOut();
-        setUser(null);
+        // Auto-reactivate profile upon successful Auth session sign-in
+        const uid = session.user.id;
+        const uEmail = session.user.email || "";
+        const uName = session.user.user_metadata?.display_name || session.user.user_metadata?.full_name || uEmail.split("@")[0] || "User";
+        
+        removeDeletedUserId(uid);
+        if (uEmail) removeDeletedUserId(uEmail.toLowerCase());
+
+        try {
+          await supabase.from("profiles").upsert({
+            id: uid,
+            email: uEmail,
+            display_name: uName,
+            role: "user",
+            is_deleted: false,
+            is_banned: false,
+            ban_reason: null,
+          }, { onConflict: "id" });
+
+          await supabase.from("user_roles").upsert({
+            user_id: uid,
+            role: "user",
+          }, { onConflict: "user_id" });
+        } catch (e) {
+          console.warn("Reactivate profile notice:", e);
+        }
+
         setRole("user");
         setIsBanned(false);
         setBanReason(null);
