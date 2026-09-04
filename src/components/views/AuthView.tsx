@@ -124,6 +124,29 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
     }
   };
 
+  // ── Forgot Password ──
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      setErrorMsg("กรุณากรอกอีเมลในช่องอีเมลด้านบนก่อนกดลืมรหัสผ่าน");
+      return;
+    }
+    setLoading(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      setSuccessMsg(`ส่งลิงก์รีเซ็ตรหัสผ่านไปยังอีเมล ${email.trim()} เรียบร้อยแล้ว กรุณาตรวจสอบกล่องข้อความ (Inbox/Spam)`);
+    } catch (err: any) {
+      console.error("Reset password failed:", err);
+      setErrorMsg(err.message || "ไม่สามารถส่งอีเมลรีเซ็ตรหัสผ่านได้ กรุณาลองใหม่อีกครั้ง");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // ── Google OAuth Sign-in ──
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
@@ -184,7 +207,7 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
 
         if (error) {
           if (emailExists) {
-            setErrorMsg("รหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง");
+            setErrorMsg("รหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง (หากคุณสมัครหรือเคยเข้าใช้งานด้วย Google กรุณากดปุ่ม 'Google Workspace' ด้านล่างเพื่อเข้าสู่ระบบ)");
           } else {
             setErrorMsg("ยังไม่มีบัญชีที่ใช้อีเมลนี้ในระบบ กรุณาสมัครสมาชิกก่อน");
           }
@@ -202,19 +225,29 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
             .eq("id", authData.user.id)
             .maybeSingle();
 
-          // Block login if account was deleted
+          // Auto reactivate profile if account was previously soft deleted
           if (
             profData?.is_deleted ||
             profData?.role === "deleted" ||
             deletedSet.has(uidStr) ||
             deletedSet.has(emailLower)
           ) {
-            recordDeletedUserId(uidStr);
-            recordDeletedUserId(emailLower);
-            await supabase.auth.signOut();
-            setErrorMsg("ยังไม่มีบัญชีที่ใช้อีเมลนี้ในระบบ กรุณาสมัครสมาชิกก่อน");
-            setLoading(false);
-            return;
+            removeDeletedUserId(uidStr);
+            removeDeletedUserId(emailLower);
+            await supabase.from("profiles").upsert({
+              id: authData.user.id,
+              email: authData.user.email || email.trim(),
+              display_name: authData.user.user_metadata?.display_name || authData.user.email?.split("@")[0] || "User",
+              role: "user",
+              is_deleted: false,
+              is_banned: false,
+              ban_reason: null,
+            }, { onConflict: "id" });
+
+            await supabase.from("user_roles").upsert({
+              user_id: authData.user.id,
+              role: "user",
+            }, { onConflict: "user_id" });
           }
 
           const { data: subData } = await supabase
@@ -480,7 +513,7 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
       } catch (err: any) {
         console.error("Merchant signup failed:", err);
         if (err.message?.includes("User already registered")) {
-          setErrorMsg("อีเมลนี้ถูกลงทะเบียนไว้ในระบบแล้ว กรุณาใช้บัญชีนี้เข้าสู่ระบบ");
+          setErrorMsg("อีเมลนี้ถูกลงทะเบียนในระบบแล้ว คุณสามารถกดเข้าสู่ระบบด้วย 'Google Workspace' หรือ 'เข้าสู่ระบบ' ด้วยรหัสผ่าน เพื่อกู้คืนบัญชีและยื่นคำขอเปิดร้านค้าได้ทันที");
         } else {
           setErrorMsg(err.message || "ลงทะเบียนร้านค้าไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
         }
@@ -786,6 +819,18 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
                 {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
               </button>
             </div>
+
+            {mode === "login" && (
+              <div className="flex justify-end mt-1.5">
+                <button
+                  type="button"
+                  onClick={handleForgotPassword}
+                  className="text-[11px] font-bold text-[#FD775C] hover:text-[#E31E27] transition cursor-pointer"
+                >
+                  ลืมรหัสผ่าน? / ตั้งรหัสผ่านใหม่
+                </button>
+              </div>
+            )}
 
             {/* Password security requirement indicators for Signup & Merchant (Show ONLY on Focus or Typing) */}
             {mode !== "login" && (isPasswordFocused || password.length > 0) && (

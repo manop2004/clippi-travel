@@ -127,6 +127,31 @@ export default function AdminReviewView() {
         }
       }
 
+      // 4. Local storage fallback pending submissions
+      try {
+        const localSubs = JSON.parse(localStorage.getItem("merchant_pending_submissions") || "[]");
+        for (const lSub of localSubs) {
+          if (lSub.status === "pending" && !rawData.some((r) => r.user_id === lSub.user_id || r.id === lSub.id)) {
+            rawData.push({
+              ...lSub,
+              id: lSub.id || `local_${lSub.user_id || Date.now()}`,
+              name_en: lSub.shop_name || lSub.name_en || "Merchant Partner Application",
+              shop_name: lSub.shop_name || lSub.name_en,
+              contact_name: lSub.contact_name || "Merchant Owner",
+              contact_phone: lSub.contact_phone || "-",
+              contact_email: lSub.contact_email || "-",
+              category: lSub.category || "food",
+              prefecture: lSub.prefecture || "Tokyo",
+              street: lSub.prefecture ? `Prefecture: ${lSub.prefecture}` : "Address Pending",
+              description: `Pending Merchant Registration for ${lSub.shop_name || lSub.contact_email}. Contact: ${lSub.contact_phone || lSub.contact_email}`,
+              status: "pending",
+              created_at: lSub.created_at || new Date().toISOString(),
+              is_profile_only: true,
+            });
+          }
+        }
+      } catch (e) {}
+
       setSubmissions(rawData);
     } catch (err) {
       console.error("Error fetching pending submissions:", err);
@@ -155,11 +180,17 @@ export default function AdminReviewView() {
 
   // Separate submissions into Merchant Applications vs Spot Submissions
   const merchantSubmissions = submissions.filter(
-    (s) => s.is_profile_only || s.id.startsWith("prof_") || s.ownership_proof_url || (s.shop_name && !s.lat)
+    (s) =>
+      s.is_profile_only ||
+      (typeof s.id === "string" && (s.id.startsWith("prof_") || s.id.startsWith("local_"))) ||
+      Boolean(s.ownership_proof_url) ||
+      Boolean(s.contact_name) ||
+      Boolean(s.contact_phone) ||
+      (Boolean(s.shop_name || s.name_en) && !s.lat)
   );
 
   const placeSubmissions = submissions.filter(
-    (s) => !s.is_profile_only && !s.id.startsWith("prof_")
+    (s) => !merchantSubmissions.includes(s)
   );
 
   // Filter places tab
@@ -183,39 +214,78 @@ export default function AdminReviewView() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       const adminId = user?.id || null;
-      const uid = sub.user_id || sub.id.replace("prof_", "");
+      const uid = sub.user_id || (typeof sub.id === "string" ? sub.id.replace("prof_", "").replace("local_", "") : null);
+      const email = sub.contact_email || sub.email;
 
       // 1. Update profiles table
-      await supabase
-        .from("profiles")
-        .update({ role: "store", merchant_status: "approved" })
-        .eq("id", uid);
-
-      // 2. Upsert user_roles table
-      await supabase
-        .from("user_roles")
-        .upsert({ user_id: uid, role: "store" }, { onConflict: "user_id" });
-
-      // 3. Update place_submissions if real row exists
-      if (!sub.is_profile_only && !sub.id.startsWith("prof_")) {
+      if (uid && !uid.startsWith("local_")) {
         await supabase
-          .from("place_submissions")
-          .update({ status: "approved", reviewed_by: adminId, reviewed_at: new Date().toISOString() })
-          .eq("id", sub.id);
+          .from("profiles")
+          .update({ role: "store", merchant_status: "approved" })
+          .eq("id", uid);
+
+        // 2. Upsert user_roles table
+        try {
+          await supabase
+            .from("user_roles")
+            .upsert({ user_id: uid, role: "store" }, { onConflict: "user_id" });
+        } catch (e) {}
       }
 
-      // 4. Log admin action
-      if (adminId) {
-        await supabase.from("admin_action_log").insert({
-          admin_id: adminId,
-          action_type: "approve_merchant",
-          target_table: "profiles",
-          target_id: uid,
-          detail: { shop_name: sub.shop_name || sub.name_en }
+      // 3. Update place_submissions in Supabase
+      try {
+        if (typeof sub.id === "string" && !sub.id.startsWith("prof_") && !sub.id.startsWith("local_")) {
+          await supabase
+            .from("place_submissions")
+            .update({ status: "approved", reviewed_by: adminId, reviewed_at: new Date().toISOString() })
+            .eq("id", sub.id);
+        }
+
+        if (uid && !uid.startsWith("local_")) {
+          await supabase
+            .from("place_submissions")
+            .update({ status: "approved", reviewed_by: adminId, reviewed_at: new Date().toISOString() })
+            .eq("user_id", uid);
+        }
+
+        if (email) {
+          await supabase
+            .from("place_submissions")
+            .update({ status: "approved", reviewed_by: adminId, reviewed_at: new Date().toISOString() })
+            .ilike("contact_email", email.toLowerCase());
+        }
+      } catch (e) {}
+
+      // 4. Update local storage fallback
+      try {
+        const localSubs = JSON.parse(localStorage.getItem("merchant_pending_submissions") || "[]");
+        const updatedLocal = localSubs.map((item: any) => {
+          const isMatch =
+            (uid && item.user_id === uid) ||
+            (email && item.contact_email?.toLowerCase() === email.toLowerCase()) ||
+            item.id === sub.id;
+          if (isMatch) {
+            return { ...item, status: "approved" };
+          }
+          return item;
         });
+        localStorage.setItem("merchant_pending_submissions", JSON.stringify(updatedLocal));
+      } catch (e) {}
+
+      // 5. Log admin action
+      if (adminId) {
+        try {
+          await supabase.from("admin_action_log").insert({
+            admin_id: adminId,
+            action_type: "approve_merchant",
+            target_table: "profiles",
+            target_id: uid || sub.id,
+            detail: { shop_name: sub.shop_name || sub.name_en }
+          });
+        } catch (e) {}
       }
 
-      setSubmissions((prev) => prev.filter((s) => s.id !== sub.id));
+      setSubmissions((prev) => prev.filter((s) => s.id !== sub.id && (uid ? s.user_id !== uid : true)));
       alert(`🎉 อนุมัติสิทธิ์เจ้าของร้านค้าสำหรับ "${sub.shop_name || sub.name_en || sub.contact_name}" เรียบร้อยแล้ว!`);
     } catch (err: any) {
       console.error("Approve merchant error:", err);
@@ -231,45 +301,102 @@ export default function AdminReviewView() {
       const { data: { user } } = await supabase.auth.getUser();
       const adminId = user?.id || null;
       const subObj = submissions.find(s => s.id === subId);
-      const uid = subObj?.user_id || subId.replace("prof_", "");
+      const uid = subObj?.user_id || (typeof subId === "string" ? subId.replace("prof_", "").replace("local_", "") : null);
+      const email = subObj?.contact_email || subObj?.email;
       const finalReason = rejectionReason || "เอกสารหรือข้อมูลสิทธิ์ร้านค้าไม่ผ่านการตรวจสอบ";
 
       // 1. Update profiles table
-      await supabase
-        .from("profiles")
-        .update({ role: "user", merchant_status: "rejected" })
-        .eq("id", uid);
-
-      // 2. Upsert user_roles table
-      await supabase
-        .from("user_roles")
-        .upsert({ user_id: uid, role: "user" }, { onConflict: "user_id" });
-
-      // 3. Update place_submissions if real row exists
-      if (subObj && !subObj.is_profile_only && !subId.startsWith("prof_")) {
+      if (uid && !uid.startsWith("local_")) {
         await supabase
-          .from("place_submissions")
-          .update({
-            status: "rejected",
-            rejection_reason: finalReason,
-            reviewed_by: adminId,
-            reviewed_at: new Date().toISOString()
-          })
-          .eq("id", subId);
+          .from("profiles")
+          .update({ role: "user", merchant_status: "rejected", ban_reason: null })
+          .eq("id", uid);
+
+        // 2. Upsert user_roles table
+        try {
+          await supabase
+            .from("user_roles")
+            .upsert({ user_id: uid, role: "user" }, { onConflict: "user_id" });
+        } catch (e) {}
       }
 
-      // 4. Log admin action
-      if (adminId) {
-        await supabase.from("admin_action_log").insert({
-          admin_id: adminId,
-          action_type: "reject_merchant",
-          target_table: "profiles",
-          target_id: uid,
-          detail: { reason: finalReason }
+      // 3. Update ALL matching place_submissions in Supabase
+      try {
+        if (typeof subId === "string" && !subId.startsWith("prof_") && !subId.startsWith("local_")) {
+          await supabase
+            .from("place_submissions")
+            .update({
+              status: "rejected",
+              rejection_reason: finalReason,
+              reviewed_by: adminId,
+              reviewed_at: new Date().toISOString()
+            })
+            .eq("id", subId);
+        }
+
+        if (uid && !uid.startsWith("local_")) {
+          await supabase
+            .from("place_submissions")
+            .update({
+              status: "rejected",
+              rejection_reason: finalReason,
+              reviewed_by: adminId,
+              reviewed_at: new Date().toISOString()
+            })
+            .eq("user_id", uid);
+        }
+
+        if (email) {
+          await supabase
+            .from("place_submissions")
+            .update({
+              status: "rejected",
+              rejection_reason: finalReason,
+              reviewed_by: adminId,
+              reviewed_at: new Date().toISOString()
+            })
+            .ilike("contact_email", email.toLowerCase());
+        }
+      } catch (e) {
+        console.warn("place_submissions reject update notice:", e);
+      }
+
+      // 4. Update local storage pending merchant submissions
+      try {
+        const localSubs = JSON.parse(localStorage.getItem("merchant_pending_submissions") || "[]");
+        const updatedLocal = localSubs.map((item: any) => {
+          const isMatch =
+            (uid && item.user_id === uid) ||
+            (email && item.contact_email?.toLowerCase() === email.toLowerCase()) ||
+            item.id === subId;
+          if (isMatch) {
+            return { ...item, status: "rejected", rejection_reason: finalReason };
+          }
+          return item;
         });
+        localStorage.setItem("merchant_pending_submissions", JSON.stringify(updatedLocal));
+
+        // Also update active local merchant state
+        const activeLocal = JSON.parse(localStorage.getItem("active_pending_merchant") || "null");
+        if (activeLocal && (activeLocal.email?.toLowerCase() === email?.toLowerCase() || activeLocal.user_id === uid)) {
+          localStorage.setItem("active_pending_merchant", JSON.stringify({ ...activeLocal, status: "rejected", rejection_reason: finalReason }));
+        }
+      } catch (e) {}
+
+      // 5. Log admin action
+      if (adminId) {
+        try {
+          await supabase.from("admin_action_log").insert({
+            admin_id: adminId,
+            action_type: "reject_merchant",
+            target_table: "profiles",
+            target_id: uid || subId,
+            detail: { reason: finalReason, email: email }
+          });
+        } catch (e) {}
       }
 
-      setSubmissions((prev) => prev.filter((s) => s.id !== subId));
+      setSubmissions((prev) => prev.filter((s) => s.id !== subId && (uid ? s.user_id !== uid : true)));
       setRejectingId(null);
       setRejectionReason("");
       alert("ปฏิเสธคำขอลงทะเบียนเจ้าของร้านค้าเรียบร้อยแล้ว");
