@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ChevronLeft, Loader2, Star } from "lucide-react";
+import { ChevronLeft, Loader2, Star, Store } from "lucide-react";
 import { C } from "../../constants/mockData";
 import { getPlaces } from "../../hooks/useReviewStamp";
 import { Place } from "../../types/review-stamp";
@@ -112,7 +112,7 @@ export default function TrendingAllView({ openPlace, searchQuery = "", onBack }:
                   {p.image_url ? (
                     <img src={p.image_url} alt={shopName} className="w-full h-full object-cover" loading="lazy" />
                   ) : (
-                    "🏬"
+                    <Store size={20} className="text-amber-800" />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">

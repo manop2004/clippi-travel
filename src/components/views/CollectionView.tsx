@@ -4,8 +4,9 @@ import { getUserStamps, getPlaces } from "../../hooks/useReviewStamp";
 import { supabase } from "../../supabaseClient";
 import { UserStamp, Place } from "../../types/review-stamp";
 import StarRow from "../StarRow";
-import { MapPin } from "lucide-react";
+import { MapPin, Building2 } from "lucide-react";
 import { useLang, localized } from "../../lib/i18n";
+import ClippiMascot from "../ClippiMascot";
 
 const REGIONS = ["Kanto", "Kansai", "Hokkaido", "Tohoku", "Chubu", "Chugoku", "Kyushu & Okinawa", "Shikoku"];
 const REGION_FILTERS = [{ id: "All", label: "All" }, ...REGIONS.map(r => ({ id: r, label: r }))];
@@ -87,21 +88,38 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
 
   if (loading) {
     return (
-      <div className="h-96 w-full flex items-center justify-center text-xs font-black text-[#8A7870]">
+      <div className="h-96 w-full flex items-center justify-center text-xs font-black text-[#555555]">
         {t("collection.loading")}
       </div>
     );
   }
 
   return (
-    <div className="space-y-4 w-full min-w-0 text-[#231C18]">
-      <div className="py-1">
-        <h2 className="text-base font-black leading-none select-none" style={{ color: C.ink }}>
-          {t("nav.collection")}
-        </h2>
-        <p className="text-[10px] font-semibold mt-1" style={{ color: C.inkSoft }}>
-          {t("collection.sub")}
-        </p>
+    <div className="space-y-5 w-full min-w-0 text-[#000000]">
+      
+      {/* 📎 Clippi Stamp Counter Card */}
+      <div className="bg-gradient-to-r from-stone-900 via-[#000000] to-stone-900 rounded-3xl p-5 text-white flex items-center justify-between shadow-lg relative overflow-hidden">
+        <div className="space-y-1 z-10">
+          <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#FD775C]/20 border border-[#FD775C]/40 text-[9.5px] font-black text-[#FD775C] tracking-wider uppercase">
+            <span>📎 CLIPPI STAMP BOOK</span>
+          </div>
+          <h3 className="text-xl font-black drop-shadow-xs">
+            สะสมแล้ว {totalCollected} / {places.length} แสตมป์
+          </h3>
+          <p className="text-xs text-stone-300">
+            {totalCollected > 0
+              ? `สุดยอดมาก! ออกเดินทางสะสมอีก ${places.length - totalCollected} สถานที่เลย`
+              : "ยังไม่มีแสตมป์ มาออกเดินทางเช็คอินและเก็บคลิปแสตมป์กัน!"}
+          </p>
+        </div>
+        <div className="shrink-0 z-10">
+          <ClippiMascot
+            size="md"
+            speech={totalCollected > 0 ? `ได้ ${totalCollected} แสตมป์แล้ว! 🎉` : "มาเก็บแสตมป์กัน! 📎"}
+            animate={true}
+          />
+        </div>
+        <div className="absolute -right-8 -top-8 w-36 h-36 rounded-full bg-[#FD775C]/20 blur-xl pointer-events-none" />
       </div>
 
       {/* 🌏 Filter Tabs (by region) */}
@@ -156,7 +174,7 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
                     {place?.image_url ? (
                       <img src={place.image_url} alt={shopName} className="w-full h-full object-cover" loading="lazy" />
                     ) : (
-                      "🏢"
+                      <Building2 size={20} className="text-amber-800" />
                     )}
                   </div>
                   <p className="text-[9px] font-black leading-tight" style={{ color: C.ink }}>
@@ -199,7 +217,7 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
                     {place.image_url ? (
                       <img src={place.image_url} alt={shopName} className="w-full h-full object-cover" loading="lazy" />
                     ) : (
-                      "🏢"
+                      <Building2 size={20} className="text-stone-400" />
                     )}
                   </div>
                   <p className="text-[10px] font-black leading-tight" style={{ color: C.ink }}>

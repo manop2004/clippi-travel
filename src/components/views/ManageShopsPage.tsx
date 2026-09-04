@@ -388,7 +388,7 @@ export default function ManageShopsPage({ onGoHome, onAddNewPlaceClick }: Manage
               }`}
               style={statusFilter !== "approved" ? { borderColor: C.line } : undefined}
             >
-              ✓ อนุมัติแล้ว ({countApproved})
+              อนุมัติแล้ว ({countApproved})
             </button>
 
             <button
@@ -400,7 +400,7 @@ export default function ManageShopsPage({ onGoHome, onAddNewPlaceClick }: Manage
               }`}
               style={statusFilter !== "rejected" ? { borderColor: C.line } : undefined}
             >
-              ✕ ไม่อนุมัติ ({countRejected})
+              ไม่อนุมัติ ({countRejected})
             </button>
 
             <button
@@ -412,7 +412,7 @@ export default function ManageShopsPage({ onGoHome, onAddNewPlaceClick }: Manage
               }`}
               style={statusFilter !== "deleted" ? { borderColor: C.line } : undefined}
             >
-              🚫 ถูกลบ ({countDeleted})
+              ถูกลบ ({countDeleted})
             </button>
           </div>
         ) : (
@@ -503,7 +503,7 @@ export default function ManageShopsPage({ onGoHome, onAddNewPlaceClick }: Manage
                         </div>
 
                         {item.street && (
-                          <p className="text-xs text-[#8A7870] font-semibold">📍 {item.street}</p>
+                          <p className="text-xs text-[#8A7870] font-semibold">{item.street}</p>
                         )}
                         {item.description && (
                           <p className="text-[11px] text-[#8A7870] line-clamp-1">{item.description}</p>
@@ -512,14 +512,14 @@ export default function ManageShopsPage({ onGoHome, onAddNewPlaceClick }: Manage
                         {/* Rejection Reason Notice */}
                         {item.status === "rejected" && item.rejection_reason && (
                           <div className="mt-2 p-2.5 rounded-xl bg-red-50 border border-red-200 text-[11px] text-red-700 font-semibold">
-                            ⚠️ เหตุผลที่ไม่ผ่าน: {item.rejection_reason}
+                            เหตุผลที่ไม่ผ่าน: {item.rejection_reason}
                           </div>
                         )}
 
                         {/* Deleted Shop Locked Notice */}
                         {item.status === "deleted" && (
                           <div className="mt-2 p-2 rounded-xl bg-stone-100 border border-stone-300 text-[10px] text-stone-600 font-bold">
-                            🔒 ร้านถูกลบออกแล้ว ไม่สามารถแก้ไขได้
+                            ร้านถูกลบออกแล้ว ไม่สามารถแก้ไขได้
                           </div>
                         )}
                       </div>
@@ -636,7 +636,7 @@ export default function ManageShopsPage({ onGoHome, onAddNewPlaceClick }: Manage
                         <p className="text-[10px] text-[#8A7870] font-medium truncate">{shop.shop_name_jp}</p>
                       )}
                       <p className="text-[10px] text-[#8A7870] font-semibold truncate mt-0.5">
-                        📍 {shop.prefecture || shop.address || "Japan"}
+                        {shop.prefecture || shop.address || "Japan"}
                       </p>
                     </div>
                   </div>

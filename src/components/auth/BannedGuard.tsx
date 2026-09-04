@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../../supabaseClient";
+import { Ban } from "lucide-react";
 
 export const BannedGuard = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
@@ -59,8 +60,8 @@ export const BannedGuard = ({ children }: { children: React.ReactNode }) => {
     return (
       <div className="fixed inset-0 z-[999999] bg-slate-900 flex items-center justify-center p-4">
         <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center shadow-2xl border border-red-100">
-          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-5 text-4xl">
-            🛑
+          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-5 text-red-600">
+            <Ban size={40} />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">บัญชีของคุณถูกระงับการใช้งาน</h2>
           <p className="text-gray-500 text-sm mb-6">คุณถูกระงับสิทธิ์การใช้งานระบบ ไม่สามารถเข้าถึงส่วนใดๆ ได้</p>

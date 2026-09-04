@@ -2,6 +2,7 @@ import React from "react";
 import { C } from "../constants/mockData";
 import StarRow from "./StarRow";
 import { useLang, localized } from "../lib/i18n";
+import { Store } from "lucide-react";
 
 export interface Place {
   id: string | number;
@@ -55,7 +56,7 @@ export default function PlaceCard({ place, onClick, compact = false }: PlaceCard
           {place.image_url ? (
             <img src={place.image_url} alt={shopName} className="w-full h-full object-cover" loading="lazy" />
           ) : (
-            emoji
+            <Store size={22} className="text-amber-800" />
           )}
         </div>
         <span className="text-[8px] font-black tracking-wider uppercase block truncate" style={{ color: C.accentDeep }}>{prefecture}</span>
@@ -76,7 +77,7 @@ export default function PlaceCard({ place, onClick, compact = false }: PlaceCard
           {place.image_url ? (
             <img src={place.image_url} alt={shopName} className="w-full h-full object-cover" loading="lazy" />
           ) : (
-            emoji
+            <Store size={26} className="text-amber-800" />
           )}
         </div>
         <span className="text-[8px] font-black tracking-wider uppercase block truncate" style={{ color: C.accentDeep }}>{prefecture}</span>

@@ -18,14 +18,16 @@ import {
   CheckCircle2,
   AlertCircle,
   Upload,
-  LayoutDashboard
+  LayoutDashboard,
+  Trash2
 } from "lucide-react";
 import { C } from "../../constants/mockData";
 import { supabase } from "../../supabaseClient";
 import { User as AuthUser } from "@supabase/supabase-js";
 import { useLang } from "../../lib/i18n";
 import { useUserRole } from "../../hooks/useUserRole";
-import { resolveUserDisplayName, resolveUserAvatarUrl } from "../../lib/activityHelpers";
+import { resolveUserDisplayName, resolveUserAvatarUrl, deleteUserCascade } from "../../lib/activityHelpers";
+import ClippiMascot from "../ClippiMascot";
 
 // ─── Level / XP helpers (Calculates Level based on XP: Level = floor(xp / 100) + 1) ───
 const levelFromXp = (xp: number) => Math.floor(xp / 100) + 1;
@@ -519,26 +521,27 @@ export default function ProfileView() {
       )}
 
       {/* 👤 Profile Header Card */}
-      <div className="bg-white rounded-3xl p-6 border flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-xs" style={{ borderColor: C.line }}>
-        <div className="flex items-center gap-4 select-none min-w-0">
+      <div className="bg-white rounded-3xl p-6 border flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-xs relative overflow-hidden" style={{ borderColor: C.line }}>
+        <div className="flex items-center gap-4 select-none min-w-0 z-10">
           <div className="relative shrink-0">
             {avatarUrl && !avatarImgError ? (
               <img
                 src={avatarUrl}
                 alt={userName}
+                referrerPolicy="no-referrer"
                 onError={() => setAvatarImgError(true)}
                 className="w-16 h-16 rounded-full object-cover border-2 shadow-sm"
                 style={{ borderColor: C.accent }}
               />
             ) : (
-              <div className="w-16 h-16 rounded-full flex items-center justify-center font-black text-[#E7A93C] bg-[#231C18] text-xl shadow-sm">
+              <div className="w-16 h-16 rounded-full flex items-center justify-center font-black text-white bg-[#000000] text-xl shadow-sm">
                 {userInitial}
               </div>
             )}
             
             {/* ROLE BADGE: Render ADMIN badge ONLY if role === 'admin' */}
             {role === "admin" && (
-              <span className="absolute -bottom-1 -right-1 bg-[#E0533C] text-white text-[8px] font-black px-1.5 py-0.5 rounded-full border border-white uppercase tracking-wider shadow-xs">
+              <span className="absolute -bottom-1 -right-1 bg-[#E31E27] text-white text-[8px] font-black px-1.5 py-0.5 rounded-full border border-white uppercase tracking-wider shadow-xs">
                 ADMIN
               </span>
             )}
@@ -546,13 +549,13 @@ export default function ProfileView() {
 
           <div className="leading-tight min-w-0">
             <h2 className="text-lg font-black truncate" style={{ color: C.ink }}>{userName}</h2>
-            <p className="text-xs text-[#8A7870] font-semibold mt-0.5 truncate">{userEmail}</p>
+            <p className="text-xs text-[#555555] font-semibold mt-0.5 truncate">{userEmail}</p>
             <button
               onClick={handleOpenEditModal}
-              className="mt-2.5 px-3.5 py-1.5 border rounded-xl text-[10px] font-black hover:bg-[#FAF6F0] hover:border-[#E0533C] transition flex items-center gap-1.5 cursor-pointer"
+              className="mt-2.5 px-3.5 py-1.5 border rounded-xl text-[10px] font-black hover:bg-[#FFF0ED] hover:border-[#FD775C] transition flex items-center gap-1.5 cursor-pointer"
               style={{ borderColor: C.line }}
             >
-              <Edit3 size={11} className="text-[#E0533C]" />
+              <Edit3 size={11} className="text-[#FD775C]" />
               <span>{t("profile.editProfile")}</span>
             </button>
           </div>
@@ -658,7 +661,7 @@ export default function ProfileView() {
                     <span className="text-xl" style={{ filter: b.locked ? "grayscale(1) opacity(0.5)" : "none" }}>{b.icon}</span>
                     {!b.locked && (
                       <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 text-white rounded-full flex items-center justify-center text-[8px]">
-                        ✓
+                        <Check size={8} strokeWidth={3} />
                       </span>
                     )}
                   </div>
@@ -735,18 +738,18 @@ export default function ProfileView() {
           {/* Option 4: Sign Out */}
           <button
             onClick={handleSignOut}
-            className="w-full p-4 flex items-center justify-between text-left hover:bg-red-50/40 transition cursor-pointer group"
+            className="w-full p-4 flex items-center justify-between text-left hover:bg-stone-50/50 transition cursor-pointer group"
           >
             <span className="flex items-center gap-3.5 min-w-0">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-red-50 shrink-0 border border-red-100 group-hover:border-red-300 transition">
-                <LogOut size={15} color="#E0533C" strokeWidth={2.2} />
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-stone-100 shrink-0 border border-stone-200 group-hover:border-stone-400 transition">
+                <LogOut size={15} className="text-stone-700" strokeWidth={2.2} />
               </div>
               <div className="leading-tight">
-                <span className="text-xs font-black block text-red-600">{t("action.signOut")}</span>
-                <span className="text-[9px] text-red-400 font-semibold block mt-0.5">{t("profile.signOutSub")}</span>
+                <span className="text-xs font-black block text-stone-900">{t("action.signOut")}</span>
+                <span className="text-[9px] text-stone-500 font-semibold block mt-0.5">{t("profile.signOutSub")}</span>
               </div>
             </span>
-            <ChevronRight size={14} color="#FCA5A5" className="shrink-0 ml-2 group-hover:translate-x-0.5 transition" />
+            <ChevronRight size={14} className="text-stone-400 shrink-0 ml-2 group-hover:translate-x-0.5 transition" />
           </button>
 
         </div>
@@ -781,6 +784,7 @@ export default function ProfileView() {
                     <img
                       src={avatarPreview}
                       alt="Preview"
+                      referrerPolicy="no-referrer"
                       onError={() => setAvatarImgError(true)}
                       className="w-24 h-24 rounded-full object-cover border-2 shadow-md group-hover:opacity-85 transition"
                       style={{ borderColor: C.accent }}

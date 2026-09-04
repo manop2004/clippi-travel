@@ -9,6 +9,7 @@ import ActivityCard from "../ActivityCard";
 import ActivityFeedModal from "../ActivityFeedModal";
 import { ActivityLogRow } from "../../lib/activityHelpers";
 import { useLang } from "../../lib/i18n";
+import ClippiMascot from "../ClippiMascot";
 
 export default function ExploreView({ openPlace, onViewMap, onSeeAllTrending, searchQuery = "" }: { openPlace: (p: any) => void; onViewMap?: () => void; onSeeAllTrending?: () => void; searchQuery?: string }) {
   const [activityFeed, setActivityFeed] = useState<ActivityLogRow[]>([]);
@@ -65,12 +66,31 @@ export default function ExploreView({ openPlace, onViewMap, onSeeAllTrending, se
   }, []);
 
   return (
-    <div className="space-y-6 md:space-y-8 w-full min-w-0 text-[#231C18]">
+    <div className="space-y-6 md:space-y-8 w-full min-w-0 text-[#000000]">
       
+      {/* 📎 Clippi Mascot Welcome Banner */}
+      <div className="w-full bg-gradient-to-r from-[#FD775C] via-[#FD775C] to-[#E31E27] rounded-3xl p-5 md:p-6 text-white shadow-lg relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="z-10 space-y-1.5 text-center md:text-left">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-[10px] font-black tracking-wider uppercase">
+            <span>📎 CLIP, COLLECT, CONNECT</span>
+          </div>
+          <h1 className="text-xl md:text-2xl font-black tracking-tight drop-shadow-xs">
+            ยินดีต้อนรับสู่ Clippi Stamp Rally!
+          </h1>
+          <p className="text-xs font-medium text-white/90 max-w-lg">
+            สะสมแสตมป์ดิจิทัลจากร้านค้าและสถานที่ท่องเที่ยวที่คุณชื่นชอบ คลิปเก็บความทรงจำได้เลยวันนี้
+          </p>
+        </div>
+        <div className="shrink-0 z-10">
+          <ClippiMascot size="lg" speech="พร้อมสะสมแสตมป์กันหรือยัง? 📎" animate={true} />
+        </div>
+        <div className="absolute -right-8 -bottom-8 w-48 h-48 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+      </div>
+
       <div className="w-full min-w-0">
         <div className="mb-4">
           <h2 className="text-lg font-black tracking-tight" style={{ color: C.ink }}>{t("explore.promoTitle")}</h2>
-          <p className="text-[11px] font-semibold text-[#8A7870] mt-0.5">{t("explore.promoSub")}</p>
+          <p className="text-[11px] font-semibold text-[#555555] mt-0.5">{t("explore.promoSub")}</p>
         </div>
         <RegionalBanners openPlace={openPlace} />
       </div>

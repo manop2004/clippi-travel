@@ -21,13 +21,15 @@ import {
   Clock,
   Mail,
   MessageSquare,
-  MapPin
+  MapPin,
+  Trash2
 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 import { C } from "../../constants/mockData";
 import { ProtectedRoute } from "../auth/ProtectedRoute";
 import { UserRole } from "../../hooks/useUserRole";
-import { resolveUserDisplayName, resolveUserAvatarUrl } from "../../lib/activityHelpers";
+import { resolveUserDisplayName, resolveUserAvatarUrl, deleteUserCascade, getDeletedUserIds, recordDeletedUserId } from "../../lib/activityHelpers";
+import { UserAvatar } from "../UserAvatar";
 
 export default function UserManagementPage() {
   return (
@@ -46,6 +48,7 @@ function UserManagementContent() {
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "name" | "most_stamps" | "most_reviews">("newest");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [banningId, setBanningId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [currentAdmin, setCurrentAdmin] = useState<any>(null);
 
   // States for Assign Shop Modal
@@ -234,16 +237,30 @@ function UserManagementContent() {
       });
 
       const baseList = rpcProfiles.length > 0 ? rpcProfiles : standardProfiles;
-      const rawProfiles = baseList.map((rpcP: any) => {
-        const keyStr = String(rpcP.id || rpcP.user_id || "");
-        const dbP = profileMap.get(keyStr) || (rpcP.email ? profileMap.get(rpcP.email.toLowerCase()) : {}) || {};
-        return {
-          ...dbP,
-          ...rpcP,
-          custom_avatar_url: dbP.custom_avatar_url || rpcP.custom_avatar_url || rpcP.user_metadata?.custom_avatar_url || rpcP.raw_user_meta_data?.custom_avatar_url,
-          avatar_url: dbP.avatar_url || rpcP.avatar_url,
-        };
-      });
+      const deletedSet = getDeletedUserIds();
+
+      const rawProfiles = baseList
+        .map((rpcP: any) => {
+          const keyStr = String(rpcP.id || rpcP.user_id || "");
+          const dbP = profileMap.get(keyStr) || (rpcP.email ? profileMap.get(rpcP.email.toLowerCase()) : {}) || {};
+          return {
+            ...dbP,
+            ...rpcP,
+            custom_avatar_url: dbP.custom_avatar_url || rpcP.custom_avatar_url || rpcP.user_metadata?.custom_avatar_url || rpcP.raw_user_meta_data?.custom_avatar_url,
+            avatar_url: dbP.avatar_url || rpcP.avatar_url,
+          };
+        })
+        .filter((p: any) => {
+          const idStr = String(p.id || p.user_id || "");
+          const emailStr = (p.email || "").toLowerCase();
+          if (deletedSet.has(idStr) || (emailStr && deletedSet.has(emailStr))) {
+            return false;
+          }
+          if (p.is_deleted || p.role === "deleted") {
+            return false;
+          }
+          return true;
+        });
 
       const [rolesRes, stampsRes, reviewsRes, storeOwnersRes] = await Promise.all([
         supabase.from("user_roles").select("*"),
@@ -497,6 +514,31 @@ function UserManagementContent() {
     }
   };
 
+  const handleDeleteUser = async (userId: string, userName: string, userEmail?: string) => {
+    const isConfirmed = window.confirm(
+      `⚠️ ยืนยันการลบสมาชิกและรีเซ็ตข้อมูลทุกอย่างออกจากระบบ\n\nการลบสมาชิก "${userName}" จะทำการลบข้อมูลโปรไฟล์, ประวัติเช็คอิน/สะสมแสตมป์, รีวิวร้านค้า, คำขอลงทะเบียนร้านค้า และสิทธิ์การใช้งานทั้งหมดออกจากระบบอย่างถาวรโดยไม่สามารถกู้คืนได้\n\nคุณแน่ใจหรือไม่ว่าต้องการลบสมาชิกคนนี้?`
+    );
+
+    if (!isConfirmed) return;
+
+    setDeletingId(userId);
+    try {
+      if (userEmail) recordDeletedUserId(userEmail);
+      const ok = await deleteUserCascade(userId);
+      if (ok) {
+        setUsers((prev) => prev.filter((u) => u.id !== userId && u.user_id !== userId && (userEmail ? u.email !== userEmail : true)));
+        alert(`ลบสมาชิก "${userName}" และรีเซ็ตข้อมูลทุกอย่างออกจากระบบเรียบร้อยแล้ว!`);
+      } else {
+        alert("เกิดข้อผิดพลาด ไม่สามารถลบสมาชิกได้");
+      }
+    } catch (err: any) {
+      console.error("Delete user error:", err);
+      alert("เกิดข้อผิดพลาดในการลบสมาชิก: " + (err.message || "Failed"));
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const filteredUsers = users
     .filter((u) => {
       const searchLower = searchQuery.toLowerCase().trim();
@@ -618,7 +660,7 @@ function UserManagementContent() {
             <p className="text-[9px] font-black uppercase text-[#8A7870] tracking-wider">Active Users</p>
             <h3 className="text-lg font-black text-emerald-700">{activeCount} คน</h3>
             <p className="text-[10px] text-[#8A7870] font-semibold">
-              {bannedCount > 0 ? `🟢 ปกติ ${activeCount} / 🔴 แบน ${bannedCount}` : "บัญชีปกติพร้อมใช้งาน"}
+              {bannedCount > 0 ? `ปกติ ${activeCount} / แบน ${bannedCount}` : "บัญชีปกติพร้อมใช้งาน"}
             </p>
           </div>
         </div>
@@ -689,7 +731,7 @@ function UserManagementContent() {
               style={roleFilter !== "admin" ? { borderColor: C.line } : undefined}
             >
               <Crown size={12} className={roleFilter === "admin" ? "text-stone-950" : "text-amber-600"} />
-              <span>👑 Admin</span>
+              <span>Admin</span>
               <span className="px-1.5 py-0.2 text-[10px] rounded-full bg-amber-100 text-amber-900 font-bold">{adminCount}</span>
             </button>
 
@@ -704,7 +746,7 @@ function UserManagementContent() {
               style={roleFilter !== "store" ? { borderColor: C.line } : undefined}
             >
               <Store size={12} className={roleFilter === "store" ? "text-white" : "text-indigo-600"} />
-              <span>🏪 เจ้าของร้าน</span>
+              <span>เจ้าของร้าน</span>
               <span className="px-1.5 py-0.2 text-[10px] rounded-full bg-indigo-100 text-indigo-900 font-bold">{storeOwnerCount}</span>
             </button>
 
@@ -719,7 +761,7 @@ function UserManagementContent() {
               style={roleFilter !== "user" ? { borderColor: C.line } : undefined}
             >
               <User size={12} />
-              <span>👤 ผู้ใช้ทั่วไป</span>
+              <span>ผู้ใช้ทั่วไป</span>
               <span className="px-1.5 py-0.2 text-[10px] rounded-full bg-stone-100 text-stone-800 font-bold">{generalUserCount}</span>
             </button>
           </div>
@@ -751,7 +793,7 @@ function UserManagementContent() {
               }`}
               style={statusFilter !== "active" ? { borderColor: C.line } : undefined}
             >
-              🟢 ปกติ ({activeCount})
+              ปกติ ({activeCount})
             </button>
             <button
               type="button"
@@ -763,7 +805,7 @@ function UserManagementContent() {
               }`}
               style={statusFilter !== "banned" ? { borderColor: C.line } : undefined}
             >
-              🔴 ถูกแบน ({bannedCount})
+              ถูกแบน ({bannedCount})
             </button>
           </div>
         </div>
@@ -786,7 +828,7 @@ function UserManagementContent() {
               style={sortOrder !== "newest" ? { borderColor: C.line } : undefined}
             >
               <Calendar size={13} className={sortOrder === "newest" ? "text-amber-400" : "text-amber-600"} />
-              <span>🆕 สมัครล่าสุด (Newest First)</span>
+              <span>สมัครล่าสุด (Newest First)</span>
             </button>
 
             <button
@@ -800,7 +842,7 @@ function UserManagementContent() {
               style={sortOrder !== "oldest" ? { borderColor: C.line } : undefined}
             >
               <Clock size={13} />
-              <span>⏳ สมัครก่อนหน้า (Oldest First)</span>
+              <span>สมัครก่อนหน้า (Oldest First)</span>
             </button>
 
             <button
@@ -813,7 +855,8 @@ function UserManagementContent() {
               }`}
               style={sortOrder !== "name" ? { borderColor: C.line } : undefined}
             >
-              <span>🔤 ตามชื่อ (A-Z)</span>
+              <ArrowUpDown size={13} />
+              <span>ตามชื่อ (A-Z)</span>
             </button>
 
             {/* Sort by Most Stamps (Check-ins) */}
@@ -827,7 +870,7 @@ function UserManagementContent() {
               }`}
             >
               <MapPin size={13} className={sortOrder === "most_stamps" ? "text-stone-950" : "text-amber-600"} />
-              <span>📍 เช็คอินเยอะสุด</span>
+              <span>เช็คอินเยอะสุด</span>
             </button>
 
             {/* Sort by Most Reviews */}
@@ -841,7 +884,7 @@ function UserManagementContent() {
               }`}
             >
               <MessageSquare size={13} className={sortOrder === "most_reviews" ? "text-white" : "text-blue-600"} />
-              <span>💬 รีวิวเยอะสุด</span>
+              <span>รีวิวเยอะสุด</span>
             </button>
           </div>
 
@@ -891,18 +934,12 @@ function UserManagementContent() {
               <div key={u.id} className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-stone-50/70 transition">
                 {/* Left: User Avatar & Essential Info */}
                 <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                  {u.avatar_url ? (
-                    <img
-                      src={u.avatar_url}
-                      alt={mainDisplayName}
-                      className="w-11 h-11 rounded-2xl object-cover border shrink-0 bg-stone-100 shadow-2xs"
-                      style={{ borderColor: C.line }}
-                    />
-                  ) : (
-                    <div className="w-11 h-11 rounded-2xl flex items-center justify-center font-black text-[#E7A93C] bg-[#231C18] text-sm shrink-0 border border-stone-800 shadow-2xs">
-                      {mainDisplayName[0].toUpperCase()}
-                    </div>
-                  )}
+                  <UserAvatar
+                    src={u.avatar_url}
+                    name={mainDisplayName}
+                    sizeClassName="w-11 h-11"
+                    style={{ borderColor: C.line }}
+                  />
 
                   <div className="min-w-0 space-y-0.5">
                     {/* Primary Name & Badges Row */}
@@ -929,11 +966,11 @@ function UserManagementContent() {
                       {/* Status Badge */}
                       {u.is_banned ? (
                         <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-100 text-rose-700 border border-rose-200">
-                          🔴 ถูกแบน
+                          ถูกแบน
                         </span>
                       ) : (
                         <span className="px-2 py-0.5 rounded-md text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200">
-                          🟢 ใช้งานปกติ
+                          ใช้งานปกติ
                         </span>
                       )}
 
@@ -978,11 +1015,11 @@ function UserManagementContent() {
 
                       <span className="text-stone-300">•</span>
 
-                      <span>📅 สมัครเมื่อ: {regDateFormatted}</span>
+                      <span>สมัครเมื่อ: {regDateFormatted}</span>
 
                       {u.is_banned && (
                         <span className="text-rose-600 font-bold ml-1">
-                          ⚠️ ({u.ban_reason || "ละเมิดเงื่อนไข"})
+                          ({u.ban_reason || "ละเมิดเงื่อนไข"})
                         </span>
                       )}
                     </div>
@@ -1040,6 +1077,26 @@ function UserManagementContent() {
                         "ปลดแบน"
                       ) : (
                         "แบนสมาชิก"
+                      )}
+                    </button>
+                  )}
+
+                  {/* Delete Member (Reset User) Button */}
+                  {!isSelf && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteUser(u.id, mainDisplayName, u.email)}
+                      disabled={deletingId === u.id}
+                      className="px-3 py-1.5 rounded-xl text-xs font-black bg-stone-900 hover:bg-rose-700 text-white transition flex items-center gap-1 shadow-xs disabled:opacity-50 cursor-pointer"
+                      title="ลบสมาชิกและรีเซ็ตข้อมูลทั้งหมดออกจากระบบ"
+                    >
+                      {deletingId === u.id ? (
+                        <Loader2 size={13} className="animate-spin" />
+                      ) : (
+                        <>
+                          <Trash2 size={13} />
+                          <span>ลบสมาชิก</span>
+                        </>
                       )}
                     </button>
                   )}
@@ -1155,18 +1212,12 @@ function UserManagementContent() {
             {/* Modal Header */}
             <div className="p-5 border-b flex items-center justify-between bg-[#FAF6F0]" style={{ borderColor: C.line }}>
               <div className="flex items-center gap-3">
-                {selectedUserForActivity.avatar_url ? (
-                  <img
-                    src={selectedUserForActivity.avatar_url}
-                    alt="avatar"
-                    className="w-10 h-10 rounded-2xl object-cover border bg-stone-100"
-                    style={{ borderColor: C.line }}
-                  />
-                ) : (
-                  <div className="w-10 h-10 rounded-2xl flex items-center justify-center font-black text-[#E7A93C] bg-[#231C18] text-sm">
-                    {(selectedUserForActivity.display_name || selectedUserForActivity.username || "U")[0].toUpperCase()}
-                  </div>
-                )}
+                <UserAvatar
+                  src={selectedUserForActivity.avatar_url}
+                  name={selectedUserForActivity.display_name || selectedUserForActivity.username || "U"}
+                  sizeClassName="w-10 h-10"
+                  style={{ borderColor: C.line }}
+                />
                 <div>
                   <h3 className="text-base font-black text-[#231C18]">
                     {selectedUserForActivity.display_name || selectedUserForActivity.full_name || selectedUserForActivity.username || "User Details"}
@@ -1247,7 +1298,7 @@ function UserManagementContent() {
                             />
                           ) : (
                             <div className="w-12 h-12 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold text-lg shrink-0">
-                              ⛩️
+                              <Store size={20} className="text-amber-800" />
                             </div>
                           )}
                           <div className="min-w-0 flex-1 leading-tight">
@@ -1274,7 +1325,7 @@ function UserManagementContent() {
                   </div>
                 ) : (
                   <div className="py-12 text-center text-xs font-semibold text-[#8A7870] bg-white rounded-2xl border p-6" style={{ borderColor: C.line }}>
-                    📍 ยังไม่มีประวัติการเช็คอินสถานที่
+                    ยังไม่มีประวัติการเช็คอินสถานที่
                   </div>
                 )
               ) : (
@@ -1326,7 +1377,7 @@ function UserManagementContent() {
                   </div>
                 ) : (
                   <div className="py-12 text-center text-xs font-semibold text-[#8A7870] bg-white rounded-2xl border p-6" style={{ borderColor: C.line }}>
-                    💬 ยังไม่มีประวัติการเขียนรีวิวหรือคอมเมนต์
+                    ยังไม่มีประวัติการเขียนรีวิวหรือคอมเมนต์
                   </div>
                 )
               )}

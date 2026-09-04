@@ -1,8 +1,9 @@
 import React from "react";
-import { Compass, MapPin, BookOpen, User, Store, ShieldCheck, Users, Plus, Landmark, ScrollText, Trophy } from "lucide-react";
+import { Compass, MapPin, BookOpen, User, Store, ShieldCheck, Users, Plus, ScrollText, Trophy } from "lucide-react";
 import { C } from "../constants/mockData";
 import { useLang } from "../lib/i18n";
 import { useUserRole, UserRole } from "../hooks/useUserRole";
+import ClippiMascot from "./ClippiMascot";
 
 interface SidebarProps {
   activeTab: string;
@@ -29,21 +30,17 @@ export default function Sidebar({ activeTab, onTabChange, onAddPlaceClick }: Sid
   const navTabs = allNavTabs.filter((item) => item.roles.includes(role));
 
   return (
-    <aside className="hidden md:flex flex-col w-64 border-r bg-white p-6 space-y-6 fixed top-0 bottom-0 left-0 z-30" style={{ borderColor: C.line }}>
+    <aside className="hidden md:flex flex-col w-64 border-r bg-white p-5 space-y-4 fixed top-0 bottom-0 left-0 z-30 shadow-xs" style={{ borderColor: C.line }}>
       
-      {/* Brand Header */}
-      <div className="flex items-center gap-3 px-2 select-none">
-        <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-md" style={{ background: `linear-gradient(135deg, ${C.accent}, ${C.accentDeep})` }}>
-          <Landmark size={20} strokeWidth={2.2} />
-        </div>
-        <div>
-          <h1 className="text-base font-black tracking-tight" style={{ color: C.ink }}>EKITAG JAPAN</h1>
-          <span className="text-[9px] font-bold uppercase tracking-wider text-[#8A7870] block -mt-0.5">Heritage Stamp Rally</span>
+      {/* Brand Header with Image 1 Logo */}
+      <div className="flex items-center justify-between px-2 pt-1 select-none">
+        <div className="flex items-center gap-2.5">
+          <img src="/clippi-logo.png" alt="Clippi Logo" className="h-10 object-contain max-w-[170px]" />
         </div>
       </div>
 
       {/* Navigation Items */}
-      <nav className="flex-1 space-y-1.5 overflow-y-auto">
+      <nav className="flex-1 space-y-1 overflow-y-auto pr-1">
         {navTabs.map((item) => {
           const active = activeTab === item.id;
           return (
@@ -52,22 +49,33 @@ export default function Sidebar({ activeTab, onTabChange, onAddPlaceClick }: Sid
               onClick={() => onTabChange(item.id)}
               className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl text-xs font-black transition cursor-pointer ${
                 active
-                  ? "bg-[#231C18] text-white shadow-xs"
-                  : "text-[#8A7870] hover:bg-stone-50 hover:text-[#231C18]"
+                  ? "bg-[#000000] text-white shadow-md"
+                  : "text-[#555555] hover:bg-stone-50 hover:text-[#000000]"
               }`}
             >
-              <item.icon size={17} color={active ? "#E7A93C" : C.inkSoft} strokeWidth={active ? 2.3 : 1.8} />
+              <item.icon size={18} color={active ? "#FD775C" : C.inkSoft} strokeWidth={active ? 2.4 : 1.8} />
               <span>{item.label}</span>
             </button>
           );
         })}
       </nav>
 
+      {/* Mascot Card Widget */}
+      <div className="bg-gradient-to-br from-[#FFF0ED] to-[#FFF5F3] p-3 rounded-2xl border border-[#FD775C]/30 flex items-center gap-3 relative overflow-hidden">
+        <div className="shrink-0 -ml-1">
+          <ClippiMascot size="xs" animate={true} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-[11px] font-black text-[#000000] leading-tight">Clippi Helper</div>
+          <div className="text-[9.5px] font-bold text-[#FD775C] tracking-wide">clip, collect, connect!</div>
+        </div>
+      </div>
+
       {/* Action Add Spot Button */}
-      <div className="pt-4 border-t" style={{ borderColor: C.line }}>
+      <div className="pt-2 border-t" style={{ borderColor: C.line }}>
         <button
           onClick={onAddPlaceClick}
-          className="w-full py-3 px-4 rounded-2xl text-xs font-black text-white bg-[#E0533C] hover:bg-[#c94530] transition shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+          className="w-full py-3 px-4 rounded-2xl text-xs font-black text-white bg-[#FD775C] hover:bg-[#E31E27] transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-98"
         >
           <Plus size={16} strokeWidth={2.5} />
           <span>{t("action.submitSpot")}</span>

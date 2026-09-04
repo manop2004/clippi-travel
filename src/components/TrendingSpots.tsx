@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Star } from "lucide-react";
+import { Star, Store } from "lucide-react";
 import { C } from "../constants/mockData";
 import { Place } from "./PlaceCard";
 import { supabase } from "../supabaseClient";
@@ -103,7 +103,9 @@ export default function TrendingSpots({ openPlace, onViewMap, searchQuery = "" }
                     {p.image_url ? (
                       <img src={p.image_url} alt={shopName} className="w-full h-full object-cover" loading="lazy" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-3xl">🏬</div>
+                      <div className="w-full h-full flex items-center justify-center text-3xl">
+                        <Store size={24} className="text-amber-800" />
+                      </div>
                     )}
                   </div>
                   <div className="flex-1 p-3.5 min-w-0 flex flex-col justify-center">
