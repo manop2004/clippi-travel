@@ -64,9 +64,37 @@ export default function AdminReviewView() {
 
       if (subErr) {
         console.error("Error fetching place_submissions:", subErr);
-      } else if (subData) {
-        rawData = subData.filter((s) => s.status === "pending" || !s.status || s.status === "incomplete");
       }
+
+      // Group place_submissions by key (user_id or contact_email) to find the LATEST submission per user/email
+      const latestSubMap = new Map<string, any>();
+      (subData || []).forEach((s) => {
+        const uidKey = s.user_id && !String(s.user_id).startsWith("local_") ? String(s.user_id) : "";
+        const emailKey = s.contact_email ? s.contact_email.toLowerCase() : "";
+        
+        if (uidKey && !latestSubMap.has(uidKey)) {
+          latestSubMap.set(uidKey, s);
+        }
+        if (emailKey && !latestSubMap.has(emailKey)) {
+          latestSubMap.set(emailKey, s);
+        }
+      });
+
+      // Filter rawData to items whose latest submission is pending
+      const addedKeys = new Set<string>();
+      (subData || []).forEach((s) => {
+        const uidKey = s.user_id && !String(s.user_id).startsWith("local_") ? String(s.user_id) : "";
+        const emailKey = s.contact_email ? s.contact_email.toLowerCase() : "";
+        const key = uidKey || emailKey || String(s.id);
+
+        const latestSub = (uidKey && latestSubMap.get(uidKey)) || (emailKey && latestSubMap.get(emailKey)) || s;
+        const isLatestPending = latestSub.status === "pending" || !latestSub.status || latestSub.status === "incomplete";
+
+        if (isLatestPending && !addedKeys.has(key)) {
+          rawData.push(latestSub);
+          addedKeys.add(key);
+        }
+      });
 
       // 2. Fetch profiles for user_ids in submissions
       const userIdsToFetch = Array.from(new Set(rawData.map((s) => s.user_id).filter(Boolean)));
@@ -103,9 +131,21 @@ export default function AdminReviewView() {
       if (profErr) {
         console.error("Error fetching profiles:", profErr);
       } else if (allProfiles) {
-        const pendingProfiles = allProfiles.filter(
-          (p) => !p.is_deleted && (p.role === "pending_store" || p.merchant_status === "pending")
-        );
+        const pendingProfiles = allProfiles.filter((p) => {
+          if (p.is_deleted) return false;
+          if (p.role === "store" || p.merchant_status === "approved") return false;
+
+          const uidKey = p.id ? String(p.id) : "";
+          const emailKey = p.email ? p.email.toLowerCase() : "";
+
+          const latestSub = (uidKey && latestSubMap.get(uidKey)) || (emailKey && latestSubMap.get(emailKey));
+          if (latestSub) {
+            return latestSub.status === "pending" || !latestSub.status;
+          }
+
+          const isPending = p.role === "pending_store" || p.merchant_status === "pending";
+          return isPending;
+        });
 
         for (const prof of pendingProfiles) {
           if (!existingUserIds.has(prof.id)) {
@@ -122,8 +162,8 @@ export default function AdminReviewView() {
               street: prof.prefecture ? `Prefecture: ${prof.prefecture}` : "Address Pending",
               description: `Pending Merchant Registration for ${prof.shop_name || prof.display_name || prof.email}. Contact: ${prof.phone || prof.email || "-"}`,
               status: "pending",
-              created_at: prof.updated_at || prof.created_at || new Date().toISOString(),
-              updated_at: prof.updated_at || prof.created_at || new Date().toISOString(),
+              created_at: prof.created_at || new Date().toISOString(),
+              updated_at: prof.created_at || new Date().toISOString(),
               ownership_proof_url: prof.ownership_proof_url || null,
               profiles: prof,
               is_profile_only: true,
@@ -132,11 +172,19 @@ export default function AdminReviewView() {
         }
       }
 
-      // 4. Local storage fallback pending submissions
+      // 4. Local storage fallback pending submissions + auto-sync to DB by Admin
       try {
         const localSubs = JSON.parse(localStorage.getItem("merchant_pending_submissions") || "[]");
         for (const lSub of localSubs) {
-          if (lSub.status === "pending" && !rawData.some((r) => r.user_id === lSub.user_id || r.id === lSub.id)) {
+          const lEmail = (lSub.contact_email || lSub.email || "").toLowerCase();
+          const matchedProf = allProfiles?.find(
+            (p) => (lEmail && p.email?.toLowerCase() === lEmail) || (lSub.user_id && p.id === lSub.user_id)
+          );
+          const latestSub = (lSub.user_id && latestSubMap.get(String(lSub.user_id))) || (lEmail && latestSubMap.get(lEmail));
+          const isDbDone = (matchedProf && (matchedProf.merchant_status === "approved" || matchedProf.role === "store")) ||
+                           (latestSub && (latestSub.status === "approved" || latestSub.status === "rejected"));
+
+          if (!isDbDone && lSub.status === "pending" && !rawData.some((r) => (r.user_id && r.user_id === lSub.user_id) || (r.contact_email && r.contact_email.toLowerCase() === lEmail) || r.id === lSub.id)) {
             rawData.push({
               ...lSub,
               id: lSub.id || `local_${lSub.user_id || Date.now()}`,
@@ -145,16 +193,40 @@ export default function AdminReviewView() {
               shop_name: lSub.shop_name || lSub.name_en,
               contact_name: lSub.contact_name || "Merchant Owner",
               contact_phone: lSub.contact_phone || "-",
-              contact_email: lSub.contact_email || "-",
+              contact_email: lSub.contact_email || lSub.email || "-",
               category: lSub.category || "food",
               prefecture: lSub.prefecture || "Tokyo",
               street: lSub.prefecture ? `Prefecture: ${lSub.prefecture}` : "Address Pending",
               description: `Pending Merchant Registration for ${lSub.shop_name || lSub.contact_email}. Contact: ${lSub.contact_phone || lSub.contact_email}`,
               status: "pending",
-              created_at: lSub.updated_at || lSub.created_at || new Date().toISOString(),
-              updated_at: lSub.updated_at || lSub.created_at || new Date().toISOString(),
+              created_at: lSub.created_at || new Date().toISOString(),
+              updated_at: lSub.created_at || new Date().toISOString(),
               is_profile_only: true,
             });
+          }
+
+          // Auto-sync profile in DB if matching email is found and DB status was outdated
+          if (lSub.contact_email && allProfiles && lSub.status === "pending" && !isDbDone) {
+            if (
+              matchedProf &&
+              matchedProf.merchant_status !== "pending" &&
+              matchedProf.merchant_status !== "rejected" &&
+              matchedProf.merchant_status !== "approved" &&
+              matchedProf.role !== "store"
+            ) {
+              try {
+                await supabase.from("profiles").update({
+                  role: "pending_store",
+                  merchant_status: "pending",
+                  shop_name: lSub.shop_name || matchedProf.shop_name,
+                  phone: lSub.contact_phone || matchedProf.phone,
+                  prefecture: lSub.prefecture || matchedProf.prefecture,
+                  category: lSub.category || matchedProf.category,
+                  ownership_proof_url: lSub.ownership_proof_url || matchedProf.ownership_proof_url,
+                  ban_reason: null
+                }).eq("id", matchedProf.id);
+              } catch (e) {}
+            }
           }
         }
       } catch (e) {}
@@ -245,8 +317,33 @@ export default function AdminReviewView() {
       const adminId = user?.id || null;
       const uid = sub.user_id || (typeof sub.id === "string" ? sub.id.replace("prof_", "").replace("local_", "") : null);
       const email = sub.contact_email || sub.email;
+      const cleanEmail = email ? email.trim().toLowerCase() : "";
 
-      // 1. Update profiles table
+      // 1. Update profiles table by email
+      if (cleanEmail) {
+        const { data: targetProf } = await supabase.from("profiles").select("id, role, is_admin").ilike("email", cleanEmail).maybeSingle();
+        if (targetProf) {
+          const isTargetAdmin = targetProf.role === "admin" || targetProf.is_admin === true;
+          if (!isTargetAdmin) {
+            await supabase
+              .from("profiles")
+              .update({ role: "store", merchant_status: "approved", ban_reason: null })
+              .eq("id", targetProf.id);
+
+            try {
+              await supabase
+                .from("user_roles")
+                .upsert({ user_id: targetProf.id, role: "store" }, { onConflict: "user_id" });
+            } catch (e) {}
+          } else {
+            await supabase
+              .from("profiles")
+              .update({ merchant_status: "approved", ban_reason: null })
+              .eq("id", targetProf.id);
+          }
+        }
+      }
+
       if (uid && !uid.startsWith("local_")) {
         const { data: targetProf } = await supabase.from("profiles").select("role, is_admin").eq("id", uid).maybeSingle();
         const isTargetAdmin = targetProf?.role === "admin" || targetProf?.is_admin === true;
@@ -254,7 +351,7 @@ export default function AdminReviewView() {
         if (!isTargetAdmin) {
           await supabase
             .from("profiles")
-            .update({ role: "store", merchant_status: "approved", ban_reason: null, updated_at: new Date().toISOString() })
+            .update({ role: "store", merchant_status: "approved", ban_reason: null })
             .eq("id", uid);
 
           // 2. Upsert user_roles table
@@ -266,7 +363,7 @@ export default function AdminReviewView() {
         } else {
           await supabase
             .from("profiles")
-            .update({ merchant_status: "approved", ban_reason: null, updated_at: new Date().toISOString() })
+            .update({ merchant_status: "approved", ban_reason: null })
             .eq("id", uid);
         }
       }
@@ -295,28 +392,7 @@ export default function AdminReviewView() {
         }
       } catch (e) {}
 
-      // 4. Update local storage fallback
-      try {
-        const localSubs = JSON.parse(localStorage.getItem("merchant_pending_submissions") || "[]");
-        const updatedLocal = localSubs.map((item: any) => {
-          const isMatch =
-            (uid && item.user_id === uid) ||
-            (email && item.contact_email?.toLowerCase() === email.toLowerCase()) ||
-            item.id === sub.id;
-          if (isMatch) {
-            return { ...item, status: "approved", role: "store" };
-          }
-          return item;
-        });
-        localStorage.setItem("merchant_pending_submissions", JSON.stringify(updatedLocal));
-
-        const activeLocal = JSON.parse(localStorage.getItem("active_pending_merchant") || "null");
-        if (activeLocal && (activeLocal.email?.toLowerCase() === email?.toLowerCase() || activeLocal.user_id === uid)) {
-          localStorage.setItem("active_pending_merchant", JSON.stringify({ ...activeLocal, status: "approved", role: "store" }));
-        }
-      } catch (e) {}
-
-      // 5. Log admin action
+      // 4. Log admin action
       if (adminId) {
         try {
           await supabase.from("admin_action_log").insert({
@@ -329,7 +405,16 @@ export default function AdminReviewView() {
         } catch (e) {}
       }
 
-      setSubmissions((prev) => prev.filter((s) => s.id !== sub.id && (uid ? s.user_id !== uid : true)));
+      setSubmissions((prev) =>
+        prev.filter((s) => {
+          const sUid = s.user_id ? String(s.user_id) : "";
+          const sEmail = (s.contact_email || s.email || "").toLowerCase();
+          if (s.id === sub.id) return false;
+          if (uid && (sUid === String(uid) || s.id === `prof_${uid}` || s.id === `local_${uid}`)) return false;
+          if (cleanEmail && sEmail === cleanEmail) return false;
+          return true;
+        })
+      );
       alert(`🎉 อนุมัติสิทธิ์เจ้าของร้านค้าสำหรับ "${sub.shop_name || sub.name_en || sub.contact_name}" เรียบร้อยแล้ว!`);
     } catch (err: any) {
       console.error("Approve merchant error:", err);
@@ -347,9 +432,41 @@ export default function AdminReviewView() {
       const subObj = submissions.find(s => s.id === subId);
       const uid = subObj?.user_id || (typeof subId === "string" ? subId.replace("prof_", "").replace("local_", "") : null);
       const email = subObj?.contact_email || subObj?.email;
+      const cleanEmail = email ? email.trim().toLowerCase() : "";
       const finalReason = rejectionReason || "เอกสารหรือข้อมูลสิทธิ์ร้านค้าไม่ผ่านการตรวจสอบ";
 
       // 1. Update profiles table
+      if (cleanEmail) {
+        const { data: targetProf } = await supabase.from("profiles").select("id, role, is_admin").ilike("email", cleanEmail).maybeSingle();
+        if (targetProf) {
+          const isTargetAdmin = targetProf.role === "admin" || targetProf.is_admin === true;
+          if (!isTargetAdmin) {
+            await supabase
+              .from("profiles")
+              .update({
+                role: "user",
+                merchant_status: "rejected",
+                ban_reason: finalReason
+              })
+              .eq("id", targetProf.id);
+
+            try {
+              await supabase
+                .from("user_roles")
+                .upsert({ user_id: targetProf.id, role: "user" }, { onConflict: "user_id" });
+            } catch (e) {}
+          } else {
+            await supabase
+              .from("profiles")
+              .update({
+                merchant_status: "rejected",
+                ban_reason: finalReason
+              })
+              .eq("id", targetProf.id);
+          }
+        }
+      }
+
       if (uid && !uid.startsWith("local_")) {
         const { data: targetProf } = await supabase.from("profiles").select("role, is_admin").eq("id", uid).maybeSingle();
         const isTargetAdmin = targetProf?.role === "admin" || targetProf?.is_admin === true;
@@ -360,8 +477,7 @@ export default function AdminReviewView() {
             .update({
               role: "user",
               merchant_status: "rejected",
-              ban_reason: finalReason,
-              updated_at: new Date().toISOString()
+              ban_reason: finalReason
             })
             .eq("id", uid);
 
@@ -376,8 +492,7 @@ export default function AdminReviewView() {
             .from("profiles")
             .update({
               merchant_status: "rejected",
-              ban_reason: finalReason,
-              updated_at: new Date().toISOString()
+              ban_reason: finalReason
             })
             .eq("id", uid);
         }
@@ -414,7 +529,7 @@ export default function AdminReviewView() {
           if (data && data.length > 0) updatedCount += data.length;
         }
 
-        if (email) {
+        if (cleanEmail) {
           const { data } = await supabase
             .from("place_submissions")
             .update({
@@ -423,51 +538,49 @@ export default function AdminReviewView() {
               reviewed_by: adminId,
               reviewed_at: new Date().toISOString()
             })
-            .ilike("contact_email", email.toLowerCase())
+            .ilike("contact_email", cleanEmail)
             .select();
           if (data && data.length > 0) updatedCount += data.length;
         }
 
-        // If no existing place_submissions row was updated, insert a new record for history tracking
-        if (updatedCount === 0 && uid && !uid.startsWith("local_")) {
-          await supabase.from("place_submissions").insert({
-            user_id: uid,
-            contact_email: email || undefined,
-            status: "rejected",
-            rejection_reason: finalReason,
-            reviewed_by: adminId,
-            reviewed_at: new Date().toISOString(),
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          });
+        // Guaranteed place_submissions rejection record insertion
+        const targetUid = (uid && !uid.startsWith("local_")) ? uid : undefined;
+        const rejectionPayload = {
+          user_id: targetUid || adminId || undefined,
+          contact_email: cleanEmail || undefined,
+          shop_name: subObj?.shop_name || subObj?.name_en || "Merchant Application",
+          name_en: subObj?.shop_name || subObj?.name_en || "Merchant Application",
+          contact_name: subObj?.contact_name || undefined,
+          contact_phone: subObj?.contact_phone || undefined,
+          category: (subObj?.category && ["station", "shrine", "spot", "food", "shop"].includes(subObj.category)) ? subObj.category : "food",
+          prefecture: (subObj?.prefecture && dbPrefectures.includes(subObj.prefecture)) ? subObj.prefecture : "Tokyo",
+          status: "rejected",
+          rejection_reason: finalReason,
+          reviewed_by: adminId,
+          reviewed_at: new Date().toISOString(),
+          created_at: new Date().toISOString()
+        };
+
+        if (rejectionPayload.user_id || rejectionPayload.contact_email) {
+          const { error: insErr } = await supabase.from("place_submissions").insert(rejectionPayload);
+          if (insErr) {
+            console.warn("place_submissions insert notice:", insErr.message);
+            // Fallback insert with adminId if applicant uid was rejected by RLS policy
+            if (targetUid && adminId && targetUid !== adminId) {
+              try {
+                await supabase.from("place_submissions").insert({
+                  ...rejectionPayload,
+                  user_id: adminId
+                });
+              } catch (e) {}
+            }
+          }
         }
       } catch (e) {
         console.warn("place_submissions reject update notice:", e);
       }
 
-      // 4. Update local storage pending merchant submissions
-      try {
-        const localSubs = JSON.parse(localStorage.getItem("merchant_pending_submissions") || "[]");
-        const updatedLocal = localSubs.map((item: any) => {
-          const isMatch =
-            (uid && item.user_id === uid) ||
-            (email && item.contact_email?.toLowerCase() === email.toLowerCase()) ||
-            item.id === subId;
-          if (isMatch) {
-            return { ...item, status: "rejected", rejection_reason: finalReason };
-          }
-          return item;
-        });
-        localStorage.setItem("merchant_pending_submissions", JSON.stringify(updatedLocal));
-
-        // Also update active local merchant state
-        const activeLocal = JSON.parse(localStorage.getItem("active_pending_merchant") || "null");
-        if (activeLocal && (activeLocal.email?.toLowerCase() === email?.toLowerCase() || activeLocal.user_id === uid)) {
-          localStorage.setItem("active_pending_merchant", JSON.stringify({ ...activeLocal, status: "rejected", rejection_reason: finalReason }));
-        }
-      } catch (e) {}
-
-      // 5. Log admin action
+      // 4. Log admin action
       if (adminId) {
         try {
           await supabase.from("admin_action_log").insert({
@@ -475,12 +588,21 @@ export default function AdminReviewView() {
             action_type: "reject_merchant",
             target_table: "profiles",
             target_id: uid || subId,
-            detail: { reason: finalReason, email: email }
+            detail: { reason: finalReason, email: cleanEmail }
           });
         } catch (e) {}
       }
 
-      setSubmissions((prev) => prev.filter((s) => s.id !== subId && (uid ? s.user_id !== uid : true)));
+      setSubmissions((prev) =>
+        prev.filter((s) => {
+          const sUid = s.user_id ? String(s.user_id) : "";
+          const sEmail = (s.contact_email || s.email || "").toLowerCase();
+          if (s.id === subId) return false;
+          if (uid && (sUid === String(uid) || s.id === `prof_${uid}` || s.id === `local_${uid}`)) return false;
+          if (cleanEmail && sEmail === cleanEmail) return false;
+          return true;
+        })
+      );
       setRejectingId(null);
       setRejectionReason("");
       alert("ปฏิเสธคำขอลงทะเบียนเจ้าของร้านค้าเรียบร้อยแล้ว");

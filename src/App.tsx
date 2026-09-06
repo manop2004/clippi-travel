@@ -62,6 +62,7 @@ export default function App() {
 
   const { t } = useLang();
   const {
+    user: roleUser,
     role,
     isAdmin,
     isStoreOwner,
@@ -296,7 +297,7 @@ export default function App() {
   }, [session]);
 
   // Show a clean loading state to prevent flash of login screen or overlays
-  if (authLoading || (session && roleLoading)) {
+  if (authLoading || (session && roleLoading && !roleUser)) {
     return (
       <PasswordGate>
         <div className="min-h-screen w-full flex items-center justify-center bg-[#F2EBE1] text-xs font-black text-[#8A7870]">
@@ -380,7 +381,13 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex gap-3 pt-2">
+          <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
+            <button
+              onClick={() => setIsMerchantApplyOpen(true)}
+              className="flex-1 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold py-3 px-4 rounded-xl text-xs transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <span>✏️ แก้ไขข้อมูลร้านค้าที่ส่งไป</span>
+            </button>
             <button
               onClick={() => refreshRole()}
               className="flex-1 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold py-3 px-4 rounded-xl text-xs transition cursor-pointer"
@@ -392,12 +399,22 @@ export default function App() {
                 await supabase.auth.signOut();
                 window.location.href = '/';
               }}
-              className="flex-1 bg-[#E31E27] hover:bg-red-700 text-white font-bold py-3 px-4 rounded-xl text-xs transition shadow-md cursor-pointer"
+              className="bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-300 font-bold py-3 px-4 rounded-xl text-xs transition cursor-pointer"
             >
-              ออกจากระบบ (Logout)
+              ออกจากระบบ
             </button>
           </div>
         </div>
+
+        <MerchantRegisterModal
+          isOpen={isMerchantApplyOpen}
+          onClose={() => setIsMerchantApplyOpen(false)}
+          onSuccess={() => {
+            setIsMerchantApplyOpen(false);
+            refreshRole();
+          }}
+          user={session?.user}
+        />
       </div>
     );
   }

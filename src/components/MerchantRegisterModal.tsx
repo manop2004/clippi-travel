@@ -119,7 +119,6 @@ export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user
             category: category,
             ownership_proof_url: uploadedUrl,
             ban_reason: null,
-            updated_at: new Date().toISOString(),
           }).eq("id", uid);
 
           if (profErr) {
@@ -128,7 +127,6 @@ export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user
               role: "pending_store",
               merchant_status: "pending",
               ban_reason: null,
-              updated_at: new Date().toISOString(),
             }).eq("id", uid);
           }
         } catch (e) {
@@ -158,53 +156,58 @@ export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user
         status: "pending",
         rejection_reason: null,
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
         description: `Owner Contact: ${contactName.trim()} | Phone: ${phone.trim()} | Email: ${uEmail}`,
       };
 
-      // 4. Directly update place_submissions or insert if none exists
+      // Always insert a fresh submission record or update existing place_submissions
       try {
-        const { data: updateRes } = await supabase
-          .from("place_submissions")
-          .update(subPayload)
-          .eq("user_id", uid)
-          .select();
-
-        let updated = Boolean(updateRes && updateRes.length > 0);
-
-        if (!updated && uEmail) {
-          const { data: emailUpRes } = await supabase
+        const { error: insErr } = await supabase.from("place_submissions").insert(subPayload);
+        if (insErr) {
+          // Fallback to update existing
+          const { data: updateRes } = await supabase
             .from("place_submissions")
             .update(subPayload)
-            .ilike("contact_email", uEmail.toLowerCase())
+            .eq("user_id", uid)
             .select();
-          updated = Boolean(emailUpRes && emailUpRes.length > 0);
-        }
 
-        if (!updated) {
-          await supabase.from("place_submissions").insert(subPayload);
+          let updated = Boolean(updateRes && updateRes.length > 0);
+
+          if (!updated && uEmail) {
+            await supabase
+              .from("place_submissions")
+              .update(subPayload)
+              .ilike("contact_email", uEmail.toLowerCase());
+          }
         }
       } catch (e) {
         console.warn("Notice: place_submissions update/insert fallback:", e);
       }
 
-      // 4. Save local fallback
-      const pendingInfo = {
-        user_id: uid,
-        email: uEmail,
-        shopName: shopName.trim(),
-        contactName: contactName.trim(),
-        status: "pending",
-        rejection_reason: null,
-        submitted_at: new Date().toISOString(),
-      };
+      // Sync to local storage for instant Admin Review Panel update
       try {
-        localStorage.setItem("pending_merchant_session", JSON.stringify(pendingInfo));
-        localStorage.setItem("active_pending_merchant", JSON.stringify(pendingInfo));
-
-        const existingLocal = JSON.parse(localStorage.getItem("merchant_pending_submissions") || "[]");
-        const filtered = existingLocal.filter((i: any) => i.contact_email?.toLowerCase() !== uEmail.toLowerCase() && i.user_id !== uid);
-        localStorage.setItem("merchant_pending_submissions", JSON.stringify([{ ...subPayload, id: `local_${Date.now()}` }, ...filtered]));
+        const localSubmission = {
+          id: `prof_${uid}`,
+          user_id: uid,
+          contact_email: uEmail,
+          email: uEmail,
+          shop_name: shopName.trim(),
+          name_en: shopName.trim(),
+          contact_name: contactName.trim(),
+          contact_phone: phone.trim(),
+          phone: phone.trim(),
+          category: category,
+          prefecture: prefecture,
+          ownership_proof_url: uploadedUrl,
+          status: "pending",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        const existingLocals = JSON.parse(localStorage.getItem("merchant_pending_submissions") || "[]");
+        const updatedLocals = existingLocals.filter((l: any) => 
+          (l.contact_email || l.email || "").toLowerCase() !== uEmail.toLowerCase() && l.user_id !== uid
+        );
+        updatedLocals.push(localSubmission);
+        localStorage.setItem("merchant_pending_submissions", JSON.stringify(updatedLocals));
       } catch (e) {}
 
       onClose();

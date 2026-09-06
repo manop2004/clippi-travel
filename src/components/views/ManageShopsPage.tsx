@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { 
   Store, 
   Clock, 
@@ -203,14 +203,17 @@ export default function ManageShopsPage({ onGoHome, onAddNewPlaceClick }: Manage
     }
   };
 
+  const initializedTabRef = useRef(false);
+
   useEffect(() => {
     if (!roleLoading) {
-      if (isAdminUser) {
+      if (isAdminUser && !initializedTabRef.current) {
+        initializedTabRef.current = true;
         setActiveTab("approved");
       }
       loadData();
     }
-  }, [user?.id, role, roleLoading, isAdmin]);
+  }, [user?.id, roleLoading]);
 
   // Handle permanent deletion of rejected submission history entry
   const handleDeleteSubmission = async (id: string) => {
