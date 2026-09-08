@@ -1418,9 +1418,9 @@ export function AddPlaceModal({
         const itemId = targetData.submissionId || targetData.id;
         const oldName = targetData.shop_name || targetData.name_en;
 
-        const nameEn = name || targetData.shop_name || targetData.name_en;
-        const nameJp = japaneseName || targetData.shop_name_jp || targetData.name_jp || null;
-        const addressStr = street || targetData.address || targetData.street || "";
+        const nameEn = name.trim() || targetData.shop_name || targetData.name_en;
+        const nameJp = japaneseName.trim() || null;
+        const addressStr = street.trim() || targetData.address || targetData.street || "";
 
         const reattachMetadataTags = (newText: string, originalText: string | null | undefined): string => {
           if (!originalText) return newText.trim();
