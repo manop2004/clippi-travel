@@ -2021,43 +2021,43 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                     </div>
 
                     {/* Row 3: Management & Utilities Grid (Unified 3 or 4 columns) */}
-                    <div className={`grid gap-1.5 ${isAdmin ? "grid-cols-4" : "grid-cols-3"}`}>
+                    <div className={`grid gap-1 ${isAdmin ? "grid-cols-4" : "grid-cols-3"}`}>
                       <button
                         onClick={() => setEditingShop(shop)}
-                        className="py-2 px-2 rounded-xl border border-amber-200 bg-amber-50/70 hover:bg-amber-100 text-amber-900 text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shadow-2xs"
+                        className="py-2 px-1 sm:px-2 rounded-xl border border-amber-200 bg-amber-50/70 hover:bg-amber-100 text-amber-900 text-[10.5px] sm:text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shadow-2xs min-w-0"
                         title="แก้ไขข้อมูลร้าน"
                       >
-                        <Edit3 size={13} className="text-amber-700 shrink-0" />
-                        <span className="whitespace-nowrap">แก้ไขร้าน</span>
+                        <Edit3 size={12} className="text-amber-700 shrink-0" />
+                        <span className="truncate">แก้ไข</span>
                       </button>
 
                       <button
                         onClick={() => setQrShop(shop)}
-                        className="py-2 px-2 rounded-xl border border-stone-200 bg-white hover:bg-stone-100 text-stone-700 text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shadow-2xs"
+                        className="py-2 px-1 sm:px-2 rounded-xl border border-stone-200 bg-white hover:bg-stone-100 text-stone-700 text-[10.5px] sm:text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shadow-2xs min-w-0"
                         title="ดู QR Code ร้านค้า"
                       >
-                        <QrCode size={13} className="text-stone-600 shrink-0" />
-                        <span className="whitespace-nowrap">QR Code</span>
+                        <QrCode size={12} className="text-stone-600 shrink-0" />
+                        <span className="truncate">QR Code</span>
                       </button>
 
                       {isAdmin && (
                         <button
                           onClick={() => setSelectedSummaryShop(shop)}
-                          className="py-2 px-2 rounded-xl border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100 text-indigo-900 text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shadow-2xs"
+                          className="py-2 px-1 sm:px-2 rounded-xl border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100 text-indigo-900 text-[10.5px] sm:text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shadow-2xs min-w-0"
                           title="ดูสถิติร้านค้า"
                         >
-                          <BarChart3 size={13} className="text-indigo-600 shrink-0" />
-                          <span className="whitespace-nowrap">สถิติ</span>
+                          <BarChart3 size={12} className="text-indigo-600 shrink-0" />
+                          <span className="truncate">สถิติ</span>
                         </button>
                       )}
 
                       <button
                         onClick={() => handleDeleteShop(shop)}
-                        className="py-2 px-2 rounded-xl border border-rose-200/80 bg-rose-50/70 hover:bg-rose-100 text-rose-700 text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shadow-2xs"
+                        className="py-2 px-1 sm:px-2 rounded-xl border border-rose-200/80 bg-rose-50/70 hover:bg-rose-100 text-rose-700 text-[10.5px] sm:text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shadow-2xs min-w-0"
                         title="ลบร้านค้า"
                       >
-                        <Trash2 size={13} className="text-rose-600 shrink-0" />
-                        <span className="whitespace-nowrap">ลบร้าน</span>
+                        <Trash2 size={12} className="text-rose-600 shrink-0" />
+                        <span className="truncate">ลบร้าน</span>
                       </button>
                     </div>
                   </div>
