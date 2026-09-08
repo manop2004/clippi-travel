@@ -37,12 +37,35 @@ import {
   RotateCw,
   SlidersHorizontal,
   Trophy,
-  MessageSquare
+  MessageSquare,
+  Calendar,
+  Power,
+  Sun,
+  Moon,
+  CalendarOff,
+  ToggleLeft,
+  ToggleRight,
+  Info
 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 import { C, categories } from "../../constants/mockData";
 import { ProtectedRoute } from "../../components/auth/ProtectedRoute";
 import { AddPlaceModal } from "../../components/Modals";
+
+export interface HolidayItem {
+  id: string;
+  date: string;
+  title: string;
+}
+
+export interface ShopSchedule {
+  open_time?: string;
+  close_time?: string;
+  opening_hours?: string | null;
+  closed_days?: string[];
+  holidays?: HolidayItem[];
+  is_closed_today?: boolean;
+}
 
 export interface ShopRecord {
   id: number | string;
@@ -69,6 +92,128 @@ export interface ShopRecord {
   status?: string;
   rejection_reason?: string | null;
   created_at?: string;
+  opening_hours?: string | null;
+  closed_days?: string[] | null;
+  holidays?: HolidayItem[] | null;
+  is_closed_today?: boolean;
+}
+
+export function getStoredSchedule(shopId: string | number): ShopSchedule {
+  try {
+    const raw = localStorage.getItem(`store_schedule_${shopId}`);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return {
+    open_time: "09:00",
+    close_time: "18:00",
+    opening_hours: "09:00 - 18:00",
+    closed_days: [],
+    holidays: [],
+    is_closed_today: false,
+  };
+}
+
+export function saveStoredSchedule(shopId: string | number, schedule: ShopSchedule) {
+  try {
+    localStorage.setItem(`store_schedule_${shopId}`, JSON.stringify(schedule));
+  } catch (e) {}
+}
+
+const THAI_DAYS = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
+
+export function getShopStatusToday(shop: ShopRecord, overrideSchedule?: ShopSchedule) {
+  const sched = overrideSchedule || getStoredSchedule(shop.id);
+  const isClosedToday = sched.is_closed_today || shop.is_closed_today;
+
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  const todayStr = `${year}-${month}-${day}`;
+  const dayIndex = now.getDay();
+  const thaiDayName = THAI_DAYS[dayIndex];
+
+  if (isClosedToday) {
+    return {
+      statusKey: "closed_today",
+      badgeText: "🔴 ปิดบริการวันนี้",
+      badgeBg: "bg-rose-600 text-white",
+      borderClr: "border-rose-200",
+      description: "ปิดบริการชั่วคราววันนี้ (สวิตช์ปิดด่วน)",
+      isClosed: true,
+      openHoursStr: sched.opening_hours || "09:00 - 18:00",
+      sched,
+    };
+  }
+
+  const holidayMatch = (sched.holidays || []).find((h) => h.date === todayStr);
+  if (holidayMatch) {
+    return {
+      statusKey: "holiday",
+      badgeText: `🔴 วันหยุด: ${holidayMatch.title || "พิเศษ"}`,
+      badgeBg: "bg-rose-700 text-white",
+      borderClr: "border-rose-300",
+      description: `วันหยุดพิเศษ (${holidayMatch.title})`,
+      isClosed: true,
+      openHoursStr: sched.opening_hours || "09:00 - 18:00",
+      sched,
+    };
+  }
+
+  const closedDays = sched.closed_days || [];
+  const isDayClosed = closedDays.some((d) => d.includes(thaiDayName) || thaiDayName.includes(d));
+  if (isDayClosed) {
+    return {
+      statusKey: "closed_day",
+      badgeText: `🟡 ปิดทุกวัน${thaiDayName}`,
+      badgeBg: "bg-amber-600 text-white",
+      borderClr: "border-amber-200",
+      description: `ปิดบริการประจำวัน${thaiDayName}`,
+      isClosed: true,
+      openHoursStr: sched.opening_hours || "09:00 - 18:00",
+      sched,
+    };
+  }
+
+  const openTime = sched.open_time || "09:00";
+  const closeTime = sched.close_time || "18:00";
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  const [oH, oM] = openTime.split(":").map(Number);
+  const [cH, cM] = closeTime.split(":").map(Number);
+  const openMinutes = (oH || 9) * 60 + (oM || 0);
+  const closeMinutes = (cH || 18) * 60 + (cM || 0);
+
+  let isOpenNow = false;
+  if (closeMinutes > openMinutes) {
+    isOpenNow = currentMinutes >= openMinutes && currentMinutes < closeMinutes;
+  } else {
+    isOpenNow = currentMinutes >= openMinutes || currentMinutes < closeMinutes;
+  }
+
+  if (isOpenNow) {
+    return {
+      statusKey: "open",
+      badgeText: `🟢 เปิดอยู่ (${openTime} - ${closeTime})`,
+      badgeBg: "bg-emerald-600 text-white",
+      borderClr: "border-emerald-200",
+      description: `เปิดให้บริการอยู่ (${openTime} - ${closeTime})`,
+      isClosed: false,
+      openHoursStr: `${openTime} - ${closeTime}`,
+      sched,
+    };
+  } else {
+    return {
+      statusKey: "closed_now",
+      badgeText: `🟡 ปิดแล้ว (เปิด ${openTime})`,
+      badgeBg: "bg-stone-700 text-white",
+      borderClr: "border-stone-200",
+      description: `อยู่นอกเวลาทำการ (${openTime} - ${closeTime})`,
+      isClosed: true,
+      openHoursStr: `${openTime} - ${closeTime}`,
+      sched,
+    };
+  }
 }
 
 export interface SubmissionItem {
@@ -133,6 +278,8 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
   const [editingSubmission, setEditingSubmission] = useState<SubmissionItem | null>(null);
   const [deletingSubId, setDeletingSubId] = useState<string | null>(null);
   const [qrShop, setQrShop] = useState<ShopRecord | null>(null);
+  const [scheduleShop, setScheduleShop] = useState<ShopRecord | null>(null);
+  const [storeSchedules, setStoreSchedules] = useState<Record<string, ShopSchedule>>({});
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [sortOption, setSortOption] = useState<"stamps" | "rating" | "newest" | "name">("stamps");
   const [selectedSummaryShop, setSelectedSummaryShop] = useState<ShopRecord | null>(null);
@@ -436,6 +583,11 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
       );
 
       setShops(uniqueApproved);
+      const schedMap: Record<string, ShopSchedule> = {};
+      uniqueApproved.forEach((s) => {
+        schedMap[String(s.id)] = getStoredSchedule(s.id);
+      });
+      setStoreSchedules(schedMap);
       fetchMerchantReviews(uniqueApproved, adminFlag);
 
       // Calculate stats (total stamps & avg rating)
@@ -1784,73 +1936,151 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {filteredShops.map((shop) => (
-              <div
-                key={shop.id}
-                className="bg-white rounded-3xl border overflow-hidden shadow-2xs hover:shadow-md transition flex flex-col justify-between"
-                style={{ borderColor: C.line }}
-              >
-                <div>
-                  <div className="relative h-44 w-full bg-stone-100 overflow-hidden">
-                    <img
-                      src={shop.image_url || "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&q=80&w=800"}
-                      alt={shop.shop_name}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap">
-                      <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-black/70 backdrop-blur-md text-white uppercase">
-                        {shop.category}
-                      </span>
-                      {shop.prefecture && (
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-white/90 backdrop-blur-md text-[#231C18]">
-                          {shop.prefecture}
+            {filteredShops.map((shop) => {
+              const statusInfo = getShopStatusToday(shop, storeSchedules[String(shop.id)]);
+              const isClosedToday = statusInfo.sched.is_closed_today;
+
+              const handleToggleClosedToday = (e: React.MouseEvent) => {
+                e.stopPropagation();
+                const currentSched = storeSchedules[String(shop.id)] || getStoredSchedule(shop.id);
+                const updatedSched: ShopSchedule = {
+                  ...currentSched,
+                  is_closed_today: !currentSched.is_closed_today,
+                };
+                saveStoredSchedule(shop.id, updatedSched);
+                setStoreSchedules((prev) => ({
+                  ...prev,
+                  [String(shop.id)]: updatedSched,
+                }));
+                try {
+                  supabase.from("century_shops").update({ is_closed_today: updatedSched.is_closed_today }).eq("id", shop.id).then(() => {});
+                } catch (err) {}
+              };
+
+              return (
+                <div
+                  key={shop.id}
+                  className="bg-white rounded-3xl border overflow-hidden shadow-2xs hover:shadow-md transition flex flex-col justify-between"
+                  style={{ borderColor: C.line }}
+                >
+                  <div>
+                    <div className="relative h-44 w-full bg-stone-100 overflow-hidden">
+                      <img
+                        src={shop.image_url || "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&q=80&w=800"}
+                        alt={shop.shop_name}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap">
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-black/70 backdrop-blur-md text-white uppercase">
+                          {shop.category}
                         </span>
+                        {shop.prefecture && (
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-white/90 backdrop-blur-md text-[#231C18]">
+                            {shop.prefecture}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Today Status Badge */}
+                      <div className="absolute top-3 right-3 max-w-[70%]">
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black backdrop-blur-md shadow-xs flex items-center gap-1 ${statusInfo.badgeBg}`}>
+                          {statusInfo.badgeText}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="p-5 space-y-2.5">
+                      <h3 className="text-base font-black text-[#231C18] truncate">{shop.shop_name}</h3>
+                      {shop.shop_name_jp && <p className="text-xs font-semibold text-[#8A7870] truncate">{shop.shop_name_jp}</p>}
+                      {shop.address && (
+                        <p className="text-xs text-[#8A7870] font-semibold flex items-center gap-1 truncate">
+                          <MapPin size={12} className="shrink-0 text-amber-600" />
+                          <span className="truncate">{shop.address}</span>
+                        </p>
                       )}
+
+                      {/* Store Schedule Summary Info */}
+                      <div className="pt-2 border-t flex flex-col gap-1 text-[11px]" style={{ borderColor: C.line }}>
+                        <div className="flex items-center justify-between text-stone-600 font-medium">
+                          <span className="flex items-center gap-1">
+                            <Clock size={12} className="text-amber-600 shrink-0" />
+                            <span>เวลาเปิด-ปิด: <strong>{statusInfo.openHoursStr}</strong></span>
+                          </span>
+                          {statusInfo.sched.closed_days && statusInfo.sched.closed_days.length > 0 && (
+                            <span className="text-[10px] text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md font-semibold border border-amber-200 truncate">
+                              หยุด: {statusInfo.sched.closed_days.join(", ")}
+                            </span>
+                          )}
+                        </div>
+                        {statusInfo.sched.holidays && statusInfo.sched.holidays.length > 0 && (
+                          <div className="text-[10px] text-rose-700 font-medium flex items-center gap-1 truncate">
+                            <CalendarOff size={11} className="shrink-0 text-rose-500" />
+                            <span>วันหยุดพิเศษที่จะถึง: {statusInfo.sched.holidays[0].date} ({statusInfo.sched.holidays[0].title})</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  <div className="p-5 space-y-2">
-                    <h3 className="text-base font-black text-[#231C18] truncate">{shop.shop_name}</h3>
-                    {shop.shop_name_jp && <p className="text-xs font-semibold text-[#8A7870] truncate">{shop.shop_name_jp}</p>}
-                    {shop.address && (
-                      <p className="text-xs text-[#8A7870] font-semibold flex items-center gap-1 truncate">
-                        <MapPin size={12} className="shrink-0 text-amber-600" />
-                        <span className="truncate">{shop.address}</span>
-                      </p>
+                  <div className="p-3.5 border-t bg-stone-50/50 flex flex-wrap items-center gap-1.5" style={{ borderColor: C.line }}>
+                    <button
+                      onClick={handleToggleClosedToday}
+                      className={`flex-1 min-w-[95px] py-2 px-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shrink-0 ${
+                        isClosedToday
+                          ? "bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-emerald-100"
+                          : "bg-rose-50 border-rose-300 text-rose-800 hover:bg-rose-100"
+                      }`}
+                      title="เปิด/ปิดร้านชั่วคราววันนี้แบบเร่งด่วน"
+                    >
+                      <Power size={13} className={isClosedToday ? "text-emerald-600" : "text-rose-600"} />
+                      <span>{isClosedToday ? "เปิดร้านวันนี้" : "วันนี้ปิด"}</span>
+                    </button>
+
+                    <button
+                      onClick={() => setScheduleShop(shop)}
+                      className="flex-1 min-w-[95px] py-2 px-2 rounded-xl border border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-900 text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shrink-0"
+                      title="ตั้งเวลาเปิด-ปิดและปฏิทินวันหยุด"
+                    >
+                      <Clock size={13} /> เวลา/วันหยุด
+                    </button>
+
+                    <button
+                      onClick={() => setEditingShop(shop)}
+                      className="py-2 px-2 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shrink-0"
+                      title="แก้ไขข้อมูลร้าน"
+                    >
+                      <Edit3 size={13} />
+                    </button>
+
+                    <button
+                      onClick={() => setQrShop(shop)}
+                      className="py-2 px-2 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shrink-0"
+                      title="ดู QR Code"
+                    >
+                      <QrCode size={13} />
+                    </button>
+
+                    {isAdmin && (
+                      <button
+                        onClick={() => setSelectedSummaryShop(shop)}
+                        className="py-2 px-2 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shrink-0"
+                        title="ดูสถิติ"
+                      >
+                        <BarChart3 size={13} />
+                      </button>
                     )}
+
+                    <button
+                      onClick={() => handleDeleteShop(shop)}
+                      className="py-2 px-2 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shrink-0"
+                      title="ลบร้านค้า"
+                    >
+                      <Trash2 size={13} />
+                    </button>
                   </div>
                 </div>
-
-                <div className="p-3.5 border-t bg-stone-50/50 flex items-center gap-2" style={{ borderColor: C.line }}>
-                  {isAdmin && (
-                    <button
-                      onClick={() => setSelectedSummaryShop(shop)}
-                      className="flex-1 py-2 px-2.5 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shrink-0"
-                    >
-                      <BarChart3 size={13} /> สถิติ
-                    </button>
-                  )}
-                  <button
-                    onClick={() => setEditingShop(shop)}
-                    className="flex-1 py-2 px-2.5 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shrink-0"
-                  >
-                    <Edit3 size={13} /> แก้ไข
-                  </button>
-                  <button
-                    onClick={() => setQrShop(shop)}
-                    className="flex-1 py-2 px-2.5 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shrink-0"
-                  >
-                    <QrCode size={13} /> QR
-                  </button>
-                  <button
-                    onClick={() => handleDeleteShop(shop)}
-                    className="flex-1 py-2 px-2.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shrink-0"
-                  >
-                    <Trash2 size={13} /> ลบ
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -2007,6 +2237,23 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
           onEdit={(shop) => setEditingShop(shop)}
           onDelete={(shop) => handleDeleteShop(shop)}
           onViewQr={(shop) => setQrShop(shop)}
+        />
+      )}
+
+      {/* ⏰ Modal: Store Schedule & Holiday Calendar */}
+      {scheduleShop && (
+        <StoreScheduleModal
+          isOpen={!!scheduleShop}
+          shop={scheduleShop}
+          currentUserId={currentUser?.id || ""}
+          onClose={() => setScheduleShop(null)}
+          onScheduleUpdated={(updatedSched) => {
+            setStoreSchedules((prev) => ({
+              ...prev,
+              [String(scheduleShop.id)]: updatedSched,
+            }));
+            setScheduleShop(null);
+          }}
         />
       )}
     </div>
@@ -2911,6 +3158,470 @@ function AdminShopSummaryModal({
             className="py-2.5 px-4 rounded-xl border border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-black flex items-center justify-center gap-1.5 transition cursor-pointer"
           >
             <Trash2 size={14} /> ลบร้าน
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ===================================================================
+   STORE SCHEDULE & HOLIDAY CALENDAR MODAL COMPONENT
+   =================================================================== */
+interface StoreScheduleModalProps {
+  isOpen: boolean;
+  shop: ShopRecord;
+  currentUserId: string;
+  onClose: () => void;
+  onScheduleUpdated: (updatedSchedule: ShopSchedule) => void;
+}
+
+export function StoreScheduleModal({
+  isOpen,
+  shop,
+  currentUserId,
+  onClose,
+  onScheduleUpdated,
+}: StoreScheduleModalProps) {
+  const [isClosedToday, setIsClosedToday] = useState<boolean>(false);
+  const [openTime, setOpenTime] = useState<string>("09:00");
+  const [closeTime, setCloseTime] = useState<string>("18:00");
+  const [closedDays, setClosedDays] = useState<string[]>([]);
+  const [holidays, setHolidays] = useState<HolidayItem[]>([]);
+
+  const [newHolidayDate, setNewHolidayDate] = useState<string>("");
+  const [newHolidayTitle, setNewHolidayTitle] = useState<string>("");
+  const [activeTab, setActiveTab] = useState<"today" | "hours" | "holidays">("today");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && shop) {
+      const sched = getStoredSchedule(shop.id);
+      setIsClosedToday(sched.is_closed_today || false);
+      setOpenTime(sched.open_time || "09:00");
+      setCloseTime(sched.close_time || "18:00");
+      setClosedDays(sched.closed_days || []);
+      setHolidays(sched.holidays || []);
+    }
+  }, [isOpen, shop]);
+
+  if (!isOpen || !shop) return null;
+
+  const ALL_DAYS = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"];
+
+  const toggleClosedDay = (day: string) => {
+    setClosedDays((prev) =>
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
+    );
+  };
+
+  const handleAddHoliday = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newHolidayDate) {
+      alert("กรุณาเลือกวันที่วันหยุดพิเศษ");
+      return;
+    }
+    const title = newHolidayTitle.trim() || "วันหยุดพิเศษ";
+    const newItem: HolidayItem = {
+      id: Date.now().toString(),
+      date: newHolidayDate,
+      title,
+    };
+    setHolidays((prev) =>
+      [...prev.filter((h) => h.date !== newHolidayDate), newItem].sort((a, b) =>
+        a.date.localeCompare(b.date)
+      )
+    );
+    setNewHolidayDate("");
+    setNewHolidayTitle("");
+  };
+
+  const handleRemoveHoliday = (id: string) => {
+    setHolidays((prev) => prev.filter((h) => h.id !== id));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const openingHoursStr = `${openTime} - ${closeTime}`;
+      const scheduleObj: ShopSchedule = {
+        open_time: openTime,
+        close_time: closeTime,
+        opening_hours: openingHoursStr,
+        closed_days: closedDays,
+        holidays,
+        is_closed_today: isClosedToday,
+      };
+
+      saveStoredSchedule(shop.id, scheduleObj);
+
+      try {
+        await supabase
+          .from("century_shops")
+          .update({
+            opening_hours: openingHoursStr,
+            is_closed_today: isClosedToday,
+          })
+          .eq("id", shop.id);
+      } catch (e) {}
+
+      onScheduleUpdated(scheduleObj);
+      alert("บันทึกตารางเวลาเปิด-ปิดและวันหยุดเรียบร้อยแล้ว!");
+      onClose();
+    } catch (err: any) {
+      alert("ไม่สามารถบันทึกตารางเวลาได้: " + (err.message || "Failed"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const applyPreset = (presetType: "everyday" | "weekdays" | "mon_off") => {
+    if (presetType === "everyday") {
+      setOpenTime("09:00");
+      setCloseTime("18:00");
+      setClosedDays([]);
+    } else if (presetType === "weekdays") {
+      setOpenTime("10:00");
+      setCloseTime("20:00");
+      setClosedDays(["เสาร์", "อาทิตย์"]);
+    } else if (presetType === "mon_off") {
+      setOpenTime("08:30");
+      setCloseTime("17:30");
+      setClosedDays(["จันทร์"]);
+    }
+  };
+
+  const statusInfo = getShopStatusToday(shop, {
+    open_time: openTime,
+    close_time: closeTime,
+    opening_hours: `${openTime} - ${closeTime}`,
+    closed_days: closedDays,
+    holidays,
+    is_closed_today: isClosedToday,
+  });
+
+  return (
+    <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+      <div
+        className="bg-white rounded-3xl w-full max-w-2xl border shadow-2xl overflow-hidden flex flex-col my-8"
+        style={{ borderColor: C.line }}
+      >
+        {/* Modal Header */}
+        <div className="p-6 border-b bg-stone-50/70 flex items-center justify-between" style={{ borderColor: C.line }}>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-amber-500 text-stone-950 font-bold flex items-center justify-center shadow-xs">
+              <Clock size={20} />
+            </div>
+            <div>
+              <h3 className="text-base font-black text-[#231C18]">จัดการเวลาเปิด-ปิด & ปฏิทินวันหยุด</h3>
+              <p className="text-xs text-[#8A7870] font-semibold truncate max-w-sm">ร้าน: {shop.shop_name}</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-xl border bg-white hover:bg-stone-100 flex items-center justify-center text-stone-600 transition cursor-pointer"
+            style={{ borderColor: C.line }}
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Status Preview Header Banner */}
+        <div className="px-6 py-3 bg-stone-900 text-white flex items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-stone-300">สถานะคำนวณวันนี้:</span>
+            <span className={`px-2.5 py-0.5 rounded-full font-black text-[11px] ${statusInfo.badgeBg}`}>
+              {statusInfo.badgeText}
+            </span>
+          </div>
+          <span className="text-[11px] text-stone-400 font-medium hidden sm:inline">{statusInfo.description}</span>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="flex border-b bg-stone-50/50 p-2 gap-1" style={{ borderColor: C.line }}>
+          <button
+            onClick={() => setActiveTab("today")}
+            className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer ${
+              activeTab === "today"
+                ? "bg-white text-[#231C18] shadow-xs border"
+                : "text-stone-500 hover:text-stone-800"
+            }`}
+            style={{ borderColor: activeTab === "today" ? C.line : "transparent" }}
+          >
+            <Power size={14} className={isClosedToday ? "text-rose-600" : "text-emerald-600"} />
+            <span>สวิตช์วันนี้ปิด</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("hours")}
+            className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer ${
+              activeTab === "hours"
+                ? "bg-white text-[#231C18] shadow-xs border"
+                : "text-stone-500 hover:text-stone-800"
+            }`}
+            style={{ borderColor: activeTab === "hours" ? C.line : "transparent" }}
+          >
+            <Clock size={14} className="text-amber-600" />
+            <span>เวลาเปิด-ปิดประจำสัปดาห์</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("holidays")}
+            className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer ${
+              activeTab === "holidays"
+                ? "bg-white text-[#231C18] shadow-xs border"
+                : "text-stone-500 hover:text-stone-800"
+            }`}
+            style={{ borderColor: activeTab === "holidays" ? C.line : "transparent" }}
+          >
+            <CalendarOff size={14} className="text-rose-600" />
+            <span>ปฏิทินวันหยุด ({holidays.length})</span>
+          </button>
+        </div>
+
+        {/* Tab Contents */}
+        <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto">
+          {/* TAB 1: TODAY QUICK TOGGLE */}
+          {activeTab === "today" && (
+            <div className="space-y-5">
+              <div className="p-5 rounded-2xl border bg-stone-50/50 space-y-3" style={{ borderColor: C.line }}>
+                <h4 className="text-sm font-black text-[#231C18] flex items-center gap-2">
+                  <Power size={16} className="text-amber-600" />
+                  <span>สวิตช์ปิดให้บริการร้านค้าวันนี้ (Quick Today Close Toggle)</span>
+                </h4>
+                <p className="text-xs text-[#8A7870] font-semibold leading-relaxed">
+                  กดปุ่มนี้เพื่อสลับสถานะเป็น <strong>"ปิดบริการชั่วคราววันนี้"</strong> แบบเร่งด่วนทันที โดยที่ไม่ต้องแก้ไขตารางเวลาเปิด-ปิดหลัก เหมาะสำหรับกรณีติดภารกิจด่วน หรือปิดร้านก่อนเวลา
+                </p>
+
+                <div className="pt-3 border-t flex flex-col sm:flex-row items-center justify-between gap-4" style={{ borderColor: C.line }}>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold shadow-xs ${isClosedToday ? "bg-rose-600" : "bg-emerald-600"}`}>
+                      {isClosedToday ? <Moon size={24} /> : <Sun size={24} />}
+                    </div>
+                    <div>
+                      <p className="text-xs font-black text-[#231C18]">
+                        {isClosedToday ? "🔴 สถานะปัจจุบัน: วันนี้ปิดบริการชั่วคราว" : "🟢 สถานะปัจจุบัน: เปิดให้บริการตามตารางเวลา"}
+                      </p>
+                      <p className="text-[11px] text-[#8A7870]">
+                        {isClosedToday ? "นักท่องเที่ยวจะเห็นป้ายเตือนว่าร้านปิดบริการวันนี้" : `เวลาทำการวันนี้: ${openTime} - ${closeTime}`}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsClosedToday(!isClosedToday)}
+                    className={`w-full sm:w-auto px-6 py-3 rounded-2xl text-xs font-black transition flex items-center justify-center gap-2 shadow-sm cursor-pointer ${
+                      isClosedToday
+                        ? "bg-emerald-600 hover:bg-emerald-500 text-white"
+                        : "bg-rose-600 hover:bg-rose-500 text-white"
+                    }`}
+                  >
+                    <Power size={16} />
+                    <span>{isClosedToday ? "เปลี่ยนเป็น: เปิดบริการวันนี้" : "เปลี่ยนเป็น: วันนี้ปิดบริการ"}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: REGULAR HOURS */}
+          {activeTab === "hours" && (
+            <div className="space-y-6">
+              {/* Presets */}
+              <div className="space-y-2">
+                <label className="text-xs font-black text-[#231C18] block">เลือกรูปแบบเวลาสำเร็จรูป (Presets):</label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => applyPreset("everyday")}
+                    className="px-3 py-2 rounded-xl border bg-stone-50 hover:bg-amber-50 hover:border-amber-300 text-[#231C18] text-xs font-bold transition cursor-pointer"
+                    style={{ borderColor: C.line }}
+                  >
+                    ⚡ เปิดทุกวัน 09:00 - 18:00
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyPreset("weekdays")}
+                    className="px-3 py-2 rounded-xl border bg-stone-50 hover:bg-amber-50 hover:border-amber-300 text-[#231C18] text-xs font-bold transition cursor-pointer"
+                    style={{ borderColor: C.line }}
+                  >
+                    ⚡ 10:00 - 20:00 (หยุดเสาร์-อาทิตย์)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyPreset("mon_off")}
+                    className="px-3 py-2 rounded-xl border bg-stone-50 hover:bg-amber-50 hover:border-amber-300 text-[#231C18] text-xs font-bold transition cursor-pointer"
+                    style={{ borderColor: C.line }}
+                  >
+                    ⚡ 08:30 - 17:30 (หยุดวันจันทร์)
+                  </button>
+                </div>
+              </div>
+
+              {/* Time inputs */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl border bg-stone-50/50" style={{ borderColor: C.line }}>
+                <div>
+                  <label className="text-xs font-black text-[#231C18] block mb-1">เวลาเปิด (Opening Time):</label>
+                  <input
+                    type="time"
+                    value={openTime}
+                    onChange={(e) => setOpenTime(e.target.value)}
+                    className="w-full p-3 rounded-xl border bg-white text-sm font-bold text-[#231C18] outline-hidden focus:border-amber-500"
+                    style={{ borderColor: C.line }}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-black text-[#231C18] block mb-1">เวลาปิด (Closing Time):</label>
+                  <input
+                    type="time"
+                    value={closeTime}
+                    onChange={(e) => setCloseTime(e.target.value)}
+                    className="w-full p-3 rounded-xl border bg-white text-sm font-bold text-[#231C18] outline-hidden focus:border-amber-500"
+                    style={{ borderColor: C.line }}
+                  />
+                </div>
+              </div>
+
+              {/* Weekly Closed Days */}
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-black text-[#231C18] block">วันหยุดประจำสัปดาห์ (Weekly Closed Days):</label>
+                  <p className="text-[11px] text-[#8A7870] font-medium">คลิกเลือกวันหยุดทำการประจำของร้านค้า</p>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {ALL_DAYS.map((day) => {
+                    const isSelected = closedDays.includes(day);
+                    return (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => toggleClosedDay(day)}
+                        className={`py-2.5 px-4 rounded-xl text-xs font-black transition cursor-pointer border flex items-center gap-1.5 ${
+                          isSelected
+                            ? "bg-rose-600 border-rose-600 text-white shadow-xs"
+                            : "bg-white border-stone-200 text-stone-700 hover:bg-stone-100"
+                        }`}
+                      >
+                        <span>{day}</span>
+                        {isSelected && <XCircle size={14} />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: HOLIDAY CALENDAR */}
+          {activeTab === "holidays" && (
+            <div className="space-y-6">
+              {/* Form Add Holiday */}
+              <form onSubmit={handleAddHoliday} className="p-4 rounded-2xl border bg-stone-50/50 space-y-3" style={{ borderColor: C.line }}>
+                <h4 className="text-xs font-black text-[#231C18] flex items-center gap-1.5">
+                  <CalendarOff size={15} className="text-rose-600" />
+                  <span>เพิ่มวันหยุดพิเศษ / ปฏิทินวันหยุด (Add Custom Holiday Date)</span>
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[11px] font-bold text-[#8A7870] block mb-1">วันที่วันหยุด:</label>
+                    <input
+                      type="date"
+                      value={newHolidayDate}
+                      onChange={(e) => setNewHolidayDate(e.target.value)}
+                      className="w-full p-2.5 rounded-xl border bg-white text-xs font-bold outline-hidden focus:border-amber-500"
+                      style={{ borderColor: C.line }}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-[#8A7870] block mb-1">เหตุผล / ชื่อวันหยุด (เช่น สงกรานต์):</label>
+                    <input
+                      type="text"
+                      placeholder="เช่น วันหยุดเทศกาล, ปิดปรับปรุงร้าน"
+                      value={newHolidayTitle}
+                      onChange={(e) => setNewHolidayTitle(e.target.value)}
+                      className="w-full p-2.5 rounded-xl border bg-white text-xs font-semibold outline-hidden focus:border-amber-500"
+                      style={{ borderColor: C.line }}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-black rounded-xl flex items-center gap-1.5 transition shadow-xs cursor-pointer"
+                  >
+                    <Plus size={14} />
+                    <span>+ เพิ่มวันหยุดพิเศษลงปฏิทิน</span>
+                  </button>
+                </div>
+              </form>
+
+              {/* Holiday List */}
+              <div className="space-y-2">
+                <label className="text-xs font-black text-[#231C18] block">รายการวันหยุดพิเศษที่ตั้งไว้ ({holidays.length}):</label>
+
+                {holidays.length === 0 ? (
+                  <div className="p-6 text-center border border-dashed rounded-2xl bg-stone-50/30 text-stone-400 space-y-1" style={{ borderColor: C.line }}>
+                    <p className="text-xs font-bold text-[#231C18]">ยังไม่มีวันหยุดพิเศษในปฏิทิน</p>
+                    <p className="text-[11px] text-[#8A7870]">คุณสามารถกำหนดวันหยุดเทศกาลหรือวันปิดปรับปรุงร้านล่วงหน้าได้จากแบบฟอร์มด้านบน</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {holidays.map((h) => (
+                      <div
+                        key={h.id}
+                        className="p-3.5 rounded-xl border bg-white flex items-center justify-between gap-3 hover:bg-stone-50 transition"
+                        style={{ borderColor: C.line }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 font-bold flex items-center justify-center text-xs">
+                            <CalendarOff size={16} />
+                          </div>
+                          <div>
+                            <p className="text-xs font-black text-[#231C18]">{h.date} — {h.title}</p>
+                            <p className="text-[10px] text-rose-600 font-semibold">ร้านจะแสดงสถานะปิดให้บริการในวันที่นี้โดยอัตโนมัติ</p>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveHoliday(h.id)}
+                          className="p-2 rounded-lg text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                          title="ลบวันหยุดนี้"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Modal Footer Actions */}
+        <div className="p-5 border-t bg-stone-50/70 flex items-center justify-between gap-3" style={{ borderColor: C.line }}>
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-5 py-2.5 rounded-xl border text-xs font-bold hover:bg-stone-100 transition cursor-pointer"
+            style={{ borderColor: C.line }}
+          >
+            ยกเลิก
+          </button>
+
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className="px-6 py-2.5 rounded-xl text-xs font-black text-white bg-[#E0533C] hover:bg-[#c8432d] transition flex items-center gap-2 cursor-pointer shadow-xs disabled:opacity-50"
+          >
+            {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+            <span>บันทึกการตั้งค่าตารางเวลา</span>
           </button>
         </div>
       </div>
