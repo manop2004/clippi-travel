@@ -1830,8 +1830,12 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                 }));
                 try {
                   const encodedDescription = encodeScheduleInText(shop.description_jp, updatedSched);
-                  supabase.from("century_shops").update({ description_jp: encodedDescription }).eq("id", shop.id).then(() => {});
+                  supabase.from("century_shops").update({
+                    is_closed_today: updatedSched.is_closed_today,
+                    description_jp: encodedDescription,
+                  }).eq("id", shop.id).then(() => {});
                   shop.description_jp = encodedDescription;
+                  shop.is_closed_today = updatedSched.is_closed_today;
                 } catch (err) {}
               };
 
@@ -1891,9 +1895,18 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                           )}
                         </div>
                         {statusInfo.sched.holidays && statusInfo.sched.holidays.length > 0 && (
-                          <div className="text-[10px] text-rose-700 font-medium flex items-center gap-1 truncate">
-                            <CalendarOff size={11} className="shrink-0 text-rose-500" />
-                            <span>วันหยุดพิเศษที่จะถึง: {statusInfo.sched.holidays[0].date} ({statusInfo.sched.holidays[0].title})</span>
+                          <div className="text-[10px] text-rose-700 font-medium flex flex-col gap-0.5">
+                            <div className="flex items-center gap-1 truncate font-semibold">
+                              <CalendarOff size={11} className="shrink-0 text-rose-500" />
+                              <span>วันหยุดพิเศษ ({statusInfo.sched.holidays.length} วัน):</span>
+                            </div>
+                            <div className="pl-3.5 text-[9.5px] text-rose-600 space-y-0.5">
+                              {statusInfo.sched.holidays.map((h, idx) => (
+                                <div key={h.id || idx} className="truncate">
+                                  • {h.date} {h.title ? `(${h.title})` : ""}
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -3138,10 +3151,18 @@ export function StoreScheduleModal({
         await supabase
           .from("century_shops")
           .update({
+            opening_hours: openingHoursStr,
+            is_closed_today: isClosedToday,
+            closed_days: closedDays,
+            holidays: holidays,
             description_jp: encodedDescription,
           })
           .eq("id", shop.id);
         shop.description_jp = encodedDescription;
+        shop.opening_hours = openingHoursStr;
+        shop.is_closed_today = isClosedToday;
+        shop.closed_days = closedDays;
+        shop.holidays = holidays;
       } catch (e) {}
 
       onScheduleUpdated(scheduleObj);

@@ -274,9 +274,18 @@ export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }:
                 </p>
               )}
               {statusInfo.sched.holidays && statusInfo.sched.holidays.length > 0 && (
-                <div className="text-[11px] text-rose-700 font-semibold flex items-center gap-1">
-                  <CalendarOff size={12} className="shrink-0 text-rose-500" />
-                  <span>วันหยุดพิเศษที่จะถึง: {statusInfo.sched.holidays[0].date} ({statusInfo.sched.holidays[0].title})</span>
+                <div className="text-[11px] text-rose-700 font-semibold space-y-0.5 pt-0.5">
+                  <div className="flex items-center gap-1 text-rose-800 font-bold">
+                    <CalendarOff size={12} className="shrink-0 text-rose-500" />
+                    <span>วันหยุดพิเศษที่จะถึง ({statusInfo.sched.holidays.length} วัน):</span>
+                  </div>
+                  <ul className="pl-4 list-disc text-[10.5px] space-y-0.5 text-rose-700 font-medium">
+                    {statusInfo.sched.holidays.map((h, idx) => (
+                      <li key={h.id || idx}>
+                        {h.date} {h.title ? `(${h.title})` : ""}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
             </div>

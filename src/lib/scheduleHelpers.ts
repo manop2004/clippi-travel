@@ -37,8 +37,38 @@ export function cleanScheduleTag(text: string | null | undefined): string {
 }
 
 export function getStoredSchedule(shopId: string | number, shopRecord?: any): ShopSchedule {
-  // 1. Try parsing directly from shopRecord text fields (for cross-browser/Incognito sync)
+  // 1. Try reading directly from native DB columns on shopRecord
   if (shopRecord) {
+    const hasNativeColumns =
+      shopRecord.holidays !== undefined ||
+      shopRecord.closed_days !== undefined ||
+      shopRecord.opening_hours !== undefined ||
+      shopRecord.is_closed_today !== undefined;
+
+    if (hasNativeColumns) {
+      const dbHolidays = Array.isArray(shopRecord.holidays) ? shopRecord.holidays : [];
+      const dbClosedDays = Array.isArray(shopRecord.closed_days) ? shopRecord.closed_days : [];
+      const dbOpHours = shopRecord.opening_hours || "09:00 - 18:00";
+      const times = String(dbOpHours).split("-").map((s) => s.trim());
+      const oTime = times[0] || "09:00";
+      const cTime = times[1] || "18:00";
+
+      const fromNative: ShopSchedule = {
+        open_time: oTime,
+        close_time: cTime,
+        opening_hours: dbOpHours,
+        closed_days: dbClosedDays,
+        holidays: dbHolidays,
+        is_closed_today: Boolean(shopRecord.is_closed_today),
+      };
+
+      if (dbHolidays.length > 0 || dbClosedDays.length > 0 || shopRecord.is_closed_today || shopRecord.opening_hours) {
+        saveStoredSchedule(shopId, fromNative);
+        return fromNative;
+      }
+    }
+
+    // 2. Fallback: Parse from text tag if present
     const fromRecord =
       parseScheduleFromText(shopRecord.description_jp) ||
       parseScheduleFromText(shopRecord.description) ||
@@ -49,7 +79,7 @@ export function getStoredSchedule(shopId: string | number, shopRecord?: any): Sh
     }
   }
 
-  // 2. Try parsing from localStorage cache
+  // 3. Fallback: Parse from localStorage cache
   try {
     const raw = localStorage.getItem(`store_schedule_${shopId}`);
     if (raw) return JSON.parse(raw);
