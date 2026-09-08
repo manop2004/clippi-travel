@@ -3049,7 +3049,7 @@ function AdminShopSummaryModal({
     fetchAnalyticsData();
   }, [shop?.id]);
 
-  const totalStampsCount = stampsData.length > 0 ? stampsData.length : (shop.stamps_count || 0);
+  const totalStampsCount = stampsData.length;
   const ratingVal = shop.rating !== undefined && shop.rating !== null ? Number(shop.rating) : 0;
   const reviewsCount = shop.reviews_count || 0;
 
