@@ -12,7 +12,7 @@ import { haversineDistance, formatDistance } from "../lib/geoHelpers";
 import { useLang, localized } from "../lib/i18n";
 import { useUserRole } from "../hooks/useUserRole";
 import AchievementCelebration, { CelebrationItem } from "./AchievementCelebration";
-import { getShopStatusToday } from "../lib/scheduleHelpers";
+import { getShopStatusToday, cleanAllMetadataTags } from "../lib/scheduleHelpers";
 import StampSealRenderer from "./StampSealRenderer";
 import { getShopRules, StoreRuleItem } from "../lib/ruleHelpers";
 
@@ -1138,8 +1138,8 @@ export function AddPlaceModal({
       setJapaneseName(activeData.shop_name_jp || activeData.name_jp || "");
       setStreet(activeData.address || activeData.street || "");
       setWebsite(activeData.website || "");
-      setDescription(activeData.description || "");
-      setDescriptionJp(activeData.description_jp || "");
+      setDescription(cleanAllMetadataTags(activeData.description || ""));
+      setDescriptionJp(cleanAllMetadataTags(activeData.description_jp || ""));
       setCat(activeData.category || "food");
       if (activeData.lat && activeData.lng) {
         setCoords({ lat: Number(activeData.lat), lng: Number(activeData.lng) });
@@ -1422,6 +1422,34 @@ export function AddPlaceModal({
         const nameJp = japaneseName || targetData.shop_name_jp || targetData.name_jp || null;
         const addressStr = street || targetData.address || targetData.street || "";
 
+        const reattachMetadataTags = (newText: string, originalText: string | null | undefined): string => {
+          if (!originalText) return newText.trim();
+          const scheduleMatch = String(originalText).match(/\[SCHEDULE:.*?\]/g);
+          const rulesMatch = String(originalText).match(/\[RULES:.*?\]/g);
+          const stampMatch = String(originalText).match(/\[STAMP:.*?\]/g);
+
+          let result = newText.trim();
+          if (scheduleMatch) {
+            scheduleMatch.forEach(tag => {
+              if (!result.includes(tag)) result += `\n${tag}`;
+            });
+          }
+          if (rulesMatch) {
+            rulesMatch.forEach(tag => {
+              if (!result.includes(tag)) result += `\n${tag}`;
+            });
+          }
+          if (stampMatch) {
+            stampMatch.forEach(tag => {
+              if (!result.includes(tag)) result += `\n${tag}`;
+            });
+          }
+          return result.trim();
+        };
+
+        const finalDescription = reattachMetadataTags(description, targetData?.description);
+        const finalDescriptionJp = reattachMetadataTags(descriptionJp, targetData?.description_jp);
+
         // 1. UPDATE `place_submissions` IF ITEM IS FROM SUBMISSIONS
         if (targetData.isSubmission || (typeof itemId === "string" && String(itemId).includes("-"))) {
           const submissionPayload: Record<string, any> = {
@@ -1430,7 +1458,8 @@ export function AddPlaceModal({
             street: addressStr,
             website: website || null,
             category: cat || "shop",
-            description: description || null,
+            description: finalDescription || null,
+            description_jp: finalDescriptionJp || null,
             image_url: finalImageUrls[0] || null,
             lat: coords?.lat ? parseFloat(String(coords.lat)) : null,
             lng: coords?.lng ? parseFloat(String(coords.lng)) : null,
@@ -1452,12 +1481,18 @@ export function AddPlaceModal({
           address: addressStr,
           website: website || null,
           category: cat || "shop",
-          description: description || null,
+          description: finalDescription || null,
+          description_jp: finalDescriptionJp || null,
           image_url: finalImageUrls[0] || null,
           lat: coords?.lat ? parseFloat(String(coords.lat)) : null,
           lng: coords?.lng ? parseFloat(String(coords.lng)) : null,
           owner_id: targetData?.owner_id || user.id,
         };
+
+        const selectedPref = prefecture === "custom" ? customPrefecture.trim() || null : prefecture || null;
+        if (selectedPref) {
+          centuryPayload.prefecture = selectedPref;
+        }
 
         const isNumberId = typeof itemId === "number" || (!isNaN(Number(itemId)) && !String(itemId).includes("-"));
 
@@ -1472,6 +1507,7 @@ export function AddPlaceModal({
             const msg = updateErr.message || "";
             if (msg.includes("website")) delete centuryPayload.website;
             if (msg.includes("shop_name_jp")) delete centuryPayload.shop_name_jp;
+            if (msg.includes("description_jp")) delete centuryPayload.description_jp;
             if (msg.includes("owner_id")) delete centuryPayload.owner_id;
 
             const { error: retryErr } = await supabase
@@ -1493,7 +1529,8 @@ export function AddPlaceModal({
                   street: addressStr,
                   website: website || null,
                   category: cat || "shop",
-                  description: description || null,
+                  description: finalDescription || null,
+                  description_jp: finalDescriptionJp || null,
                   image_url: finalImageUrls[0] || null,
                   lat: coords?.lat ? parseFloat(String(coords.lat)) : null,
                   lng: coords?.lng ? parseFloat(String(coords.lng)) : null,
