@@ -56,7 +56,6 @@ export default function StampSealRenderer({
   const customImg = finalDesign.image_url;
   const borderWidth = finalDesign.border_width || "medium";
   const shadowEffect = finalDesign.shadow_effect || "subtle";
-  const textureEffect = finalDesign.texture_effect || "clean";
 
   // Size dimensions
   const sizeMap = {
@@ -102,11 +101,8 @@ export default function StampSealRenderer({
     }
   }
 
-  // Texture filter
-  let textureClass = "";
-  if (textureEffect === "vintage_rubber") textureClass = "contrast-150 brightness-95 opacity-90 filter drop-shadow-2xs";
-  else if (textureEffect === "ink_bleed") textureClass = "blur-[0.3px] opacity-95";
-
+  const customTextColor = finalDesign.custom_text_color || inkColor;
+  const subTextColor = finalDesign.sub_text_color || inkColor;
   const imageSize = finalDesign.image_size || "lg";
 
   // Icon renderer lookup
@@ -160,7 +156,7 @@ export default function StampSealRenderer({
 
   // Uncollected styling override if needed
   const containerFilter = isCollected
-    ? `saturate-110 opacity-95 ${textureClass}`
+    ? "saturate-110 opacity-95"
     : "grayscale opacity-35 border-dashed";
 
   return (
@@ -186,7 +182,7 @@ export default function StampSealRenderer({
         {showCustomText && (
           <span
             className={`font-black tracking-tight leading-none text-center px-1 max-w-[88%] truncate ${sz.mainFont}`}
-            style={{ color: inkColor }}
+            style={{ color: customTextColor }}
           >
             {mainText}
           </span>
@@ -201,7 +197,7 @@ export default function StampSealRenderer({
         {showSubText && subText && (
           <span
             className={`font-extrabold uppercase tracking-wider text-center px-1 max-w-[85%] truncate opacity-80 ${sz.subFont}`}
-            style={{ color: inkColor }}
+            style={{ color: subTextColor }}
           >
             {subText}
           </span>

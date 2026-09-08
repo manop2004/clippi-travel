@@ -19,7 +19,6 @@ import {
   STAMP_SHAPES,
   STAMP_PRESET_ICONS,
   STAMP_SHADOW_EFFECTS,
-  STAMP_TEXTURE_EFFECTS,
   STAMP_BORDER_WIDTHS,
   STAMP_IMAGE_SIZES,
   getShopStampDesign,
@@ -80,14 +79,18 @@ export default function StampDesignerModal({
   const handleReset = () => {
     setDesign({
       ink_color: "#D9381E",
+      custom_text_color: "",
+      sub_text_color: "",
       shape: "circle",
       preset_icon: "hanko",
       custom_text: shopName,
       sub_text: "EKITAG SEAL",
+      show_border: true,
+      show_custom_text: true,
+      show_sub_text: true,
       image_url: "",
       border_width: "medium",
       shadow_effect: "subtle",
-      texture_effect: "clean",
     });
   };
 
@@ -196,7 +199,7 @@ export default function StampDesignerModal({
               }`}
             >
               <Sun size={14} className={activeTab === "effects" ? "text-rose-600" : "text-stone-500"} />
-              <span>4. เงา & เนื้อหมึก</span>
+              <span>4. เอฟเฟกต์เงา</span>
             </button>
           </div>
 
@@ -207,7 +210,7 @@ export default function StampDesignerModal({
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-xs font-black text-[#231C18]">
-                    เลือกสีหมึกตราประทับ (Stamp Ink Color):
+                    เลือกสีหมึกตราประทับหลัก (Main Stamp Ink Color):
                   </label>
                   <div className="flex items-center gap-1.5">
                     <span className="text-[10px] font-bold text-stone-500">เลือกสีอิสระ:</span>
@@ -312,14 +315,14 @@ export default function StampDesignerModal({
                 <label className="text-xs font-black text-[#231C18] block mb-2">
                   ความหนาของเส้นขอบ (Border Width):
                 </label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-4 gap-2">
                   {STAMP_BORDER_WIDTHS.map((b) => {
                     const isSelected = (design.border_width || "medium") === b.id;
                     return (
                       <button
                         key={b.id}
                         type="button"
-                        onClick={() => setDesign((prev) => ({ ...prev, border_width: b.id as any }))}
+                        onClick={() => setDesign((prev) => ({ ...prev, border_width: b.id as any, show_border: b.id !== "none" }))}
                         className={`py-2 px-2 rounded-xl border text-center text-xs font-bold transition cursor-pointer ${
                           isSelected
                             ? "bg-amber-50 border-amber-400 text-amber-900 shadow-2xs"
@@ -449,7 +452,7 @@ export default function StampDesignerModal({
           {activeTab === "text" && (
             <div className="space-y-4 pt-1">
               {/* Top Text Section */}
-              <div className="p-3.5 rounded-2xl border bg-stone-50/70 space-y-2" style={{ borderColor: C.line }}>
+              <div className="p-3.5 rounded-2xl border bg-stone-50/70 space-y-2.5" style={{ borderColor: C.line }}>
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-black text-[#231C18]">
                     ข้อความหลักด้านบน (Header Text):
@@ -481,21 +484,45 @@ export default function StampDesignerModal({
                 </div>
 
                 {design.show_custom_text !== false && (
-                  <input
-                    type="text"
-                    value={design.custom_text || ""}
-                    onChange={(e) => setDesign((prev) => ({ ...prev, custom_text: e.target.value }))}
-                    placeholder={shopName}
-                    maxLength={30}
-                    className="w-full px-3.5 py-2 rounded-xl border text-xs font-semibold focus:outline-hidden focus:ring-2 focus:ring-rose-400 bg-white"
-                    style={{ borderColor: C.line }}
-                  />
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      value={design.custom_text || ""}
+                      onChange={(e) => setDesign((prev) => ({ ...prev, custom_text: e.target.value }))}
+                      placeholder={shopName}
+                      maxLength={30}
+                      className="w-full px-3.5 py-2 rounded-xl border text-xs font-semibold focus:outline-hidden focus:ring-2 focus:ring-rose-400 bg-white"
+                      style={{ borderColor: C.line }}
+                    />
+
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-[11px] font-bold text-stone-600">สีข้อความหลักด้านบน:</span>
+                      <div className="flex items-center gap-2">
+                        {design.custom_text_color && (
+                          <button
+                            type="button"
+                            onClick={() => setDesign((prev) => ({ ...prev, custom_text_color: "" }))}
+                            className="text-[10px] text-stone-500 hover:text-rose-600 font-bold underline"
+                          >
+                            ใช้สีหมึกหลัก
+                          </button>
+                        )}
+                        <input
+                          type="color"
+                          value={design.custom_text_color || design.ink_color || "#D9381E"}
+                          onChange={(e) => setDesign((prev) => ({ ...prev, custom_text_color: e.target.value }))}
+                          className="w-6 h-6 rounded-lg cursor-pointer border p-0 bg-transparent"
+                          title="เลือกสีข้อความหลักด้านบน"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 )}
                 <p className="text-[10px] text-stone-500 font-medium">ข้อความที่จะแสดงอยู่ด้านบนสุดของตราประทับ</p>
               </div>
 
               {/* Bottom Subtext Section */}
-              <div className="p-3.5 rounded-2xl border bg-stone-50/70 space-y-2" style={{ borderColor: C.line }}>
+              <div className="p-3.5 rounded-2xl border bg-stone-50/70 space-y-2.5" style={{ borderColor: C.line }}>
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-black text-[#231C18]">
                     ข้อความรองด้านล่าง (Subtext / Slogan):
@@ -527,22 +554,46 @@ export default function StampDesignerModal({
                 </div>
 
                 {design.show_sub_text !== false && (
-                  <input
-                    type="text"
-                    value={design.sub_text || ""}
-                    onChange={(e) => setDesign((prev) => ({ ...prev, sub_text: e.target.value }))}
-                    placeholder="เช่น EKITAG SEAL, EST. 2024"
-                    maxLength={25}
-                    className="w-full px-3.5 py-2 rounded-xl border text-xs font-semibold focus:outline-hidden focus:ring-2 focus:ring-rose-400 bg-white"
-                    style={{ borderColor: C.line }}
-                  />
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      value={design.sub_text || ""}
+                      onChange={(e) => setDesign((prev) => ({ ...prev, sub_text: e.target.value }))}
+                      placeholder="เช่น EKITAG SEAL, EST. 2024"
+                      maxLength={25}
+                      className="w-full px-3.5 py-2 rounded-xl border text-xs font-semibold focus:outline-hidden focus:ring-2 focus:ring-rose-400 bg-white"
+                      style={{ borderColor: C.line }}
+                    />
+
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-[11px] font-bold text-stone-600">สีข้อความรองด้านล่าง:</span>
+                      <div className="flex items-center gap-2">
+                        {design.sub_text_color && (
+                          <button
+                            type="button"
+                            onClick={() => setDesign((prev) => ({ ...prev, sub_text_color: "" }))}
+                            className="text-[10px] text-stone-500 hover:text-rose-600 font-bold underline"
+                          >
+                            ใช้สีหมึกหลัก
+                          </button>
+                        )}
+                        <input
+                          type="color"
+                          value={design.sub_text_color || design.ink_color || "#D9381E"}
+                          onChange={(e) => setDesign((prev) => ({ ...prev, sub_text_color: e.target.value }))}
+                          className="w-6 h-6 rounded-lg cursor-pointer border p-0 bg-transparent"
+                          title="เลือกสีข้อความรองด้านล่าง"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 )}
                 <p className="text-[10px] text-stone-500 font-medium">ข้อความสั้นด้านล่าง เช่น สโลแกน ปีที่ก่อตั้ง หรือคำว่า OFFICIAL</p>
               </div>
             </div>
           )}
 
-          {/* TAB 4: เงา & เนื้อตรายาง */}
+          {/* TAB 4: เอฟเฟกต์เงา */}
           {activeTab === "effects" && (
             <div className="space-y-4 pt-1">
               {/* Shadow Effect */}
@@ -565,32 +616,6 @@ export default function StampDesignerModal({
                         }`}
                       >
                         {sh.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Texture Effect */}
-              <div>
-                <label className="text-xs font-black text-[#231C18] block mb-2">
-                  พื้นผิวเนื้อหมึก (Ink Texture Effect):
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {STAMP_TEXTURE_EFFECTS.map((tx) => {
-                    const isSelected = (design.texture_effect || "clean") === tx.id;
-                    return (
-                      <button
-                        key={tx.id}
-                        type="button"
-                        onClick={() => setDesign((prev) => ({ ...prev, texture_effect: tx.id as any }))}
-                        className={`py-2.5 px-2 rounded-xl border text-center text-xs font-bold transition cursor-pointer ${
-                          isSelected
-                            ? "bg-amber-50 border-amber-400 text-amber-900 shadow-2xs"
-                            : "bg-white border-stone-200 text-stone-700 hover:bg-stone-50"
-                        }`}
-                      >
-                        {tx.label}
                       </button>
                     );
                   })}

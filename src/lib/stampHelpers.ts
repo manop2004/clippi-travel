@@ -1,6 +1,8 @@
 // stampHelpers.ts
 export interface StampDesign {
   ink_color?: string;
+  custom_text_color?: string;
+  sub_text_color?: string;
   shape?: "circle" | "double_circle" | "octagon" | "square" | "stamp_edge" | "hexagon" | "rounded_square" | "none";
   preset_icon?: string;
   custom_text?: string;
@@ -12,7 +14,6 @@ export interface StampDesign {
   image_size?: "sm" | "md" | "lg" | "full";
   border_width?: "none" | "thin" | "medium" | "bold";
   shadow_effect?: "none" | "subtle" | "vintage" | "glow";
-  texture_effect?: "clean" | "vintage_rubber" | "ink_bleed";
   font_style?: "sans" | "serif" | "mono" | "rounded";
 }
 
@@ -90,15 +91,11 @@ export const STAMP_SHADOW_EFFECTS = [
   { id: "glow", label: "รัศมีหมึก (Ink Glow)" },
 ];
 
-export const STAMP_TEXTURE_EFFECTS = [
-  { id: "clean", label: "หมึกคมชัด (Clean)" },
-  { id: "vintage_rubber", label: "ตรายางโบราณ (Rubber Stamp)" },
-  { id: "ink_bleed", label: "หมึกซึมยิ้ม (Ink Bleed)" },
-];
-
 export function getDefaultStampDesign(shopName?: string): StampDesign {
   return {
     ink_color: "#D9381E",
+    custom_text_color: "",
+    sub_text_color: "",
     shape: "circle",
     preset_icon: "hanko",
     custom_text: shopName || "",
@@ -110,7 +107,6 @@ export function getDefaultStampDesign(shopName?: string): StampDesign {
     image_size: "lg",
     border_width: "medium",
     shadow_effect: "subtle",
-    texture_effect: "clean",
     font_style: "sans",
   };
 }
