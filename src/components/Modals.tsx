@@ -1651,7 +1651,7 @@ export function AddPlaceModal({
               {editSubmission.rejection_reason && (
                 <div className="bg-white/80 p-3 rounded-xl border border-rose-200 text-rose-950 font-medium">
                   <span className="font-bold text-rose-900 block text-[11px] mb-0.5">เหตุผลที่แอดมินปฏิเสธ:</span>
-                  "{editSubmission.rejection_reason}"
+                  {`"${editSubmission.rejection_reason}"`}
                 </div>
               )}
               <p className="text-[11px] text-rose-700 font-semibold">

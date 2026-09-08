@@ -66,6 +66,7 @@ export default function ProfileView() {
 
   // ─── Form states for Edit Profile Modal (File Upload) ────────────────────
   const [editDisplayName, setEditDisplayName] = useState("");
+  const [editPassword,    setEditPassword]    = useState("");
   const [selectedFile,    setSelectedFile]    = useState<File | null>(null);
   const [avatarPreview,   setAvatarPreview]   = useState<string>("");
   const [isSavingProfile, setIsSavingProfile] = useState(false);
@@ -370,8 +371,8 @@ export default function ProfileView() {
         }
       }
 
-      // Step C: Update user metadata in Supabase Auth (display_name, full_name, name, avatar_url, custom_avatar_url, picture)
-      const { error: authErr } = await supabase.auth.updateUser({
+      // Step C: Update user metadata and optional password in Supabase Auth
+      const authUpdatePayload: any = {
         data: {
           display_name: cleanName,
           full_name: cleanName,
@@ -380,10 +381,15 @@ export default function ProfileView() {
           custom_avatar_url: finalAvatarUrl,
           picture: finalAvatarUrl,
         },
-      });
+      };
+      if (editPassword.trim()) {
+        authUpdatePayload.password = editPassword.trim();
+      }
+
+      const { error: authErr } = await supabase.auth.updateUser(authUpdatePayload);
 
       if (authErr) {
-        console.warn("Auth metadata update warning:", authErr.message);
+        console.warn("Auth metadata/password update warning:", authErr.message);
       }
 
       // Save cleanName into localStorage for instant cross-navigation persistence
@@ -833,6 +839,24 @@ export default function ProfileView() {
                   style={{ borderColor: C.line, background: "#FAF6F0" }}
                 />
                 <p className="text-[9px] text-[#8A7870]">หากเว้นว่างไว้ ระบบจะแสดงชื่อจากอีเมลเป็นค่าเริ่มต้น</p>
+              </div>
+
+              {/* Set Password Field */}
+              <div className="space-y-1 pt-2 border-t" style={{ borderColor: C.line }}>
+                <label className="text-[11px] font-black text-[#231C18] block">
+                  🔒 ตั้งรหัสผ่านสำหรับเข้าสู่ระบบด้วยอีเมล (Set Email Login Password)
+                </label>
+                <input
+                  type="password"
+                  value={editPassword}
+                  onChange={(e) => setEditPassword(e.target.value)}
+                  placeholder="กรอกรหัสผ่านที่ต้องการใช้ล็อกอินด้วยอีเมล (ขั้นต่ำ 6 ตัวอักษร)"
+                  className="w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#E0533C]/30 transition"
+                  style={{ borderColor: C.line, background: "#FAF6F0" }}
+                />
+                <p className="text-[9px] text-[#8A7870]">
+                  หากคุณเคยเข้าสู่ระบบด้วย Google คุณสามารถตั้งรหัสผ่านที่นี่เพื่อล็อกอินด้วยอีเมลและรหัสผ่านนี้ได้
+                </p>
               </div>
 
               {/* Action Buttons */}

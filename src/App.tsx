@@ -62,6 +62,7 @@ export default function App() {
 
   const { t } = useLang();
   const {
+    user: roleUser,
     role,
     isAdmin,
     isStoreOwner,
@@ -296,7 +297,7 @@ export default function App() {
   }, [session]);
 
   // Show a clean loading state to prevent flash of login screen or overlays
-  if (authLoading || (session && roleLoading)) {
+  if (authLoading || (session && roleLoading && !roleUser)) {
     return (
       <PasswordGate>
         <div className="min-h-screen w-full flex items-center justify-center bg-[#F2EBE1] text-xs font-black text-[#8A7870]">
@@ -380,7 +381,13 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex gap-3 pt-2">
+          <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
+            <button
+              onClick={() => setIsMerchantApplyOpen(true)}
+              className="flex-1 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold py-3 px-4 rounded-xl text-xs transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <span>✏️ แก้ไขข้อมูลร้านค้าที่ส่งไป</span>
+            </button>
             <button
               onClick={() => refreshRole()}
               className="flex-1 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold py-3 px-4 rounded-xl text-xs transition cursor-pointer"
@@ -392,12 +399,108 @@ export default function App() {
                 await supabase.auth.signOut();
                 window.location.href = '/';
               }}
-              className="flex-1 bg-[#E31E27] hover:bg-red-700 text-white font-bold py-3 px-4 rounded-xl text-xs transition shadow-md cursor-pointer"
+              className="bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-300 font-bold py-3 px-4 rounded-xl text-xs transition cursor-pointer"
+            >
+              ออกจากระบบ
+            </button>
+          </div>
+        </div>
+
+        <MerchantRegisterModal
+          isOpen={isMerchantApplyOpen}
+          onClose={() => setIsMerchantApplyOpen(false)}
+          onSuccess={() => {
+            setIsMerchantApplyOpen(false);
+            refreshRole();
+          }}
+          user={session?.user}
+        />
+      </div>
+    );
+  }
+
+  // ROOT-LEVEL REJECTED MERCHANT INTERCEPTOR
+  if (session && isRejectedMerchant && role !== "admin" && role !== "store") {
+    return (
+      <div className="fixed inset-0 z-[99999] bg-stone-950/85 backdrop-blur-md flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full text-center shadow-2xl border border-rose-200 animate-fade-in space-y-5 relative">
+          <div className="w-20 h-20 bg-rose-100 rounded-3xl flex items-center justify-center mx-auto text-4xl shadow-xs">
+            ❌
+          </div>
+          <div>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-100 text-rose-900 text-[10px] font-black tracking-wider uppercase mb-2">
+              Application Rejected / คำขอไม่ผ่านการอนุมัติ
+            </span>
+            <h2 className="text-xl font-black text-stone-900">คำขอลงทะเบียนเจ้าของร้านค้าไม่ผ่านการอนุมัติ</h2>
+            <p className="text-stone-500 text-xs mt-1 leading-relaxed">
+              คำขอสมัครสมาชิกเจ้าของร้านค้าของคุณไม่ผ่านการพิจารณาจากทีมงานแอดมิน<br />
+              <strong className="text-rose-900 font-bold">กรุณาตรวจสอบสาเหตุและแก้ไขข้อมูล/เอกสารเพื่อยื่นคำขอใหม่อีกครั้ง</strong>
+            </p>
+          </div>
+
+          {/* Rejection Cause Highlight Box */}
+          <div className="bg-rose-50 border border-rose-200 p-4 rounded-2xl text-left select-none">
+            <p className="text-[10px] font-black uppercase text-rose-500 tracking-wider mb-1 flex items-center gap-1">
+              ⚠️ สาเหตุที่ไม่ผ่านการอนุมัติ:
+            </p>
+            <p className="text-xs font-bold text-rose-950 leading-relaxed">
+              {`"${merchantRejectionReason || "ข้อมูลเอกสารหรือหลักฐานสิทธิ์ร้านค้าไม่ตรงตามเงื่อนไขที่กำหนด"}"`}
+            </p>
+          </div>
+
+          {/* Status timeline showing rejection */}
+          <div className="bg-stone-50 rounded-2xl p-4 border border-stone-200 text-left space-y-3 select-none">
+            <div className="flex items-center gap-3 text-xs">
+              <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px] font-bold">✓</div>
+              <div>
+                <p className="font-extrabold text-stone-900">1. ลงทะเบียน & แนบเอกสารสิทธิ์</p>
+                <p className="text-[10px] text-stone-500">ส่งข้อมูลร้านค้าเข้าสู่ระบบเรียบร้อย</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 text-xs">
+              <div className="w-6 h-6 rounded-full bg-rose-500 text-white flex items-center justify-center text-[10px] font-bold">✕</div>
+              <div>
+                <p className="font-extrabold text-rose-900">2. แอดมินตรวจสอบเอกสาร (ไม่ผ่านการอนุมัติ)</p>
+                <p className="text-[10px] text-rose-700 font-semibold">แอดมินปฏิเสธคำขอเนื่องจากสาเหตุข้างต้น</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 text-xs opacity-50">
+              <div className="w-6 h-6 rounded-full bg-stone-300 text-stone-600 flex items-center justify-center text-[10px] font-bold">3</div>
+              <div>
+                <p className="font-extrabold text-stone-800">3. เข้าใช้งานระบบ (Merchant Portal)</p>
+                <p className="text-[10px] text-stone-500">รอแก้ไขข้อมูลและได้รับการอนุมัติสิทธิ์</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={() => setIsMerchantApplyOpen(true)}
+              className="flex-1 bg-gradient-to-r from-[#FD775C] to-rose-600 hover:from-rose-600 hover:to-[#FD775C] text-white font-bold py-3 px-4 rounded-xl text-xs transition shadow-md cursor-pointer flex items-center justify-center gap-1.5 active:scale-98"
+            >
+              <span>🔄 แก้ไขข้อมูล & ยื่นคำขอใหม่</span>
+            </button>
+            <button
+              onClick={async () => {
+                await supabase.auth.signOut();
+                window.location.href = '/';
+              }}
+              className="flex-1 bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-300 font-bold py-3 px-4 rounded-xl text-xs transition cursor-pointer"
             >
               ออกจากระบบ (Logout)
             </button>
           </div>
         </div>
+
+        <MerchantRegisterModal
+          isOpen={isMerchantApplyOpen}
+          onClose={() => setIsMerchantApplyOpen(false)}
+          onSuccess={() => {
+            setIsMerchantApplyOpen(false);
+            refreshRole();
+          }}
+          user={session?.user}
+        />
       </div>
     );
   }

@@ -185,18 +185,56 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
         const emailLower = email.trim().toLowerCase();
         const deletedSet = getDeletedUserIds();
 
-        // 1. Check if email exists in profiles table
         let emailExists = false;
+        let isPendingMerchant = false;
+
+        // Check local storage pending submissions
+        try {
+          const localSubs = JSON.parse(localStorage.getItem("merchant_pending_submissions") || "[]");
+          const matchedLocal = localSubs.find(
+            (l: any) => (l.contact_email || l.email || "").toLowerCase() === emailLower
+          );
+          if (matchedLocal) {
+            emailExists = true;
+            if (matchedLocal.status === "pending" || !matchedLocal.status) {
+              isPendingMerchant = true;
+            }
+          }
+        } catch (e) {}
+
+        // Check profiles table
         if (!deletedSet.has(emailLower)) {
           const { data: profData } = await supabase
             .from("profiles")
-            .select("id, email, is_deleted, role")
+            .select("id, email, is_deleted, role, merchant_status")
             .ilike("email", emailLower)
             .maybeSingle();
 
           if (profData && !profData.is_deleted && profData.role !== "deleted") {
             emailExists = true;
+            if (profData.role === "pending_store" || profData.merchant_status === "pending") {
+              isPendingMerchant = true;
+            }
           }
+        }
+
+        // Check place_submissions table by contact_email
+        if (!emailExists) {
+          try {
+            const { data: subData } = await supabase
+              .from("place_submissions")
+              .select("id, status")
+              .ilike("contact_email", emailLower)
+              .limit(1)
+              .maybeSingle();
+
+            if (subData) {
+              emailExists = true;
+              if (subData.status === "pending" || !subData.status) {
+                isPendingMerchant = true;
+              }
+            }
+          } catch (e) {}
         }
 
         // 2. Attempt sign in with password
@@ -206,8 +244,17 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
         });
 
         if (error) {
-          if (emailExists) {
-            setErrorMsg("รหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง (หากคุณสมัครหรือเคยเข้าใช้งานด้วย Google กรุณากดปุ่ม 'Google Workspace' ด้านล่างเพื่อเข้าสู่ระบบ)");
+          const errMsg = error.message || "";
+          if (errMsg.includes("Email not confirmed")) {
+            setErrorMsg("⚠️ บัญชีนี้ยังไม่ได้ยืนยันอีเมล กรุณาตรวจสอบกล่องจดหมาย (Inbox / Spam) ของอีเมล " + email.trim() + " แล้วกดลิงก์ยืนยันตัวตนก่อนเข้าสู่ระบบ");
+          } else if (isPendingMerchant) {
+            setErrorMsg(
+              "⏳ บัญชีเจ้าของร้านของคุณ (" + email.trim() + ") ลงทะเบียนเรียบร้อยแล้วและอยู่ระหว่างรอแอดมินอนุมัติสิทธิ์ (Pending Approval)\n\n" +
+              "💡 หากเคยเข้าใช้งานผ่าน Google ไม่จำเป็นต้องยืนยันอีเมล สามารถกดปุ่ม 'Google Workspace' ด้านล่างเพื่อเข้าสู่ระบบได้ทันที!\n" +
+              "(หากต้องการเข้าด้วยรหัสผ่าน สามารถกด 'ลืมรหัสผ่าน? / ตั้งรหัสผ่านใหม่' ด้านล่างเพื่อตั้งรหัสผ่านได้)"
+            );
+          } else if (emailExists) {
+            setErrorMsg("รหัสผ่านไม่ถูกต้อง หรือบัญชีนี้ยังไม่ได้ตั้งรหัสผ่าน (หากเคยเข้าด้วย Google กรุณากดปุ่ม 'Google Workspace' ด้านล่างเพื่อเข้าสู่ระบบ หรือกด 'ลืมรหัสผ่าน?')");
           } else {
             setErrorMsg("ยังไม่มีบัญชีที่ใช้อีเมลนี้ในระบบ กรุณาสมัครสมาชิกก่อน");
           }
@@ -234,11 +281,24 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
           ) {
             removeDeletedUserId(uidStr);
             removeDeletedUserId(emailLower);
+
+            const ADMIN_EMAILS = [
+              "kakhidicang@gmail.com",
+              "nonroblox001@gmail.com",
+              "chayakorn.ph@ku.th",
+              "alongkorn.kn@gmail.com",
+              "lookpalmza10@gmail.com",
+              "kittiwin99999@gmail.com"
+            ];
+            const isWhitelistedAdmin = ADMIN_EMAILS.some((e) => emailLower && (emailLower === e.toLowerCase() || emailLower.includes(e.toLowerCase())));
+            const defaultRole = isWhitelistedAdmin ? "admin" : "user";
+
             await supabase.from("profiles").upsert({
               id: authData.user.id,
               email: authData.user.email || email.trim(),
               display_name: authData.user.user_metadata?.display_name || authData.user.email?.split("@")[0] || "User",
-              role: "user",
+              role: defaultRole,
+              is_admin: isWhitelistedAdmin,
               is_deleted: false,
               is_banned: false,
               ban_reason: null,
@@ -246,7 +306,7 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
 
             await supabase.from("user_roles").upsert({
               user_id: authData.user.id,
-              role: "user",
+              role: defaultRole,
             }, { onConflict: "user_id" });
           }
 
@@ -261,23 +321,15 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
           const uRole = profData?.role || authData.user.user_metadata?.role || "user";
           const mStatus = subData?.status || profData?.merchant_status;
 
-          if (uRole !== "admin" && uRole !== "store") {
-            if (mStatus === "pending") {
-              await supabase.auth.signOut();
-              setErrorMsg("⏳ บัญชีเจ้าของร้านค้าของคุณอยู่ระหว่างการรออนุมัติจากแอดมิน (Pending Admin Approval) ยังไม่สามารถเข้าใช้งานระบบได้ กรุณารอแอดมินอนุมัติก่อน");
-              return;
-            } else if (mStatus === "rejected") {
-              await supabase.auth.signOut();
-              const reason = subData?.rejection_reason || "ข้อมูลไม่ครบถ้วนหรือไม่ตรงตามเงื่อนไขที่กำหนด";
-              setErrorMsg(`❌ คำขอลงทะเบียนเจ้าของร้านค้าของคุณไม่ผ่านการอนุมัติ: "${reason}"`);
-              return;
-            }
+          // Do NOT sign out if pending merchant - allow App.tsx to display full Pending Admin Approval screen
+          if (uRole !== "admin" && uRole !== "store" && mStatus === "pending") {
+            setSuccessMsg("⏳ บัญชีของคุณอยู่ระหว่างการรออนุมัติจากแอดมิน (Pending Admin Approval) กำลังเข้าสู่หน้ารออนุมัติ...");
           }
         }
       } catch (err: any) {
         console.error("Login failed:", err);
         if (err.message?.includes("Invalid login credentials")) {
-          setErrorMsg("อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง");
+          setErrorMsg("อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง (หากเคยสมัครผ่าน Google หรือต้องการตั้งรหัสผ่าน สามารถกด 'ลืมรหัสผ่าน? / ตั้งรหัสผ่านใหม่' ได้)");
         } else {
           setErrorMsg(err.message || "เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
         }
@@ -409,6 +461,63 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
         const cleanEmail = email.trim().toLowerCase();
         removeDeletedUserId(cleanEmail);
 
+        // 1. Check if email is ALREADY registered as pending or approved store owner in profiles
+        const { data: existingProf } = await supabase
+          .from("profiles")
+          .select("id, role, merchant_status, is_deleted")
+          .ilike("email", cleanEmail)
+          .maybeSingle();
+
+        if (existingProf && !existingProf.is_deleted) {
+          if (existingProf.role === "store" || existingProf.merchant_status === "approved") {
+            setErrorMsg(`⚠️ อีเมล ${cleanEmail} ได้รับอนุมัติสิทธิ์เป็นเจ้าของร้านค้าเรียบร้อยแล้ว กรุณาเข้าสู่ระบบด้วยบัญชีนี้`);
+            setLoading(false);
+            handleSwitchMode("login");
+            return;
+          }
+          if (existingProf.role === "pending_store" || existingProf.merchant_status === "pending") {
+            setErrorMsg(`⏳ อีเมล ${cleanEmail} ได้ลงทะเบียนสมัครเจ้าของร้านค้าไว้เรียบร้อยแล้ว (อยู่ระหว่างรอแอดมินอนุมัติ) กรุณาเข้าสู่ระบบเพื่อติดตามสถานะ`);
+            setLoading(false);
+            handleSwitchMode("login");
+            return;
+          }
+        }
+
+        // Upload ownership proof document if attached (with Base64 Data URL fallback)
+        let uploadedOwnershipUrl: string | null = null;
+        if (ownershipFile) {
+          try {
+            const fileExt = ownershipFile.name.split(".").pop();
+            const timestamp = Date.now();
+            const safeEmailName = cleanEmail.replace(/[^a-z0-9]/gi, "_");
+            const filePath = `ownership-proof/${safeEmailName}/${timestamp}.${fileExt}`;
+
+            const { error: uploadErr } = await supabase.storage
+              .from("place-photos")
+              .upload(filePath, ownershipFile);
+
+            if (!uploadErr) {
+              const { data: publicUrlData } = supabase.storage
+                .from("place-photos")
+                .getPublicUrl(filePath);
+              uploadedOwnershipUrl = publicUrlData?.publicUrl || null;
+            }
+          } catch (err) {
+            console.warn("Ownership document upload notice:", err);
+          }
+
+          if (!uploadedOwnershipUrl) {
+            try {
+              uploadedOwnershipUrl = await new Promise<string>((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve((reader.result as string) || "");
+                reader.onerror = () => resolve("");
+                reader.readAsDataURL(ownershipFile);
+              });
+            } catch (e) {}
+          }
+        }
+
         let registeredUser: any = null;
 
         const { data, error } = await supabase.auth.signUp({
@@ -420,22 +529,120 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
               full_name: contactName.trim(),
               shop_name: shopName.trim(),
               phone: phone.trim(),
+              prefecture: prefecture,
+              category: category,
+              ownership_proof_url: uploadedOwnershipUrl,
               role: "pending_store",
+              merchant_status: "pending",
             },
           },
         });
 
         if (data?.user) {
           registeredUser = data.user;
+          if (!data?.session) {
+            try {
+              const { data: signInAfterSignUp } = await supabase.auth.signInWithPassword({
+                email: email.trim(),
+                password: password.trim(),
+              });
+              if (signInAfterSignUp?.user) {
+                registeredUser = signInAfterSignUp.user;
+              }
+            } catch (e) {}
+          }
         } else if (error && error.message?.includes("User already registered")) {
+          // Attempt sign in with password first
           const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
             email: email.trim(),
             password: password.trim(),
           });
+
           if (!signInErr && signInData?.user) {
             registeredUser = signInData.user;
+            try {
+              await supabase.auth.updateUser({
+                data: {
+                  role: "pending_store",
+                  merchant_status: "pending",
+                  shop_name: shopName.trim(),
+                  contact_name: contactName.trim(),
+                  phone: phone.trim(),
+                },
+              });
+            } catch (e) {}
           } else {
-            throw error;
+            // Existing user (e.g. Google OAuth account or different password)
+            // Ensure application is saved to DB and localStorage so Admin review panel receives it
+            const localSubmission = {
+              id: existingProf?.id ? `prof_${existingProf.id}` : `local_${Date.now()}`,
+              user_id: existingProf?.id || null,
+              contact_email: cleanEmail,
+              email: cleanEmail,
+              shop_name: shopName.trim(),
+              name_en: shopName.trim(),
+              contact_name: contactName.trim(),
+              contact_phone: phone.trim(),
+              phone: phone.trim(),
+              category: category,
+              prefecture: prefecture,
+              ownership_proof_url: uploadedOwnershipUrl,
+              status: "pending",
+              created_at: new Date().toISOString(),
+            };
+
+            // 1. Save to local storage for instant sync to Admin Panel
+            try {
+              const existingLocals = JSON.parse(localStorage.getItem("merchant_pending_submissions") || "[]");
+              const updatedLocals = existingLocals.filter((l: any) => 
+                (l.contact_email || l.email || "").toLowerCase() !== cleanEmail
+              );
+              updatedLocals.push(localSubmission);
+              localStorage.setItem("merchant_pending_submissions", JSON.stringify(updatedLocals));
+            } catch (e) {}
+
+            // 2. Best effort insert to place_submissions table
+            try {
+              await supabase.from("place_submissions").insert({
+                user_id: existingProf?.id || undefined,
+                contact_email: cleanEmail,
+                shop_name: shopName.trim(),
+                name_en: shopName.trim(),
+                contact_name: contactName.trim(),
+                contact_phone: phone.trim(),
+                category: category,
+                prefecture: prefecture,
+                ownership_proof_url: uploadedOwnershipUrl,
+                status: "pending",
+                created_at: new Date().toISOString(),
+              });
+            } catch (e) {}
+
+            // 3. Best effort update profiles table
+            if (existingProf?.id) {
+              try {
+                await supabase.from("profiles").update({
+                  role: "pending_store",
+                  merchant_status: "pending",
+                  shop_name: shopName.trim(),
+                  phone: phone.trim(),
+                  prefecture: prefecture,
+                  category: category,
+                  ownership_proof_url: uploadedOwnershipUrl,
+                  ban_reason: null,
+                }).eq("id", existingProf.id);
+
+                await supabase.from("user_roles").upsert({
+                  user_id: existingProf.id,
+                  role: "pending_store",
+                }, { onConflict: "user_id" });
+              } catch (e) {}
+            }
+
+            setSuccessMsg(`🎉 ยื่นคำขอลงทะเบียนเจ้าของร้านค้าสำหรับ ${cleanEmail} เรียบร้อยแล้ว! (เนื่องจากบัญชีนี้สมัครไว้ผ่าน Google กรุณากดปุ่ม 'Google Workspace' ด้านล่างเพื่อเข้าสู่ระบบ)`);
+            setLoading(false);
+            handleSwitchMode("login");
+            return;
           }
         } else if (error) {
           throw error;
@@ -445,11 +652,16 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
           removeDeletedUserId(registeredUser.id);
           removeDeletedUserId(cleanEmail);
 
-          // 1. Upsert profiles table with role 'pending_store' & merchant_status 'pending'
+          // 1. Upsert profiles table with role 'pending_store' & merchant_status 'pending' and shop details
           await supabase.from("profiles").upsert({
             id: registeredUser.id,
             email: email.trim(),
             display_name: contactName.trim(),
+            shop_name: shopName.trim(),
+            phone: phone.trim(),
+            prefecture: prefecture,
+            category: category,
+            ownership_proof_url: uploadedOwnershipUrl,
             role: "pending_store",
             merchant_status: "pending",
             is_deleted: false,
@@ -463,31 +675,8 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
             role: "pending_store",
           }, { onConflict: "user_id" });
 
-          // 3. Upload ownership proof document if attached
-          let uploadedOwnershipUrl: string | null = null;
-          if (ownershipFile) {
-            try {
-              const fileExt = ownershipFile.name.split(".").pop();
-              const timestamp = Date.now();
-              const filePath = `ownership-proof/${registeredUser.id}/${timestamp}.${fileExt}`;
-
-              const { error: uploadErr } = await supabase.storage
-                .from("place-photos")
-                .upload(filePath, ownershipFile);
-
-              if (!uploadErr) {
-                const { data: publicUrlData } = supabase.storage
-                  .from("place-photos")
-                  .getPublicUrl(filePath);
-                uploadedOwnershipUrl = publicUrlData?.publicUrl || null;
-              }
-            } catch (err) {
-              console.warn("Ownership document upload notice:", err);
-            }
-          }
-
-          // 4. Create initial place_submission for this shop
-          const { error: subInsertErr } = await supabase.from("place_submissions").insert({
+          // 3. Update existing place_submissions or insert if new
+          const authSubPayload = {
             user_id: registeredUser.id,
             name_en: shopName.trim(),
             shop_name: shopName.trim(),
@@ -498,22 +687,63 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
             prefecture: prefecture,
             ownership_proof_url: uploadedOwnershipUrl,
             status: "pending",
-          });
+            rejection_reason: null,
+            created_at: new Date().toISOString(),
+          };
 
-          if (subInsertErr) {
-            console.warn("Notice inserting place_submission:", subInsertErr.message);
+          let hasUpdatedAuthSub = false;
+          try {
+            const { data: existingRows } = await supabase
+              .from("place_submissions")
+              .select("id")
+              .or(`user_id.eq.${registeredUser.id}${email ? `,contact_email.ilike.${email.trim().toLowerCase()}` : ""}`);
+
+            if (existingRows && existingRows.length > 0) {
+              const ids = existingRows.map((r) => r.id);
+              await supabase.from("place_submissions").update(authSubPayload).in("id", ids);
+              hasUpdatedAuthSub = true;
+            }
+          } catch (e) {}
+
+          if (!hasUpdatedAuthSub) {
+            const { error: subInsertErr } = await supabase.from("place_submissions").insert(authSubPayload);
+            if (subInsertErr) {
+              console.warn("Notice inserting place_submission:", subInsertErr.message);
+            }
           }
 
-          // Ensure user is signed out so they cannot enter app until approved
-          await supabase.auth.signOut();
+          // Also keep in localStorage fallback
+          try {
+            const localSubmission = {
+              id: `prof_${registeredUser.id}`,
+              user_id: registeredUser.id,
+              contact_email: cleanEmail,
+              email: cleanEmail,
+              shop_name: shopName.trim(),
+              name_en: shopName.trim(),
+              contact_name: contactName.trim(),
+              contact_phone: phone.trim(),
+              phone: phone.trim(),
+              category: category,
+              prefecture: prefecture,
+              ownership_proof_url: uploadedOwnershipUrl,
+              status: "pending",
+              created_at: new Date().toISOString(),
+            };
+            const existingLocals = JSON.parse(localStorage.getItem("merchant_pending_submissions") || "[]");
+            const updatedLocals = existingLocals.filter((l: any) => 
+              (l.contact_email || l.email || "").toLowerCase() !== cleanEmail
+            );
+            updatedLocals.push(localSubmission);
+            localStorage.setItem("merchant_pending_submissions", JSON.stringify(updatedLocals));
+          } catch (e) {}
 
-          setSuccessMsg("🎉 ลงทะเบียนเจ้าของร้านค้าและส่งเอกสารสำเร็จ! บัญชีของคุณอยู่ระหว่างการรออนุมัติจากแอดมิน (Pending Approval) กรุณารอแอดมินตรวจสอบและอนุมัติสิทธิ์ก่อนเข้าใช้งานระบบ");
-          handleSwitchMode("login");
+          setSuccessMsg("🎉 ลงทะเบียนเจ้าของร้านค้าและส่งเอกสารสำเร็จ! บัญชีของคุณอยู่ระหว่างการรออนุมัติจากแอดมิน (Pending Approval)");
         }
       } catch (err: any) {
         console.error("Merchant signup failed:", err);
         if (err.message?.includes("User already registered")) {
-          setErrorMsg("อีเมลนี้ถูกลงทะเบียนในระบบแล้ว คุณสามารถกดเข้าสู่ระบบด้วย 'Google Workspace' หรือ 'เข้าสู่ระบบ' ด้วยรหัสผ่าน เพื่อกู้คืนบัญชีและยื่นคำขอเปิดร้านค้าได้ทันที");
+          setErrorMsg("อีเมลนี้ถูกลงทะเบียนไว้ในระบบแล้ว หากเคยเข้าด้วย Google กรุณาเข้าสู่ระบบด้วย Google หรือกด 'ลืมรหัสผ่าน?' เพื่อตั้งรหัสผ่านสำหรับอีเมลนี้");
         } else {
           setErrorMsg(err.message || "ลงทะเบียนร้านค้าไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
         }

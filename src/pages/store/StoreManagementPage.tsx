@@ -1,3 +1,4 @@
+// StoreManagementPage.tsx
 import React, { useState, useEffect } from "react";
 import {
   Store,
@@ -66,6 +67,7 @@ export interface ShopRecord {
   isSubmission?: boolean;
   submissionId?: string;
   status?: string;
+  rejection_reason?: string | null;
   created_at?: string;
 }
 
@@ -145,6 +147,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
   const [avgRating, setAvgRating] = useState<number | string>(0);
 
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isStoreOwner, setIsStoreOwner] = useState(false);
 
   // Customer Reviews Analytics Modal state
   const [isReviewsModalOpen, setIsReviewsModalOpen] = useState(false);
@@ -226,6 +229,43 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
     }
   };
 
+  const checkIsStoreOwner = async (userId: string): Promise<boolean> => {
+    try {
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (roleData?.role === "store" || roleData?.role === "admin") return true;
+
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("role, merchant_status, is_admin")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (
+        profileData?.role === "store" ||
+        profileData?.role === "admin" ||
+        profileData?.is_admin === true ||
+        profileData?.merchant_status === "approved"
+      ) return true;
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (
+        user?.user_metadata?.role === "store" ||
+        user?.user_metadata?.role === "admin" ||
+        user?.app_metadata?.role === "store" ||
+        user?.app_metadata?.role === "admin"
+      ) return true;
+
+      return false;
+    } catch {
+      return false;
+    }
+  };
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -236,7 +276,9 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
       setCurrentUser(user);
 
       const adminFlag = await checkIsAdmin(user.id);
+      const storeOwnerFlag = await checkIsStoreOwner(user.id);
       setIsAdmin(adminFlag);
+      setIsStoreOwner(storeOwnerFlag);
       if (adminFlag && activeTab === "submissions") {
         setActiveTab("shops");
       }
@@ -822,17 +864,69 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
     .sort((a, b) => (b.stamps_count || 0) - (a.stamps_count || 0))
     .slice(0, 5);
 
-  // Extract unique list of Prefectures dynamically from shops data
+  // Combine live approved shops and non-approved/pending/rejected submissions for store owner
+  const combinedAllShops: ShopRecord[] = React.useMemo(() => {
+    const list: ShopRecord[] = [...shops.map((s) => ({ ...s, status: s.status || "approved" }))];
+    const liveShopNames = new Set(shops.map((s) => (s.shop_name || s.name_en || "").trim().toLowerCase()));
+
+    (submissions || []).forEach((sub) => {
+      if (sub.status === "deleted") return;
+      const subName = (sub.name_en || sub.name_jp || sub.shop_name || "").trim().toLowerCase();
+
+      // Skip duplicate if already present in live approved shops
+      if (
+        sub.status === "approved" &&
+        (liveShopNames.has(subName) || (sub.shop_id && shops.some((s) => String(s.id) === String(sub.shop_id))))
+      ) {
+        return;
+      }
+
+      list.push({
+        id: sub.id,
+        submissionId: sub.id,
+        isSubmission: true,
+        shop_name: sub.name_en || sub.shop_name || "ร้านค้าที่ยื่นขออนุมัติ",
+        name_en: sub.name_en || sub.shop_name,
+        shop_name_jp: sub.name_jp,
+        address: sub.street || sub.prefecture || "",
+        prefecture: sub.prefecture || "",
+        category: sub.category || "spot",
+        description: sub.description || "",
+        image_url: sub.image_url || sub.image_urls?.[0] || "",
+        lat: sub.lat,
+        lng: sub.lng,
+        website: sub.website,
+        status: sub.status,
+        rejection_reason: sub.rejection_reason,
+        created_at: sub.created_at,
+        owner_id: sub.user_id,
+      });
+    });
+
+    return list;
+  }, [shops, submissions]);
+
+  const countApprovedAll = combinedAllShops.filter((s) => !s.status || s.status === "approved").length;
+  const countPendingAll = combinedAllShops.filter((s) => s.status === "pending").length;
+  const countRejectedAll = combinedAllShops.filter((s) => s.status === "rejected").length;
+
+  // Extract unique list of Prefectures dynamically from combined shops data
   const availablePrefectures = Array.from(
     new Set(
-      shops
+      combinedAllShops
         .map((s) => (s.prefecture || "").trim())
         .filter((p) => p.length > 0)
     )
   ).sort();
 
-  const filteredShops = [...shops]
+  const filteredShops = combinedAllShops
     .filter((shop) => {
+      // 0. Status Filter (all, approved, pending, rejected)
+      if (statusFilter !== "all") {
+        const itemStatus = shop.status || (shop.isSubmission ? "pending" : "approved");
+        if (itemStatus !== statusFilter) return false;
+      }
+
       // 1. Search Query Filter
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
@@ -887,13 +981,15 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
     searchQuery.trim() !== "" ||
     selectedPrefecture !== "all" ||
     selectedCategory !== "all" ||
-    selectedMinRating > 0;
+    selectedMinRating > 0 ||
+    statusFilter !== "all";
 
   const handleResetFilters = () => {
     setSearchQuery("");
     setSelectedPrefecture("all");
     setSelectedCategory("all");
     setSelectedMinRating(0);
+    setStatusFilter("all");
   };
 
   const filteredSubmissions = submissions.filter((item) => {
@@ -1181,7 +1277,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
 
                 {rev.comment ? (
                   <div className="bg-stone-50/70 p-3.5 rounded-2xl border text-xs text-[#231C18] font-medium leading-relaxed" style={{ borderColor: C.line }}>
-                    "{rev.comment}"
+                    {`"${rev.comment}"`}
                   </div>
                 ) : (
                   <p className="text-xs text-stone-400 italic">ไม่มีข้อความรีวิวเพิ่มเติม</p>
@@ -1194,7 +1290,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
     );
   }
 
-  const hasApprovedStoreAccess = isAdmin || shops.length > 0 || submissions.some((s) => s.status === "approved");
+  const hasApprovedStoreAccess = isAdmin || isStoreOwner || shops.length > 0 || submissions.some((s) => s.status === "approved");
 
   if (!hasApprovedStoreAccess && !isAdmin) {
     return (
@@ -1309,7 +1405,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                           <span>สาเหตุที่แอดมินปฏิเสธคำขอ:</span>
                         </div>
                         <p className="font-semibold bg-white p-2.5 rounded-lg border border-rose-200 text-rose-900">
-                          "{sub.rejection_reason || "ข้อมูลร้านค้าหรือเอกสารสิทธิ์ไม่ครบถ้วน กรุณาตรวจสอบและส่งใหม่"}"
+                          {`"${sub.rejection_reason || "ข้อมูลร้านค้าหรือเอกสารสิทธิ์ไม่ครบถ้วน กรุณาตรวจสอบและส่งใหม่"}"`}
                         </p>
                         <button
                           type="button"
@@ -1467,7 +1563,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                   {rejSub.rejection_reason && (
                     <div className="bg-rose-50 p-2.5 rounded-xl border border-rose-200 text-xs text-rose-900 font-medium">
                       <span className="font-bold block text-[11px] text-rose-950 mb-0.5">เหตุผลที่แอดมินปฏิเสธ:</span>
-                      "{rejSub.rejection_reason}"
+                      {`"${rejSub.rejection_reason}"`}
                     </div>
                   )}
                 </div>
@@ -1537,106 +1633,24 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
             <h3 className="text-xl font-black text-emerald-700">
               {recentReviews.length} รีวิว
             </h3>
-            <p className="text-[10px] text-[#8A7870] font-semibold">เสียงตอบรับจากนักท่องเที่ยว</p>
           </div>
         </div>
+
       </div>
-
-      {/* 🔥 ADMIN EXCLUSIVE: TOP POPULAR SHOPS LEADERBOARD */}
-      {isAdmin && topPopularShops.length > 0 && (
-        <div className="bg-gradient-to-br from-stone-950 via-stone-900 to-amber-950 p-6 rounded-3xl border border-amber-500/30 text-white shadow-xl space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-500/20 pb-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-400/30 text-amber-400 flex items-center justify-center shrink-0">
-                <Flame size={22} className="animate-bounce text-amber-400" />
-              </div>
-              <div>
-                <h3 className="text-base font-black text-white flex items-center gap-2">
-                  5 อันดับร้านค้ายอดฮิต (Top Stamp Check-in Spots)
-                </h3>
-                <p className="text-xs text-amber-200/70 font-medium">
-                  สรุปร้านค้าที่นักท่องเที่ยวเดินทางมาเช็คอินสะสมแสตมป์มากที่สุดในระบบ
-                </p>
-              </div>
-            </div>
-
-            <span className="px-3 py-1 rounded-full text-[10px] font-black bg-amber-400/20 text-amber-300 border border-amber-400/30 self-start sm:self-auto flex items-center gap-1">
-                <Trophy size={12} className="text-amber-400" /> Ranking Leaderboard
-              </span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
-            {topPopularShops.map((popShop, index) => {
-              const rankMedals = ["อันดับ #1", "อันดับ #2", "อันดับ #3", "อันดับ #4", "อันดับ #5"];
-              const rankStyles = [
-                "bg-amber-400 text-stone-950 font-black border-amber-300",
-                "bg-slate-300 text-slate-950 font-black border-slate-200",
-                "bg-amber-700 text-white font-black border-amber-600",
-                "bg-stone-800 text-stone-300 font-bold border-stone-700",
-                "bg-stone-800 text-stone-300 font-bold border-stone-700",
-              ];
-
-              return (
-                <div
-                  key={popShop.id}
-                  onClick={() => setSelectedSummaryShop(popShop)}
-                  className="bg-stone-900/80 hover:bg-stone-800 border border-amber-500/20 hover:border-amber-400/50 p-3.5 rounded-2xl transition cursor-pointer flex flex-col justify-between group relative overflow-hidden shadow-lg"
-                >
-                  <div className="space-y-2">
-                    <div className="relative h-24 w-full rounded-xl overflow-hidden bg-stone-950">
-                      <img
-                        src={popShop.image_url || "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&q=80&w=400"}
-                        alt={popShop.shop_name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                      />
-                      <div className="absolute top-2 left-2">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] border shadow-xs ${rankStyles[index] || "bg-stone-800 text-white"}`}>
-                          {rankMedals[index]}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h4 className="text-xs font-black text-white truncate leading-tight group-hover:text-amber-300 transition">
-                        {popShop.shop_name}
-                      </h4>
-                      <p className="text-[10px] text-amber-200/70 truncate mt-0.5">
-                        {popShop.prefecture || "Japan"} • {popShop.category}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 pt-2 border-t border-stone-700/60 flex items-center justify-between">
-                    <div className="flex items-center gap-1 text-amber-400 text-[11px] font-black">
-                      <Stamp size={13} />
-                      <span>{popShop.stamps_count || 0} Stamp</span>
-                    </div>
-
-                    <span className="text-[10px] text-amber-300/90 font-bold group-hover:underline">
-                      สรุปสถิติ →
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* 🏪 SHOPS MANAGEMENT SECTION (SEARCH, FILTERS & SHOPS GRID) */}
+        {/* 🏪 SHOPS MANAGEMENT SECTION (SEARCH, FILTERS & SHOPS GRID) */}
       <div className="space-y-4">
         {/* Section Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-[#231C18] text-amber-400 flex items-center justify-center font-bold">
               <Building2 size={16} />
             </div>
             <div>
               <h3 className="text-base font-black text-[#231C18]">
-                {isAdmin ? "รายการร้านค้าทั้งหมดในระบบ" : "รายการร้านค้าในความดูแลของคุณ"} ({shops.length} ร้าน)
+                {isAdmin ? "รายการร้านค้าทั้งหมดในระบบ" : "รายการร้านค้าในความดูแลของคุณ"} ({combinedAllShops.length} รายการ)
               </h3>
               <p className="text-xs text-[#8A7870] font-semibold">
-                {isAdmin ? "จัดการ ค้นหา และแก้ไขข้อมูลร้านค้าทั้งหมดในระบบ" : "จัดการ ค้นหา พิมพ์ QR Code และดูสถิติลึกของร้านค้าของคุณ"}
+                {isAdmin ? "จัดการ ค้นหา และแก้ไขข้อมูลร้านค้าทั้งหมดในระบบ" : "จัดการ ค้นหา ติดตามสถานะอนุมัติ พิมพ์ QR Code และดูสถิติร้านค้า"}
               </p>
             </div>
           </div>
@@ -1644,6 +1658,45 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
 
         {/* Filter & Sort Bar for Shops */}
         <div className="bg-white p-4 rounded-3xl border shadow-2xs space-y-3.5" style={{ borderColor: C.line }}>
+          {/* Status Filter Tabs (Approved, Pending, Rejected) */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b" style={{ borderColor: C.line }}>
+            <span className="text-xs font-black text-[#231C18] flex items-center gap-1 mr-1 shrink-0">
+              สถานะ:
+            </span>
+            <button
+              onClick={() => setStatusFilter("all")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer shrink-0 ${
+                statusFilter === "all" ? "bg-[#231C18] text-white shadow-xs" : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+              }`}
+            >
+              ทั้งหมด ({combinedAllShops.length})
+            </button>
+            <button
+              onClick={() => setStatusFilter("approved")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer shrink-0 ${
+                statusFilter === "approved" ? "bg-emerald-600 text-white shadow-xs" : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+              }`}
+            >
+              ✓ อนุมัติแล้ว ({countApprovedAll})
+            </button>
+            <button
+              onClick={() => setStatusFilter("pending")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer shrink-0 ${
+                statusFilter === "pending" ? "bg-amber-500 text-white shadow-xs" : "bg-amber-50 text-amber-700 border border-amber-200"
+              }`}
+            >
+              ⏳ รออนุมัติ ({countPendingAll})
+            </button>
+            <button
+              onClick={() => setStatusFilter("rejected")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer shrink-0 ${
+                statusFilter === "rejected" ? "bg-rose-600 text-white shadow-xs" : "bg-rose-50 text-rose-700 border border-rose-200"
+              }`}
+            >
+              ✕ ถูกปฏิเสธ ({countRejectedAll})
+            </button>
+          </div>
+
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-0">
               <span className="text-xs font-black text-[#231C18] flex items-center gap-1.5 mr-1">
@@ -1724,7 +1777,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
         {filteredShops.length === 0 ? (
           <div className="p-14 text-center bg-white rounded-3xl border flex flex-col items-center justify-center gap-3" style={{ borderColor: C.line }}>
             <Store size={32} className="text-stone-300" />
-            <h3 className="text-base font-black text-[#231C18]">ไม่พบร้านค้าที่ตรงตามเงื่อนไข</h3>
+            <h3 className="text-base font-black text-[#231C18]">ไม่พบรายการร้านค้าที่ตรงตามเงื่อนไข</h3>
             <button onClick={handleResetFilters} className="px-4 py-2 bg-[#231C18] text-white text-xs font-black rounded-xl">
               ล้างการกรองทั้งหมด
             </button>
@@ -1871,7 +1924,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                 </div>
 
                 {rev.comment && (
-                  <p className="text-xs text-[#231C18] font-medium leading-relaxed pl-10">"{rev.comment}"</p>
+                  <p className="text-xs text-[#231C18] font-medium leading-relaxed pl-10">{`"${rev.comment}"`}</p>
                 )}
               </div>
             ))}
@@ -1890,118 +1943,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
         )}
       </div>
 
-      {/* 📝 SUBMISSIONS STATUS SECTION (FOR REGULAR STORE OWNERS ONLY) */}
-      {!isAdmin && (
-        <div className="space-y-6 animate-in fade-in duration-200">
-          <div className="bg-white p-6 rounded-3xl border space-y-4 shadow-2xs" style={{ borderColor: C.line }}>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-4" style={{ borderColor: C.line }}>
-              <div>
-                <h3 className="text-base font-black text-[#231C18]">ติดตามสถานะคำขอลงทะเบียนร้านค้า (Submissions Status)</h3>
-                <p className="text-xs text-[#8A7870] font-semibold">รายการร้านค้าที่คุณส่งขออนุมัติ และสถานะการพิจารณาจากผู้ดูแลระบบ</p>
-              </div>
 
-              <button
-                onClick={handleAddClick}
-                className="px-4 py-2 bg-[#E0533C] text-white text-xs font-black rounded-xl flex items-center gap-1.5 hover:bg-[#c8432d] transition self-start sm:self-auto cursor-pointer"
-              >
-                <Plus size={14} /> ส่งคำขอเพิ่มร้านใหม่
-              </button>
-            </div>
-
-            {/* Filter buttons */}
-            <div className="flex items-center gap-2 overflow-x-auto">
-              <button
-                onClick={() => setStatusFilter("all")}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${statusFilter === "all" ? "bg-[#231C18] text-white" : "bg-stone-100 text-stone-600 hover:bg-stone-200"}`}
-              >
-                ทั้งหมด ({submissions.length})
-              </button>
-              <button
-                onClick={() => setStatusFilter("pending")}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${statusFilter === "pending" ? "bg-amber-500 text-white" : "bg-amber-50 text-amber-700 border border-amber-200"}`}
-              >
-                ⏳ รออนุมัติ ({countPending})
-              </button>
-              <button
-                onClick={() => setStatusFilter("approved")}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${statusFilter === "approved" ? "bg-emerald-600 text-white" : "bg-emerald-50 text-emerald-700 border border-emerald-200"}`}
-              >
-                อนุมัติแล้ว ({countApproved})
-              </button>
-              <button
-                onClick={() => setStatusFilter("rejected")}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${statusFilter === "rejected" ? "bg-rose-600 text-white" : "bg-rose-50 text-rose-700 border border-rose-200"}`}
-              >
-                ถูกปฏิเสธ ({countRejected})
-              </button>
-            </div>
-
-            {/* Submissions List */}
-            {filteredSubmissions.length === 0 ? (
-              <div className="p-12 text-center bg-stone-50/50 rounded-2xl border border-dashed text-stone-400 space-y-2">
-                <FileText size={32} className="mx-auto text-stone-300" />
-                <p className="text-xs font-bold text-[#231C18]">ไม่พบประวัติการส่งคำขอตามเงื่อนไข</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {filteredSubmissions.map((sub) => {
-                  const statusBadges: Record<string, any> = {
-                    pending: <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1">รอการตรวจสอบ</span>,
-                    approved: <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">อนุมัติแล้ว</span>,
-                    rejected: <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300 flex items-center gap-1">ถูกปฏิเสธ</span>,
-                    deleted: <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-stone-200 text-stone-700 border border-stone-400 flex items-center gap-1">ถูกลบแล้ว</span>,
-                  };
-
-                  return (
-                    <div key={sub.id} className="p-4 rounded-2xl border bg-white space-y-3 shadow-2xs" style={{ borderColor: C.line }}>
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 rounded-xl bg-stone-100 overflow-hidden shrink-0">
-                            <img src={sub.image_url || sub.image_urls?.[0] || "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&q=80&w=400"} alt={sub.name_en} className="w-full h-full object-cover" />
-                          </div>
-                          <div>
-                            <h4 className="text-sm font-black text-[#231C18] leading-tight">{sub.name_en}</h4>
-                            {sub.name_jp && <p className="text-[11px] text-[#8A7870] font-semibold">{sub.name_jp}</p>}
-                            <p className="text-[10px] text-[#8A7870] font-semibold mt-0.5">
-                              {sub.category} • ส่งเมื่อ {new Date(sub.created_at).toLocaleDateString("th-TH")}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 self-start sm:self-auto">
-                          {statusBadges[sub.status] || statusBadges.pending}
-                          {sub.status === "rejected" && (
-                            <button
-                              onClick={() => setEditingSubmission(sub)}
-                              className="px-3 py-1 rounded-xl bg-amber-500 text-white text-[11px] font-black hover:bg-amber-600 transition cursor-pointer"
-                            >
-                              แก้ไขและส่งใหม่
-                            </button>
-                          )}
-                          <button
-                            onClick={() => handleDeleteSubmission(sub.id)}
-                            className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 transition cursor-pointer"
-                            title="ลบคำขอ"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </div>
-
-                      {sub.status === "rejected" && sub.rejection_reason && (
-                        <div className="bg-rose-50 p-3 rounded-xl border border-rose-200 text-xs text-rose-800 font-medium">
-                          <span className="font-bold text-rose-900 block mb-0.5">เหตุผลที่ปฏิเสธ:</span>
-                          {sub.rejection_reason}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* ➕ Modal: Add New Shop */}
       {isCreateOpen && (

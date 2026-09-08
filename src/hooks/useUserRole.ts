@@ -2,6 +2,15 @@ import { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
 import { getDeletedUserIds, removeDeletedUserId } from "../lib/activityHelpers";
 
+const ADMIN_EMAILS = [
+  "kakhidicang@gmail.com",
+  "nonroblox001@gmail.com",
+  "chayakorn.ph@ku.th",
+  "alongkorn.kn@gmail.com",
+  "lookpalmza10@gmail.com",
+  "kittiwin99999@gmail.com"
+];
+
 export type UserRole = "admin" | "store" | "user" | "pending_store";
 export type MerchantStatus = "pending" | "approved" | "rejected" | null;
 
@@ -32,8 +41,10 @@ export function useUserRole(): UserRoleState {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchUserRole = async () => {
-    setLoading(true);
+  const fetchUserRole = async (showLoading = false) => {
+    if (showLoading) {
+      setLoading(true);
+    }
     setError(null);
     try {
       const { data: { session }, error: authErr } = await supabase.auth.getSession();
@@ -52,12 +63,21 @@ export function useUserRole(): UserRoleState {
 
       setUser(session.user);
 
-      // Direct async query to fetch profiles data (role, is_banned, ban_reason, merchant_status, is_deleted)
-      const { data: profileData, error: profileErr } = await supabase
+      // Direct async query to fetch profiles data (role, is_admin, is_banned, ban_reason, merchant_status, is_deleted)
+      let { data: profileData, error: profileErr } = await supabase
         .from("profiles")
-        .select("role, is_banned, ban_reason, merchant_status, is_deleted")
+        .select("role, is_admin, is_banned, ban_reason, merchant_status, is_deleted, shop_name, phone, prefecture, category, ownership_proof_url")
         .eq("id", session.user.id)
         .maybeSingle();
+
+      if (!profileData && session.user.email) {
+        const { data: profByEmail } = await supabase
+          .from("profiles")
+          .select("role, is_admin, is_banned, ban_reason, merchant_status, is_deleted, shop_name, phone, prefecture, category, ownership_proof_url")
+          .ilike("email", session.user.email.toLowerCase())
+          .maybeSingle();
+        if (profByEmail) profileData = profByEmail;
+      }
 
       if (profileErr) {
         console.error("Error fetching profile:", profileErr);
@@ -66,8 +86,7 @@ export function useUserRole(): UserRoleState {
       // Check if account has been explicitly marked as deleted in database
       const isAccountDeleted = 
         profileData?.is_deleted === true ||
-        profileData?.role === "deleted" ||
-        !profileData;
+        profileData?.role === "deleted";
 
       if (isAccountDeleted) {
         // Auto-reactivate profile upon successful Auth session sign-in
@@ -78,12 +97,16 @@ export function useUserRole(): UserRoleState {
         removeDeletedUserId(uid);
         if (uEmail) removeDeletedUserId(uEmail.toLowerCase());
 
+        const isWhitelistedAdmin = ADMIN_EMAILS.some((e) => uEmail && (uEmail === e.toLowerCase() || uEmail.includes(e.toLowerCase())));
+        const defaultRole = isWhitelistedAdmin || profileData?.role === "admin" || (profileData as any)?.is_admin ? "admin" : "user";
+
         try {
           await supabase.from("profiles").upsert({
             id: uid,
             email: uEmail,
             display_name: uName,
-            role: "user",
+            role: defaultRole,
+            is_admin: defaultRole === "admin",
             is_deleted: false,
             is_banned: false,
             ban_reason: null,
@@ -91,13 +114,13 @@ export function useUserRole(): UserRoleState {
 
           await supabase.from("user_roles").upsert({
             user_id: uid,
-            role: "user",
+            role: defaultRole,
           }, { onConflict: "user_id" });
         } catch (e) {
           console.warn("Reactivate profile notice:", e);
         }
 
-        setRole("user");
+        setRole(defaultRole as UserRole);
         setIsBanned(false);
         setBanReason(null);
         setMerchantStatus(null);
@@ -121,54 +144,167 @@ export function useUserRole(): UserRoleState {
         .eq("user_id", session.user.id)
         .maybeSingle();
 
+      const uEmail = session.user.email?.toLowerCase() || "";
+      const isWhitelistedAdmin = ADMIN_EMAILS.some((e) => uEmail && (uEmail === e.toLowerCase() || uEmail.includes(e.toLowerCase())));
+
+      // Admin Priority Check: Admin status in profiles, metadata, roles, or whitelist
+      const isAdminInProfiles = profileData?.role === "admin" || (profileData as any)?.is_admin === true;
+      const isAdminInMetadata = session.user.user_metadata?.role === "admin" || session.user.user_metadata?.is_admin === true;
+      const isAdminInRoles = roleData?.role === "admin";
+
       let detectedRole: UserRole = "user";
-      if (roleData?.role) {
-        detectedRole = roleData.role as UserRole;
-      } else if (profileData?.role) {
-        detectedRole = profileData.role as UserRole;
-      } else if (session.user.user_metadata?.role) {
-        detectedRole = session.user.user_metadata.role as UserRole;
+      if (isAdminInProfiles || isAdminInMetadata || isAdminInRoles || isWhitelistedAdmin) {
+        detectedRole = "admin";
+
+        // Auto-heal admin role in Supabase database using active user session
+        if (!isAdminInProfiles || !(profileData as any)?.is_admin) {
+          try {
+            supabase.from("profiles").update({ role: "admin", is_admin: true }).eq("id", session.user.id).then(() => {});
+            supabase.from("user_roles").upsert({ user_id: session.user.id, role: "admin" }, { onConflict: "user_id" }).then(() => {});
+          } catch (e) {}
+        }
+        if (!isAdminInMetadata) {
+          try {
+            supabase.auth.updateUser({ data: { role: "admin", is_admin: true } }).then(() => {});
+          } catch (e) {}
+        }
       }
 
-      // Fetch latest merchant submission status from place_submissions
+      // Non-admin merchant status calculation based purely on Database
       let mStatus: MerchantStatus = null;
       let mRejection: string | null = null;
 
-      const { data: subData } = await supabase
-        .from("place_submissions")
-        .select("status, rejection_reason")
-        .eq("user_id", session.user.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      if (detectedRole !== "admin") {
+        // Fetch place_submissions for this user by user_id or email
+        let subList: any[] = [];
+        if (session.user.id) {
+          const { data: uidSubs } = await supabase
+            .from("place_submissions")
+            .select("*")
+            .eq("user_id", session.user.id)
+            .order("created_at", { ascending: false });
+          if (uidSubs) subList.push(...uidSubs);
+        }
+        if (session.user.email) {
+          const { data: emailSubs } = await supabase
+            .from("place_submissions")
+            .select("*")
+            .ilike("contact_email", session.user.email.toLowerCase())
+            .order("created_at", { ascending: false });
+          if (emailSubs) {
+            emailSubs.forEach((es) => {
+              if (!subList.some((s) => s.id === es.id)) subList.push(es);
+            });
+          }
+        }
 
-      if (subData) {
-        mStatus = subData.status as MerchantStatus;
-        mRejection = subData.rejection_reason || null;
-      } else if (profileData?.merchant_status) {
-        mStatus = profileData.merchant_status as MerchantStatus;
+        // Auto-link any matching submissions without user_id to session.user.id for Google Auth users
+        if (session.user.id && session.user.email) {
+          const unlinkedSubs = subList.filter((s) => !s.user_id);
+          if (unlinkedSubs.length > 0) {
+            const unlinkedIds = unlinkedSubs.map((s) => s.id);
+            supabase.from("place_submissions").update({ user_id: session.user.id }).in("id", unlinkedIds).then(() => {});
+          }
+        }
+
+        // Sort all submissions newest first
+        subList.sort((a, b) => new Date(b.created_at || b.updated_at || 0).getTime() - new Date(a.created_at || a.updated_at || 0).getTime());
+        const latestSub = subList[0] || null;
+
+        // Fetch rejection log if present
+        let rejectionLog: any = null;
+        try {
+          if (session.user.id) {
+            const { data: logById } = await supabase
+              .from("admin_action_log")
+              .select("detail, created_at")
+              .eq("action_type", "reject_merchant")
+              .eq("target_id", session.user.id)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            if (logById) rejectionLog = logById;
+          }
+        } catch (e) {}
+
+        // Check local storage for pending merchant submissions
+        let hasLocalPending = false;
+        try {
+          const localSubs = JSON.parse(localStorage.getItem("merchant_pending_submissions") || "[]");
+          const uEmail = session.user.email ? session.user.email.toLowerCase() : "";
+          const uId = session.user.id;
+          const foundLocal = localSubs.find((l: any) => {
+            const lEmail = (l.contact_email || l.email || "").toLowerCase();
+            const lUid = l.user_id ? String(l.user_id) : "";
+            return (uEmail && lEmail === uEmail) || (uId && lUid === String(uId));
+          });
+          if (foundLocal && (foundLocal.status === "pending" || !foundLocal.status)) {
+            hasLocalPending = true;
+          }
+        } catch (e) {}
+
+        const isUserMetaPending =
+          session.user.user_metadata?.role === "pending_store" ||
+          session.user.user_metadata?.merchant_status === "pending";
+
+        const isProfilePending =
+          profileData?.role === "pending_store" ||
+          roleData?.role === "pending_store" ||
+          profileData?.merchant_status === "pending";
+
+        // Determine DB status precedence: Explicit store role in profiles or user_roles takes top precedence
+        let isApproved = false;
+        let isRejected = false;
+        let isPending = false;
+
+        const isExplicitStoreOwner =
+          profileData?.role === "store" ||
+          roleData?.role === "store" ||
+          profileData?.merchant_status === "approved";
+
+        if (isExplicitStoreOwner) {
+          isApproved = true;
+        } else if (latestSub) {
+          if (latestSub.status === "approved") {
+            isApproved = true;
+          } else if (latestSub.status === "pending") {
+            isPending = true;
+          } else if (latestSub.status === "rejected") {
+            isRejected = true;
+          }
+        } else if (isProfilePending || isUserMetaPending || hasLocalPending) {
+          isPending = true;
+        } else if (profileData?.merchant_status === "rejected" || Boolean(rejectionLog)) {
+          isRejected = true;
+        }
+
+        // If profile status was outdated (e.g., previously rejected but user re-submitted), auto-heal profiles table in DB
+        if (isPending && !isExplicitStoreOwner && profileData?.merchant_status !== "pending") {
+          try {
+            supabase.from("profiles").update({ role: "pending_store", merchant_status: "pending", ban_reason: null }).eq("id", session.user.id).then(() => {});
+            supabase.from("user_roles").upsert({ user_id: session.user.id, role: "pending_store" }, { onConflict: "user_id" }).then(() => {});
+          } catch (e) {}
+        }
+
+        if (isApproved) {
+          mStatus = "approved";
+          detectedRole = "store";
+          mRejection = null;
+        } else if (isPending) {
+          mStatus = "pending";
+          detectedRole = "pending_store";
+          mRejection = null;
+        } else if (isRejected) {
+          mStatus = "rejected";
+          detectedRole = "user";
+          mRejection = latestSub?.rejection_reason || rejectionLog?.detail || profileData?.ban_reason || "ข้อมูลเอกสารหรือหลักฐานสิทธิ์ร้านค้าไม่ผ่านการตรวจสอบ";
+        } else if (profileData?.role) {
+          detectedRole = profileData.role as UserRole;
+        }
       }
 
       setMerchantStatus(mStatus);
       setMerchantRejectionReason(mRejection);
-
-      // Overwrite role based on merchant approval status:
-      // Non-admin users MUST NOT have 'store' role unless explicitly approved by admin!
-      if (detectedRole !== "admin") {
-        if (mStatus === "pending") {
-          detectedRole = "pending_store";
-        } else if (mStatus === "rejected") {
-          detectedRole = "user";
-        } else if (mStatus === "approved") {
-          detectedRole = "store";
-        } else if (detectedRole === "store") {
-          // Fallback: If DB had role 'store' but no approval recorded, require approval
-          detectedRole = "pending_store";
-          mStatus = "pending";
-          setMerchantStatus("pending");
-        }
-      }
-
       setRole(detectedRole);
     } catch (err: any) {
       console.error("Unexpected profile fetch error:", err);
@@ -182,11 +318,13 @@ export function useUserRole(): UserRoleState {
   useEffect(() => {
     let isMounted = true;
 
-    fetchUserRole();
+    fetchUserRole(true);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (isMounted) {
-        fetchUserRole();
+        if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
+          fetchUserRole(false);
+        }
       }
     });
 
