@@ -32,7 +32,8 @@ export default function JigsawBoardView({
   onOpenScanner,
   onResetProgress,
 }: JigsawBoardViewProps) {
-  const [selectedQuest] = useState<JigsawQuest>(MOCK_JIGSAW_QUESTS[0]);
+  const [selectedQuestId, setSelectedQuestId] = useState<string>(MOCK_JIGSAW_QUESTS[0].id);
+  const selectedQuest = MOCK_JIGSAW_QUESTS.find((q) => q.id === selectedQuestId) || MOCK_JIGSAW_QUESTS[0];
   const [selectedPieceForDetail, setSelectedPieceForDetail] = useState<JigsawPiece | null>(null);
   const [copiedReward, setCopiedReward] = useState(false);
 
@@ -52,6 +53,51 @@ export default function JigsawBoardView({
   return (
     <div className="space-y-6 animate-fade-in w-full min-w-0">
       
+      {/* 🧭 Quest Selector Tabs */}
+      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none w-full">
+        {MOCK_JIGSAW_QUESTS.map((quest) => {
+          const isSelected = quest.id === selectedQuest.id;
+          const questPiecesCollected = quest.pieces.filter((p) => collectedPieceIds.includes(p.id)).length;
+          const questComplete = questPiecesCollected === quest.pieces.length;
+
+          return (
+            <button
+              key={quest.id}
+              onClick={() => setSelectedQuestId(quest.id)}
+              className={`px-4 py-2.5 rounded-2xl text-xs font-black shrink-0 border transition-all duration-200 flex items-center gap-2 cursor-pointer shadow-xs ${
+                isSelected
+                  ? "bg-stone-900 text-white border-stone-900 shadow-md scale-102"
+                  : "bg-white text-stone-700 border-stone-200 hover:border-orange-300 hover:bg-stone-50"
+              }`}
+            >
+              <span className="text-sm">
+                {quest.badge === "Gourmet Quest"
+                  ? "🍡"
+                  : quest.badge === "Kyoto Classic"
+                  ? "⛩️"
+                  : quest.badge === "Tokyo Modern"
+                  ? "🗼"
+                  : quest.badge === "Food Paradise"
+                  ? "🐙"
+                  : quest.badge === "Fuji Adventure"
+                  ? "🗻"
+                  : "🏛️"}
+              </span>
+              <span>{quest.title.split(":")[0]}</span>
+              <span className={`text-[9.5px] px-2 py-0.5 rounded-full font-bold ${
+                questComplete
+                  ? "bg-emerald-500 text-white"
+                  : isSelected
+                  ? "bg-orange-500 text-white"
+                  : "bg-stone-100 text-stone-600"
+              }`}>
+                {questPiecesCollected}/{quest.pieces.length}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* 🌟 Top Hero Quest Banner */}
       <div className="bg-gradient-to-r from-stone-900 via-orange-950 to-stone-900 rounded-3xl p-5 sm:p-7 text-white shadow-xl relative overflow-hidden border border-orange-500/30">
         <div className="relative z-10 max-w-xl space-y-2">

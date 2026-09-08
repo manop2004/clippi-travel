@@ -583,8 +583,20 @@ export default function App() {
                   />
                 )
               )}
-              {tab === "map" && <MapView openPlace={(p: any) => setSelectedPlace(p)} searchQuery={searchQuery} />}
-              {tab === "collection" && <CollectionView searchQuery={searchQuery} openPlace={(p: any) => setSelectedPlace(p)} />}
+              {tab === "map" && (
+                <MapView
+                  openPlace={(p: any) => setSelectedPlace(p)}
+                  searchQuery={searchQuery}
+                  onOpenScanner={() => setIsScannerOpen(true)}
+                  collectedJigsawPieces={collectedPieceIds}
+                />
+              )}
+              {tab === "collection" && (
+                <CollectionView
+                  searchQuery={searchQuery}
+                  openPlace={(p: any) => setSelectedPlace(p)}
+                />
+              )}
               {tab === "jigsaw" && (
                 <JigsawBoardView
                   collectedPieceIds={collectedPieceIds}

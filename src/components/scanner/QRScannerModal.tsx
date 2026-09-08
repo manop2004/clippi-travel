@@ -46,6 +46,7 @@ export default function QRScannerModal({
   // Manual/Dev Input
   const [manualCode, setManualCode] = useState("");
   const [activeTab, setActiveTab] = useState<"camera" | "dev">("camera");
+  const [simSelectedQuestId, setSimSelectedQuestId] = useState<string>(MOCK_JIGSAW_QUESTS[0]?.id || "");
 
   // Result Modal State
   const [scanResult, setScanResult] = useState<{
@@ -567,8 +568,28 @@ export default function QRScannerModal({
                 </p>
               </div>
 
+              {/* เลือกเควสต์ใน Dev Simulator */}
+              <div className="flex gap-1.5 overflow-x-auto pb-1.5 scrollbar-none">
+                {MOCK_JIGSAW_QUESTS.map((quest) => {
+                  const isCur = quest.id === simSelectedQuestId;
+                  return (
+                    <button
+                      key={quest.id}
+                      onClick={() => setSimSelectedQuestId(quest.id)}
+                      className={`px-3 py-1.5 rounded-xl text-[11px] font-bold shrink-0 transition cursor-pointer ${
+                        isCur
+                          ? "bg-stone-900 text-white shadow-xs"
+                          : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                      }`}
+                    >
+                      {quest.title.split(":")[0]}
+                    </button>
+                  );
+                })}
+              </div>
+
               <div className="space-y-2">
-                {MOCK_JIGSAW_QUESTS[0].pieces.map((piece, idx) => {
+                {(MOCK_JIGSAW_QUESTS.find((q) => q.id === simSelectedQuestId) || MOCK_JIGSAW_QUESTS[0]).pieces.map((piece, idx) => {
                   const currentDistance = userCoords
                     ? haversineDistance(userCoords.lat, userCoords.lng, piece.targetLat, piece.targetLng)
                     : null;
