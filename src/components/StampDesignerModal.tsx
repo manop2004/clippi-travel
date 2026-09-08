@@ -9,9 +9,7 @@ import {
   Stamp,
   Palette,
   Image as ImageIcon,
-  Layers,
   Sun,
-  Sliders,
   Trash2,
 } from "lucide-react";
 import { C } from "../constants/mockData";
@@ -128,82 +126,82 @@ export default function StampDesignerModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-5 max-h-[82vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 max-h-[82vh] overflow-y-auto">
           
           {/* Live Preview Showcase */}
-          <div className="p-5 rounded-2xl bg-gradient-to-br from-stone-50 via-amber-50/20 to-stone-100 border flex flex-col items-center justify-center relative overflow-hidden" style={{ borderColor: C.line }}>
-            <div className="absolute top-2.5 left-3 flex items-center gap-1 text-[10px] font-black uppercase text-stone-500 bg-white/90 px-2.5 py-1 rounded-full border border-stone-200 shadow-2xs">
-              <Sparkles size={12} className="text-amber-500" />
+          <div className="p-4 rounded-2xl bg-gradient-to-br from-stone-50 via-amber-50/20 to-stone-100 border flex flex-col items-center justify-center relative overflow-hidden" style={{ borderColor: C.line }}>
+            <div className="absolute top-2.5 left-3 flex items-center gap-1 text-[10px] font-black uppercase text-stone-500 bg-white/90 px-2.5 py-0.5 rounded-full border border-stone-200 shadow-2xs">
+              <Sparkles size={11} className="text-amber-500" />
               <span>ตัวอย่างตราแสตมป์ดิจิทัล (Live Preview)</span>
             </div>
 
-            <div className="mt-5 mb-2 p-4 bg-white rounded-3xl shadow-md border border-stone-100 flex items-center justify-center">
-              <StampSealRenderer design={design} shopName={shopName} size="xl" />
+            <div className="mt-5 mb-1.5 p-3 bg-white rounded-3xl shadow-md border border-stone-100 flex items-center justify-center">
+              <StampSealRenderer design={design} shopName={shopName} size="lg" />
             </div>
 
-            <p className="text-[11px] font-bold text-stone-600 text-center">
+            <p className="text-[10.5px] font-bold text-stone-600 text-center">
               ตราชนิดนี้จะแสดงในสมุดสะสมแสตมป์ของผู้ใช้งานเมื่อทำเช็คอินสำเร็จ 📍
             </p>
           </div>
 
-          {/* Navigation Tabs */}
-          <div className="flex border-b text-xs font-black overflow-x-auto scrollbar-none" style={{ borderColor: C.line }}>
+          {/* 📌 Navigation Tabs - 2x2 Grid on Mobile, 1x4 on Desktop for 100% Full Visibility */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1.5 bg-stone-100/90 rounded-2xl border" style={{ borderColor: C.line }}>
             <button
               type="button"
               onClick={() => setActiveTab("style")}
-              className={`py-2.5 px-4 flex items-center gap-1.5 border-b-2 transition cursor-pointer shrink-0 ${
+              className={`py-2 px-2.5 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition cursor-pointer ${
                 activeTab === "style"
-                  ? "border-rose-600 text-rose-600 bg-rose-50/50"
-                  : "border-transparent text-stone-500 hover:text-stone-800"
+                  ? "bg-white text-rose-600 shadow-sm border border-stone-200"
+                  : "text-stone-600 hover:bg-white/60 hover:text-stone-900"
               }`}
             >
-              <Palette size={14} />
-              <span>1. สีหมึก & กรอบตรา</span>
+              <Palette size={14} className={activeTab === "style" ? "text-rose-600" : "text-stone-500"} />
+              <span>1. สีหมึก & กรอบ</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab("icon")}
-              className={`py-2.5 px-4 flex items-center gap-1.5 border-b-2 transition cursor-pointer shrink-0 ${
+              className={`py-2 px-2.5 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition cursor-pointer ${
                 activeTab === "icon"
-                  ? "border-rose-600 text-rose-600 bg-rose-50/50"
-                  : "border-transparent text-stone-500 hover:text-stone-800"
+                  ? "bg-white text-rose-600 shadow-sm border border-stone-200"
+                  : "text-stone-600 hover:bg-white/60 hover:text-stone-900"
               }`}
             >
-              <ImageIcon size={14} />
-              <span>2. ไอคอน & อัปโหลดรูป</span>
+              <ImageIcon size={14} className={activeTab === "icon" ? "text-rose-600" : "text-stone-500"} />
+              <span>2. ไอคอน & รูป</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab("text")}
-              className={`py-2.5 px-4 flex items-center gap-1.5 border-b-2 transition cursor-pointer shrink-0 ${
+              className={`py-2 px-2.5 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition cursor-pointer ${
                 activeTab === "text"
-                  ? "border-rose-600 text-rose-600 bg-rose-50/50"
-                  : "border-transparent text-stone-500 hover:text-stone-800"
+                  ? "bg-white text-rose-600 shadow-sm border border-stone-200"
+                  : "text-stone-600 hover:bg-white/60 hover:text-stone-900"
               }`}
             >
-              <Stamp size={14} />
-              <span>3. ข้อความตราประทับ</span>
+              <Stamp size={14} className={activeTab === "text" ? "text-rose-600" : "text-stone-500"} />
+              <span>3. ข้อความ</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab("effects")}
-              className={`py-2.5 px-4 flex items-center gap-1.5 border-b-2 transition cursor-pointer shrink-0 ${
+              className={`py-2 px-2.5 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition cursor-pointer ${
                 activeTab === "effects"
-                  ? "border-rose-600 text-rose-600 bg-rose-50/50"
-                  : "border-transparent text-stone-500 hover:text-stone-800"
+                  ? "bg-white text-rose-600 shadow-sm border border-stone-200"
+                  : "text-stone-600 hover:bg-white/60 hover:text-stone-900"
               }`}
             >
-              <Sun size={14} />
-              <span>4. เงา & เนื้อตรายาง</span>
+              <Sun size={14} className={activeTab === "effects" ? "text-rose-600" : "text-stone-500"} />
+              <span>4. เงา & เนื้อหมึก</span>
             </button>
           </div>
 
           {/* TAB 1: สีหมึก & กรอบตรา */}
           {activeTab === "style" && (
-            <div className="space-y-4">
+            <div className="space-y-4 pt-1">
               {/* Color Palette */}
               <div>
                 <div className="flex items-center justify-between mb-2">
@@ -211,7 +209,7 @@ export default function StampDesignerModal({
                     เลือกสีหมึกตราประทับ (Stamp Ink Color):
                   </label>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-bold text-stone-500">เลือกสีตามใจชอบ:</span>
+                    <span className="text-[10px] font-bold text-stone-500">เลือกสีอิสระ:</span>
                     <input
                       type="color"
                       value={design.ink_color || "#D9381E"}
@@ -221,7 +219,7 @@ export default function StampDesignerModal({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 max-h-[160px] overflow-y-auto pr-1">
                   {STAMP_INK_COLORS.map((col) => {
                     const isSelected = design.ink_color === col.hex;
                     return (
@@ -235,10 +233,10 @@ export default function StampDesignerModal({
                         style={{ borderColor: isSelected ? col.hex : C.line }}
                       >
                         <span
-                          className="w-6 h-6 rounded-full shadow-xs flex items-center justify-center border border-white"
+                          className="w-5 h-5 rounded-full shadow-xs flex items-center justify-center border border-white"
                           style={{ backgroundColor: col.hex }}
                         >
-                          {isSelected && <Check size={12} className="text-white" />}
+                          {isSelected && <Check size={11} className="text-white" />}
                         </span>
                         <span className="text-[10px] text-center font-bold text-stone-700 truncate w-full">
                           {col.name}
@@ -305,10 +303,10 @@ export default function StampDesignerModal({
 
           {/* TAB 2: ไอคอน & อัปโหลดรูป */}
           {activeTab === "icon" && (
-            <div className="space-y-4">
+            <div className="space-y-4 pt-1">
               
               {/* 📤 Custom Image Upload Section */}
-              <div className="p-4 rounded-2xl border bg-stone-50/70 space-y-3" style={{ borderColor: C.line }}>
+              <div className="p-3.5 rounded-2xl border bg-stone-50/70 space-y-2.5" style={{ borderColor: C.line }}>
                 <label className="text-xs font-black text-[#231C18] flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
                     <Upload size={14} className="text-rose-600" />
@@ -325,7 +323,7 @@ export default function StampDesignerModal({
                   )}
                 </label>
 
-                <div className="flex flex-col sm:flex-row items-center gap-3">
+                <div className="flex flex-col sm:flex-row items-center gap-2.5">
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -336,9 +334,9 @@ export default function StampDesignerModal({
                   />
                   <label
                     htmlFor="stamp-file-upload"
-                    className="w-full sm:w-auto py-2.5 px-4 rounded-xl bg-white border border-rose-300 text-rose-800 hover:bg-rose-50 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow-2xs transition"
+                    className="w-full sm:w-auto py-2 px-3.5 rounded-xl bg-white border border-rose-300 text-rose-800 hover:bg-rose-50 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow-2xs transition"
                   >
-                    <Upload size={14} />
+                    <Upload size={13} />
                     <span>เลือกไฟล์รูปภาพจากเครื่อง...</span>
                   </label>
 
@@ -349,7 +347,7 @@ export default function StampDesignerModal({
                     value={design.image_url || ""}
                     onChange={(e) => setDesign((prev) => ({ ...prev, image_url: e.target.value }))}
                     placeholder="วาง URL รูปภาพ เช่น https://..."
-                    className="w-full flex-1 px-3 py-2 rounded-xl border text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-rose-400 bg-white"
+                    className="w-full flex-1 px-3 py-1.5 rounded-xl border text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-rose-400 bg-white"
                     style={{ borderColor: C.line }}
                   />
                 </div>
@@ -363,7 +361,7 @@ export default function StampDesignerModal({
                 <label className="text-xs font-black text-[#231C18] block mb-2">
                   หรือเลือกไอคอนสัญลักษณ์สำเร็จรูป ({STAMP_PRESET_ICONS.length} แบบ):
                 </label>
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 max-h-[220px] overflow-y-auto pr-1">
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 max-h-[180px] overflow-y-auto pr-1">
                   {STAMP_PRESET_ICONS.map((ic) => {
                     const isSelected = !design.image_url && design.preset_icon === ic.id;
                     return (
@@ -388,7 +386,7 @@ export default function StampDesignerModal({
 
           {/* TAB 3: ข้อความตราประทับ */}
           {activeTab === "text" && (
-            <div className="space-y-4">
+            <div className="space-y-4 pt-1">
               <div>
                 <label className="text-xs font-black text-[#231C18] block mb-1">
                   ข้อความหลักบนแสตมป์ (Stamp Header Text):
@@ -425,7 +423,7 @@ export default function StampDesignerModal({
 
           {/* TAB 4: เงา & เนื้อตรายาง */}
           {activeTab === "effects" && (
-            <div className="space-y-4">
+            <div className="space-y-4 pt-1">
               {/* Shadow Effect */}
               <div>
                 <label className="text-xs font-black text-[#231C18] block mb-2">
@@ -481,7 +479,7 @@ export default function StampDesignerModal({
           )}
 
           {/* Action Buttons */}
-          <div className="pt-4 border-t flex items-center justify-between gap-3" style={{ borderColor: C.line }}>
+          <div className="pt-3 border-t flex items-center justify-between gap-3" style={{ borderColor: C.line }}>
             <button
               type="button"
               onClick={handleReset}
