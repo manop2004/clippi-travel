@@ -185,18 +185,56 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
         const emailLower = email.trim().toLowerCase();
         const deletedSet = getDeletedUserIds();
 
-        // 1. Check if email exists in profiles table
         let emailExists = false;
+        let isPendingMerchant = false;
+
+        // Check local storage pending submissions
+        try {
+          const localSubs = JSON.parse(localStorage.getItem("merchant_pending_submissions") || "[]");
+          const matchedLocal = localSubs.find(
+            (l: any) => (l.contact_email || l.email || "").toLowerCase() === emailLower
+          );
+          if (matchedLocal) {
+            emailExists = true;
+            if (matchedLocal.status === "pending" || !matchedLocal.status) {
+              isPendingMerchant = true;
+            }
+          }
+        } catch (e) {}
+
+        // Check profiles table
         if (!deletedSet.has(emailLower)) {
           const { data: profData } = await supabase
             .from("profiles")
-            .select("id, email, is_deleted, role")
+            .select("id, email, is_deleted, role, merchant_status")
             .ilike("email", emailLower)
             .maybeSingle();
 
           if (profData && !profData.is_deleted && profData.role !== "deleted") {
             emailExists = true;
+            if (profData.role === "pending_store" || profData.merchant_status === "pending") {
+              isPendingMerchant = true;
+            }
           }
+        }
+
+        // Check place_submissions table by contact_email
+        if (!emailExists) {
+          try {
+            const { data: subData } = await supabase
+              .from("place_submissions")
+              .select("id, status")
+              .ilike("contact_email", emailLower)
+              .limit(1)
+              .maybeSingle();
+
+            if (subData) {
+              emailExists = true;
+              if (subData.status === "pending" || !subData.status) {
+                isPendingMerchant = true;
+              }
+            }
+          } catch (e) {}
         }
 
         // 2. Attempt sign in with password
@@ -206,8 +244,17 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
         });
 
         if (error) {
-          if (emailExists) {
-            setErrorMsg("รหัสผ่านไม่ถูกต้อง หรือบัญชีนี้ยังไม่ได้ตั้งรหัสผ่าน (หากเคยเข้าใช้งานผ่าน Google กรุณากดปุ่ม 'Google Workspace' ด้านล่างเพื่อเข้าสู่ระบบ หรือกด 'ลืมรหัสผ่าน? / ตั้งรหัสผ่านใหม่' ด้านล่างเพื่อตั้งรหัสผ่านสำหรับอีเมลนี้)");
+          const errMsg = error.message || "";
+          if (errMsg.includes("Email not confirmed")) {
+            setErrorMsg("⚠️ บัญชีนี้ยังไม่ได้ยืนยันอีเมล กรุณาตรวจสอบกล่องจดหมาย (Inbox / Spam) ของอีเมล " + email.trim() + " แล้วกดลิงก์ยืนยันตัวตนก่อนเข้าสู่ระบบ");
+          } else if (isPendingMerchant) {
+            setErrorMsg(
+              "⏳ บัญชีเจ้าของร้านของคุณ (" + email.trim() + ") ลงทะเบียนเรียบร้อยแล้วและอยู่ระหว่างรอแอดมินอนุมัติสิทธิ์ (Pending Approval)\n\n" +
+              "💡 หากเคยเข้าใช้งานผ่าน Google ไม่จำเป็นต้องยืนยันอีเมล สามารถกดปุ่ม 'Google Workspace' ด้านล่างเพื่อเข้าสู่ระบบได้ทันที!\n" +
+              "(หากต้องการเข้าด้วยรหัสผ่าน สามารถกด 'ลืมรหัสผ่าน? / ตั้งรหัสผ่านใหม่' ด้านล่างเพื่อตั้งรหัสผ่านได้)"
+            );
+          } else if (emailExists) {
+            setErrorMsg("รหัสผ่านไม่ถูกต้อง หรือบัญชีนี้ยังไม่ได้ตั้งรหัสผ่าน (หากเคยเข้าด้วย Google กรุณากดปุ่ม 'Google Workspace' ด้านล่างเพื่อเข้าสู่ระบบ หรือกด 'ลืมรหัสผ่าน?')");
           } else {
             setErrorMsg("ยังไม่มีบัญชีที่ใช้อีเมลนี้ในระบบ กรุณาสมัครสมาชิกก่อน");
           }

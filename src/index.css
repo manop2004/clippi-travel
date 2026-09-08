@@ -80,6 +80,47 @@ body {
   animation: bounceSubtle 2s ease-in-out infinite;
 }
 
+/* Achievement / stamp-collected celebration animations */
+@keyframes celebrateBounce {
+  0% {
+    transform: scale(0.3) translateY(40px);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.15) translateY(-10px);
+    opacity: 1;
+  }
+  70% {
+    transform: scale(0.95) translateY(4px);
+  }
+  100% {
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes sparklePop {
+  0% {
+    transform: scale(0) rotate(0deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.15) rotate(180deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(360deg);
+    opacity: 0.85;
+  }
+}
+
+.animate-celebrate-bounce {
+  animation: celebrateBounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.animate-sparkle-pop {
+  animation: sparklePop 0.8s ease-out both;
+}
+
 .leaflet-container img {
   max-width: none !important;
 }

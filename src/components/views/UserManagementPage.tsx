@@ -21,14 +21,13 @@ import {
   Clock,
   Mail,
   MessageSquare,
-  MapPin,
-  Trash2
+  MapPin
 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 import { C } from "../../constants/mockData";
 import { ProtectedRoute } from "../auth/ProtectedRoute";
 import { UserRole } from "../../hooks/useUserRole";
-import { resolveUserDisplayName, resolveUserAvatarUrl, deleteUserCascade, getDeletedUserIds, recordDeletedUserId } from "../../lib/activityHelpers";
+import { resolveUserDisplayName, resolveUserAvatarUrl, getDeletedUserIds } from "../../lib/activityHelpers";
 import { UserAvatar } from "../UserAvatar";
 
 export default function UserManagementPage() {
@@ -48,7 +47,6 @@ function UserManagementContent() {
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "name" | "most_stamps" | "most_reviews">("newest");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [banningId, setBanningId] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [currentAdmin, setCurrentAdmin] = useState<any>(null);
 
   // States for Assign Shop Modal
@@ -236,31 +234,39 @@ function UserManagementContent() {
         }
       });
 
-      const baseList = rpcProfiles.length > 0 ? rpcProfiles : standardProfiles;
-      const deletedSet = getDeletedUserIds();
+      // Clear legacy local storage deletion blocklist to restore all users
+      try {
+        localStorage.removeItem("deleted_user_ids");
+      } catch (e) {}
 
-      const rawProfiles = baseList
-        .map((rpcP: any) => {
-          const keyStr = String(rpcP.id || rpcP.user_id || "");
-          const dbP = profileMap.get(keyStr) || (rpcP.email ? profileMap.get(rpcP.email.toLowerCase()) : {}) || {};
-          return {
-            ...dbP,
-            ...rpcP,
-            custom_avatar_url: dbP.custom_avatar_url || rpcP.custom_avatar_url || rpcP.user_metadata?.custom_avatar_url || rpcP.raw_user_meta_data?.custom_avatar_url,
-            avatar_url: dbP.avatar_url || rpcP.avatar_url,
-          };
-        })
-        .filter((p: any) => {
-          const idStr = String(p.id || p.user_id || "");
-          const emailStr = (p.email || "").toLowerCase();
-          if (deletedSet.has(idStr) || (emailStr && deletedSet.has(emailStr))) {
-            return false;
-          }
-          if (p.is_deleted || p.role === "deleted") {
-            return false;
-          }
-          return true;
-        });
+      const baseList = rpcProfiles.length > 0 ? rpcProfiles : standardProfiles;
+
+      // Auto-restore any profiles marked as deleted previously
+      const deletedProfiles = baseList.filter((p: any) => p.is_deleted === true || p.role === "deleted");
+      for (const dp of deletedProfiles) {
+        const targetId = dp.id || dp.user_id;
+        if (targetId) {
+          try {
+            await supabase
+              .from("profiles")
+              .update({ is_deleted: false, role: dp.role === "deleted" ? "user" : dp.role, ban_reason: null })
+              .eq("id", targetId);
+          } catch (e) {}
+        }
+      }
+
+      const rawProfiles = baseList.map((rpcP: any) => {
+        const keyStr = String(rpcP.id || rpcP.user_id || "");
+        const dbP = profileMap.get(keyStr) || (rpcP.email ? profileMap.get(rpcP.email.toLowerCase()) : {}) || {};
+        return {
+          ...dbP,
+          ...rpcP,
+          role: dbP.role === "deleted" || rpcP.role === "deleted" ? "user" : (dbP.role || rpcP.role),
+          is_deleted: false,
+          custom_avatar_url: dbP.custom_avatar_url || rpcP.custom_avatar_url || rpcP.user_metadata?.custom_avatar_url || rpcP.raw_user_meta_data?.custom_avatar_url,
+          avatar_url: dbP.avatar_url || rpcP.avatar_url,
+        };
+      });
 
       const [rolesRes, stampsRes, reviewsRes, storeOwnersRes] = await Promise.all([
         supabase.from("user_roles").select("*"),
@@ -511,31 +517,6 @@ function UserManagementContent() {
       } finally {
         setBanningId(null);
       }
-    }
-  };
-
-  const handleDeleteUser = async (userId: string, userName: string, userEmail?: string) => {
-    const isConfirmed = window.confirm(
-      `⚠️ ยืนยันการลบสมาชิกและรีเซ็ตข้อมูลทุกอย่างออกจากระบบ\n\nการลบสมาชิก "${userName}" จะทำการลบข้อมูลโปรไฟล์, ประวัติเช็คอิน/สะสมแสตมป์, รีวิวร้านค้า, คำขอลงทะเบียนร้านค้า และสิทธิ์การใช้งานทั้งหมดออกจากระบบอย่างถาวรโดยไม่สามารถกู้คืนได้\n\nคุณแน่ใจหรือไม่ว่าต้องการลบสมาชิกคนนี้?`
-    );
-
-    if (!isConfirmed) return;
-
-    setDeletingId(userId);
-    try {
-      if (userEmail) recordDeletedUserId(userEmail);
-      const ok = await deleteUserCascade(userId);
-      if (ok) {
-        setUsers((prev) => prev.filter((u) => u.id !== userId && u.user_id !== userId && (userEmail ? u.email !== userEmail : true)));
-        alert(`ลบสมาชิก "${userName}" และรีเซ็ตข้อมูลทุกอย่างออกจากระบบเรียบร้อยแล้ว!`);
-      } else {
-        alert("เกิดข้อผิดพลาด ไม่สามารถลบสมาชิกได้");
-      }
-    } catch (err: any) {
-      console.error("Delete user error:", err);
-      alert("เกิดข้อผิดพลาดในการลบสมาชิก: " + (err.message || "Failed"));
-    } finally {
-      setDeletingId(null);
     }
   };
 
@@ -1080,26 +1061,6 @@ function UserManagementContent() {
                       )}
                     </button>
                   )}
-
-                  {/* Delete Member (Reset User) Button */}
-                  {!isSelf && (
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteUser(u.id, mainDisplayName, u.email)}
-                      disabled={deletingId === u.id}
-                      className="px-3 py-1.5 rounded-xl text-xs font-black bg-stone-900 hover:bg-rose-700 text-white transition flex items-center gap-1 shadow-xs disabled:opacity-50 cursor-pointer"
-                      title="ลบสมาชิกและรีเซ็ตข้อมูลทั้งหมดออกจากระบบ"
-                    >
-                      {deletingId === u.id ? (
-                        <Loader2 size={13} className="animate-spin" />
-                      ) : (
-                        <>
-                          <Trash2 size={13} />
-                          <span>ลบสมาชิก</span>
-                        </>
-                      )}
-                    </button>
-                  )}
                 </div>
               </div>
             );
@@ -1369,7 +1330,7 @@ function UserManagementContent() {
                           </div>
 
                           <p className="text-xs text-[#231C18] leading-relaxed bg-[#FAF6F0] p-3 rounded-xl border border-stone-200/60 font-medium">
-                            "{rev.comment}"
+                            {`"${rev.comment}"`}
                           </p>
                         </div>
                       );

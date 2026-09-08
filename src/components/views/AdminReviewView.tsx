@@ -66,33 +66,22 @@ export default function AdminReviewView() {
         console.error("Error fetching place_submissions:", subErr);
       }
 
-      // Group place_submissions by key (user_id or contact_email) to find the LATEST submission per user/email
+      // Map latest submissions by user_id and email
       const latestSubMap = new Map<string, any>();
       (subData || []).forEach((s) => {
-        const uidKey = s.user_id && !String(s.user_id).startsWith("local_") ? String(s.user_id) : "";
-        const emailKey = s.contact_email ? s.contact_email.toLowerCase() : "";
-        
-        if (uidKey && !latestSubMap.has(uidKey)) {
-          latestSubMap.set(uidKey, s);
-        }
-        if (emailKey && !latestSubMap.has(emailKey)) {
-          latestSubMap.set(emailKey, s);
-        }
+        const uidStr = s.user_id ? String(s.user_id) : "";
+        const emailStr = (s.contact_email || s.email || "").toLowerCase();
+        if (uidStr && !latestSubMap.has(uidStr)) latestSubMap.set(uidStr, s);
+        if (emailStr && !latestSubMap.has(emailStr)) latestSubMap.set(emailStr, s);
       });
 
-      // Filter rawData to items whose latest submission is pending
-      const addedKeys = new Set<string>();
+      // Collect all pending place_submissions
+      const addedSubIds = new Set<string>();
       (subData || []).forEach((s) => {
-        const uidKey = s.user_id && !String(s.user_id).startsWith("local_") ? String(s.user_id) : "";
-        const emailKey = s.contact_email ? s.contact_email.toLowerCase() : "";
-        const key = uidKey || emailKey || String(s.id);
-
-        const latestSub = (uidKey && latestSubMap.get(uidKey)) || (emailKey && latestSubMap.get(emailKey)) || s;
-        const isLatestPending = latestSub.status === "pending" || !latestSub.status || latestSub.status === "incomplete";
-
-        if (isLatestPending && !addedKeys.has(key)) {
-          rawData.push(latestSub);
-          addedKeys.add(key);
+        const isPending = s.status === "pending" || !s.status || s.status === "incomplete";
+        if (isPending && s.id && !addedSubIds.has(String(s.id))) {
+          rawData.push(s);
+          addedSubIds.add(String(s.id));
         }
       });
 
@@ -258,15 +247,23 @@ export default function AdminReviewView() {
   }, []);
 
   // Separate submissions into Merchant Applications vs Spot Submissions
-  const rawMerchantSubmissions = submissions.filter(
-    (s) =>
+  const rawMerchantSubmissions = submissions.filter((s) => {
+    // If the user submitting this is already an approved Store Owner, this MUST be a spot/shop submission (Tab 2), not a merchant registration (Tab 1)!
+    const isApprovedStoreOwner =
+      s.profiles?.role === "store" || s.profiles?.merchant_status === "approved";
+    if (isApprovedStoreOwner) {
+      return false;
+    }
+
+    return (
       s.is_profile_only ||
       (typeof s.id === "string" && (s.id.startsWith("prof_") || s.id.startsWith("local_"))) ||
       Boolean(s.ownership_proof_url) ||
       Boolean(s.contact_name) ||
       Boolean(s.contact_phone) ||
       (Boolean(s.shop_name || s.name_en) && !s.lat)
-  );
+    );
+  });
 
   // Deduplicate merchant applications so each applicant user/email gets EXACTLY 1 card (the latest one)
   const uniqueMerchantMap = new Map<string, any>();

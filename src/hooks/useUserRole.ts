@@ -227,14 +227,44 @@ export function useUserRole(): UserRoleState {
           }
         } catch (e) {}
 
-        const logReason = rejectionLog?.detail?.rejection_reason || rejectionLog?.detail?.reason;
+        // Check local storage for pending merchant submissions
+        let hasLocalPending = false;
+        try {
+          const localSubs = JSON.parse(localStorage.getItem("merchant_pending_submissions") || "[]");
+          const uEmail = session.user.email ? session.user.email.toLowerCase() : "";
+          const uId = session.user.id;
+          const foundLocal = localSubs.find((l: any) => {
+            const lEmail = (l.contact_email || l.email || "").toLowerCase();
+            const lUid = l.user_id ? String(l.user_id) : "";
+            return (uEmail && lEmail === uEmail) || (uId && lUid === String(uId));
+          });
+          if (foundLocal && (foundLocal.status === "pending" || !foundLocal.status)) {
+            hasLocalPending = true;
+          }
+        } catch (e) {}
 
-        // Determine DB status precedence based primarily on the NEWEST submission
+        const isUserMetaPending =
+          session.user.user_metadata?.role === "pending_store" ||
+          session.user.user_metadata?.merchant_status === "pending";
+
+        const isProfilePending =
+          profileData?.role === "pending_store" ||
+          roleData?.role === "pending_store" ||
+          profileData?.merchant_status === "pending";
+
+        // Determine DB status precedence: Explicit store role in profiles or user_roles takes top precedence
         let isApproved = false;
         let isRejected = false;
         let isPending = false;
 
-        if (latestSub) {
+        const isExplicitStoreOwner =
+          profileData?.role === "store" ||
+          roleData?.role === "store" ||
+          profileData?.merchant_status === "approved";
+
+        if (isExplicitStoreOwner) {
+          isApproved = true;
+        } else if (latestSub) {
           if (latestSub.status === "approved") {
             isApproved = true;
           } else if (latestSub.status === "pending") {
@@ -242,21 +272,14 @@ export function useUserRole(): UserRoleState {
           } else if (latestSub.status === "rejected") {
             isRejected = true;
           }
-        }
-
-        // Fallback to profiles / roles table if no submission record exists or if profiles indicates store owner
-        if (!isApproved && !isPending && !isRejected) {
-          if (profileData?.merchant_status === "approved" || profileData?.role === "store" || roleData?.role === "store") {
-            isApproved = true;
-          } else if (profileData?.merchant_status === "pending" || profileData?.role === "pending_store" || roleData?.role === "pending_store") {
-            isPending = true;
-          } else if (profileData?.merchant_status === "rejected" || Boolean(rejectionLog)) {
-            isRejected = true;
-          }
+        } else if (isProfilePending || isUserMetaPending || hasLocalPending) {
+          isPending = true;
+        } else if (profileData?.merchant_status === "rejected" || Boolean(rejectionLog)) {
+          isRejected = true;
         }
 
         // If profile status was outdated (e.g., previously rejected but user re-submitted), auto-heal profiles table in DB
-        if (isPending && profileData?.merchant_status !== "pending") {
+        if (isPending && !isExplicitStoreOwner && profileData?.merchant_status !== "pending") {
           try {
             supabase.from("profiles").update({ role: "pending_store", merchant_status: "pending", ban_reason: null }).eq("id", session.user.id).then(() => {});
             supabase.from("user_roles").upsert({ user_id: session.user.id, role: "pending_store" }, { onConflict: "user_id" }).then(() => {});

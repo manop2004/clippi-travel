@@ -444,7 +444,7 @@ export default function App() {
               ⚠️ สาเหตุที่ไม่ผ่านการอนุมัติ:
             </p>
             <p className="text-xs font-bold text-rose-950 leading-relaxed">
-              "{merchantRejectionReason || "ข้อมูลเอกสารหรือหลักฐานสิทธิ์ร้านค้าไม่ตรงตามเงื่อนไขที่กำหนด"}"
+              {`"${merchantRejectionReason || "ข้อมูลเอกสารหรือหลักฐานสิทธิ์ร้านค้าไม่ตรงตามเงื่อนไขที่กำหนด"}"`}
             </p>
           </div>
 
