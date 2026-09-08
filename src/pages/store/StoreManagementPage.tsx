@@ -62,6 +62,9 @@ import {
 } from "../../lib/scheduleHelpers";
 import StampDesignerModal from "../../components/StampDesignerModal";
 import { StampDesign, encodeStampDesignInText } from "../../lib/stampHelpers";
+import StoreRulesModal from "../../components/StoreRulesModal";
+import { StoreRuleItem, getShopRules, encodeRulesInText } from "../../lib/ruleHelpers";
+import { ShieldAlert } from "lucide-react";
 export type { HolidayItem, ShopSchedule };
 
 export interface ShopRecord {
@@ -159,7 +162,34 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
   const [qrShop, setQrShop] = useState<ShopRecord | null>(null);
   const [scheduleShop, setScheduleShop] = useState<ShopRecord | null>(null);
   const [stampDesignerShop, setStampDesignerShop] = useState<ShopRecord | null>(null);
+  const [rulesShop, setRulesShop] = useState<ShopRecord | null>(null);
   const [storeSchedules, setStoreSchedules] = useState<Record<string, ShopSchedule>>({});
+
+  const handleSaveRules = async (newRules: StoreRuleItem[]) => {
+    if (!rulesShop) return;
+    const shopId = rulesShop.id;
+    const updatedDesc = encodeRulesInText(rulesShop.description, newRules);
+
+    const { error } = await supabase
+      .from("century_shops")
+      .update({
+        shop_rules: newRules,
+        description: updatedDesc,
+      })
+      .eq("id", shopId);
+
+    if (error) {
+      console.warn("Notice updating native shop_rules column:", error.message);
+    }
+
+    setShops((prevShops) =>
+      prevShops.map((s) =>
+        s.id === shopId
+          ? { ...s, shop_rules: newRules, description: updatedDesc }
+          : s
+      )
+    );
+  };
 
   const handleSaveStampDesign = async (newDesign: StampDesign) => {
     if (!stampDesignerShop) return;
@@ -1975,6 +2005,15 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                     </button>
 
                     <button
+                      onClick={() => setRulesShop(shop)}
+                      className="py-2 px-2 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shrink-0"
+                      title="กำหนดกฎระเบียบประจำร้าน (เช่น ห้ามถ่ายรูป)"
+                    >
+                      <ShieldAlert size={13} />
+                      <span className="hidden sm:inline">กฎร้านค้า</span>
+                    </button>
+
+                    <button
                       onClick={() => setEditingShop(shop)}
                       className="py-2 px-2 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shrink-0"
                       title="แก้ไขข้อมูลร้าน"
@@ -2194,6 +2233,16 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
           shop={stampDesignerShop}
           onClose={() => setStampDesignerShop(null)}
           onSave={handleSaveStampDesign}
+        />
+      )}
+
+      {/* 📜 Modal: Store Rules & Guidelines */}
+      {rulesShop && (
+        <StoreRulesModal
+          isOpen={!!rulesShop}
+          shop={rulesShop}
+          onClose={() => setRulesShop(null)}
+          onSave={handleSaveRules}
         />
       )}
     </div>

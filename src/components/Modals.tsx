@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { X, Navigation, Crosshair, Landmark, MapPin, ExternalLink, Send, Loader2, Star, Camera, Edit3, Trash2, Globe, FileText, AlertCircle, AlertTriangle, CheckCircle2, Clock, CalendarOff } from "lucide-react";
+import { X, Navigation, Crosshair, Landmark, MapPin, ExternalLink, Send, Loader2, Star, Camera, Edit3, Trash2, Globe, FileText, AlertCircle, AlertTriangle, CheckCircle2, Clock, CalendarOff, CameraOff, CigaretteOff, UtensilsCrossed, Ban, Banknote, VolumeX, ShieldAlert } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { C, categories } from "../constants/mockData";
@@ -14,6 +14,7 @@ import { useUserRole } from "../hooks/useUserRole";
 import AchievementCelebration, { CelebrationItem } from "./AchievementCelebration";
 import { getShopStatusToday } from "../lib/scheduleHelpers";
 import StampSealRenderer from "./StampSealRenderer";
+import { getShopRules, StoreRuleItem } from "../lib/ruleHelpers";
 
 interface PlaceDetailModalProps {
   place: any;
@@ -68,6 +69,19 @@ export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }:
   const lng = typeof livePlace?.lng === "number" ? livePlace.lng : null;
   const imageUrl = livePlace?.image_url || "https://images.unsplash.com/photo-1542044896530-05d85be9b11a?auto=format&fit=crop&q=80&w=600";
   const statusInfo = getShopStatusToday(livePlace);
+  const storeRules = getShopRules(livePlace);
+
+  const renderRuleIcon = (iconName?: string) => {
+    switch (iconName) {
+      case "CameraOff": return <CameraOff size={13} className="text-rose-600 shrink-0" />;
+      case "CigaretteOff": return <CigaretteOff size={13} className="text-amber-600 shrink-0" />;
+      case "UtensilsCrossed": return <UtensilsCrossed size={13} className="text-orange-600 shrink-0" />;
+      case "Ban": return <Ban size={13} className="text-red-600 shrink-0" />;
+      case "Banknote": return <Banknote size={13} className="text-emerald-600 shrink-0" />;
+      case "VolumeX": return <VolumeX size={13} className="text-indigo-600 shrink-0" />;
+      default: return <ShieldAlert size={13} className="text-stone-600 shrink-0" />;
+    }
+  };
 
   // Get current user
   useEffect(() => {
@@ -293,6 +307,28 @@ export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }:
                 </div>
               )}
             </div>
+
+            {/* 📜 Store Rules Section */}
+            {storeRules.length > 0 && (
+              <div className="p-3.5 rounded-2xl border bg-stone-50/90 space-y-2 select-none" style={{ borderColor: C.line }}>
+                <div className="flex items-center gap-1.5">
+                  <ShieldAlert size={13} className="text-amber-700 shrink-0" />
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[#8A7870]">
+                    📜 กฎระเบียบประจำร้าน / Store Rules
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-0.5">
+                  {storeRules.map((rule: StoreRuleItem) => (
+                    <div key={rule.id} className="flex items-center gap-2 p-2 rounded-xl bg-white border border-stone-200/80 shadow-2xs">
+                      {renderRuleIcon(rule.icon)}
+                      <span className="text-[11px] font-bold text-stone-800 leading-tight">
+                        {rule.title}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Quick Action Buttons */}
             <div className="flex gap-2">
