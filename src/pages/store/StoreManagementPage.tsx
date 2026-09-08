@@ -1974,92 +1974,92 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                   </div>
 
                   <div className="p-3.5 border-t bg-stone-50/70 space-y-2 select-none" style={{ borderColor: C.line }}>
-                    {/* Row 1: Primary Quick Operational Actions */}
-                    <div className="flex items-center gap-2">
+                    {/* Row 1: Status & Schedule (2 Equal Columns) */}
+                    <div className="grid grid-cols-2 gap-2">
                       <button
                         onClick={handleToggleClosedToday}
-                        className={`flex-1 py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-2xs cursor-pointer ${
+                        className={`w-full py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-2xs cursor-pointer ${
                           isClosedToday
                             ? "bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-emerald-100"
                             : "bg-rose-50 border-rose-300 text-rose-800 hover:bg-rose-100"
                         }`}
                         title="เปิด/ปิดร้านชั่วคราววันนี้แบบเร่งด่วน"
                       >
-                        <Power size={13} className={isClosedToday ? "text-emerald-600" : "text-rose-600"} />
-                        <span>{isClosedToday ? "เปิดร้านวันนี้" : "วันนี้ปิด"}</span>
+                        <Power size={14} className={isClosedToday ? "text-emerald-600 shrink-0" : "text-rose-600 shrink-0"} />
+                        <span className="whitespace-nowrap">{isClosedToday ? "เปิดร้านวันนี้" : "วันนี้ปิด"}</span>
                       </button>
 
                       <button
                         onClick={() => setScheduleShop(shop)}
-                        className="flex-1 py-2 px-3 rounded-xl border border-sky-200/80 bg-sky-50/90 hover:bg-sky-100 text-sky-900 text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-2xs cursor-pointer"
+                        className="w-full py-2.5 px-3 rounded-xl border border-sky-200/80 bg-sky-50/90 hover:bg-sky-100 text-sky-900 text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-2xs cursor-pointer"
                         title="ตั้งเวลาเปิด-ปิดและปฏิทินวันหยุด"
                       >
-                        <Clock size={13} className="text-sky-600" />
-                        <span>เวลา / วันหยุด</span>
+                        <Clock size={14} className="text-sky-600 shrink-0" />
+                        <span className="whitespace-nowrap">เวลา / วันหยุด</span>
                       </button>
                     </div>
 
-                    {/* Row 2: Management & Customization Tools */}
-                    <div className="grid grid-cols-3 gap-1.5">
+                    {/* Row 2: Stamp & Rules (2 Equal Columns - Full Text Visibility) */}
+                    <div className="grid grid-cols-2 gap-2">
                       <button
                         onClick={() => setStampDesignerShop(shop)}
-                        className="py-2 px-2 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 hover:border-stone-300 text-stone-700 hover:text-stone-900 text-[11.5px] font-bold flex items-center justify-center gap-1.5 transition shadow-2xs cursor-pointer"
+                        className="w-full py-2 px-3 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 hover:border-stone-300 text-stone-800 text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-2xs cursor-pointer"
                         title="ออกแบบแสตมป์ประจำร้าน"
                       >
-                        <Stamp size={13} className="text-rose-500 shrink-0" />
-                        <span className="truncate">ออกแบบแสตมป์</span>
+                        <Stamp size={14} className="text-rose-500 shrink-0" />
+                        <span className="whitespace-nowrap">ออกแบบแสตมป์</span>
                       </button>
 
                       <button
                         onClick={() => setRulesShop(shop)}
-                        className="py-2 px-2 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 hover:border-stone-300 text-stone-700 hover:text-stone-900 text-[11.5px] font-bold flex items-center justify-center gap-1.5 transition shadow-2xs cursor-pointer"
+                        className="w-full py-2 px-3 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 hover:border-stone-300 text-stone-800 text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-2xs cursor-pointer"
                         title="กำหนดกฎระเบียบประจำร้าน"
                       >
-                        <ShieldAlert size={13} className="text-amber-600 shrink-0" />
-                        <span className="truncate">กฎร้านค้า</span>
-                      </button>
-
-                      <button
-                        onClick={() => setEditingShop(shop)}
-                        className="py-2 px-2 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 hover:border-stone-300 text-stone-700 hover:text-stone-900 text-[11.5px] font-bold flex items-center justify-center gap-1.5 transition shadow-2xs cursor-pointer"
-                        title="แก้ไขข้อมูลร้าน"
-                      >
-                        <Edit3 size={13} className="text-amber-600 shrink-0" />
-                        <span className="truncate">แก้ไขข้อมูล</span>
+                        <ShieldAlert size={14} className="text-amber-600 shrink-0" />
+                        <span className="whitespace-nowrap">กฎร้านค้า</span>
                       </button>
                     </div>
 
-                    {/* Row 3: Compact Utilities Toolbar */}
-                    <div className="flex items-center justify-between pt-1 border-t border-stone-200/60">
-                      <div className="flex items-center gap-1.5">
+                    {/* Row 3: Management & Utilities (Edit, QR, Stats, Delete) */}
+                    <div className="flex items-center justify-between gap-1.5 pt-1 border-t border-stone-200/60 flex-wrap">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <button
+                          onClick={() => setEditingShop(shop)}
+                          className="py-1.5 px-3 rounded-xl border border-amber-200 bg-amber-50/80 hover:bg-amber-100 text-amber-900 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                          title="แก้ไขข้อมูลร้าน"
+                        >
+                          <Edit3 size={13} className="text-amber-700 shrink-0" />
+                          <span className="whitespace-nowrap">แก้ไขร้าน</span>
+                        </button>
+
                         <button
                           onClick={() => setQrShop(shop)}
-                          className="py-1 px-2.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-100 text-stone-700 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                          className="py-1.5 px-3 rounded-xl border border-stone-200 bg-white hover:bg-stone-100 text-stone-700 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
                           title="ดู QR Code ร้านค้า"
                         >
-                          <QrCode size={13} className="text-stone-600" />
-                          <span>QR Code</span>
+                          <QrCode size={13} className="text-stone-600 shrink-0" />
+                          <span className="whitespace-nowrap">QR Code</span>
                         </button>
 
                         {isAdmin && (
                           <button
                             onClick={() => setSelectedSummaryShop(shop)}
-                            className="py-1 px-2.5 rounded-lg border border-indigo-200/80 bg-indigo-50/60 hover:bg-indigo-100 text-indigo-800 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                            className="py-1.5 px-3 rounded-xl border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100 text-indigo-900 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
                             title="ดูสถิติร้านค้า"
                           >
-                            <BarChart3 size={13} className="text-indigo-600" />
-                            <span>สถิติ</span>
+                            <BarChart3 size={13} className="text-indigo-600 shrink-0" />
+                            <span className="whitespace-nowrap">สถิติ</span>
                           </button>
                         )}
                       </div>
 
                       <button
                         onClick={() => handleDeleteShop(shop)}
-                        className="py-1 px-2 rounded-lg text-xs font-semibold text-rose-500 hover:text-rose-700 hover:bg-rose-50 flex items-center gap-1 transition cursor-pointer"
+                        className="py-1.5 px-2.5 rounded-xl border border-rose-200/80 bg-rose-50/60 hover:bg-rose-100 text-rose-700 text-xs font-bold flex items-center gap-1 transition cursor-pointer shrink-0 ml-auto"
                         title="ลบร้านค้า"
                       >
-                        <Trash2 size={13} />
-                        <span className="text-[11px]">ลบร้าน</span>
+                        <Trash2 size={13} className="shrink-0" />
+                        <span className="whitespace-nowrap">ลบ</span>
                       </button>
                     </div>
                   </div>
