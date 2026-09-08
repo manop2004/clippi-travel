@@ -272,7 +272,10 @@ export function localized<T extends Record<string, any>>(
     const v = row[`${field}_${lang}`];
     val = v && String(v).trim() ? v : (row[field] ?? "");
   }
-  return String(val).replace(/\[SCHEDULE:.*?\]/g, "").trim();
+  return String(val)
+    .replace(/\[SCHEDULE:.*?\]/g, "")
+    .replace(/\[RULES:.*?\]/g, "")
+    .trim();
 }
 
 // ---- ปุ่มสลับภาษา (วางบน header ข้างค้นหา/กระดิ่ง) ----
