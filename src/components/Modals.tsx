@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { X, Navigation, Crosshair, Landmark, MapPin, ExternalLink, Send, Loader2, Star, Camera, Edit3, Trash2, Globe, FileText, AlertCircle, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { X, Navigation, Crosshair, Landmark, MapPin, ExternalLink, Send, Loader2, Star, Camera, Edit3, Trash2, Globe, FileText, AlertCircle, AlertTriangle, CheckCircle2, Clock, CalendarOff } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { C, categories } from "../constants/mockData";
@@ -12,6 +12,7 @@ import { haversineDistance, formatDistance } from "../lib/geoHelpers";
 import { useLang, localized } from "../lib/i18n";
 import { useUserRole } from "../hooks/useUserRole";
 import AchievementCelebration, { CelebrationItem } from "./AchievementCelebration";
+import { getShopStatusToday } from "../lib/scheduleHelpers";
 
 interface PlaceDetailModalProps {
   place: any;
@@ -51,6 +52,7 @@ export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }:
   const lat = typeof place?.lat === "number" ? place.lat : null;
   const lng = typeof place?.lng === "number" ? place.lng : null;
   const imageUrl = place?.image_url || "https://images.unsplash.com/photo-1542044896530-05d85be9b11a?auto=format&fit=crop&q=80&w=600";
+  const statusInfo = getShopStatusToday(place);
 
   // Get current user
   useEffect(() => {
@@ -205,6 +207,11 @@ export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }:
               backgroundImage: `linear-gradient(to top, rgba(35,28,24,0.8), rgba(35,28,24,0)), url('${imageUrl}')`
             }}
           >
+            <div className="absolute top-4 right-4 z-10">
+              <span className={`px-2.5 py-1 rounded-full text-[10px] font-black backdrop-blur-md shadow-sm ${statusInfo.badgeBg}`}>
+                {statusInfo.badgeText}
+              </span>
+            </div>
             <div className="text-white z-10">
               <span className="text-[8px] font-black px-2 py-0.5 rounded-full bg-[#E0533C] text-white tracking-wider inline-block mb-1">
                 {tag}
@@ -233,6 +240,31 @@ export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }:
                   ? `${reviewCount} ${t("card.reviews")}`
                   : t("reviews.none")}
               </span>
+            </div>
+
+            {/* ⏰ Operating Status & Store Schedule Banner */}
+            <div className="p-3.5 rounded-2xl border bg-stone-50/80 space-y-1.5 select-none" style={{ borderColor: C.line }}>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#8A7870] flex items-center gap-1">
+                  <Clock size={13} className="text-amber-600 shrink-0" />
+                  <span>เวลาทำการ & สถานะเปิด-ปิดร้าน</span>
+                </span>
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ${statusInfo.badgeBg}`}>
+                  {statusInfo.badgeText}
+                </span>
+              </div>
+              <p className="text-xs font-bold text-[#231C18]">{statusInfo.description}</p>
+              {statusInfo.sched.closed_days && statusInfo.sched.closed_days.length > 0 && (
+                <p className="text-[11px] text-amber-800 font-semibold">
+                  🗓️ วันหยุดประจำสัปดาห์: {statusInfo.sched.closed_days.join(", ")}
+                </p>
+              )}
+              {statusInfo.sched.holidays && statusInfo.sched.holidays.length > 0 && (
+                <div className="text-[11px] text-rose-700 font-semibold flex items-center gap-1">
+                  <CalendarOff size={12} className="shrink-0 text-rose-500" />
+                  <span>วันหยุดพิเศษที่จะถึง: {statusInfo.sched.holidays[0].date} ({statusInfo.sched.holidays[0].title})</span>
+                </div>
+              )}
             </div>
 
             {/* Quick Action Buttons */}
