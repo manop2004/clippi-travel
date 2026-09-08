@@ -297,7 +297,7 @@ export function useUserRole(): UserRoleState {
         } else if (isRejected) {
           mStatus = "rejected";
           detectedRole = "user";
-          mRejection = latestSub?.rejection_reason || logReason || profileData?.ban_reason || "ข้อมูลเอกสารหรือหลักฐานสิทธิ์ร้านค้าไม่ผ่านการตรวจสอบ";
+          mRejection = latestSub?.rejection_reason || rejectionLog?.detail || profileData?.ban_reason || "ข้อมูลเอกสารหรือหลักฐานสิทธิ์ร้านค้าไม่ผ่านการตรวจสอบ";
         } else if (profileData?.role) {
           detectedRole = profileData.role as UserRole;
         }

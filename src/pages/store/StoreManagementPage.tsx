@@ -67,6 +67,7 @@ export interface ShopRecord {
   isSubmission?: boolean;
   submissionId?: string;
   status?: string;
+  rejection_reason?: string | null;
   created_at?: string;
 }
 
