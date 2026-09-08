@@ -31,9 +31,22 @@ export function encodeScheduleInText(baseText: string | null | undefined, schedu
   return cleanText ? `${cleanText}\n[SCHEDULE:${jsonStr}]` : `[SCHEDULE:${jsonStr}]`;
 }
 
-export function cleanScheduleTag(text: string | null | undefined): string {
+export function cleanAllMetadataTags(text: string | null | undefined): string {
   if (!text) return "";
-  return String(text).replace(/\[SCHEDULE:.*?\]/g, "").trim();
+  return String(text)
+    .replace(/\[SCHEDULE:.*?\]/g, "")
+    .replace(/\[RULES:.*?\]/g, "")
+    .replace(/\[STAMP:.*?\]/g, "")
+    .replace(/,?"holidays":\[.*?\],?"is_closed_today":.*?\}/g, "")
+    .replace(/,?"holidays":\[.*?\}/g, "")
+    .replace(/\{"open_time":.*?\}/g, "")
+    .replace(/\[RULES:.*?$/g, "")
+    .replace(/\[SCHEDULE:.*?$/g, "")
+    .trim();
+}
+
+export function cleanScheduleTag(text: string | null | undefined): string {
+  return cleanAllMetadataTags(text);
 }
 
 export function getStoredSchedule(shopId: string | number, shopRecord?: any): ShopSchedule {

@@ -63,6 +63,7 @@ import {
   getShopStatusToday,
   ShopSchedule,
   cleanScheduleTag,
+  cleanAllMetadataTags,
   encodeScheduleInText,
 } from "../../lib/scheduleHelpers";
 import StampDesignerModal from "../../components/StampDesignerModal";
@@ -2597,8 +2598,8 @@ function EditShopFormModal({ isOpen, shop, currentUserId, onClose, onShopUpdated
   const [prefecture, setPrefecture] = useState(shop.prefecture || "");
   const [region, setRegion] = useState(shop.region || "Kanto");
   const [address, setAddress] = useState(shop.address || shop.street || "");
-  const [description, setDescription] = useState(shop.description || "");
-  const [descriptionJp, setDescriptionJp] = useState(shop.description_jp || "");
+  const [description, setDescription] = useState(cleanAllMetadataTags(shop.description));
+  const [descriptionJp, setDescriptionJp] = useState(cleanAllMetadataTags(shop.description_jp));
   const [imageUrl, setImageUrl] = useState(shop.image_url || "");
   const [lat, setLat] = useState<string>(shop.lat !== undefined && shop.lat !== null ? String(shop.lat) : "");
   const [lng, setLng] = useState<string>(shop.lng !== undefined && shop.lng !== null ? String(shop.lng) : "");
@@ -2624,8 +2625,8 @@ function EditShopFormModal({ isOpen, shop, currentUserId, onClose, onShopUpdated
         prefecture: prefecture.trim() || null,
         region: region.trim() || null,
         address: address.trim() || null,
-        description: description.trim() || null,
-        description_jp: descriptionJp.trim() || null,
+        description: cleanAllMetadataTags(description).trim() || null,
+        description_jp: cleanAllMetadataTags(descriptionJp).trim() || null,
         image_url: imageUrl.trim() || null,
         lat: lat ? parseFloat(lat) : null,
         lng: lng ? parseFloat(lng) : null,

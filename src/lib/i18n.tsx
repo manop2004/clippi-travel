@@ -275,6 +275,12 @@ export function localized<T extends Record<string, any>>(
   return String(val)
     .replace(/\[SCHEDULE:.*?\]/g, "")
     .replace(/\[RULES:.*?\]/g, "")
+    .replace(/\[STAMP:.*?\]/g, "")
+    .replace(/,?"holidays":\[.*?\],?"is_closed_today":.*?\}/g, "")
+    .replace(/,?"holidays":\[.*?\}/g, "")
+    .replace(/\{"open_time":.*?\}/g, "")
+    .replace(/\[RULES:.*?$/g, "")
+    .replace(/\[SCHEDULE:.*?$/g, "")
     .trim();
 }
 
