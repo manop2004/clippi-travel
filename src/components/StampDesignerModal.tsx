@@ -248,6 +248,39 @@ export default function StampDesignerModal({
                 </div>
               </div>
 
+              {/* Border Visibility Toggle */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-black text-[#231C18]">
+                    การแสดงผลเส้นกรอบ (Border Visibility):
+                  </label>
+                  <div className="flex items-center gap-1 bg-stone-100 p-0.5 rounded-xl border border-stone-200">
+                    <button
+                      type="button"
+                      onClick={() => setDesign((prev) => ({ ...prev, show_border: true, border_width: prev.border_width === "none" ? "medium" : prev.border_width }))}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                        design.show_border !== false && design.border_width !== "none"
+                          ? "bg-rose-600 text-white shadow-2xs"
+                          : "text-stone-600 hover:text-stone-900"
+                      }`}
+                    >
+                      แสดงกรอบ
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDesign((prev) => ({ ...prev, show_border: false, border_width: "none" }))}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                        design.show_border === false || design.border_width === "none"
+                          ? "bg-rose-600 text-white shadow-2xs"
+                          : "text-stone-600 hover:text-stone-900"
+                      }`}
+                    >
+                      ซ่อนกรอบ (No Border)
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               {/* Seal Shape */}
               <div>
                 <label className="text-xs font-black text-[#231C18] block mb-2">
@@ -260,7 +293,7 @@ export default function StampDesignerModal({
                       <button
                         key={s.id}
                         type="button"
-                        onClick={() => setDesign((prev) => ({ ...prev, shape: s.id as any }))}
+                        onClick={() => setDesign((prev) => ({ ...prev, shape: s.id as any, show_border: true }))}
                         className={`py-2 px-2 rounded-xl border text-center text-xs font-bold transition cursor-pointer ${
                           isSelected
                             ? "bg-rose-50 border-rose-400 text-rose-800 shadow-2xs"
@@ -415,36 +448,96 @@ export default function StampDesignerModal({
           {/* TAB 3: ข้อความตราประทับ */}
           {activeTab === "text" && (
             <div className="space-y-4 pt-1">
-              <div>
-                <label className="text-xs font-black text-[#231C18] block mb-1">
-                  ข้อความหลักบนแสตมป์ (Stamp Header Text):
-                </label>
-                <input
-                  type="text"
-                  value={design.custom_text || ""}
-                  onChange={(e) => setDesign((prev) => ({ ...prev, custom_text: e.target.value }))}
-                  placeholder={shopName}
-                  maxLength={30}
-                  className="w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold focus:outline-hidden focus:ring-2 focus:ring-rose-400 bg-stone-50/50"
-                  style={{ borderColor: C.line }}
-                />
-                <p className="text-[10px] text-stone-500 mt-1">ข้อความที่จะแสดงอยู่ด้านบนสุดของตราประทับ</p>
+              {/* Top Text Section */}
+              <div className="p-3.5 rounded-2xl border bg-stone-50/70 space-y-2" style={{ borderColor: C.line }}>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-[#231C18]">
+                    ข้อความหลักด้านบน (Header Text):
+                  </label>
+                  <div className="flex items-center gap-1 bg-white p-0.5 rounded-xl border border-stone-200">
+                    <button
+                      type="button"
+                      onClick={() => setDesign((prev) => ({ ...prev, show_custom_text: true }))}
+                      className={`px-2.5 py-0.5 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                        design.show_custom_text !== false
+                          ? "bg-rose-600 text-white shadow-2xs"
+                          : "text-stone-600 hover:text-stone-900"
+                      }`}
+                    >
+                      แสดง
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDesign((prev) => ({ ...prev, show_custom_text: false }))}
+                      className={`px-2.5 py-0.5 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                        design.show_custom_text === false
+                          ? "bg-rose-600 text-white shadow-2xs"
+                          : "text-stone-600 hover:text-stone-900"
+                      }`}
+                    >
+                      ซ่อน
+                    </button>
+                  </div>
+                </div>
+
+                {design.show_custom_text !== false && (
+                  <input
+                    type="text"
+                    value={design.custom_text || ""}
+                    onChange={(e) => setDesign((prev) => ({ ...prev, custom_text: e.target.value }))}
+                    placeholder={shopName}
+                    maxLength={30}
+                    className="w-full px-3.5 py-2 rounded-xl border text-xs font-semibold focus:outline-hidden focus:ring-2 focus:ring-rose-400 bg-white"
+                    style={{ borderColor: C.line }}
+                  />
+                )}
+                <p className="text-[10px] text-stone-500 font-medium">ข้อความที่จะแสดงอยู่ด้านบนสุดของตราประทับ</p>
               </div>
 
-              <div>
-                <label className="text-xs font-black text-[#231C18] block mb-1">
-                  ข้อความรองด้านล่าง (Subtext / Slogan):
-                </label>
-                <input
-                  type="text"
-                  value={design.sub_text || ""}
-                  onChange={(e) => setDesign((prev) => ({ ...prev, sub_text: e.target.value }))}
-                  placeholder="เช่น EKITAG SEAL, EST. 2024"
-                  maxLength={25}
-                  className="w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold focus:outline-hidden focus:ring-2 focus:ring-rose-400 bg-stone-50/50"
-                  style={{ borderColor: C.line }}
-                />
-                <p className="text-[10px] text-stone-500 mt-1">ข้อความสั้นด้านล่าง เช่น สโลแกน ปีที่ก่อตั้ง หรือคำว่า OFFICIAL</p>
+              {/* Bottom Subtext Section */}
+              <div className="p-3.5 rounded-2xl border bg-stone-50/70 space-y-2" style={{ borderColor: C.line }}>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-[#231C18]">
+                    ข้อความรองด้านล่าง (Subtext / Slogan):
+                  </label>
+                  <div className="flex items-center gap-1 bg-white p-0.5 rounded-xl border border-stone-200">
+                    <button
+                      type="button"
+                      onClick={() => setDesign((prev) => ({ ...prev, show_sub_text: true }))}
+                      className={`px-2.5 py-0.5 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                        design.show_sub_text !== false
+                          ? "bg-rose-600 text-white shadow-2xs"
+                          : "text-stone-600 hover:text-stone-900"
+                      }`}
+                    >
+                      แสดง
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDesign((prev) => ({ ...prev, show_sub_text: false }))}
+                      className={`px-2.5 py-0.5 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                        design.show_sub_text === false
+                          ? "bg-rose-600 text-white shadow-2xs"
+                          : "text-stone-600 hover:text-stone-900"
+                      }`}
+                    >
+                      ซ่อน
+                    </button>
+                  </div>
+                </div>
+
+                {design.show_sub_text !== false && (
+                  <input
+                    type="text"
+                    value={design.sub_text || ""}
+                    onChange={(e) => setDesign((prev) => ({ ...prev, sub_text: e.target.value }))}
+                    placeholder="เช่น EKITAG SEAL, EST. 2024"
+                    maxLength={25}
+                    className="w-full px-3.5 py-2 rounded-xl border text-xs font-semibold focus:outline-hidden focus:ring-2 focus:ring-rose-400 bg-white"
+                    style={{ borderColor: C.line }}
+                  />
+                )}
+                <p className="text-[10px] text-stone-500 font-medium">ข้อความสั้นด้านล่าง เช่น สโลแกน ปีที่ก่อตั้ง หรือคำว่า OFFICIAL</p>
               </div>
             </div>
           )}

@@ -68,16 +68,22 @@ export default function StampSealRenderer({
 
   const sz = sizeMap[size] || sizeMap.md;
 
+  const showBorder = finalDesign.show_border !== false && borderWidth !== "none" && (shape as string) !== "none";
+  const showCustomText = finalDesign.show_custom_text !== false && Boolean(mainText);
+  const showSubText = finalDesign.show_sub_text !== false && Boolean(subText);
+
   // Border thickness CSS
   let borderCss = "border-2";
-  if (borderWidth === "thin") borderCss = "border";
+  if (!showBorder) borderCss = "border-0";
+  else if (borderWidth === "thin") borderCss = "border";
   else if (borderWidth === "bold") {
     borderCss = size === "xl" ? "border-6" : size === "lg" ? "border-4" : "border-3";
   }
 
   // Shape classnames
   let shapeStyle = "rounded-full";
-  if (shape === "double_circle") shapeStyle = "rounded-full border-double";
+  if (!showBorder || (shape as string) === "none") shapeStyle = "rounded-2xl";
+  else if (shape === "double_circle") shapeStyle = "rounded-full border-double";
   else if (shape === "octagon") shapeStyle = "rounded-[28%]";
   else if (shape === "square") shapeStyle = "rounded-xl";
   else if (shape === "rounded_square") shapeStyle = "rounded-3xl";
@@ -85,7 +91,7 @@ export default function StampSealRenderer({
   else if (shape === "stamp_edge") shapeStyle = "rounded-2xl border-dashed";
 
   // Shadow Effect CSS
-  let shadowStyle = {};
+  let shadowStyle: React.CSSProperties = {};
   if (isCollected) {
     if (shadowEffect === "subtle") {
       shadowStyle = { boxShadow: `0 4px 14px ${inkColor}33, inset 0 0 10px ${inkColor}1F` };
@@ -161,14 +167,14 @@ export default function StampSealRenderer({
     <div
       className={`relative shrink-0 flex flex-col items-center justify-center select-none transition-all ${sz.box} ${shapeStyle} ${borderCss} ${containerFilter} ${className}`}
       style={{
-        borderColor: inkColor,
-        backgroundColor: `${inkColor}0A`, // subtle ink wash background
+        borderColor: showBorder ? inkColor : "transparent",
+        backgroundColor: showBorder ? `${inkColor}0A` : "transparent",
         color: inkColor,
         ...shadowStyle,
       }}
     >
       {/* Inner Hanko Ring detail */}
-      {shape === "double_circle" && (
+      {showBorder && shape === "double_circle" && (
         <div
           className="absolute inset-[3px] rounded-full border border-current pointer-events-none opacity-60"
         />
@@ -177,12 +183,14 @@ export default function StampSealRenderer({
       {/* Content Container (Counter-rotate if hexagon) */}
       <div className={`flex flex-col items-center justify-center w-full h-full ${shape === "hexagon" ? "-rotate-45" : ""}`}>
         {/* Top Main Text */}
-        <span
-          className={`font-black tracking-tight leading-none text-center px-1 max-w-[88%] truncate ${sz.mainFont}`}
-          style={{ color: inkColor }}
-        >
-          {mainText}
-        </span>
+        {showCustomText && (
+          <span
+            className={`font-black tracking-tight leading-none text-center px-1 max-w-[88%] truncate ${sz.mainFont}`}
+            style={{ color: inkColor }}
+          >
+            {mainText}
+          </span>
+        )}
 
         {/* Center Icon */}
         <div className="my-0.5 flex items-center justify-center opacity-90">
@@ -190,7 +198,7 @@ export default function StampSealRenderer({
         </div>
 
         {/* Bottom Subtext */}
-        {subText && (
+        {showSubText && subText && (
           <span
             className={`font-extrabold uppercase tracking-wider text-center px-1 max-w-[85%] truncate opacity-80 ${sz.subFont}`}
             style={{ color: inkColor }}

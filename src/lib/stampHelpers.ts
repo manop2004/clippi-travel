@@ -1,13 +1,16 @@
 // stampHelpers.ts
 export interface StampDesign {
   ink_color?: string;
-  shape?: "circle" | "double_circle" | "octagon" | "square" | "stamp_edge" | "hexagon" | "rounded_square";
+  shape?: "circle" | "double_circle" | "octagon" | "square" | "stamp_edge" | "hexagon" | "rounded_square" | "none";
   preset_icon?: string;
   custom_text?: string;
   sub_text?: string;
+  show_border?: boolean;
+  show_custom_text?: boolean;
+  show_sub_text?: boolean;
   image_url?: string;
   image_size?: "sm" | "md" | "lg" | "full";
-  border_width?: "thin" | "medium" | "bold";
+  border_width?: "none" | "thin" | "medium" | "bold";
   shadow_effect?: "none" | "subtle" | "vintage" | "glow";
   texture_effect?: "clean" | "vintage_rubber" | "ink_bleed";
   font_style?: "sans" | "serif" | "mono" | "rounded";
@@ -18,6 +21,13 @@ export const STAMP_IMAGE_SIZES = [
   { id: "md", label: "ปานกลาง (Medium)" },
   { id: "lg", label: "ใหญ่เด่นชัด (Large)" },
   { id: "full", label: "เต็มตราแสตมป์ (Full)" },
+];
+
+export const STAMP_BORDER_WIDTHS = [
+  { id: "none", label: "ไม่มีกรอบ (No Border)" },
+  { id: "thin", label: "กรอบบาง" },
+  { id: "medium", label: "กรอบปานกลาง" },
+  { id: "bold", label: "กรอบหนา" },
 ];
 
 export const STAMP_INK_COLORS = [
@@ -86,12 +96,6 @@ export const STAMP_TEXTURE_EFFECTS = [
   { id: "ink_bleed", label: "หมึกซึมยิ้ม (Ink Bleed)" },
 ];
 
-export const STAMP_BORDER_WIDTHS = [
-  { id: "thin", label: "กรอบบาง" },
-  { id: "medium", label: "กรอบปานกลาง" },
-  { id: "bold", label: "กรอบหนา" },
-];
-
 export function getDefaultStampDesign(shopName?: string): StampDesign {
   return {
     ink_color: "#D9381E",
@@ -99,6 +103,9 @@ export function getDefaultStampDesign(shopName?: string): StampDesign {
     preset_icon: "hanko",
     custom_text: shopName || "",
     sub_text: "EKITAG SEAL",
+    show_border: true,
+    show_custom_text: true,
+    show_sub_text: true,
     image_url: "",
     image_size: "lg",
     border_width: "medium",
