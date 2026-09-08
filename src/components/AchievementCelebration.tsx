@@ -3,13 +3,14 @@ import { X, Sparkles, PartyPopper, Trophy } from "lucide-react";
 import { C } from "../constants/mockData";
 import { useLang } from "../lib/i18n";
 import ClippiMascot from "./ClippiMascot";
+import StampSealRenderer from "./StampSealRenderer";
 
 // A celebration is either a "you just collected a stamp" moment or a
 // "you just unlocked an achievement" moment. Multiple items can be queued
 // (e.g. collect a stamp AND unlock an achievement from the same action) and
 // are shown one at a time.
 export type CelebrationItem =
-  | { type: "stamp"; shopName: string }
+  | { type: "stamp"; shopName: string; shopRecord?: any }
   | { type: "achievement"; code: string; name: string; icon: string; description?: string | null };
 
 interface AchievementCelebrationProps {
@@ -47,7 +48,7 @@ export default function AchievementCelebration({ items, onClose }: AchievementCe
       <div
         onClick={(e) => e.stopPropagation()}
         key={index}
-        className="relative w-full max-w-sm rounded-3xl bg-white p-6 pt-10 text-center shadow-2xl overflow-hidden animate-celebrate-bounce"
+        className="relative w-full max-w-sm rounded-3xl bg-white p-6 pt-10 text-center shadow-2xl overflow-hidden animate-celebrate-bounce flex flex-col items-center"
         style={{ border: `2px solid ${C.accent}` }}
       >
         {/* Close button */}
@@ -71,6 +72,9 @@ export default function AchievementCelebration({ items, onClose }: AchievementCe
 
         {current.type === "stamp" ? (
           <>
+            <div className="my-2 animate-bounce">
+              <StampSealRenderer shopRecord={(current as any).shopRecord} shopName={current.shopName} size="lg" isCollected={true} />
+            </div>
             <div
               className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black tracking-wider uppercase mb-2"
               style={{ background: C.accentSoft, color: C.accentDeep }}

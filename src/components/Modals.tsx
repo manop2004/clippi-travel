@@ -13,6 +13,7 @@ import { useLang, localized } from "../lib/i18n";
 import { useUserRole } from "../hooks/useUserRole";
 import AchievementCelebration, { CelebrationItem } from "./AchievementCelebration";
 import { getShopStatusToday } from "../lib/scheduleHelpers";
+import StampSealRenderer from "./StampSealRenderer";
 
 interface PlaceDetailModalProps {
   place: any;
@@ -221,6 +222,9 @@ export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }:
               backgroundImage: `linear-gradient(to top, rgba(35,28,24,0.8), rgba(35,28,24,0)), url('${imageUrl}')`
             }}
           >
+            <div className="absolute top-4 left-4 z-10 bg-white/95 backdrop-blur-xs p-1 rounded-2xl shadow-md border border-stone-200">
+              <StampSealRenderer shopRecord={livePlace} shopName={shopName} size="sm" isCollected={userStamps.some((s: any) => String(s.shop_id) === String(placeId))} />
+            </div>
             <div className="absolute top-4 right-4 z-10">
               <span className={`px-2.5 py-1 rounded-full text-[10px] font-black backdrop-blur-md shadow-sm ${statusInfo.badgeBg}`}>
                 {statusInfo.badgeText}

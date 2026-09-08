@@ -53,12 +53,15 @@ import { ProtectedRoute } from "../../components/auth/ProtectedRoute";
 import { AddPlaceModal } from "../../components/Modals";
 import {
   HolidayItem,
-  ShopSchedule,
   getStoredSchedule,
   saveStoredSchedule,
   getShopStatusToday,
+  ShopSchedule,
+  cleanScheduleTag,
   encodeScheduleInText,
 } from "../../lib/scheduleHelpers";
+import StampDesignerModal from "../../components/StampDesignerModal";
+import { StampDesign, encodeStampDesignInText } from "../../lib/stampHelpers";
 export type { HolidayItem, ShopSchedule };
 
 export interface ShopRecord {
@@ -155,7 +158,34 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
   const [deletingSubId, setDeletingSubId] = useState<string | null>(null);
   const [qrShop, setQrShop] = useState<ShopRecord | null>(null);
   const [scheduleShop, setScheduleShop] = useState<ShopRecord | null>(null);
+  const [stampDesignerShop, setStampDesignerShop] = useState<ShopRecord | null>(null);
   const [storeSchedules, setStoreSchedules] = useState<Record<string, ShopSchedule>>({});
+
+  const handleSaveStampDesign = async (newDesign: StampDesign) => {
+    if (!stampDesignerShop) return;
+    const shopId = stampDesignerShop.id;
+    const updatedDescJp = encodeStampDesignInText(stampDesignerShop.description_jp, newDesign);
+
+    const { error } = await supabase
+      .from("century_shops")
+      .update({
+        stamp_design: newDesign,
+        description_jp: updatedDescJp,
+      })
+      .eq("id", shopId);
+
+    if (error) {
+      console.warn("Notice updating native stamp_design column:", error.message);
+    }
+
+    setShops((prevShops) =>
+      prevShops.map((s) =>
+        s.id === shopId
+          ? { ...s, stamp_design: newDesign, description_jp: updatedDescJp }
+          : s
+      )
+    );
+  };
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [sortOption, setSortOption] = useState<"stamps" | "rating" | "newest" | "name">("stamps");
   const [selectedSummaryShop, setSelectedSummaryShop] = useState<ShopRecord | null>(null);
@@ -1936,6 +1966,15 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                     </button>
 
                     <button
+                      onClick={() => setStampDesignerShop(shop)}
+                      className="py-2 px-2 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-800 text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shrink-0"
+                      title="ออกแบบแสตมป์ประจำร้าน"
+                    >
+                      <Stamp size={13} />
+                      <span className="hidden sm:inline">ออกแบบแสตมป์</span>
+                    </button>
+
+                    <button
                       onClick={() => setEditingShop(shop)}
                       className="py-2 px-2 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shrink-0"
                       title="แก้ไขข้อมูลร้าน"
@@ -2145,6 +2184,16 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
             }));
             setScheduleShop(null);
           }}
+        />
+      )}
+
+      {/* 🎨 Modal: Custom Store Stamp Designer */}
+      {stampDesignerShop && (
+        <StampDesignerModal
+          isOpen={!!stampDesignerShop}
+          shop={stampDesignerShop}
+          onClose={() => setStampDesignerShop(null)}
+          onSave={handleSaveStampDesign}
         />
       )}
     </div>
