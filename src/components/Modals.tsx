@@ -5,7 +5,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { C, categories } from "../constants/mockData";
 import StarRow from "./StarRow";
-import { getReviews, createReview, collectStamp, hasUserCollectedStamp, getUserStamps, createPlaceSubmission, getUserBadgeCodes, checkAndAwardAchievements, getAchievementsByCodes } from "../hooks/useReviewStamp";
+import { getReviews, createReview, collectStamp, hasUserCollectedStamp, getUserStamps, createPlaceSubmission, getUserBadgeCodes, checkAndAwardAchievements, getAchievementsByCodes, getPlaceById } from "../hooks/useReviewStamp";
 import { Review, UserStamp } from "../types/review-stamp";
 import { supabase } from "../supabaseClient";
 import { haversineDistance, formatDistance } from "../lib/geoHelpers";
@@ -32,7 +32,22 @@ export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }:
   const [user, setUser] = useState<any>(null);
   const [realRating, setRealRating] = useState<number | null>(null);
   const [realReviewsCount, setRealReviewsCount] = useState<number | null>(null);
+  const [livePlace, setLivePlace] = useState<any>(place);
   const { t, lang } = useLang();
+
+  const placeId = place?.id || place?.place_id || null;
+
+  // Fetch latest shop details from Supabase to ensure live schedule & description sync
+  useEffect(() => {
+    setLivePlace(place);
+    if (placeId) {
+      getPlaceById(placeId).then((data) => {
+        if (data) {
+          setLivePlace((prev: any) => ({ ...prev, ...data }));
+        }
+      });
+    }
+  }, [placeId, place]);
 
   // Fetch user stamps
   useEffect(() => {
@@ -42,17 +57,16 @@ export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }:
   }, [user]);
 
   // Map variables dynamically to support both Mock data and Supabase database records
-  const placeId = place?.id || place?.place_id || null;
-  const shopName = localized(place, "shop_name", lang) || place?.name || "Unknown Shop";
-  const tag = place?.prefecture || place?.tag || "Japan";
-  const founded = place?.founded || place?.year || "";
-  const address = place?.address || "";
-  const description = localized(place, "description", lang) || t("map.noDesc");
-  const website = place?.website || "";
-  const lat = typeof place?.lat === "number" ? place.lat : null;
-  const lng = typeof place?.lng === "number" ? place.lng : null;
-  const imageUrl = place?.image_url || "https://images.unsplash.com/photo-1542044896530-05d85be9b11a?auto=format&fit=crop&q=80&w=600";
-  const statusInfo = getShopStatusToday(place);
+  const shopName = localized(livePlace, "shop_name", lang) || livePlace?.name || "Unknown Shop";
+  const tag = livePlace?.prefecture || livePlace?.tag || "Japan";
+  const founded = livePlace?.founded || livePlace?.year || "";
+  const address = livePlace?.address || "";
+  const description = localized(livePlace, "description", lang) || t("map.noDesc");
+  const website = livePlace?.website || "";
+  const lat = typeof livePlace?.lat === "number" ? livePlace.lat : null;
+  const lng = typeof livePlace?.lng === "number" ? livePlace.lng : null;
+  const imageUrl = livePlace?.image_url || "https://images.unsplash.com/photo-1542044896530-05d85be9b11a?auto=format&fit=crop&q=80&w=600";
+  const statusInfo = getShopStatusToday(livePlace);
 
   // Get current user
   useEffect(() => {
