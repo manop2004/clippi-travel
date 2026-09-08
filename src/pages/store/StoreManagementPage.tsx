@@ -45,7 +45,12 @@ import {
   CalendarOff,
   ToggleLeft,
   ToggleRight,
-  Info
+  Info,
+  Users,
+  Sunrise,
+  Sunset,
+  UserCheck,
+  PieChart
 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 import { C, categories } from "../../constants/mockData";
@@ -2020,8 +2025,8 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                       </button>
                     </div>
 
-                    {/* Row 3: Management & Utilities Grid (Unified 3 or 4 columns) */}
-                    <div className={`grid gap-1 ${isAdmin ? "grid-cols-4" : "grid-cols-3"}`}>
+                    {/* Row 3: Management & Utilities Grid (4 columns for all users) */}
+                    <div className="grid grid-cols-4 gap-1">
                       <button
                         onClick={() => setEditingShop(shop)}
                         className="py-2 px-0.5 sm:px-2 rounded-xl border border-amber-200 bg-amber-50/70 hover:bg-amber-100 text-amber-900 text-[10.5px] sm:text-xs font-bold flex items-center justify-center gap-0.5 sm:gap-1 transition cursor-pointer shadow-2xs min-w-0"
@@ -2040,16 +2045,14 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                         <span className="whitespace-nowrap">QR</span>
                       </button>
 
-                      {isAdmin && (
-                        <button
-                          onClick={() => setSelectedSummaryShop(shop)}
-                          className="py-2 px-0.5 sm:px-2 rounded-xl border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100 text-indigo-900 text-[10.5px] sm:text-xs font-bold flex items-center justify-center gap-0.5 sm:gap-1 transition cursor-pointer shadow-2xs min-w-0"
-                          title="ดูสถิติร้านค้า"
-                        >
-                          <BarChart3 size={11} className="text-indigo-600 shrink-0" />
-                          <span className="whitespace-nowrap">สถิติ</span>
-                        </button>
-                      )}
+                      <button
+                        onClick={() => setSelectedSummaryShop(shop)}
+                        className="py-2 px-0.5 sm:px-2 rounded-xl border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100 text-indigo-900 text-[10.5px] sm:text-xs font-bold flex items-center justify-center gap-0.5 sm:gap-1 transition cursor-pointer shadow-2xs min-w-0"
+                        title="ดูสถิติคนเก็บแสตมป์ ช่วงเวลา และสรุปรายเดือน"
+                      >
+                        <BarChart3 size={11} className="text-indigo-600 shrink-0" />
+                        <span className="whitespace-nowrap">สถิติ</span>
+                      </button>
 
                       <button
                         onClick={() => handleDeleteShop(shop)}
@@ -3015,18 +3018,138 @@ function AdminShopSummaryModal({
 }: AdminShopSummaryModalProps) {
   if (!isOpen || !shop) return null;
 
-  const totalStamps = shop.stamps_count || 0;
+  const [activeTab, setActiveTab] = useState<"overview" | "collectors" | "time" | "monthly">("overview");
+  const [stampsData, setStampsData] = useState<any[]>([]);
+  const [loadingStamps, setLoadingStamps] = useState<boolean>(true);
+
+  useEffect(() => {
+    if (!shop?.id) return;
+    setLoadingStamps(true);
+
+    async function fetchAnalyticsData() {
+      try {
+        const { data, error } = await supabase
+          .from("user_stamps")
+          .select("id, user_id, collected_at, created_at, profiles(id, display_name, full_name, username, avatar_url)")
+          .eq("shop_id", shop.id)
+          .order("collected_at", { ascending: false });
+
+        if (error) {
+          console.warn("user_stamps analytics query warning:", error.message);
+        }
+        setStampsData(data || []);
+      } catch (err) {
+        console.error("Failed to load stamps analytics:", err);
+      } finally {
+        setLoadingStamps(false);
+      }
+    }
+
+    fetchAnalyticsData();
+  }, [shop?.id]);
+
+  const totalStampsCount = stampsData.length > 0 ? stampsData.length : (shop.stamps_count || 0);
   const ratingVal = shop.rating !== undefined && shop.rating !== null ? Number(shop.rating) : 0;
   const reviewsCount = shop.reviews_count || 0;
 
+  // Process unique collectors
+  const collectorsMap = new Map<string, { user_id: string; profile: any; count: number; lastCollected: string }>();
+  stampsData.forEach((st) => {
+    const uid = st.user_id || "anonymous";
+    const ts = st.collected_at || st.created_at || "";
+    const profile = Array.isArray(st.profiles) ? st.profiles[0] : st.profiles;
+
+    if (!collectorsMap.has(uid)) {
+      collectorsMap.set(uid, {
+        user_id: uid,
+        profile,
+        count: 1,
+        lastCollected: ts,
+      });
+    } else {
+      const existing = collectorsMap.get(uid)!;
+      existing.count += 1;
+      if (new Date(ts).getTime() > new Date(existing.lastCollected).getTime()) {
+        existing.lastCollected = ts;
+      }
+    }
+  });
+
+  const uniqueCollectorsList = Array.from(collectorsMap.values()).sort((a, b) => b.count - a.count);
+  const uniqueCollectorsCount = uniqueCollectorsList.length;
+
+  // Process Time Slot distribution
+  const timeSlots = {
+    morning: 0,   // 06:00 - 11:59
+    afternoon: 0, // 12:00 - 17:59
+    evening: 0,   // 18:00 - 23:59
+    night: 0,     // 00:00 - 05:59
+  };
+
+  stampsData.forEach((st) => {
+    const dateObj = new Date(st.collected_at || st.created_at);
+    if (!isNaN(dateObj.getTime())) {
+      const hour = dateObj.getHours();
+      if (hour >= 6 && hour < 12) timeSlots.morning++;
+      else if (hour >= 12 && hour < 18) timeSlots.afternoon++;
+      else if (hour >= 18 && hour < 24) timeSlots.evening++;
+      else timeSlots.night++;
+    }
+  });
+
+  const slotTotal = Math.max(1, stampsData.length);
+  const timeSlotPercentages = {
+    morning: Math.round((timeSlots.morning / slotTotal) * 100),
+    afternoon: Math.round((timeSlots.afternoon / slotTotal) * 100),
+    evening: Math.round((timeSlots.evening / slotTotal) * 100),
+    night: Math.round((timeSlots.night / slotTotal) * 100),
+  };
+
+  // Process Monthly Summary
+  const monthlyMap = new Map<string, number>();
+  stampsData.forEach((st) => {
+    const d = new Date(st.collected_at || st.created_at);
+    if (!isNaN(d.getTime())) {
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      monthlyMap.set(key, (monthlyMap.get(key) || 0) + 1);
+    }
+  });
+
+  const sortedMonths = Array.from(monthlyMap.entries()).sort((a, b) => b[0].localeCompare(a[0]));
+  const maxMonthCount = Math.max(1, ...Array.from(monthlyMap.values()));
+
+  const formatThaiDate = (isoStr: string) => {
+    if (!isoStr) return "-";
+    const d = new Date(isoStr);
+    if (isNaN(d.getTime())) return isoStr;
+    return d.toLocaleDateString("th-TH", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const formatMonthLabel = (yearMonthKey: string) => {
+    const [year, month] = yearMonthKey.split("-");
+    const monthNames = [
+      "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+      "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
+    ];
+    const mIdx = parseInt(month, 10) - 1;
+    const thYear = parseInt(year, 10) + 543;
+    return `${monthNames[mIdx] || month} ${thYear}`;
+  };
+
   return (
-    <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
       <div
-        className="bg-white rounded-3xl w-full max-w-lg border border-amber-500/30 shadow-2xl overflow-hidden flex flex-col"
+        className="bg-white rounded-3xl w-full max-w-xl border border-stone-200 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
         style={{ borderColor: C.line }}
       >
         {/* Cover Header */}
-        <div className="relative h-48 w-full bg-stone-900 overflow-hidden">
+        <div className="relative h-40 sm:h-48 w-full bg-stone-900 overflow-hidden shrink-0">
           <img
             src={
               shop.image_url ||
@@ -3039,18 +3162,18 @@ function AdminShopSummaryModal({
 
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black transition cursor-pointer backdrop-blur-xs"
+            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black transition cursor-pointer backdrop-blur-xs z-20"
           >
             <X size={18} />
           </button>
 
-          <div className="absolute bottom-4 left-5 right-5 text-white space-y-1">
+          <div className="absolute bottom-3 left-4 right-4 text-white space-y-1 z-10">
             <div className="flex items-center gap-2 flex-wrap mb-1">
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-stone-950 uppercase tracking-wider">
                 {shop.category || "Shop"}
               </span>
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500 text-white">
-                Live System Approved
+                📊 สถิติแสตมป์ร้านค้า
               </span>
               {shop.prefecture && (
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/20 backdrop-blur-md text-white">
@@ -3065,81 +3188,348 @@ function AdminShopSummaryModal({
           </div>
         </div>
 
-        {/* Analytics Body */}
-        <div className="p-6 space-y-5">
-          {/* Key Metrics Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <div className="bg-amber-50/80 border border-amber-200/80 p-3.5 rounded-2xl">
-              <div className="flex items-center gap-1.5 text-amber-700 text-xs font-bold mb-1">
-                <Stamp size={15} />
-                <span>Stamp Check-ins</span>
-              </div>
-              <p className="text-xl font-black text-amber-900">{totalStamps} ครั้ง</p>
-              <p className="text-[10px] text-amber-700/80 font-semibold mt-0.5">ยอดแสตมป์ที่ออกแล้ว</p>
-            </div>
+        {/* Navigation Tabs Header */}
+        <div className="flex border-b bg-stone-50 overflow-x-auto shrink-0 select-none" style={{ borderColor: C.line }}>
+          <button
+            onClick={() => setActiveTab("overview")}
+            className={`flex-1 py-3 px-3 text-xs font-bold flex items-center justify-center gap-1.5 border-b-2 transition whitespace-nowrap cursor-pointer ${
+              activeTab === "overview"
+                ? "border-amber-600 text-amber-900 bg-white"
+                : "border-transparent text-stone-600 hover:text-stone-900"
+            }`}
+          >
+            <PieChart size={14} />
+            <span>ภาพรวม</span>
+          </button>
 
-            <div className="bg-emerald-50/80 border border-emerald-200/80 p-3.5 rounded-2xl">
-              <div className="flex items-center gap-1.5 text-emerald-700 text-xs font-bold mb-1">
-                <Star size={15} />
-                <span>คะแนนรีวิว</span>
-              </div>
-              <p className="text-xl font-black text-emerald-900">
-                {ratingVal > 0 ? `${ratingVal.toFixed(1)} / 5.0` : "ยังไม่มีคะแนน"}
-              </p>
-              <p className="text-[10px] text-emerald-700/80 font-semibold mt-0.5">จาก {reviewsCount} รีวิว</p>
-            </div>
+          <button
+            onClick={() => setActiveTab("collectors")}
+            className={`flex-1 py-3 px-3 text-xs font-bold flex items-center justify-center gap-1.5 border-b-2 transition whitespace-nowrap cursor-pointer ${
+              activeTab === "collectors"
+                ? "border-amber-600 text-amber-900 bg-white"
+                : "border-transparent text-stone-600 hover:text-stone-900"
+            }`}
+          >
+            <Users size={14} />
+            <span>คนเก็บแสตมป์ ({uniqueCollectorsCount})</span>
+          </button>
 
-            <div className="bg-sky-50/80 border border-sky-200/80 p-3.5 rounded-2xl col-span-2 sm:col-span-1">
-              <div className="flex items-center gap-1.5 text-sky-700 text-xs font-bold mb-1">
-                <Building2 size={15} />
-                <span>ID ร้านค้า</span>
-              </div>
-              <p className="text-sm font-mono font-black text-sky-900 truncate">#{shop.id}</p>
-              <p className="text-[10px] text-sky-700/80 font-semibold mt-0.5">รหัสอ้างอิงระบบ</p>
-            </div>
-          </div>
+          <button
+            onClick={() => setActiveTab("time")}
+            className={`flex-1 py-3 px-3 text-xs font-bold flex items-center justify-center gap-1.5 border-b-2 transition whitespace-nowrap cursor-pointer ${
+              activeTab === "time"
+                ? "border-amber-600 text-amber-900 bg-white"
+                : "border-transparent text-stone-600 hover:text-stone-900"
+            }`}
+          >
+            <Clock size={14} />
+            <span>ช่วงเวลา</span>
+          </button>
 
-          {/* Details list */}
-          <div className="bg-stone-50 p-4 rounded-2xl border space-y-2.5 text-xs text-[#231C18]" style={{ borderColor: C.line }}>
-            <div className="flex items-start justify-between gap-2 border-b pb-2" style={{ borderColor: C.line }}>
-              <span className="font-bold text-[#8A7870]">ที่อยู่ร้านค้า:</span>
-              <span className="font-semibold text-right max-w-[240px] truncate">{shop.address || "ไม่ได้ระบุที่อยู่"}</span>
-            </div>
-
-            {shop.website && (
-              <div className="flex items-center justify-between gap-2 border-b pb-2" style={{ borderColor: C.line }}>
-                <span className="font-bold text-[#8A7870]">เว็บไซต์:</span>
-                <a
-                  href={shop.website}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-semibold text-[#E0533C] hover:underline truncate max-w-[240px]"
-                >
-                  {shop.website}
-                </a>
-              </div>
-            )}
-
-            <div className="flex items-center justify-between gap-2">
-              <span className="font-bold text-[#8A7870]">เจ้าของร้าน (Owner ID):</span>
-              <span className="font-mono text-[11px] text-stone-600 truncate max-w-[220px]">
-                {shop.owner_id || "ระบบ (Admin/Unassigned)"}
-              </span>
-            </div>
-          </div>
+          <button
+            onClick={() => setActiveTab("monthly")}
+            className={`flex-1 py-3 px-3 text-xs font-bold flex items-center justify-center gap-1.5 border-b-2 transition whitespace-nowrap cursor-pointer ${
+              activeTab === "monthly"
+                ? "border-amber-600 text-amber-900 bg-white"
+                : "border-transparent text-stone-600 hover:text-stone-900"
+            }`}
+          >
+            <Calendar size={14} />
+            <span>สรุปรายเดือน</span>
+          </button>
         </div>
 
-        {/* Modal Actions */}
-        <div className="p-5 border-t bg-stone-50/50 flex flex-wrap items-center justify-between gap-3" style={{ borderColor: C.line }}>
+        {/* Modal Scrollable Body */}
+        <div className="p-5 overflow-y-auto space-y-4 flex-1">
+          {loadingStamps ? (
+            <div className="flex flex-col items-center justify-center py-10 text-stone-500 space-y-2">
+              <Loader2 size={24} className="animate-spin text-amber-600" />
+              <span className="text-xs font-bold">กำลังโหลดข้อมูลสถิติแสตมป์...</span>
+            </div>
+          ) : (
+            <>
+              {/* TAB 1: OVERVIEW */}
+              {activeTab === "overview" && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <div className="bg-amber-50/90 border border-amber-200 p-3.5 rounded-2xl">
+                      <div className="flex items-center gap-1.5 text-amber-700 text-xs font-bold mb-1">
+                        <Stamp size={15} />
+                        <span>ยอดแสตมป์รวม</span>
+                      </div>
+                      <p className="text-2xl font-black text-amber-900">{totalStampsCount} ครั้ง</p>
+                      <p className="text-[10px] text-amber-700/80 font-semibold mt-0.5">การสแกนทั้งหมด</p>
+                    </div>
+
+                    <div className="bg-sky-50/90 border border-sky-200 p-3.5 rounded-2xl">
+                      <div className="flex items-center gap-1.5 text-sky-700 text-xs font-bold mb-1">
+                        <UserCheck size={15} />
+                        <span>คนสะสมไม่ซ้ำหน้า</span>
+                      </div>
+                      <p className="text-2xl font-black text-sky-900">{uniqueCollectorsCount} คน</p>
+                      <p className="text-[10px] text-sky-700/80 font-semibold mt-0.5">นักสะสมยูนีค</p>
+                    </div>
+
+                    <div className="bg-emerald-50/90 border border-emerald-200 p-3.5 rounded-2xl col-span-2 sm:col-span-1">
+                      <div className="flex items-center gap-1.5 text-emerald-700 text-xs font-bold mb-1">
+                        <Star size={15} />
+                        <span>คะแนนรีวิว</span>
+                      </div>
+                      <p className="text-2xl font-black text-emerald-900">
+                        {ratingVal > 0 ? `${ratingVal.toFixed(1)} / 5.0` : "ไม่มีคะแนน"}
+                      </p>
+                      <p className="text-[10px] text-emerald-700/80 font-semibold mt-0.5">จาก {reviewsCount} รีวิว</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-stone-50 p-4 rounded-2xl border space-y-2.5 text-xs text-[#231C18]" style={{ borderColor: C.line }}>
+                    <div className="flex items-start justify-between gap-2 border-b pb-2" style={{ borderColor: C.line }}>
+                      <span className="font-bold text-[#8A7870]">ที่อยู่ร้านค้า:</span>
+                      <span className="font-semibold text-right max-w-[260px] truncate">{shop.address || "ไม่ได้ระบุที่อยู่"}</span>
+                    </div>
+
+                    {shop.website && (
+                      <div className="flex items-center justify-between gap-2 border-b pb-2" style={{ borderColor: C.line }}>
+                        <span className="font-bold text-[#8A7870]">เว็บไซต์:</span>
+                        <a
+                          href={shop.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-semibold text-[#E0533C] hover:underline truncate max-w-[260px]"
+                        >
+                          {shop.website}
+                        </a>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-bold text-[#8A7870]">เจ้าของร้าน (Owner ID):</span>
+                      <span className="font-mono text-[11px] text-stone-600 truncate max-w-[220px]">
+                        {shop.owner_id || "ระบบ (Admin/Unassigned)"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: STAMP COLLECTORS */}
+              {activeTab === "collectors" && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black uppercase text-stone-700 flex items-center gap-1.5">
+                      <Users size={14} className="text-amber-600" />
+                      <span>รายชื่อผู้สะสมแสตมป์ ({uniqueCollectorsCount} คน)</span>
+                    </h4>
+                    <span className="text-[11px] text-stone-500 font-semibold">เรียงตามจำนวนสแกน</span>
+                  </div>
+
+                  {uniqueCollectorsList.length === 0 ? (
+                    <div className="text-center py-8 bg-stone-50 rounded-2xl border border-stone-200/80">
+                      <Stamp size={28} className="mx-auto text-stone-400 mb-2" />
+                      <p className="text-xs font-bold text-stone-600">ยังไม่มีผู้สะสมแสตมป์ร้านนี้</p>
+                      <p className="text-[11px] text-stone-400 mt-0.5">เมื่อมีผู้ใช้สแกนเช็คอิน ข้อมูลจะปรากฏที่นี่</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+                      {uniqueCollectorsList.map((item, idx) => {
+                        const name =
+                          item.profile?.display_name ||
+                          item.profile?.full_name ||
+                          item.profile?.username ||
+                          `ผู้ใช้ #${item.user_id.slice(0, 6)}`;
+                        const avatar = item.profile?.avatar_url;
+
+                        return (
+                          <div
+                            key={item.user_id}
+                            className="p-3 rounded-2xl bg-white border border-stone-200/90 shadow-2xs flex items-center justify-between gap-3 hover:bg-stone-50 transition"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span className="w-6 text-center text-xs font-black text-amber-700 shrink-0">
+                                #{idx + 1}
+                              </span>
+                              {avatar ? (
+                                <img
+                                  src={avatar}
+                                  alt={name}
+                                  className="w-8 h-8 rounded-full object-cover border border-stone-200 shrink-0"
+                                />
+                              ) : (
+                                <div className="w-8 h-8 rounded-full bg-stone-800 text-white font-bold text-xs flex items-center justify-center shrink-0">
+                                  {name[0]?.toUpperCase() || "U"}
+                                </div>
+                              )}
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold text-stone-900 truncate">{name}</p>
+                                <p className="text-[10px] text-stone-500 font-medium truncate">
+                                  ล่าสุด: {formatThaiDate(item.lastCollected)}
+                                </p>
+                              </div>
+                            </div>
+
+                            <span className="px-2.5 py-1 rounded-full text-xs font-black bg-amber-50 text-amber-800 border border-amber-200 shrink-0">
+                              {item.count} สแกน
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 3: TIME SLOTS */}
+              {activeTab === "time" && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black uppercase text-stone-700 flex items-center gap-1.5">
+                      <Clock size={14} className="text-amber-600" />
+                      <span>สถิติช่วงเวลาการสแกนแสตมป์</span>
+                    </h4>
+                    <span className="text-[11px] text-stone-500 font-semibold">รวมทั้งหมด {stampsData.length} ครั้ง</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Morning */}
+                    <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+                          <Sunrise size={15} className="text-amber-600 shrink-0" />
+                          <span>ช่วงเช้า (06:00 - 11:59 น.)</span>
+                        </span>
+                        <span className="text-xs font-black text-amber-900">{timeSlots.morning} ครั้ง</span>
+                      </div>
+                      <div className="w-full h-2 bg-amber-200/60 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-amber-500 rounded-full transition-all duration-500"
+                          style={{ width: `${timeSlotPercentages.morning}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-bold text-amber-700/90 block text-right">
+                        {timeSlotPercentages.morning}% ของทั้งหมด
+                      </span>
+                    </div>
+
+                    {/* Afternoon */}
+                    <div className="p-3.5 rounded-2xl bg-orange-50/70 border border-orange-200 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-orange-900 flex items-center gap-1.5">
+                          <Sun size={15} className="text-orange-600 shrink-0" />
+                          <span>ช่วงบ่าย (12:00 - 17:59 น.)</span>
+                        </span>
+                        <span className="text-xs font-black text-orange-900">{timeSlots.afternoon} ครั้ง</span>
+                      </div>
+                      <div className="w-full h-2 bg-orange-200/60 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-orange-500 rounded-full transition-all duration-500"
+                          style={{ width: `${timeSlotPercentages.afternoon}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-bold text-orange-700/90 block text-right">
+                        {timeSlotPercentages.afternoon}% ของทั้งหมด
+                      </span>
+                    </div>
+
+                    {/* Evening */}
+                    <div className="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-200 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
+                          <Sunset size={15} className="text-indigo-600 shrink-0" />
+                          <span>ช่วงเย็น/ค่ำ (18:00 - 23:59 น.)</span>
+                        </span>
+                        <span className="text-xs font-black text-indigo-900">{timeSlots.evening} ครั้ง</span>
+                      </div>
+                      <div className="w-full h-2 bg-indigo-200/60 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-indigo-500 rounded-full transition-all duration-500"
+                          style={{ width: `${timeSlotPercentages.evening}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-bold text-indigo-700/90 block text-right">
+                        {timeSlotPercentages.evening}% ของทั้งหมด
+                      </span>
+                    </div>
+
+                    {/* Night */}
+                    <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <Moon size={15} className="text-slate-600 shrink-0" />
+                          <span>ช่วงดึก (00:00 - 05:59 น.)</span>
+                        </span>
+                        <span className="text-xs font-black text-slate-900">{timeSlots.night} ครั้ง</span>
+                      </div>
+                      <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-slate-600 rounded-full transition-all duration-500"
+                          style={{ width: `${timeSlotPercentages.night}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-600 block text-right">
+                        {timeSlotPercentages.night}% ของทั้งหมด
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 4: MONTHLY SUMMARY */}
+              {activeTab === "monthly" && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black uppercase text-stone-700 flex items-center gap-1.5">
+                      <Calendar size={14} className="text-amber-600" />
+                      <span>สรุปยอดสแกนแสตมป์แยกรายเดือน</span>
+                    </h4>
+                    <span className="text-[11px] text-stone-500 font-semibold">จำนวน {sortedMonths.length} เดือน</span>
+                  </div>
+
+                  {sortedMonths.length === 0 ? (
+                    <div className="text-center py-8 bg-stone-50 rounded-2xl border border-stone-200/80">
+                      <Calendar size={28} className="mx-auto text-stone-400 mb-2" />
+                      <p className="text-xs font-bold text-stone-600">ยังไม่มีข้อมูลรายเดือน</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5 max-h-[320px] overflow-y-auto pr-1">
+                      {sortedMonths.map(([mKey, count]) => {
+                        const pct = Math.round((count / maxMonthCount) * 100);
+                        return (
+                          <div
+                            key={mKey}
+                            className="p-3 rounded-2xl bg-white border border-stone-200/80 shadow-2xs space-y-1.5"
+                          >
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="font-bold text-stone-800">{formatMonthLabel(mKey)}</span>
+                              <span className="font-black text-amber-700">{count} สแกน</span>
+                            </div>
+                            <div className="w-full h-2.5 bg-stone-100 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-amber-500 rounded-full transition-all duration-500"
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Modal Actions Footer */}
+        <div className="p-4 border-t bg-stone-50/80 flex flex-wrap items-center justify-between gap-3 shrink-0" style={{ borderColor: C.line }}>
           <div className="flex items-center gap-2 flex-1">
             <button
               onClick={() => {
                 onClose();
                 onEdit(shop);
               }}
-              className="flex-1 py-2.5 px-3 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-black flex items-center justify-center gap-1.5 transition cursor-pointer"
+              className="flex-1 py-2 px-3 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
             >
-              <Edit3 size={14} /> แก้ไขข้อมูล
+              <Edit3 size={13} /> แก้ไขข้อมูล
             </button>
 
             <button
@@ -3147,9 +3537,9 @@ function AdminShopSummaryModal({
                 onClose();
                 onViewQr(shop);
               }}
-              className="py-2.5 px-3.5 rounded-xl border border-stone-300 bg-white hover:bg-stone-50 text-stone-800 text-xs font-black flex items-center justify-center gap-1.5 transition cursor-pointer"
+              className="py-2 px-3.5 rounded-xl border border-stone-300 bg-white hover:bg-stone-50 text-stone-800 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
             >
-              <QrCode size={14} /> QR
+              <QrCode size={13} /> QR
             </button>
           </div>
 
@@ -3158,9 +3548,9 @@ function AdminShopSummaryModal({
               onClose();
               onDelete(shop);
             }}
-            className="py-2.5 px-4 rounded-xl border border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-black flex items-center justify-center gap-1.5 transition cursor-pointer"
+            className="py-2 px-3 rounded-xl border border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
           >
-            <Trash2 size={14} /> ลบร้าน
+            <Trash2 size={13} /> ลบร้าน
           </button>
         </div>
       </div>
