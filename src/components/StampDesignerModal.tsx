@@ -21,6 +21,7 @@ import {
   STAMP_SHADOW_EFFECTS,
   STAMP_TEXTURE_EFFECTS,
   STAMP_BORDER_WIDTHS,
+  STAMP_IMAGE_SIZES,
   getShopStampDesign,
 } from "../lib/stampHelpers";
 import StampSealRenderer from "./StampSealRenderer";
@@ -354,6 +355,33 @@ export default function StampDesignerModal({
                 <p className="text-[10px] text-stone-500 font-medium">
                   💡 รองรับไฟล์ PNG, JPG (ขนาดไม่เกิน 3MB) เมื่ออัปโหลดแล้วรูปภาพจะแสดงอยู่กลางตราแสตมป์ดิจิทัล
                 </p>
+
+                {design.image_url && (
+                  <div className="pt-2.5 border-t border-stone-200/80">
+                    <label className="text-[11px] font-black text-[#231C18] block mb-1.5">
+                      ขนาดการแสดงผลรูปภาพบนตราประทับ (Image Size):
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                      {STAMP_IMAGE_SIZES.map((isz) => {
+                        const isSelected = (design.image_size || "lg") === isz.id;
+                        return (
+                          <button
+                            key={isz.id}
+                            type="button"
+                            onClick={() => setDesign((prev) => ({ ...prev, image_size: isz.id as any }))}
+                            className={`py-1.5 px-2 rounded-xl border text-center text-[10.5px] font-bold transition cursor-pointer ${
+                              isSelected
+                                ? "bg-rose-600 text-white border-rose-600 shadow-2xs"
+                                : "bg-white border-stone-200 text-stone-700 hover:bg-stone-100"
+                            }`}
+                          >
+                            {isz.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Preset Icon Grid */}

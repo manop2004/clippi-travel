@@ -6,11 +6,19 @@ export interface StampDesign {
   custom_text?: string;
   sub_text?: string;
   image_url?: string;
+  image_size?: "sm" | "md" | "lg" | "full";
   border_width?: "thin" | "medium" | "bold";
   shadow_effect?: "none" | "subtle" | "vintage" | "glow";
   texture_effect?: "clean" | "vintage_rubber" | "ink_bleed";
   font_style?: "sans" | "serif" | "mono" | "rounded";
 }
+
+export const STAMP_IMAGE_SIZES = [
+  { id: "sm", label: "เล็ก (Small)" },
+  { id: "md", label: "ปานกลาง (Medium)" },
+  { id: "lg", label: "ใหญ่เด่นชัด (Large)" },
+  { id: "full", label: "เต็มตราแสตมป์ (Full)" },
+];
 
 export const STAMP_INK_COLORS = [
   { id: "vermilion", name: "แดงชาด", hex: "#D9381E" },
@@ -92,6 +100,7 @@ export function getDefaultStampDesign(shopName?: string): StampDesign {
     custom_text: shopName || "",
     sub_text: "EKITAG SEAL",
     image_url: "",
+    image_size: "lg",
     border_width: "medium",
     shadow_effect: "subtle",
     texture_effect: "clean",

@@ -101,14 +101,22 @@ export default function StampSealRenderer({
   if (textureEffect === "vintage_rubber") textureClass = "contrast-150 brightness-95 opacity-90 filter drop-shadow-2xs";
   else if (textureEffect === "ink_bleed") textureClass = "blur-[0.3px] opacity-95";
 
+  const imageSize = finalDesign.image_size || "lg";
+
   // Icon renderer lookup
   const renderIcon = () => {
     if (customImg) {
+      let imgSizeCss = "w-[85%] h-[85%] max-h-[75px]";
+      if (imageSize === "sm") imgSizeCss = "w-[50%] h-[50%] max-h-[45px]";
+      else if (imageSize === "md") imgSizeCss = "w-[70%] h-[70%] max-h-[60px]";
+      else if (imageSize === "lg") imgSizeCss = "w-[88%] h-[88%] max-h-[80px]";
+      else if (imageSize === "full") imgSizeCss = "w-[96%] h-[96%] max-h-[92px]";
+
       return (
         <img
           src={customImg}
           alt="Custom Stamp Logo"
-          className="w-1/2 h-1/2 object-contain rounded-full border border-stone-200 shadow-2xs"
+          className={`object-contain my-0.5 filter drop-shadow-2xs transition-all ${imgSizeCss}`}
         />
       );
     }
