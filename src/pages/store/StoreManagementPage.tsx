@@ -1974,11 +1974,11 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                   </div>
 
                   <div className="p-3.5 border-t bg-stone-50/70 space-y-2 select-none" style={{ borderColor: C.line }}>
-                    {/* Row 1: Status & Schedule (2 Equal Columns) */}
+                    {/* Row 1: Operational Status & Schedule */}
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         onClick={handleToggleClosedToday}
-                        className={`w-full py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-2xs cursor-pointer ${
+                        className={`w-full py-2.5 px-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-2xs cursor-pointer ${
                           isClosedToday
                             ? "bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-emerald-100"
                             : "bg-rose-50 border-rose-300 text-rose-800 hover:bg-rose-100"
@@ -1991,7 +1991,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
 
                       <button
                         onClick={() => setScheduleShop(shop)}
-                        className="w-full py-2.5 px-3 rounded-xl border border-sky-200/80 bg-sky-50/90 hover:bg-sky-100 text-sky-900 text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-2xs cursor-pointer"
+                        className="w-full py-2.5 px-2.5 rounded-xl border border-sky-200/80 bg-sky-50/90 hover:bg-sky-100 text-sky-900 text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-2xs cursor-pointer"
                         title="ตั้งเวลาเปิด-ปิดและปฏิทินวันหยุด"
                       >
                         <Clock size={14} className="text-sky-600 shrink-0" />
@@ -1999,11 +1999,11 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                       </button>
                     </div>
 
-                    {/* Row 2: Stamp & Rules (2 Equal Columns - Full Text Visibility) */}
+                    {/* Row 2: Customization & Rules */}
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         onClick={() => setStampDesignerShop(shop)}
-                        className="w-full py-2 px-3 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 hover:border-stone-300 text-stone-800 text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-2xs cursor-pointer"
+                        className="w-full py-2.5 px-2.5 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 hover:border-stone-300 text-stone-800 text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-2xs cursor-pointer"
                         title="ออกแบบแสตมป์ประจำร้าน"
                       >
                         <Stamp size={14} className="text-rose-500 shrink-0" />
@@ -2012,7 +2012,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
 
                       <button
                         onClick={() => setRulesShop(shop)}
-                        className="w-full py-2 px-3 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 hover:border-stone-300 text-stone-800 text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-2xs cursor-pointer"
+                        className="w-full py-2.5 px-2.5 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 hover:border-stone-300 text-stone-800 text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-2xs cursor-pointer"
                         title="กำหนดกฎระเบียบประจำร้าน"
                       >
                         <ShieldAlert size={14} className="text-amber-600 shrink-0" />
@@ -2020,46 +2020,44 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                       </button>
                     </div>
 
-                    {/* Row 3: Management & Utilities (Edit, QR, Stats, Delete) */}
-                    <div className="flex items-center justify-between gap-1.5 pt-1 border-t border-stone-200/60 flex-wrap">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <button
-                          onClick={() => setEditingShop(shop)}
-                          className="py-1.5 px-3 rounded-xl border border-amber-200 bg-amber-50/80 hover:bg-amber-100 text-amber-900 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
-                          title="แก้ไขข้อมูลร้าน"
-                        >
-                          <Edit3 size={13} className="text-amber-700 shrink-0" />
-                          <span className="whitespace-nowrap">แก้ไขร้าน</span>
-                        </button>
+                    {/* Row 3: Management & Utilities Grid (Unified 3 or 4 columns) */}
+                    <div className={`grid gap-1.5 ${isAdmin ? "grid-cols-4" : "grid-cols-3"}`}>
+                      <button
+                        onClick={() => setEditingShop(shop)}
+                        className="py-2 px-2 rounded-xl border border-amber-200 bg-amber-50/70 hover:bg-amber-100 text-amber-900 text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shadow-2xs"
+                        title="แก้ไขข้อมูลร้าน"
+                      >
+                        <Edit3 size={13} className="text-amber-700 shrink-0" />
+                        <span className="whitespace-nowrap">แก้ไขร้าน</span>
+                      </button>
 
-                        <button
-                          onClick={() => setQrShop(shop)}
-                          className="py-1.5 px-3 rounded-xl border border-stone-200 bg-white hover:bg-stone-100 text-stone-700 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
-                          title="ดู QR Code ร้านค้า"
-                        >
-                          <QrCode size={13} className="text-stone-600 shrink-0" />
-                          <span className="whitespace-nowrap">QR Code</span>
-                        </button>
+                      <button
+                        onClick={() => setQrShop(shop)}
+                        className="py-2 px-2 rounded-xl border border-stone-200 bg-white hover:bg-stone-100 text-stone-700 text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shadow-2xs"
+                        title="ดู QR Code ร้านค้า"
+                      >
+                        <QrCode size={13} className="text-stone-600 shrink-0" />
+                        <span className="whitespace-nowrap">QR Code</span>
+                      </button>
 
-                        {isAdmin && (
-                          <button
-                            onClick={() => setSelectedSummaryShop(shop)}
-                            className="py-1.5 px-3 rounded-xl border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100 text-indigo-900 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
-                            title="ดูสถิติร้านค้า"
-                          >
-                            <BarChart3 size={13} className="text-indigo-600 shrink-0" />
-                            <span className="whitespace-nowrap">สถิติ</span>
-                          </button>
-                        )}
-                      </div>
+                      {isAdmin && (
+                        <button
+                          onClick={() => setSelectedSummaryShop(shop)}
+                          className="py-2 px-2 rounded-xl border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100 text-indigo-900 text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shadow-2xs"
+                          title="ดูสถิติร้านค้า"
+                        >
+                          <BarChart3 size={13} className="text-indigo-600 shrink-0" />
+                          <span className="whitespace-nowrap">สถิติ</span>
+                        </button>
+                      )}
 
                       <button
                         onClick={() => handleDeleteShop(shop)}
-                        className="py-1.5 px-2.5 rounded-xl border border-rose-200/80 bg-rose-50/60 hover:bg-rose-100 text-rose-700 text-xs font-bold flex items-center gap-1 transition cursor-pointer shrink-0 ml-auto"
+                        className="py-2 px-2 rounded-xl border border-rose-200/80 bg-rose-50/70 hover:bg-rose-100 text-rose-700 text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shadow-2xs"
                         title="ลบร้านค้า"
                       >
-                        <Trash2 size={13} className="shrink-0" />
-                        <span className="whitespace-nowrap">ลบ</span>
+                        <Trash2 size={13} className="text-rose-600 shrink-0" />
+                        <span className="whitespace-nowrap">ลบร้าน</span>
                       </button>
                     </div>
                   </div>
