@@ -14,11 +14,47 @@ export interface ShopSchedule {
   is_closed_today?: boolean;
 }
 
-export function getStoredSchedule(shopId: string | number): ShopSchedule {
+export function parseScheduleFromText(text: string | null | undefined): ShopSchedule | null {
+  if (!text) return null;
+  const match = String(text).match(/\[SCHEDULE:(.*?)\]/);
+  if (match && match[1]) {
+    try {
+      return JSON.parse(match[1]);
+    } catch (e) {}
+  }
+  return null;
+}
+
+export function encodeScheduleInText(baseText: string | null | undefined, schedule: ShopSchedule): string {
+  const cleanText = String(baseText || "").replace(/\[SCHEDULE:.*?\]/g, "").trim();
+  const jsonStr = JSON.stringify(schedule);
+  return cleanText ? `${cleanText}\n[SCHEDULE:${jsonStr}]` : `[SCHEDULE:${jsonStr}]`;
+}
+
+export function cleanScheduleTag(text: string | null | undefined): string {
+  if (!text) return "";
+  return String(text).replace(/\[SCHEDULE:.*?\]/g, "").trim();
+}
+
+export function getStoredSchedule(shopId: string | number, shopRecord?: any): ShopSchedule {
+  // 1. Try parsing directly from shopRecord text fields (for cross-browser/Incognito sync)
+  if (shopRecord) {
+    const fromRecord =
+      parseScheduleFromText(shopRecord.description_jp) ||
+      parseScheduleFromText(shopRecord.description) ||
+      parseScheduleFromText(shopRecord.seasonal_tag);
+    if (fromRecord) {
+      saveStoredSchedule(shopId, fromRecord);
+      return fromRecord;
+    }
+  }
+
+  // 2. Try parsing from localStorage cache
   try {
     const raw = localStorage.getItem(`store_schedule_${shopId}`);
     if (raw) return JSON.parse(raw);
   } catch (e) {}
+
   return {
     open_time: "09:00",
     close_time: "18:00",
@@ -51,7 +87,7 @@ export function getShopStatusToday(shop: any, overrideSchedule?: ShopSchedule) {
     };
   }
 
-  const sched = overrideSchedule || getStoredSchedule(shop.id);
+  const sched = overrideSchedule || getStoredSchedule(shop.id, shop);
   const isClosedToday = sched.is_closed_today || shop.is_closed_today;
 
   const now = new Date();

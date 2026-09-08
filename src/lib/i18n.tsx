@@ -266,9 +266,13 @@ export function localized<T extends Record<string, any>>(
   lang: Lang
 ): string {
   if (!row) return "";
-  if (lang === "en") return row[field] ?? "";
-  const v = row[`${field}_${lang}`];
-  return v && String(v).trim() ? v : (row[field] ?? "");
+  let val = "";
+  if (lang === "en") val = row[field] ?? "";
+  else {
+    const v = row[`${field}_${lang}`];
+    val = v && String(v).trim() ? v : (row[field] ?? "");
+  }
+  return String(val).replace(/\[SCHEDULE:.*?\]/g, "").trim();
 }
 
 // ---- ปุ่มสลับภาษา (วางบน header ข้างค้นหา/กระดิ่ง) ----

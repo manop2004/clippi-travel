@@ -57,6 +57,7 @@ import {
   getStoredSchedule,
   saveStoredSchedule,
   getShopStatusToday,
+  encodeScheduleInText,
 } from "../../lib/scheduleHelpers";
 export type { HolidayItem, ShopSchedule };
 
@@ -1828,7 +1829,9 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                   [String(shop.id)]: updatedSched,
                 }));
                 try {
-                  supabase.from("century_shops").update({ is_closed_today: updatedSched.is_closed_today }).eq("id", shop.id).then(() => {});
+                  const encodedDescription = encodeScheduleInText(shop.description_jp, updatedSched);
+                  supabase.from("century_shops").update({ description_jp: encodedDescription }).eq("id", shop.id).then(() => {});
+                  shop.description_jp = encodedDescription;
                 } catch (err) {}
               };
 
@@ -3131,13 +3134,14 @@ export function StoreScheduleModal({
       saveStoredSchedule(shop.id, scheduleObj);
 
       try {
+        const encodedDescription = encodeScheduleInText(shop.description_jp, scheduleObj);
         await supabase
           .from("century_shops")
           .update({
-            opening_hours: openingHoursStr,
-            is_closed_today: isClosedToday,
+            description_jp: encodedDescription,
           })
           .eq("id", shop.id);
+        shop.description_jp = encodedDescription;
       } catch (e) {}
 
       onScheduleUpdated(scheduleObj);
