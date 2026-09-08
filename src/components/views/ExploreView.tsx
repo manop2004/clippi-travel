@@ -5,6 +5,7 @@ import TrendingSpots from "../TrendingSpots";
 import NewStamps from "../NewStamps";
 import SeasonalHits from "../SeasonalHits";
 import RegionalBanners from "../RegionalBanners";
+import CampaignBanner from "../CampaignBanner";
 import ActivityCard from "../ActivityCard";
 import ActivityFeedModal from "../ActivityFeedModal";
 import { ActivityLogRow } from "../../lib/activityHelpers";
@@ -86,6 +87,9 @@ export default function ExploreView({ openPlace, onViewMap, onSeeAllTrending, se
         </div>
         <div className="absolute -right-8 -bottom-8 w-48 h-48 rounded-full bg-white/10 blur-2xl pointer-events-none" />
       </div>
+
+      {/* 🎁 Campaign Banner: rewards & activities to pull users back in */}
+      <CampaignBanner />
 
       <div className="w-full min-w-0">
         <div className="mb-4">
