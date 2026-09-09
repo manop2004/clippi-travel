@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { X, Navigation, Crosshair, Landmark, MapPin, ExternalLink, Send, Loader2, Star, Camera, Edit3, Trash2, Globe, FileText, AlertCircle, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { X, Navigation, Crosshair, Landmark, MapPin, ExternalLink, Send, Loader2, Star, Camera, Edit3, Trash2, Globe, FileText, AlertCircle, AlertTriangle, CheckCircle2, Clock, CalendarOff, CameraOff, CigaretteOff, UtensilsCrossed, Ban, Banknote, VolumeX, ShieldAlert } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { C, categories } from "../constants/mockData";
 import StarRow from "./StarRow";
-import { getReviews, createReview, collectStamp, hasUserCollectedStamp, getUserStamps, createPlaceSubmission, getUserBadgeCodes, checkAndAwardAchievements, getAchievementsByCodes } from "../hooks/useReviewStamp";
+import { getReviews, createReview, collectStamp, hasUserCollectedStamp, getUserStamps, createPlaceSubmission, getUserBadgeCodes, checkAndAwardAchievements, getAchievementsByCodes, getPlaceById } from "../hooks/useReviewStamp";
 import { Review, UserStamp } from "../types/review-stamp";
 import { supabase } from "../supabaseClient";
 import { haversineDistance, formatDistance } from "../lib/geoHelpers";
 import { useLang, localized } from "../lib/i18n";
 import { useUserRole } from "../hooks/useUserRole";
 import AchievementCelebration, { CelebrationItem } from "./AchievementCelebration";
+import { getShopStatusToday, cleanAllMetadataTags } from "../lib/scheduleHelpers";
+import StampSealRenderer from "./StampSealRenderer";
+import { getShopRules, StoreRuleItem } from "../lib/ruleHelpers";
 
 interface PlaceDetailModalProps {
   place: any;
@@ -31,7 +34,22 @@ export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }:
   const [user, setUser] = useState<any>(null);
   const [realRating, setRealRating] = useState<number | null>(null);
   const [realReviewsCount, setRealReviewsCount] = useState<number | null>(null);
+  const [livePlace, setLivePlace] = useState<any>(place);
   const { t, lang } = useLang();
+
+  const placeId = place?.id || place?.place_id || null;
+
+  // Fetch latest shop details from Supabase to ensure live schedule & description sync
+  useEffect(() => {
+    setLivePlace(place);
+    if (placeId) {
+      getPlaceById(placeId).then((data) => {
+        if (data) {
+          setLivePlace((prev: any) => ({ ...prev, ...data }));
+        }
+      });
+    }
+  }, [placeId, place]);
 
   // Fetch user stamps
   useEffect(() => {
@@ -41,16 +59,29 @@ export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }:
   }, [user]);
 
   // Map variables dynamically to support both Mock data and Supabase database records
-  const placeId = place?.id || place?.place_id || null;
-  const shopName = localized(place, "shop_name", lang) || place?.name || "Unknown Shop";
-  const tag = place?.prefecture || place?.tag || "Japan";
-  const founded = place?.founded || place?.year || "";
-  const address = place?.address || "";
-  const description = localized(place, "description", lang) || t("map.noDesc");
-  const website = place?.website || "";
-  const lat = typeof place?.lat === "number" ? place.lat : null;
-  const lng = typeof place?.lng === "number" ? place.lng : null;
-  const imageUrl = place?.image_url || "https://images.unsplash.com/photo-1542044896530-05d85be9b11a?auto=format&fit=crop&q=80&w=600";
+  const shopName = localized(livePlace, "shop_name", lang) || livePlace?.name || "Unknown Shop";
+  const tag = livePlace?.prefecture || livePlace?.tag || "Japan";
+  const founded = livePlace?.founded || livePlace?.year || "";
+  const address = livePlace?.address || "";
+  const description = localized(livePlace, "description", lang) || t("map.noDesc");
+  const website = livePlace?.website || "";
+  const lat = typeof livePlace?.lat === "number" ? livePlace.lat : null;
+  const lng = typeof livePlace?.lng === "number" ? livePlace.lng : null;
+  const imageUrl = livePlace?.image_url || "https://images.unsplash.com/photo-1542044896530-05d85be9b11a?auto=format&fit=crop&q=80&w=600";
+  const statusInfo = getShopStatusToday(livePlace);
+  const storeRules = getShopRules(livePlace);
+
+  const renderRuleIcon = (iconName?: string) => {
+    switch (iconName) {
+      case "CameraOff": return <CameraOff size={13} className="text-rose-600 shrink-0" />;
+      case "CigaretteOff": return <CigaretteOff size={13} className="text-amber-600 shrink-0" />;
+      case "UtensilsCrossed": return <UtensilsCrossed size={13} className="text-orange-600 shrink-0" />;
+      case "Ban": return <Ban size={13} className="text-red-600 shrink-0" />;
+      case "Banknote": return <Banknote size={13} className="text-emerald-600 shrink-0" />;
+      case "VolumeX": return <VolumeX size={13} className="text-indigo-600 shrink-0" />;
+      default: return <ShieldAlert size={13} className="text-stone-600 shrink-0" />;
+    }
+  };
 
   // Get current user
   useEffect(() => {
@@ -205,6 +236,14 @@ export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }:
               backgroundImage: `linear-gradient(to top, rgba(35,28,24,0.8), rgba(35,28,24,0)), url('${imageUrl}')`
             }}
           >
+            <div className="absolute top-4 left-4 z-10 bg-white/95 backdrop-blur-xs p-1 rounded-2xl shadow-md border border-stone-200">
+              <StampSealRenderer shopRecord={livePlace} shopName={shopName} size="sm" isCollected={userStamps.some((s: any) => String(s.shop_id) === String(placeId))} />
+            </div>
+            <div className="absolute top-4 right-4 z-10">
+              <span className={`px-2.5 py-1 rounded-full text-[10px] font-black backdrop-blur-md shadow-sm ${statusInfo.badgeBg}`}>
+                {statusInfo.badgeText}
+              </span>
+            </div>
             <div className="text-white z-10">
               <span className="text-[8px] font-black px-2 py-0.5 rounded-full bg-[#E0533C] text-white tracking-wider inline-block mb-1">
                 {tag}
@@ -234,6 +273,62 @@ export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }:
                   : t("reviews.none")}
               </span>
             </div>
+
+            {/* ⏰ Operating Status & Store Schedule Banner */}
+            <div className="p-3.5 rounded-2xl border bg-stone-50/80 space-y-1.5 select-none" style={{ borderColor: C.line }}>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#8A7870] flex items-center gap-1">
+                  <Clock size={13} className="text-amber-600 shrink-0" />
+                  <span>เวลาทำการ & สถานะเปิด-ปิดร้าน</span>
+                </span>
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ${statusInfo.badgeBg}`}>
+                  {statusInfo.badgeText}
+                </span>
+              </div>
+              <p className="text-xs font-bold text-[#231C18]">{statusInfo.description}</p>
+              {statusInfo.sched.closed_days && statusInfo.sched.closed_days.length > 0 && (
+                <p className="text-[11px] text-amber-800 font-semibold">
+                  🗓️ วันหยุดประจำสัปดาห์: {statusInfo.sched.closed_days.join(", ")}
+                </p>
+              )}
+              {statusInfo.sched.holidays && statusInfo.sched.holidays.length > 0 && (
+                <div className="text-[11px] text-rose-700 font-semibold space-y-0.5 pt-0.5">
+                  <div className="flex items-center gap-1 text-rose-800 font-bold">
+                    <CalendarOff size={12} className="shrink-0 text-rose-500" />
+                    <span>วันหยุดพิเศษที่จะถึง ({statusInfo.sched.holidays.length} วัน):</span>
+                  </div>
+                  <ul className="pl-4 list-disc text-[10.5px] space-y-0.5 text-rose-700 font-medium">
+                    {statusInfo.sched.holidays.map((h, idx) => (
+                      <li key={h.id || idx}>
+                        {h.date} {h.title ? `(${h.title})` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            {/* 📜 Store Rules Section */}
+            {storeRules.length > 0 && (
+              <div className="p-3.5 rounded-2xl border bg-stone-50/90 space-y-2 select-none" style={{ borderColor: C.line }}>
+                <div className="flex items-center gap-1.5">
+                  <ShieldAlert size={13} className="text-amber-700 shrink-0" />
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[#8A7870]">
+                    📜 กฎระเบียบประจำร้าน / Store Rules
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-0.5">
+                  {storeRules.map((rule: StoreRuleItem) => (
+                    <div key={rule.id} className="flex items-center gap-2 p-2 rounded-xl bg-white border border-stone-200/80 shadow-2xs">
+                      {renderRuleIcon(rule.icon)}
+                      <span className="text-[11px] font-bold text-stone-800 leading-tight">
+                        {rule.title}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Quick Action Buttons */}
             <div className="flex gap-2">
@@ -1043,8 +1138,8 @@ export function AddPlaceModal({
       setJapaneseName(activeData.shop_name_jp || activeData.name_jp || "");
       setStreet(activeData.address || activeData.street || "");
       setWebsite(activeData.website || "");
-      setDescription(activeData.description || "");
-      setDescriptionJp(activeData.description_jp || "");
+      setDescription(cleanAllMetadataTags(activeData.description || ""));
+      setDescriptionJp(cleanAllMetadataTags(activeData.description_jp || ""));
       setCat(activeData.category || "food");
       if (activeData.lat && activeData.lng) {
         setCoords({ lat: Number(activeData.lat), lng: Number(activeData.lng) });
@@ -1323,9 +1418,37 @@ export function AddPlaceModal({
         const itemId = targetData.submissionId || targetData.id;
         const oldName = targetData.shop_name || targetData.name_en;
 
-        const nameEn = name || targetData.shop_name || targetData.name_en;
-        const nameJp = japaneseName || targetData.shop_name_jp || targetData.name_jp || null;
-        const addressStr = street || targetData.address || targetData.street || "";
+        const nameEn = name.trim() || targetData.shop_name || targetData.name_en;
+        const nameJp = japaneseName.trim() || null;
+        const addressStr = street.trim() || targetData.address || targetData.street || "";
+
+        const reattachMetadataTags = (newText: string, originalText: string | null | undefined): string => {
+          if (!originalText) return newText.trim();
+          const scheduleMatch = String(originalText).match(/\[SCHEDULE:.*?\]/g);
+          const rulesMatch = String(originalText).match(/\[RULES:.*?\]/g);
+          const stampMatch = String(originalText).match(/\[STAMP:.*?\]/g);
+
+          let result = newText.trim();
+          if (scheduleMatch) {
+            scheduleMatch.forEach(tag => {
+              if (!result.includes(tag)) result += `\n${tag}`;
+            });
+          }
+          if (rulesMatch) {
+            rulesMatch.forEach(tag => {
+              if (!result.includes(tag)) result += `\n${tag}`;
+            });
+          }
+          if (stampMatch) {
+            stampMatch.forEach(tag => {
+              if (!result.includes(tag)) result += `\n${tag}`;
+            });
+          }
+          return result.trim();
+        };
+
+        const finalDescription = reattachMetadataTags(description, targetData?.description);
+        const finalDescriptionJp = reattachMetadataTags(descriptionJp, targetData?.description_jp);
 
         // 1. UPDATE `place_submissions` IF ITEM IS FROM SUBMISSIONS
         if (targetData.isSubmission || (typeof itemId === "string" && String(itemId).includes("-"))) {
@@ -1335,7 +1458,8 @@ export function AddPlaceModal({
             street: addressStr,
             website: website || null,
             category: cat || "shop",
-            description: description || null,
+            description: finalDescription || null,
+            description_jp: finalDescriptionJp || null,
             image_url: finalImageUrls[0] || null,
             lat: coords?.lat ? parseFloat(String(coords.lat)) : null,
             lng: coords?.lng ? parseFloat(String(coords.lng)) : null,
@@ -1357,12 +1481,18 @@ export function AddPlaceModal({
           address: addressStr,
           website: website || null,
           category: cat || "shop",
-          description: description || null,
+          description: finalDescription || null,
+          description_jp: finalDescriptionJp || null,
           image_url: finalImageUrls[0] || null,
           lat: coords?.lat ? parseFloat(String(coords.lat)) : null,
           lng: coords?.lng ? parseFloat(String(coords.lng)) : null,
           owner_id: targetData?.owner_id || user.id,
         };
+
+        const selectedPref = prefecture === "custom" ? customPrefecture.trim() || null : prefecture || null;
+        if (selectedPref) {
+          centuryPayload.prefecture = selectedPref;
+        }
 
         const isNumberId = typeof itemId === "number" || (!isNaN(Number(itemId)) && !String(itemId).includes("-"));
 
@@ -1377,6 +1507,7 @@ export function AddPlaceModal({
             const msg = updateErr.message || "";
             if (msg.includes("website")) delete centuryPayload.website;
             if (msg.includes("shop_name_jp")) delete centuryPayload.shop_name_jp;
+            if (msg.includes("description_jp")) delete centuryPayload.description_jp;
             if (msg.includes("owner_id")) delete centuryPayload.owner_id;
 
             const { error: retryErr } = await supabase
@@ -1398,7 +1529,8 @@ export function AddPlaceModal({
                   street: addressStr,
                   website: website || null,
                   category: cat || "shop",
-                  description: description || null,
+                  description: finalDescription || null,
+                  description_jp: finalDescriptionJp || null,
                   image_url: finalImageUrls[0] || null,
                   lat: coords?.lat ? parseFloat(String(coords.lat)) : null,
                   lng: coords?.lng ? parseFloat(String(coords.lng)) : null,

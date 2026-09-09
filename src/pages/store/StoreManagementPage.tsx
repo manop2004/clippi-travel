@@ -37,12 +37,41 @@ import {
   RotateCw,
   SlidersHorizontal,
   Trophy,
-  MessageSquare
+  MessageSquare,
+  Calendar,
+  Power,
+  Sun,
+  Moon,
+  CalendarOff,
+  ToggleLeft,
+  ToggleRight,
+  Info,
+  Users,
+  Sunrise,
+  Sunset,
+  UserCheck,
+  PieChart
 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 import { C, categories } from "../../constants/mockData";
 import { ProtectedRoute } from "../../components/auth/ProtectedRoute";
 import { AddPlaceModal } from "../../components/Modals";
+import {
+  HolidayItem,
+  getStoredSchedule,
+  saveStoredSchedule,
+  getShopStatusToday,
+  ShopSchedule,
+  cleanScheduleTag,
+  cleanAllMetadataTags,
+  encodeScheduleInText,
+} from "../../lib/scheduleHelpers";
+import StampDesignerModal from "../../components/StampDesignerModal";
+import { StampDesign, encodeStampDesignInText } from "../../lib/stampHelpers";
+import StoreRulesModal from "../../components/StoreRulesModal";
+import { StoreRuleItem, getShopRules, encodeRulesInText } from "../../lib/ruleHelpers";
+import { ShieldAlert } from "lucide-react";
+export type { HolidayItem, ShopSchedule };
 
 export interface ShopRecord {
   id: number | string;
@@ -69,6 +98,10 @@ export interface ShopRecord {
   status?: string;
   rejection_reason?: string | null;
   created_at?: string;
+  opening_hours?: string | null;
+  closed_days?: string[] | null;
+  holidays?: HolidayItem[] | null;
+  is_closed_today?: boolean;
 }
 
 export interface SubmissionItem {
@@ -133,6 +166,62 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
   const [editingSubmission, setEditingSubmission] = useState<SubmissionItem | null>(null);
   const [deletingSubId, setDeletingSubId] = useState<string | null>(null);
   const [qrShop, setQrShop] = useState<ShopRecord | null>(null);
+  const [scheduleShop, setScheduleShop] = useState<ShopRecord | null>(null);
+  const [stampDesignerShop, setStampDesignerShop] = useState<ShopRecord | null>(null);
+  const [rulesShop, setRulesShop] = useState<ShopRecord | null>(null);
+  const [storeSchedules, setStoreSchedules] = useState<Record<string, ShopSchedule>>({});
+
+  const handleSaveRules = async (newRules: StoreRuleItem[]) => {
+    if (!rulesShop) return;
+    const shopId = rulesShop.id;
+    const updatedDesc = encodeRulesInText(rulesShop.description, newRules);
+
+    const { error } = await supabase
+      .from("century_shops")
+      .update({
+        shop_rules: newRules,
+        description: updatedDesc,
+      })
+      .eq("id", shopId);
+
+    if (error) {
+      console.warn("Notice updating native shop_rules column:", error.message);
+    }
+
+    setShops((prevShops) =>
+      prevShops.map((s) =>
+        s.id === shopId
+          ? { ...s, shop_rules: newRules, description: updatedDesc }
+          : s
+      )
+    );
+  };
+
+  const handleSaveStampDesign = async (newDesign: StampDesign) => {
+    if (!stampDesignerShop) return;
+    const shopId = stampDesignerShop.id;
+    const updatedDescJp = encodeStampDesignInText(stampDesignerShop.description_jp, newDesign);
+
+    const { error } = await supabase
+      .from("century_shops")
+      .update({
+        stamp_design: newDesign,
+        description_jp: updatedDescJp,
+      })
+      .eq("id", shopId);
+
+    if (error) {
+      console.warn("Notice updating native stamp_design column:", error.message);
+    }
+
+    setShops((prevShops) =>
+      prevShops.map((s) =>
+        s.id === shopId
+          ? { ...s, stamp_design: newDesign, description_jp: updatedDescJp }
+          : s
+      )
+    );
+  };
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [sortOption, setSortOption] = useState<"stamps" | "rating" | "newest" | "name">("stamps");
   const [selectedSummaryShop, setSelectedSummaryShop] = useState<ShopRecord | null>(null);
@@ -436,6 +525,11 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
       );
 
       setShops(uniqueApproved);
+      const schedMap: Record<string, ShopSchedule> = {};
+      uniqueApproved.forEach((s) => {
+        schedMap[String(s.id)] = getStoredSchedule(s.id);
+      });
+      setStoreSchedules(schedMap);
       fetchMerchantReviews(uniqueApproved, adminFlag);
 
       // Calculate stats (total stamps & avg rating)
@@ -1784,73 +1878,196 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {filteredShops.map((shop) => (
-              <div
-                key={shop.id}
-                className="bg-white rounded-3xl border overflow-hidden shadow-2xs hover:shadow-md transition flex flex-col justify-between"
-                style={{ borderColor: C.line }}
-              >
-                <div>
-                  <div className="relative h-44 w-full bg-stone-100 overflow-hidden">
-                    <img
-                      src={shop.image_url || "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&q=80&w=800"}
-                      alt={shop.shop_name}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap">
-                      <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-black/70 backdrop-blur-md text-white uppercase">
-                        {shop.category}
-                      </span>
-                      {shop.prefecture && (
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-white/90 backdrop-blur-md text-[#231C18]">
-                          {shop.prefecture}
+            {filteredShops.map((shop) => {
+              const statusInfo = getShopStatusToday(shop, storeSchedules[String(shop.id)]);
+              const isClosedToday = statusInfo.sched.is_closed_today;
+
+              const handleToggleClosedToday = (e: React.MouseEvent) => {
+                e.stopPropagation();
+                const currentSched = storeSchedules[String(shop.id)] || getStoredSchedule(shop.id);
+                const updatedSched: ShopSchedule = {
+                  ...currentSched,
+                  is_closed_today: !currentSched.is_closed_today,
+                };
+                saveStoredSchedule(shop.id, updatedSched);
+                setStoreSchedules((prev) => ({
+                  ...prev,
+                  [String(shop.id)]: updatedSched,
+                }));
+                try {
+                  const encodedDescription = encodeScheduleInText(shop.description_jp, updatedSched);
+                  supabase.from("century_shops").update({
+                    is_closed_today: updatedSched.is_closed_today,
+                    description_jp: encodedDescription,
+                  }).eq("id", shop.id).then(() => {});
+                  shop.description_jp = encodedDescription;
+                  shop.is_closed_today = updatedSched.is_closed_today;
+                } catch (err) {}
+              };
+
+              return (
+                <div
+                  key={shop.id}
+                  className="bg-white rounded-3xl border overflow-hidden shadow-2xs hover:shadow-md transition flex flex-col justify-between"
+                  style={{ borderColor: C.line }}
+                >
+                  <div>
+                    <div className="relative h-44 w-full bg-stone-100 overflow-hidden">
+                      <img
+                        src={shop.image_url || "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&q=80&w=800"}
+                        alt={shop.shop_name}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap">
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-black/70 backdrop-blur-md text-white uppercase">
+                          {shop.category}
                         </span>
+                        {shop.prefecture && (
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-white/90 backdrop-blur-md text-[#231C18]">
+                            {shop.prefecture}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Today Status Badge */}
+                      <div className="absolute top-3 right-3 max-w-[70%]">
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black backdrop-blur-md shadow-xs flex items-center gap-1 ${statusInfo.badgeBg}`}>
+                          {statusInfo.badgeText}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="p-5 space-y-2.5">
+                      <h3 className="text-base font-black text-[#231C18] truncate">{shop.shop_name}</h3>
+                      {shop.shop_name_jp && <p className="text-xs font-semibold text-[#8A7870] truncate">{shop.shop_name_jp}</p>}
+                      {shop.address && (
+                        <p className="text-xs text-[#8A7870] font-semibold flex items-center gap-1 truncate">
+                          <MapPin size={12} className="shrink-0 text-amber-600" />
+                          <span className="truncate">{shop.address}</span>
+                        </p>
                       )}
+
+                      {/* Store Schedule Summary Info */}
+                      <div className="pt-2 border-t flex flex-col gap-1 text-[11px]" style={{ borderColor: C.line }}>
+                        <div className="flex items-center justify-between text-stone-600 font-medium">
+                          <span className="flex items-center gap-1">
+                            <Clock size={12} className="text-amber-600 shrink-0" />
+                            <span>เวลาเปิด-ปิด: <strong>{statusInfo.openHoursStr}</strong></span>
+                          </span>
+                          {statusInfo.sched.closed_days && statusInfo.sched.closed_days.length > 0 && (
+                            <span className="text-[10px] text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md font-semibold border border-amber-200 truncate">
+                              หยุด: {statusInfo.sched.closed_days.join(", ")}
+                            </span>
+                          )}
+                        </div>
+                        {statusInfo.sched.holidays && statusInfo.sched.holidays.length > 0 && (
+                          <div className="text-[10px] text-rose-700 font-medium flex flex-col gap-0.5">
+                            <div className="flex items-center gap-1 truncate font-semibold">
+                              <CalendarOff size={11} className="shrink-0 text-rose-500" />
+                              <span>วันหยุดพิเศษ ({statusInfo.sched.holidays.length} วัน):</span>
+                            </div>
+                            <div className="pl-3.5 text-[9.5px] text-rose-600 space-y-0.5">
+                              {statusInfo.sched.holidays.map((h, idx) => (
+                                <div key={h.id || idx} className="truncate">
+                                  • {h.date} {h.title ? `(${h.title})` : ""}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  <div className="p-5 space-y-2">
-                    <h3 className="text-base font-black text-[#231C18] truncate">{shop.shop_name}</h3>
-                    {shop.shop_name_jp && <p className="text-xs font-semibold text-[#8A7870] truncate">{shop.shop_name_jp}</p>}
-                    {shop.address && (
-                      <p className="text-xs text-[#8A7870] font-semibold flex items-center gap-1 truncate">
-                        <MapPin size={12} className="shrink-0 text-amber-600" />
-                        <span className="truncate">{shop.address}</span>
-                      </p>
-                    )}
+                  <div className="p-3.5 border-t bg-stone-50/70 space-y-2 select-none" style={{ borderColor: C.line }}>
+                    {/* Row 1: Operational Status & Schedule */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={handleToggleClosedToday}
+                        className={`w-full py-2.5 px-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-2xs cursor-pointer ${
+                          isClosedToday
+                            ? "bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-emerald-100"
+                            : "bg-rose-50 border-rose-300 text-rose-800 hover:bg-rose-100"
+                        }`}
+                        title="เปิด/ปิดร้านชั่วคราววันนี้แบบเร่งด่วน"
+                      >
+                        <Power size={14} className={isClosedToday ? "text-emerald-600 shrink-0" : "text-rose-600 shrink-0"} />
+                        <span className="whitespace-nowrap">{isClosedToday ? "เปิดร้านวันนี้" : "วันนี้ปิด"}</span>
+                      </button>
+
+                      <button
+                        onClick={() => setScheduleShop(shop)}
+                        className="w-full py-2.5 px-2.5 rounded-xl border border-sky-200/80 bg-sky-50/90 hover:bg-sky-100 text-sky-900 text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-2xs cursor-pointer"
+                        title="ตั้งเวลาเปิด-ปิดและปฏิทินวันหยุด"
+                      >
+                        <Clock size={14} className="text-sky-600 shrink-0" />
+                        <span className="whitespace-nowrap">เวลา / วันหยุด</span>
+                      </button>
+                    </div>
+
+                    {/* Row 2: Customization & Rules */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => setStampDesignerShop(shop)}
+                        className="w-full py-2.5 px-2.5 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 hover:border-stone-300 text-stone-800 text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-2xs cursor-pointer"
+                        title="ออกแบบแสตมป์ประจำร้าน"
+                      >
+                        <Stamp size={14} className="text-rose-500 shrink-0" />
+                        <span className="whitespace-nowrap">ออกแบบแสตมป์</span>
+                      </button>
+
+                      <button
+                        onClick={() => setRulesShop(shop)}
+                        className="w-full py-2.5 px-2.5 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 hover:border-stone-300 text-stone-800 text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-2xs cursor-pointer"
+                        title="กำหนดกฎระเบียบประจำร้าน"
+                      >
+                        <ShieldAlert size={14} className="text-amber-600 shrink-0" />
+                        <span className="whitespace-nowrap">กฎร้านค้า</span>
+                      </button>
+                    </div>
+
+                    {/* Row 3: Management & Utilities Grid (4 columns for all users) */}
+                    <div className="grid grid-cols-4 gap-1">
+                      <button
+                        onClick={() => setEditingShop(shop)}
+                        className="py-2 px-0.5 sm:px-2 rounded-xl border border-amber-200 bg-amber-50/70 hover:bg-amber-100 text-amber-900 text-[10.5px] sm:text-xs font-bold flex items-center justify-center gap-0.5 sm:gap-1 transition cursor-pointer shadow-2xs min-w-0"
+                        title="แก้ไขข้อมูลร้าน"
+                      >
+                        <Edit3 size={11} className="text-amber-700 shrink-0" />
+                        <span className="whitespace-nowrap">แก้ไข</span>
+                      </button>
+
+                      <button
+                        onClick={() => setQrShop(shop)}
+                        className="py-2 px-0.5 sm:px-2 rounded-xl border border-stone-200 bg-white hover:bg-stone-100 text-stone-700 text-[10.5px] sm:text-xs font-bold flex items-center justify-center gap-0.5 sm:gap-1 transition cursor-pointer shadow-2xs min-w-0"
+                        title="ดู QR Code ร้านค้า"
+                      >
+                        <QrCode size={11} className="text-stone-600 shrink-0" />
+                        <span className="whitespace-nowrap">QR</span>
+                      </button>
+
+                      <button
+                        onClick={() => setSelectedSummaryShop(shop)}
+                        className="py-2 px-0.5 sm:px-2 rounded-xl border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100 text-indigo-900 text-[10.5px] sm:text-xs font-bold flex items-center justify-center gap-0.5 sm:gap-1 transition cursor-pointer shadow-2xs min-w-0"
+                        title="ดูสถิติคนเก็บแสตมป์ ช่วงเวลา และสรุปรายเดือน"
+                      >
+                        <BarChart3 size={11} className="text-indigo-600 shrink-0" />
+                        <span className="whitespace-nowrap">สถิติ</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleDeleteShop(shop)}
+                        className="py-2 px-0.5 sm:px-2 rounded-xl border border-rose-200/80 bg-rose-50/70 hover:bg-rose-100 text-rose-700 text-[10.5px] sm:text-xs font-bold flex items-center justify-center gap-0.5 sm:gap-1 transition cursor-pointer shadow-2xs min-w-0"
+                        title="ลบร้านค้า"
+                      >
+                        <Trash2 size={11} className="text-rose-600 shrink-0" />
+                        <span className="whitespace-nowrap">ลบ</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
-
-                <div className="p-3.5 border-t bg-stone-50/50 flex items-center gap-2" style={{ borderColor: C.line }}>
-                  {isAdmin && (
-                    <button
-                      onClick={() => setSelectedSummaryShop(shop)}
-                      className="flex-1 py-2 px-2.5 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shrink-0"
-                    >
-                      <BarChart3 size={13} /> สถิติ
-                    </button>
-                  )}
-                  <button
-                    onClick={() => setEditingShop(shop)}
-                    className="flex-1 py-2 px-2.5 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shrink-0"
-                  >
-                    <Edit3 size={13} /> แก้ไข
-                  </button>
-                  <button
-                    onClick={() => setQrShop(shop)}
-                    className="flex-1 py-2 px-2.5 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shrink-0"
-                  >
-                    <QrCode size={13} /> QR
-                  </button>
-                  <button
-                    onClick={() => handleDeleteShop(shop)}
-                    className="flex-1 py-2 px-2.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shrink-0"
-                  >
-                    <Trash2 size={13} /> ลบ
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -2007,6 +2224,43 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
           onEdit={(shop) => setEditingShop(shop)}
           onDelete={(shop) => handleDeleteShop(shop)}
           onViewQr={(shop) => setQrShop(shop)}
+        />
+      )}
+
+      {/* ⏰ Modal: Store Schedule & Holiday Calendar */}
+      {scheduleShop && (
+        <StoreScheduleModal
+          isOpen={!!scheduleShop}
+          shop={scheduleShop}
+          currentUserId={currentUser?.id || ""}
+          onClose={() => setScheduleShop(null)}
+          onScheduleUpdated={(updatedSched) => {
+            setStoreSchedules((prev) => ({
+              ...prev,
+              [String(scheduleShop.id)]: updatedSched,
+            }));
+            setScheduleShop(null);
+          }}
+        />
+      )}
+
+      {/* 🎨 Modal: Custom Store Stamp Designer */}
+      {stampDesignerShop && (
+        <StampDesignerModal
+          isOpen={!!stampDesignerShop}
+          shop={stampDesignerShop}
+          onClose={() => setStampDesignerShop(null)}
+          onSave={handleSaveStampDesign}
+        />
+      )}
+
+      {/* 📜 Modal: Store Rules & Guidelines */}
+      {rulesShop && (
+        <StoreRulesModal
+          isOpen={!!rulesShop}
+          shop={rulesShop}
+          onClose={() => setRulesShop(null)}
+          onSave={handleSaveRules}
         />
       )}
     </div>
@@ -2344,8 +2598,8 @@ function EditShopFormModal({ isOpen, shop, currentUserId, onClose, onShopUpdated
   const [prefecture, setPrefecture] = useState(shop.prefecture || "");
   const [region, setRegion] = useState(shop.region || "Kanto");
   const [address, setAddress] = useState(shop.address || shop.street || "");
-  const [description, setDescription] = useState(shop.description || "");
-  const [descriptionJp, setDescriptionJp] = useState(shop.description_jp || "");
+  const [description, setDescription] = useState(cleanAllMetadataTags(shop.description));
+  const [descriptionJp, setDescriptionJp] = useState(cleanAllMetadataTags(shop.description_jp));
   const [imageUrl, setImageUrl] = useState(shop.image_url || "");
   const [lat, setLat] = useState<string>(shop.lat !== undefined && shop.lat !== null ? String(shop.lat) : "");
   const [lng, setLng] = useState<string>(shop.lng !== undefined && shop.lng !== null ? String(shop.lng) : "");
@@ -2371,8 +2625,8 @@ function EditShopFormModal({ isOpen, shop, currentUserId, onClose, onShopUpdated
         prefecture: prefecture.trim() || null,
         region: region.trim() || null,
         address: address.trim() || null,
-        description: description.trim() || null,
-        description_jp: descriptionJp.trim() || null,
+        description: cleanAllMetadataTags(description).trim() || null,
+        description_jp: cleanAllMetadataTags(descriptionJp).trim() || null,
         image_url: imageUrl.trim() || null,
         lat: lat ? parseFloat(lat) : null,
         lng: lng ? parseFloat(lng) : null,
@@ -2765,18 +3019,138 @@ function AdminShopSummaryModal({
 }: AdminShopSummaryModalProps) {
   if (!isOpen || !shop) return null;
 
-  const totalStamps = shop.stamps_count || 0;
+  const [activeTab, setActiveTab] = useState<"overview" | "collectors" | "time" | "monthly">("overview");
+  const [stampsData, setStampsData] = useState<any[]>([]);
+  const [loadingStamps, setLoadingStamps] = useState<boolean>(true);
+
+  useEffect(() => {
+    if (!shop?.id) return;
+    setLoadingStamps(true);
+
+    async function fetchAnalyticsData() {
+      try {
+        const { data, error } = await supabase
+          .from("user_stamps")
+          .select("id, user_id, collected_at, created_at, profiles(id, display_name, full_name, username, avatar_url)")
+          .eq("shop_id", shop.id)
+          .order("collected_at", { ascending: false });
+
+        if (error) {
+          console.warn("user_stamps analytics query warning:", error.message);
+        }
+        setStampsData(data || []);
+      } catch (err) {
+        console.error("Failed to load stamps analytics:", err);
+      } finally {
+        setLoadingStamps(false);
+      }
+    }
+
+    fetchAnalyticsData();
+  }, [shop?.id]);
+
+  const totalStampsCount = stampsData.length;
   const ratingVal = shop.rating !== undefined && shop.rating !== null ? Number(shop.rating) : 0;
   const reviewsCount = shop.reviews_count || 0;
 
+  // Process unique collectors
+  const collectorsMap = new Map<string, { user_id: string; profile: any; count: number; lastCollected: string }>();
+  stampsData.forEach((st) => {
+    const uid = st.user_id || "anonymous";
+    const ts = st.collected_at || st.created_at || "";
+    const profile = Array.isArray(st.profiles) ? st.profiles[0] : st.profiles;
+
+    if (!collectorsMap.has(uid)) {
+      collectorsMap.set(uid, {
+        user_id: uid,
+        profile,
+        count: 1,
+        lastCollected: ts,
+      });
+    } else {
+      const existing = collectorsMap.get(uid)!;
+      existing.count += 1;
+      if (new Date(ts).getTime() > new Date(existing.lastCollected).getTime()) {
+        existing.lastCollected = ts;
+      }
+    }
+  });
+
+  const uniqueCollectorsList = Array.from(collectorsMap.values()).sort((a, b) => b.count - a.count);
+  const uniqueCollectorsCount = uniqueCollectorsList.length;
+
+  // Process Time Slot distribution
+  const timeSlots = {
+    morning: 0,   // 06:00 - 11:59
+    afternoon: 0, // 12:00 - 17:59
+    evening: 0,   // 18:00 - 23:59
+    night: 0,     // 00:00 - 05:59
+  };
+
+  stampsData.forEach((st) => {
+    const dateObj = new Date(st.collected_at || st.created_at);
+    if (!isNaN(dateObj.getTime())) {
+      const hour = dateObj.getHours();
+      if (hour >= 6 && hour < 12) timeSlots.morning++;
+      else if (hour >= 12 && hour < 18) timeSlots.afternoon++;
+      else if (hour >= 18 && hour < 24) timeSlots.evening++;
+      else timeSlots.night++;
+    }
+  });
+
+  const slotTotal = Math.max(1, stampsData.length);
+  const timeSlotPercentages = {
+    morning: Math.round((timeSlots.morning / slotTotal) * 100),
+    afternoon: Math.round((timeSlots.afternoon / slotTotal) * 100),
+    evening: Math.round((timeSlots.evening / slotTotal) * 100),
+    night: Math.round((timeSlots.night / slotTotal) * 100),
+  };
+
+  // Process Monthly Summary
+  const monthlyMap = new Map<string, number>();
+  stampsData.forEach((st) => {
+    const d = new Date(st.collected_at || st.created_at);
+    if (!isNaN(d.getTime())) {
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      monthlyMap.set(key, (monthlyMap.get(key) || 0) + 1);
+    }
+  });
+
+  const sortedMonths = Array.from(monthlyMap.entries()).sort((a, b) => b[0].localeCompare(a[0]));
+  const maxMonthCount = Math.max(1, ...Array.from(monthlyMap.values()));
+
+  const formatThaiDate = (isoStr: string) => {
+    if (!isoStr) return "-";
+    const d = new Date(isoStr);
+    if (isNaN(d.getTime())) return isoStr;
+    return d.toLocaleDateString("th-TH", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const formatMonthLabel = (yearMonthKey: string) => {
+    const [year, month] = yearMonthKey.split("-");
+    const monthNames = [
+      "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+      "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
+    ];
+    const mIdx = parseInt(month, 10) - 1;
+    const thYear = parseInt(year, 10) + 543;
+    return `${monthNames[mIdx] || month} ${thYear}`;
+  };
+
   return (
-    <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
       <div
-        className="bg-white rounded-3xl w-full max-w-lg border border-amber-500/30 shadow-2xl overflow-hidden flex flex-col"
+        className="bg-white rounded-3xl w-full max-w-xl border border-stone-200 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
         style={{ borderColor: C.line }}
       >
         {/* Cover Header */}
-        <div className="relative h-48 w-full bg-stone-900 overflow-hidden">
+        <div className="relative h-40 sm:h-48 w-full bg-stone-900 overflow-hidden shrink-0">
           <img
             src={
               shop.image_url ||
@@ -2789,18 +3163,18 @@ function AdminShopSummaryModal({
 
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black transition cursor-pointer backdrop-blur-xs"
+            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black transition cursor-pointer backdrop-blur-xs z-20"
           >
             <X size={18} />
           </button>
 
-          <div className="absolute bottom-4 left-5 right-5 text-white space-y-1">
+          <div className="absolute bottom-3 left-4 right-4 text-white space-y-1 z-10">
             <div className="flex items-center gap-2 flex-wrap mb-1">
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-stone-950 uppercase tracking-wider">
                 {shop.category || "Shop"}
               </span>
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500 text-white">
-                Live System Approved
+                📊 สถิติแสตมป์ร้านค้า
               </span>
               {shop.prefecture && (
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/20 backdrop-blur-md text-white">
@@ -2815,81 +3189,348 @@ function AdminShopSummaryModal({
           </div>
         </div>
 
-        {/* Analytics Body */}
-        <div className="p-6 space-y-5">
-          {/* Key Metrics Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <div className="bg-amber-50/80 border border-amber-200/80 p-3.5 rounded-2xl">
-              <div className="flex items-center gap-1.5 text-amber-700 text-xs font-bold mb-1">
-                <Stamp size={15} />
-                <span>Stamp Check-ins</span>
-              </div>
-              <p className="text-xl font-black text-amber-900">{totalStamps} ครั้ง</p>
-              <p className="text-[10px] text-amber-700/80 font-semibold mt-0.5">ยอดแสตมป์ที่ออกแล้ว</p>
-            </div>
+        {/* Navigation Tabs Header */}
+        <div className="flex border-b bg-stone-50 overflow-x-auto shrink-0 select-none" style={{ borderColor: C.line }}>
+          <button
+            onClick={() => setActiveTab("overview")}
+            className={`flex-1 py-3 px-3 text-xs font-bold flex items-center justify-center gap-1.5 border-b-2 transition whitespace-nowrap cursor-pointer ${
+              activeTab === "overview"
+                ? "border-amber-600 text-amber-900 bg-white"
+                : "border-transparent text-stone-600 hover:text-stone-900"
+            }`}
+          >
+            <PieChart size={14} />
+            <span>ภาพรวม</span>
+          </button>
 
-            <div className="bg-emerald-50/80 border border-emerald-200/80 p-3.5 rounded-2xl">
-              <div className="flex items-center gap-1.5 text-emerald-700 text-xs font-bold mb-1">
-                <Star size={15} />
-                <span>คะแนนรีวิว</span>
-              </div>
-              <p className="text-xl font-black text-emerald-900">
-                {ratingVal > 0 ? `${ratingVal.toFixed(1)} / 5.0` : "ยังไม่มีคะแนน"}
-              </p>
-              <p className="text-[10px] text-emerald-700/80 font-semibold mt-0.5">จาก {reviewsCount} รีวิว</p>
-            </div>
+          <button
+            onClick={() => setActiveTab("collectors")}
+            className={`flex-1 py-3 px-3 text-xs font-bold flex items-center justify-center gap-1.5 border-b-2 transition whitespace-nowrap cursor-pointer ${
+              activeTab === "collectors"
+                ? "border-amber-600 text-amber-900 bg-white"
+                : "border-transparent text-stone-600 hover:text-stone-900"
+            }`}
+          >
+            <Users size={14} />
+            <span>คนเก็บแสตมป์ ({uniqueCollectorsCount})</span>
+          </button>
 
-            <div className="bg-sky-50/80 border border-sky-200/80 p-3.5 rounded-2xl col-span-2 sm:col-span-1">
-              <div className="flex items-center gap-1.5 text-sky-700 text-xs font-bold mb-1">
-                <Building2 size={15} />
-                <span>ID ร้านค้า</span>
-              </div>
-              <p className="text-sm font-mono font-black text-sky-900 truncate">#{shop.id}</p>
-              <p className="text-[10px] text-sky-700/80 font-semibold mt-0.5">รหัสอ้างอิงระบบ</p>
-            </div>
-          </div>
+          <button
+            onClick={() => setActiveTab("time")}
+            className={`flex-1 py-3 px-3 text-xs font-bold flex items-center justify-center gap-1.5 border-b-2 transition whitespace-nowrap cursor-pointer ${
+              activeTab === "time"
+                ? "border-amber-600 text-amber-900 bg-white"
+                : "border-transparent text-stone-600 hover:text-stone-900"
+            }`}
+          >
+            <Clock size={14} />
+            <span>ช่วงเวลา</span>
+          </button>
 
-          {/* Details list */}
-          <div className="bg-stone-50 p-4 rounded-2xl border space-y-2.5 text-xs text-[#231C18]" style={{ borderColor: C.line }}>
-            <div className="flex items-start justify-between gap-2 border-b pb-2" style={{ borderColor: C.line }}>
-              <span className="font-bold text-[#8A7870]">ที่อยู่ร้านค้า:</span>
-              <span className="font-semibold text-right max-w-[240px] truncate">{shop.address || "ไม่ได้ระบุที่อยู่"}</span>
-            </div>
-
-            {shop.website && (
-              <div className="flex items-center justify-between gap-2 border-b pb-2" style={{ borderColor: C.line }}>
-                <span className="font-bold text-[#8A7870]">เว็บไซต์:</span>
-                <a
-                  href={shop.website}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-semibold text-[#E0533C] hover:underline truncate max-w-[240px]"
-                >
-                  {shop.website}
-                </a>
-              </div>
-            )}
-
-            <div className="flex items-center justify-between gap-2">
-              <span className="font-bold text-[#8A7870]">เจ้าของร้าน (Owner ID):</span>
-              <span className="font-mono text-[11px] text-stone-600 truncate max-w-[220px]">
-                {shop.owner_id || "ระบบ (Admin/Unassigned)"}
-              </span>
-            </div>
-          </div>
+          <button
+            onClick={() => setActiveTab("monthly")}
+            className={`flex-1 py-3 px-3 text-xs font-bold flex items-center justify-center gap-1.5 border-b-2 transition whitespace-nowrap cursor-pointer ${
+              activeTab === "monthly"
+                ? "border-amber-600 text-amber-900 bg-white"
+                : "border-transparent text-stone-600 hover:text-stone-900"
+            }`}
+          >
+            <Calendar size={14} />
+            <span>สรุปรายเดือน</span>
+          </button>
         </div>
 
-        {/* Modal Actions */}
-        <div className="p-5 border-t bg-stone-50/50 flex flex-wrap items-center justify-between gap-3" style={{ borderColor: C.line }}>
+        {/* Modal Scrollable Body */}
+        <div className="p-5 overflow-y-auto space-y-4 flex-1">
+          {loadingStamps ? (
+            <div className="flex flex-col items-center justify-center py-10 text-stone-500 space-y-2">
+              <Loader2 size={24} className="animate-spin text-amber-600" />
+              <span className="text-xs font-bold">กำลังโหลดข้อมูลสถิติแสตมป์...</span>
+            </div>
+          ) : (
+            <>
+              {/* TAB 1: OVERVIEW */}
+              {activeTab === "overview" && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <div className="bg-amber-50/90 border border-amber-200 p-3.5 rounded-2xl">
+                      <div className="flex items-center gap-1.5 text-amber-700 text-xs font-bold mb-1">
+                        <Stamp size={15} />
+                        <span>ยอดแสตมป์รวม</span>
+                      </div>
+                      <p className="text-2xl font-black text-amber-900">{totalStampsCount} ครั้ง</p>
+                      <p className="text-[10px] text-amber-700/80 font-semibold mt-0.5">การสแกนทั้งหมด</p>
+                    </div>
+
+                    <div className="bg-sky-50/90 border border-sky-200 p-3.5 rounded-2xl">
+                      <div className="flex items-center gap-1.5 text-sky-700 text-xs font-bold mb-1">
+                        <UserCheck size={15} />
+                        <span>คนสะสมไม่ซ้ำหน้า</span>
+                      </div>
+                      <p className="text-2xl font-black text-sky-900">{uniqueCollectorsCount} คน</p>
+                      <p className="text-[10px] text-sky-700/80 font-semibold mt-0.5">นักสะสมยูนีค</p>
+                    </div>
+
+                    <div className="bg-emerald-50/90 border border-emerald-200 p-3.5 rounded-2xl col-span-2 sm:col-span-1">
+                      <div className="flex items-center gap-1.5 text-emerald-700 text-xs font-bold mb-1">
+                        <Star size={15} />
+                        <span>คะแนนรีวิว</span>
+                      </div>
+                      <p className="text-2xl font-black text-emerald-900">
+                        {ratingVal > 0 ? `${ratingVal.toFixed(1)} / 5.0` : "ไม่มีคะแนน"}
+                      </p>
+                      <p className="text-[10px] text-emerald-700/80 font-semibold mt-0.5">จาก {reviewsCount} รีวิว</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-stone-50 p-4 rounded-2xl border space-y-2.5 text-xs text-[#231C18]" style={{ borderColor: C.line }}>
+                    <div className="flex items-start justify-between gap-2 border-b pb-2" style={{ borderColor: C.line }}>
+                      <span className="font-bold text-[#8A7870]">ที่อยู่ร้านค้า:</span>
+                      <span className="font-semibold text-right max-w-[260px] truncate">{shop.address || "ไม่ได้ระบุที่อยู่"}</span>
+                    </div>
+
+                    {shop.website && (
+                      <div className="flex items-center justify-between gap-2 border-b pb-2" style={{ borderColor: C.line }}>
+                        <span className="font-bold text-[#8A7870]">เว็บไซต์:</span>
+                        <a
+                          href={shop.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-semibold text-[#E0533C] hover:underline truncate max-w-[260px]"
+                        >
+                          {shop.website}
+                        </a>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-bold text-[#8A7870]">เจ้าของร้าน (Owner ID):</span>
+                      <span className="font-mono text-[11px] text-stone-600 truncate max-w-[220px]">
+                        {shop.owner_id || "ระบบ (Admin/Unassigned)"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: STAMP COLLECTORS */}
+              {activeTab === "collectors" && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black uppercase text-stone-700 flex items-center gap-1.5">
+                      <Users size={14} className="text-amber-600" />
+                      <span>รายชื่อผู้สะสมแสตมป์ ({uniqueCollectorsCount} คน)</span>
+                    </h4>
+                    <span className="text-[11px] text-stone-500 font-semibold">เรียงตามจำนวนสแกน</span>
+                  </div>
+
+                  {uniqueCollectorsList.length === 0 ? (
+                    <div className="text-center py-8 bg-stone-50 rounded-2xl border border-stone-200/80">
+                      <Stamp size={28} className="mx-auto text-stone-400 mb-2" />
+                      <p className="text-xs font-bold text-stone-600">ยังไม่มีผู้สะสมแสตมป์ร้านนี้</p>
+                      <p className="text-[11px] text-stone-400 mt-0.5">เมื่อมีผู้ใช้สแกนเช็คอิน ข้อมูลจะปรากฏที่นี่</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+                      {uniqueCollectorsList.map((item, idx) => {
+                        const name =
+                          item.profile?.display_name ||
+                          item.profile?.full_name ||
+                          item.profile?.username ||
+                          `ผู้ใช้ #${item.user_id.slice(0, 6)}`;
+                        const avatar = item.profile?.avatar_url;
+
+                        return (
+                          <div
+                            key={item.user_id}
+                            className="p-3 rounded-2xl bg-white border border-stone-200/90 shadow-2xs flex items-center justify-between gap-3 hover:bg-stone-50 transition"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span className="w-6 text-center text-xs font-black text-amber-700 shrink-0">
+                                #{idx + 1}
+                              </span>
+                              {avatar ? (
+                                <img
+                                  src={avatar}
+                                  alt={name}
+                                  className="w-8 h-8 rounded-full object-cover border border-stone-200 shrink-0"
+                                />
+                              ) : (
+                                <div className="w-8 h-8 rounded-full bg-stone-800 text-white font-bold text-xs flex items-center justify-center shrink-0">
+                                  {name[0]?.toUpperCase() || "U"}
+                                </div>
+                              )}
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold text-stone-900 truncate">{name}</p>
+                                <p className="text-[10px] text-stone-500 font-medium truncate">
+                                  ล่าสุด: {formatThaiDate(item.lastCollected)}
+                                </p>
+                              </div>
+                            </div>
+
+                            <span className="px-2.5 py-1 rounded-full text-xs font-black bg-amber-50 text-amber-800 border border-amber-200 shrink-0">
+                              {item.count} สแกน
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 3: TIME SLOTS */}
+              {activeTab === "time" && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black uppercase text-stone-700 flex items-center gap-1.5">
+                      <Clock size={14} className="text-amber-600" />
+                      <span>สถิติช่วงเวลาการสแกนแสตมป์</span>
+                    </h4>
+                    <span className="text-[11px] text-stone-500 font-semibold">รวมทั้งหมด {stampsData.length} ครั้ง</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Morning */}
+                    <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+                          <Sunrise size={15} className="text-amber-600 shrink-0" />
+                          <span>ช่วงเช้า (06:00 - 11:59 น.)</span>
+                        </span>
+                        <span className="text-xs font-black text-amber-900">{timeSlots.morning} ครั้ง</span>
+                      </div>
+                      <div className="w-full h-2 bg-amber-200/60 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-amber-500 rounded-full transition-all duration-500"
+                          style={{ width: `${timeSlotPercentages.morning}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-bold text-amber-700/90 block text-right">
+                        {timeSlotPercentages.morning}% ของทั้งหมด
+                      </span>
+                    </div>
+
+                    {/* Afternoon */}
+                    <div className="p-3.5 rounded-2xl bg-orange-50/70 border border-orange-200 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-orange-900 flex items-center gap-1.5">
+                          <Sun size={15} className="text-orange-600 shrink-0" />
+                          <span>ช่วงบ่าย (12:00 - 17:59 น.)</span>
+                        </span>
+                        <span className="text-xs font-black text-orange-900">{timeSlots.afternoon} ครั้ง</span>
+                      </div>
+                      <div className="w-full h-2 bg-orange-200/60 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-orange-500 rounded-full transition-all duration-500"
+                          style={{ width: `${timeSlotPercentages.afternoon}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-bold text-orange-700/90 block text-right">
+                        {timeSlotPercentages.afternoon}% ของทั้งหมด
+                      </span>
+                    </div>
+
+                    {/* Evening */}
+                    <div className="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-200 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
+                          <Sunset size={15} className="text-indigo-600 shrink-0" />
+                          <span>ช่วงเย็น/ค่ำ (18:00 - 23:59 น.)</span>
+                        </span>
+                        <span className="text-xs font-black text-indigo-900">{timeSlots.evening} ครั้ง</span>
+                      </div>
+                      <div className="w-full h-2 bg-indigo-200/60 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-indigo-500 rounded-full transition-all duration-500"
+                          style={{ width: `${timeSlotPercentages.evening}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-bold text-indigo-700/90 block text-right">
+                        {timeSlotPercentages.evening}% ของทั้งหมด
+                      </span>
+                    </div>
+
+                    {/* Night */}
+                    <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <Moon size={15} className="text-slate-600 shrink-0" />
+                          <span>ช่วงดึก (00:00 - 05:59 น.)</span>
+                        </span>
+                        <span className="text-xs font-black text-slate-900">{timeSlots.night} ครั้ง</span>
+                      </div>
+                      <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-slate-600 rounded-full transition-all duration-500"
+                          style={{ width: `${timeSlotPercentages.night}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-600 block text-right">
+                        {timeSlotPercentages.night}% ของทั้งหมด
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 4: MONTHLY SUMMARY */}
+              {activeTab === "monthly" && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black uppercase text-stone-700 flex items-center gap-1.5">
+                      <Calendar size={14} className="text-amber-600" />
+                      <span>สรุปยอดสแกนแสตมป์แยกรายเดือน</span>
+                    </h4>
+                    <span className="text-[11px] text-stone-500 font-semibold">จำนวน {sortedMonths.length} เดือน</span>
+                  </div>
+
+                  {sortedMonths.length === 0 ? (
+                    <div className="text-center py-8 bg-stone-50 rounded-2xl border border-stone-200/80">
+                      <Calendar size={28} className="mx-auto text-stone-400 mb-2" />
+                      <p className="text-xs font-bold text-stone-600">ยังไม่มีข้อมูลรายเดือน</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5 max-h-[320px] overflow-y-auto pr-1">
+                      {sortedMonths.map(([mKey, count]) => {
+                        const pct = Math.round((count / maxMonthCount) * 100);
+                        return (
+                          <div
+                            key={mKey}
+                            className="p-3 rounded-2xl bg-white border border-stone-200/80 shadow-2xs space-y-1.5"
+                          >
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="font-bold text-stone-800">{formatMonthLabel(mKey)}</span>
+                              <span className="font-black text-amber-700">{count} สแกน</span>
+                            </div>
+                            <div className="w-full h-2.5 bg-stone-100 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-amber-500 rounded-full transition-all duration-500"
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Modal Actions Footer */}
+        <div className="p-4 border-t bg-stone-50/80 flex flex-wrap items-center justify-between gap-3 shrink-0" style={{ borderColor: C.line }}>
           <div className="flex items-center gap-2 flex-1">
             <button
               onClick={() => {
                 onClose();
                 onEdit(shop);
               }}
-              className="flex-1 py-2.5 px-3 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-black flex items-center justify-center gap-1.5 transition cursor-pointer"
+              className="flex-1 py-2 px-3 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
             >
-              <Edit3 size={14} /> แก้ไขข้อมูล
+              <Edit3 size={13} /> แก้ไขข้อมูล
             </button>
 
             <button
@@ -2897,9 +3538,9 @@ function AdminShopSummaryModal({
                 onClose();
                 onViewQr(shop);
               }}
-              className="py-2.5 px-3.5 rounded-xl border border-stone-300 bg-white hover:bg-stone-50 text-stone-800 text-xs font-black flex items-center justify-center gap-1.5 transition cursor-pointer"
+              className="py-2 px-3.5 rounded-xl border border-stone-300 bg-white hover:bg-stone-50 text-stone-800 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
             >
-              <QrCode size={14} /> QR
+              <QrCode size={13} /> QR
             </button>
           </div>
 
@@ -2908,9 +3549,482 @@ function AdminShopSummaryModal({
               onClose();
               onDelete(shop);
             }}
-            className="py-2.5 px-4 rounded-xl border border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-black flex items-center justify-center gap-1.5 transition cursor-pointer"
+            className="py-2 px-3 rounded-xl border border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
           >
-            <Trash2 size={14} /> ลบร้าน
+            <Trash2 size={13} /> ลบร้าน
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ===================================================================
+   STORE SCHEDULE & HOLIDAY CALENDAR MODAL COMPONENT
+   =================================================================== */
+interface StoreScheduleModalProps {
+  isOpen: boolean;
+  shop: ShopRecord;
+  currentUserId: string;
+  onClose: () => void;
+  onScheduleUpdated: (updatedSchedule: ShopSchedule) => void;
+}
+
+export function StoreScheduleModal({
+  isOpen,
+  shop,
+  currentUserId,
+  onClose,
+  onScheduleUpdated,
+}: StoreScheduleModalProps) {
+  const [isClosedToday, setIsClosedToday] = useState<boolean>(false);
+  const [openTime, setOpenTime] = useState<string>("09:00");
+  const [closeTime, setCloseTime] = useState<string>("18:00");
+  const [closedDays, setClosedDays] = useState<string[]>([]);
+  const [holidays, setHolidays] = useState<HolidayItem[]>([]);
+
+  const [newHolidayDate, setNewHolidayDate] = useState<string>("");
+  const [newHolidayTitle, setNewHolidayTitle] = useState<string>("");
+  const [activeTab, setActiveTab] = useState<"today" | "hours" | "holidays">("today");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && shop) {
+      const sched = getStoredSchedule(shop.id);
+      setIsClosedToday(sched.is_closed_today || false);
+      setOpenTime(sched.open_time || "09:00");
+      setCloseTime(sched.close_time || "18:00");
+      setClosedDays(sched.closed_days || []);
+      setHolidays(sched.holidays || []);
+    }
+  }, [isOpen, shop]);
+
+  if (!isOpen || !shop) return null;
+
+  const ALL_DAYS = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"];
+
+  const toggleClosedDay = (day: string) => {
+    setClosedDays((prev) =>
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
+    );
+  };
+
+  const handleAddHoliday = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newHolidayDate) {
+      alert("กรุณาเลือกวันที่วันหยุดพิเศษ");
+      return;
+    }
+    const title = newHolidayTitle.trim() || "วันหยุดพิเศษ";
+    const newItem: HolidayItem = {
+      id: Date.now().toString(),
+      date: newHolidayDate,
+      title,
+    };
+    setHolidays((prev) =>
+      [...prev.filter((h) => h.date !== newHolidayDate), newItem].sort((a, b) =>
+        a.date.localeCompare(b.date)
+      )
+    );
+    setNewHolidayDate("");
+    setNewHolidayTitle("");
+  };
+
+  const handleRemoveHoliday = (id: string) => {
+    setHolidays((prev) => prev.filter((h) => h.id !== id));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const openingHoursStr = `${openTime} - ${closeTime}`;
+      const scheduleObj: ShopSchedule = {
+        open_time: openTime,
+        close_time: closeTime,
+        opening_hours: openingHoursStr,
+        closed_days: closedDays,
+        holidays,
+        is_closed_today: isClosedToday,
+      };
+
+      saveStoredSchedule(shop.id, scheduleObj);
+
+      try {
+        const encodedDescription = encodeScheduleInText(shop.description_jp, scheduleObj);
+        await supabase
+          .from("century_shops")
+          .update({
+            opening_hours: openingHoursStr,
+            is_closed_today: isClosedToday,
+            closed_days: closedDays,
+            holidays: holidays,
+            description_jp: encodedDescription,
+          })
+          .eq("id", shop.id);
+        shop.description_jp = encodedDescription;
+        shop.opening_hours = openingHoursStr;
+        shop.is_closed_today = isClosedToday;
+        shop.closed_days = closedDays;
+        shop.holidays = holidays;
+      } catch (e) {}
+
+      onScheduleUpdated(scheduleObj);
+      alert("บันทึกตารางเวลาเปิด-ปิดและวันหยุดเรียบร้อยแล้ว!");
+      onClose();
+    } catch (err: any) {
+      alert("ไม่สามารถบันทึกตารางเวลาได้: " + (err.message || "Failed"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const applyPreset = (presetType: "everyday" | "weekdays" | "mon_off") => {
+    if (presetType === "everyday") {
+      setOpenTime("09:00");
+      setCloseTime("18:00");
+      setClosedDays([]);
+    } else if (presetType === "weekdays") {
+      setOpenTime("10:00");
+      setCloseTime("20:00");
+      setClosedDays(["เสาร์", "อาทิตย์"]);
+    } else if (presetType === "mon_off") {
+      setOpenTime("08:30");
+      setCloseTime("17:30");
+      setClosedDays(["จันทร์"]);
+    }
+  };
+
+  const statusInfo = getShopStatusToday(shop, {
+    open_time: openTime,
+    close_time: closeTime,
+    opening_hours: `${openTime} - ${closeTime}`,
+    closed_days: closedDays,
+    holidays,
+    is_closed_today: isClosedToday,
+  });
+
+  return (
+    <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+      <div
+        className="bg-white rounded-3xl w-full max-w-2xl border shadow-2xl overflow-hidden flex flex-col my-8"
+        style={{ borderColor: C.line }}
+      >
+        {/* Modal Header */}
+        <div className="p-6 border-b bg-stone-50/70 flex items-center justify-between" style={{ borderColor: C.line }}>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-amber-500 text-stone-950 font-bold flex items-center justify-center shadow-xs">
+              <Clock size={20} />
+            </div>
+            <div>
+              <h3 className="text-base font-black text-[#231C18]">จัดการเวลาเปิด-ปิด & ปฏิทินวันหยุด</h3>
+              <p className="text-xs text-[#8A7870] font-semibold truncate max-w-sm">ร้าน: {shop.shop_name}</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-xl border bg-white hover:bg-stone-100 flex items-center justify-center text-stone-600 transition cursor-pointer"
+            style={{ borderColor: C.line }}
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Status Preview Header Banner */}
+        <div className="px-6 py-3 bg-stone-900 text-white flex items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-stone-300">สถานะคำนวณวันนี้:</span>
+            <span className={`px-2.5 py-0.5 rounded-full font-black text-[11px] ${statusInfo.badgeBg}`}>
+              {statusInfo.badgeText}
+            </span>
+          </div>
+          <span className="text-[11px] text-stone-400 font-medium hidden sm:inline">{statusInfo.description}</span>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="flex border-b bg-stone-50/50 p-2 gap-1" style={{ borderColor: C.line }}>
+          <button
+            onClick={() => setActiveTab("today")}
+            className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer ${
+              activeTab === "today"
+                ? "bg-white text-[#231C18] shadow-xs border"
+                : "text-stone-500 hover:text-stone-800"
+            }`}
+            style={{ borderColor: activeTab === "today" ? C.line : "transparent" }}
+          >
+            <Power size={14} className={isClosedToday ? "text-rose-600" : "text-emerald-600"} />
+            <span>สวิตช์วันนี้ปิด</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("hours")}
+            className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer ${
+              activeTab === "hours"
+                ? "bg-white text-[#231C18] shadow-xs border"
+                : "text-stone-500 hover:text-stone-800"
+            }`}
+            style={{ borderColor: activeTab === "hours" ? C.line : "transparent" }}
+          >
+            <Clock size={14} className="text-amber-600" />
+            <span>เวลาเปิด-ปิดประจำสัปดาห์</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("holidays")}
+            className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer ${
+              activeTab === "holidays"
+                ? "bg-white text-[#231C18] shadow-xs border"
+                : "text-stone-500 hover:text-stone-800"
+            }`}
+            style={{ borderColor: activeTab === "holidays" ? C.line : "transparent" }}
+          >
+            <CalendarOff size={14} className="text-rose-600" />
+            <span>ปฏิทินวันหยุด ({holidays.length})</span>
+          </button>
+        </div>
+
+        {/* Tab Contents */}
+        <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto">
+          {/* TAB 1: TODAY QUICK TOGGLE */}
+          {activeTab === "today" && (
+            <div className="space-y-5">
+              <div className="p-5 rounded-2xl border bg-stone-50/50 space-y-3" style={{ borderColor: C.line }}>
+                <h4 className="text-sm font-black text-[#231C18] flex items-center gap-2">
+                  <Power size={16} className="text-amber-600" />
+                  <span>สวิตช์ปิดให้บริการร้านค้าวันนี้ (Quick Today Close Toggle)</span>
+                </h4>
+                <p className="text-xs text-[#8A7870] font-semibold leading-relaxed">
+                  กดปุ่มนี้เพื่อสลับสถานะเป็น <strong>"ปิดบริการชั่วคราววันนี้"</strong> แบบเร่งด่วนทันที โดยที่ไม่ต้องแก้ไขตารางเวลาเปิด-ปิดหลัก เหมาะสำหรับกรณีติดภารกิจด่วน หรือปิดร้านก่อนเวลา
+                </p>
+
+                <div className="pt-3 border-t flex flex-col sm:flex-row items-center justify-between gap-4" style={{ borderColor: C.line }}>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold shadow-xs ${isClosedToday ? "bg-rose-600" : "bg-emerald-600"}`}>
+                      {isClosedToday ? <Moon size={24} /> : <Sun size={24} />}
+                    </div>
+                    <div>
+                      <p className="text-xs font-black text-[#231C18]">
+                        {isClosedToday ? "🔴 สถานะปัจจุบัน: วันนี้ปิดบริการชั่วคราว" : "🟢 สถานะปัจจุบัน: เปิดให้บริการตามตารางเวลา"}
+                      </p>
+                      <p className="text-[11px] text-[#8A7870]">
+                        {isClosedToday ? "นักท่องเที่ยวจะเห็นป้ายเตือนว่าร้านปิดบริการวันนี้" : `เวลาทำการวันนี้: ${openTime} - ${closeTime}`}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsClosedToday(!isClosedToday)}
+                    className={`w-full sm:w-auto px-6 py-3 rounded-2xl text-xs font-black transition flex items-center justify-center gap-2 shadow-sm cursor-pointer ${
+                      isClosedToday
+                        ? "bg-emerald-600 hover:bg-emerald-500 text-white"
+                        : "bg-rose-600 hover:bg-rose-500 text-white"
+                    }`}
+                  >
+                    <Power size={16} />
+                    <span>{isClosedToday ? "เปลี่ยนเป็น: เปิดบริการวันนี้" : "เปลี่ยนเป็น: วันนี้ปิดบริการ"}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: REGULAR HOURS */}
+          {activeTab === "hours" && (
+            <div className="space-y-6">
+              {/* Presets */}
+              <div className="space-y-2">
+                <label className="text-xs font-black text-[#231C18] block">เลือกรูปแบบเวลาสำเร็จรูป (Presets):</label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => applyPreset("everyday")}
+                    className="px-3 py-2 rounded-xl border bg-stone-50 hover:bg-amber-50 hover:border-amber-300 text-[#231C18] text-xs font-bold transition cursor-pointer"
+                    style={{ borderColor: C.line }}
+                  >
+                    ⚡ เปิดทุกวัน 09:00 - 18:00
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyPreset("weekdays")}
+                    className="px-3 py-2 rounded-xl border bg-stone-50 hover:bg-amber-50 hover:border-amber-300 text-[#231C18] text-xs font-bold transition cursor-pointer"
+                    style={{ borderColor: C.line }}
+                  >
+                    ⚡ 10:00 - 20:00 (หยุดเสาร์-อาทิตย์)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyPreset("mon_off")}
+                    className="px-3 py-2 rounded-xl border bg-stone-50 hover:bg-amber-50 hover:border-amber-300 text-[#231C18] text-xs font-bold transition cursor-pointer"
+                    style={{ borderColor: C.line }}
+                  >
+                    ⚡ 08:30 - 17:30 (หยุดวันจันทร์)
+                  </button>
+                </div>
+              </div>
+
+              {/* Time inputs */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl border bg-stone-50/50" style={{ borderColor: C.line }}>
+                <div>
+                  <label className="text-xs font-black text-[#231C18] block mb-1">เวลาเปิด (Opening Time):</label>
+                  <input
+                    type="time"
+                    value={openTime}
+                    onChange={(e) => setOpenTime(e.target.value)}
+                    className="w-full p-3 rounded-xl border bg-white text-sm font-bold text-[#231C18] outline-hidden focus:border-amber-500"
+                    style={{ borderColor: C.line }}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-black text-[#231C18] block mb-1">เวลาปิด (Closing Time):</label>
+                  <input
+                    type="time"
+                    value={closeTime}
+                    onChange={(e) => setCloseTime(e.target.value)}
+                    className="w-full p-3 rounded-xl border bg-white text-sm font-bold text-[#231C18] outline-hidden focus:border-amber-500"
+                    style={{ borderColor: C.line }}
+                  />
+                </div>
+              </div>
+
+              {/* Weekly Closed Days */}
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-black text-[#231C18] block">วันหยุดประจำสัปดาห์ (Weekly Closed Days):</label>
+                  <p className="text-[11px] text-[#8A7870] font-medium">คลิกเลือกวันหยุดทำการประจำของร้านค้า</p>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {ALL_DAYS.map((day) => {
+                    const isSelected = closedDays.includes(day);
+                    return (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => toggleClosedDay(day)}
+                        className={`py-2.5 px-4 rounded-xl text-xs font-black transition cursor-pointer border flex items-center gap-1.5 ${
+                          isSelected
+                            ? "bg-rose-600 border-rose-600 text-white shadow-xs"
+                            : "bg-white border-stone-200 text-stone-700 hover:bg-stone-100"
+                        }`}
+                      >
+                        <span>{day}</span>
+                        {isSelected && <XCircle size={14} />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: HOLIDAY CALENDAR */}
+          {activeTab === "holidays" && (
+            <div className="space-y-6">
+              {/* Form Add Holiday */}
+              <form onSubmit={handleAddHoliday} className="p-4 rounded-2xl border bg-stone-50/50 space-y-3" style={{ borderColor: C.line }}>
+                <h4 className="text-xs font-black text-[#231C18] flex items-center gap-1.5">
+                  <CalendarOff size={15} className="text-rose-600" />
+                  <span>เพิ่มวันหยุดพิเศษ / ปฏิทินวันหยุด (Add Custom Holiday Date)</span>
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[11px] font-bold text-[#8A7870] block mb-1">วันที่วันหยุด:</label>
+                    <input
+                      type="date"
+                      value={newHolidayDate}
+                      onChange={(e) => setNewHolidayDate(e.target.value)}
+                      className="w-full p-2.5 rounded-xl border bg-white text-xs font-bold outline-hidden focus:border-amber-500"
+                      style={{ borderColor: C.line }}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-[#8A7870] block mb-1">เหตุผล / ชื่อวันหยุด (เช่น สงกรานต์):</label>
+                    <input
+                      type="text"
+                      placeholder="เช่น วันหยุดเทศกาล, ปิดปรับปรุงร้าน"
+                      value={newHolidayTitle}
+                      onChange={(e) => setNewHolidayTitle(e.target.value)}
+                      className="w-full p-2.5 rounded-xl border bg-white text-xs font-semibold outline-hidden focus:border-amber-500"
+                      style={{ borderColor: C.line }}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-black rounded-xl flex items-center gap-1.5 transition shadow-xs cursor-pointer"
+                  >
+                    <Plus size={14} />
+                    <span>+ เพิ่มวันหยุดพิเศษลงปฏิทิน</span>
+                  </button>
+                </div>
+              </form>
+
+              {/* Holiday List */}
+              <div className="space-y-2">
+                <label className="text-xs font-black text-[#231C18] block">รายการวันหยุดพิเศษที่ตั้งไว้ ({holidays.length}):</label>
+
+                {holidays.length === 0 ? (
+                  <div className="p-6 text-center border border-dashed rounded-2xl bg-stone-50/30 text-stone-400 space-y-1" style={{ borderColor: C.line }}>
+                    <p className="text-xs font-bold text-[#231C18]">ยังไม่มีวันหยุดพิเศษในปฏิทิน</p>
+                    <p className="text-[11px] text-[#8A7870]">คุณสามารถกำหนดวันหยุดเทศกาลหรือวันปิดปรับปรุงร้านล่วงหน้าได้จากแบบฟอร์มด้านบน</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {holidays.map((h) => (
+                      <div
+                        key={h.id}
+                        className="p-3.5 rounded-xl border bg-white flex items-center justify-between gap-3 hover:bg-stone-50 transition"
+                        style={{ borderColor: C.line }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 font-bold flex items-center justify-center text-xs">
+                            <CalendarOff size={16} />
+                          </div>
+                          <div>
+                            <p className="text-xs font-black text-[#231C18]">{h.date} — {h.title}</p>
+                            <p className="text-[10px] text-rose-600 font-semibold">ร้านจะแสดงสถานะปิดให้บริการในวันที่นี้โดยอัตโนมัติ</p>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveHoliday(h.id)}
+                          className="p-2 rounded-lg text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                          title="ลบวันหยุดนี้"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Modal Footer Actions */}
+        <div className="p-5 border-t bg-stone-50/70 flex items-center justify-between gap-3" style={{ borderColor: C.line }}>
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-5 py-2.5 rounded-xl border text-xs font-bold hover:bg-stone-100 transition cursor-pointer"
+            style={{ borderColor: C.line }}
+          >
+            ยกเลิก
+          </button>
+
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className="px-6 py-2.5 rounded-xl text-xs font-black text-white bg-[#E0533C] hover:bg-[#c8432d] transition flex items-center gap-2 cursor-pointer shadow-xs disabled:opacity-50"
+          >
+            {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+            <span>บันทึกการตั้งค่าตารางเวลา</span>
           </button>
         </div>
       </div>

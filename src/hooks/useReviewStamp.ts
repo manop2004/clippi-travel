@@ -99,7 +99,7 @@ export async function getPlaces(): Promise<Place[]> {
   return data || [];
 }
 
-export async function getPlaceById(id: string): Promise<Place | null> {
+export async function getPlaceById(id: string | number): Promise<Place | null> {
   const { data, error } = await supabase
     .from("century_shops")
     .select("*")
