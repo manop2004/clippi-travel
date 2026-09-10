@@ -186,3 +186,73 @@ export function markAllAnnouncementsRead(ids: string[], userId?: string): void {
     console.error("Failed to mark all announcements read:", err);
   }
 }
+
+const DISMISSED_STATUS_PREFIX = "clippi_dismissed_announcements_";
+
+export function getDismissedAnnouncementIds(userId?: string): Set<string> {
+  if (!userId) return new Set();
+  try {
+    const raw = localStorage.getItem(DISMISSED_STATUS_PREFIX + userId);
+    return new Set(raw ? JSON.parse(raw) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+export function dismissAnnouncement(id: string, userId?: string): void {
+  if (!userId) return;
+  try {
+    const set = getDismissedAnnouncementIds(userId);
+    set.add(id);
+    localStorage.setItem(DISMISSED_STATUS_PREFIX + userId, JSON.stringify(Array.from(set)));
+  } catch (err) {
+    console.error("Failed to dismiss announcement:", err);
+  }
+}
+
+export function dismissAllAnnouncements(ids: string[], userId?: string): void {
+  if (!userId) return;
+  try {
+    const set = getDismissedAnnouncementIds(userId);
+    ids.forEach((id) => set.add(id));
+    localStorage.setItem(DISMISSED_STATUS_PREFIX + userId, JSON.stringify(Array.from(set)));
+  } catch (err) {
+    console.error("Failed to dismiss all announcements:", err);
+  }
+}
+
+const DISMISSED_ADMIN_NOTIFS_PREFIX = "clippi_dismissed_admin_notifs_";
+
+export function getDismissedAdminNotifIds(userId?: string): Set<string> {
+  if (!userId) return new Set();
+  try {
+    const raw = localStorage.getItem(DISMISSED_ADMIN_NOTIFS_PREFIX + userId);
+    return new Set(raw ? JSON.parse(raw) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+export function dismissAdminNotif(id: string, userId?: string): void {
+  if (!userId) return;
+  try {
+    const set = getDismissedAdminNotifIds(userId);
+    set.add(id);
+    localStorage.setItem(DISMISSED_ADMIN_NOTIFS_PREFIX + userId, JSON.stringify(Array.from(set)));
+  } catch (err) {
+    console.error("Failed to dismiss admin notification:", err);
+  }
+}
+
+export function dismissAllAdminNotifs(ids: string[], userId?: string): void {
+  if (!userId) return;
+  try {
+    const set = getDismissedAdminNotifIds(userId);
+    ids.forEach((id) => set.add(id));
+    localStorage.setItem(DISMISSED_ADMIN_NOTIFS_PREFIX + userId, JSON.stringify(Array.from(set)));
+  } catch (err) {
+    console.error("Failed to dismiss all admin notifications:", err);
+  }
+}
+
+

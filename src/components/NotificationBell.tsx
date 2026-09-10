@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Bell, Store, AlertCircle, Clock, ChevronRight, Megaphone, Plus, Trash2, CheckCheck, Users, Globe } from "lucide-react";
+import { Bell, Store, AlertCircle, Clock, ChevronRight, Megaphone, Plus, Trash2, CheckCheck, Users, Globe, X } from "lucide-react";
 import { C } from "../constants/mockData";
 import { supabase } from "../supabaseClient";
 import { useUserRole } from "../hooks/useUserRole";
@@ -11,6 +11,12 @@ import {
   markAnnouncementRead,
   markAllAnnouncementsRead,
   deleteSystemAnnouncement,
+  getDismissedAnnouncementIds,
+  dismissAnnouncement,
+  dismissAllAnnouncements,
+  getDismissedAdminNotifIds,
+  dismissAdminNotif,
+  dismissAllAdminNotifs,
 } from "../lib/announcementHelpers";
 import AdminAnnouncementModal from "./AdminAnnouncementModal";
 
@@ -56,16 +62,15 @@ export default function NotificationBell({ hideOnMobileSearch, onOpenMerchantMod
 
   const wrapperRef = useRef<HTMLDivElement | null>(null);
 
-  // Load announcements based on user role
+  // Load announcements based on user role and dismissed items
   const loadAnnouncements = useCallback(async () => {
     try {
       const all = await fetchSystemAnnouncements();
-      // Filter by role:
-      // - admin sees everything
-      // - store sees 'all' or 'store'
-      // - user sees 'all' or 'user'
       const nowMs = Date.now();
+      const dismissed = getDismissedAnnouncementIds(user?.id);
+
       const filtered = all.filter((item) => {
+        if (dismissed.has(item.id)) return false;
         // Hide future scheduled announcements for non-admin users until the scheduled time arrives
         if (!isAdmin && item.scheduled_at && new Date(item.scheduled_at).getTime() > nowMs) {
           return false;
@@ -81,7 +86,7 @@ export default function NotificationBell({ hideOnMobileSearch, onOpenMerchantMod
     } catch (err) {
       console.error("Error loading system announcements:", err);
     }
-  }, [isAdmin, role]);
+  }, [isAdmin, role, user?.id]);
 
   // Fetch admin notification unread count
   const fetchAdminUnreadCount = useCallback(async (adminId: string) => {
@@ -99,7 +104,8 @@ export default function NotificationBell({ hideOnMobileSearch, onOpenMerchantMod
         .select("id");
       if (idsErr) throw idsErr;
 
-      const unread = (idsData || []).filter((n: any) => !readSet.has(n.id)).length;
+      const dismissed = getDismissedAdminNotifIds(adminId);
+      const unread = (idsData || []).filter((n: any) => !readSet.has(n.id) && !dismissed.has(n.id)).length;
 
       setReadIds(readSet);
       setUnreadCount(unread);
@@ -116,15 +122,17 @@ export default function NotificationBell({ hideOnMobileSearch, onOpenMerchantMod
         .from("admin_notifications")
         .select("*")
         .order("created_at", { ascending: false })
-        .limit(10);
+        .limit(25);
       if (error) throw error;
-      setAdminItems((data || []) as NotificationItem[]);
+      const dismissed = getDismissedAdminNotifIds(user?.id);
+      const filtered = ((data || []) as NotificationItem[]).filter((item) => !dismissed.has(item.id));
+      setAdminItems(filtered);
     } catch (err) {
       console.error("Error fetching notifications:", err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user?.id]);
 
   // Refresh data periodically
   useEffect(() => {
@@ -220,10 +228,36 @@ export default function NotificationBell({ hideOnMobileSearch, onOpenMerchantMod
 
   const handleDeleteAnnouncement = async (e: React.MouseEvent, annId: string) => {
     e.stopPropagation();
-    if (!isAdmin) return;
-    if (confirm("คุณต้องการลบประกาศนี้ใช่หรือไม่?")) {
-      await deleteSystemAnnouncement(annId);
-      loadAnnouncements();
+    if (isAdmin) {
+      if (confirm("คุณต้องการลบประกาศนี้ใช่หรือไม่?")) {
+        await deleteSystemAnnouncement(annId);
+        dismissAnnouncement(annId, user?.id);
+        loadAnnouncements();
+      }
+    } else {
+      dismissAnnouncement(annId, user?.id);
+      setAnnouncements((prev) => prev.filter((item) => item.id !== annId));
+    }
+  };
+
+  const handleDeleteAdminNotification = async (e: React.MouseEvent, notifId: string) => {
+    e.stopPropagation();
+    dismissAdminNotif(notifId, user?.id);
+    setAdminItems((prev) => prev.filter((item) => item.id !== notifId));
+    setUnreadCount((prev) => Math.max(0, prev - 1));
+
+    if (user?.id) {
+      try {
+        await supabase
+          .from("admin_notification_reads")
+          .upsert({ notification_id: notifId, admin_id: user.id }, { onConflict: "notification_id,admin_id" });
+      } catch (e) {}
+    }
+
+    try {
+      await supabase.from("admin_notifications").delete().eq("id", notifId);
+    } catch (err) {
+      console.warn("Supabase delete admin notification notice:", err);
     }
   };
 
@@ -232,6 +266,29 @@ export default function NotificationBell({ hideOnMobileSearch, onOpenMerchantMod
   const unreadAnnouncementsCount = announcements.filter((a) => !readIds.has(a.id)).length;
   const totalDisplayUnread =
     (isAdmin ? unreadCount : 0) + (hasMerchantStatusNotif ? 1 : 0) + unreadAnnouncementsCount;
+
+  const handleClearAll = async () => {
+    handleMarkAllRead();
+    if (user?.id) {
+      if (announcements.length > 0) {
+        dismissAllAnnouncements(announcements.map((a) => a.id), user.id);
+        setAnnouncements([]);
+      }
+      if (adminItems.length > 0) {
+        const itemIds = adminItems.map((a) => a.id);
+        dismissAllAdminNotifs(itemIds, user.id);
+
+        try {
+          const rows = itemIds.map((id) => ({ notification_id: id, admin_id: user.id }));
+          await supabase.from("admin_notification_reads").upsert(rows, { onConflict: "notification_id,admin_id" });
+          await supabase.from("admin_notifications").delete().in("id", itemIds);
+        } catch (e) {}
+
+        setAdminItems([]);
+        setUnreadCount(0);
+      }
+    }
+  };
 
   return (
     <div className="relative select-none" ref={wrapperRef}>
@@ -286,11 +343,21 @@ export default function NotificationBell({ hideOnMobileSearch, onOpenMerchantMod
               {totalDisplayUnread > 0 && (
                 <button
                   onClick={handleMarkAllRead}
-                  className="text-[10px] font-bold text-[#8A7870] hover:text-[#FD775C] transition flex items-center gap-1"
+                  className="text-[10px] font-bold text-[#8A7870] hover:text-[#FD775C] transition flex items-center gap-1 cursor-pointer"
                   title="อ่านทั้งหมด"
                 >
                   <CheckCheck size={12} />
                   <span>อ่านทั้งหมด</span>
+                </button>
+              )}
+              {(announcements.length > 0 || adminItems.length > 0) && (
+                <button
+                  onClick={handleClearAll}
+                  className="text-[10px] font-bold text-[#8A7870] hover:text-rose-600 transition flex items-center gap-1 cursor-pointer"
+                  title="ลบการแจ้งเตือนทั้งหมด"
+                >
+                  <Trash2 size={12} />
+                  <span>ลบทั้งหมด</span>
                 </button>
               )}
             </div>
@@ -504,15 +571,13 @@ export default function NotificationBell({ hideOnMobileSearch, onOpenMerchantMod
                         )}
                       </span>
 
-                      {isAdmin && (
-                        <button
-                          onClick={(e) => handleDeleteAnnouncement(e, ann.id)}
-                          className="opacity-0 group-hover:opacity-100 text-rose-500 hover:text-rose-700 p-1 transition"
-                          title="ลบประกาศ"
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      )}
+                      <button
+                        onClick={(e) => handleDeleteAnnouncement(e, ann.id)}
+                        className="text-stone-400 hover:text-rose-600 hover:bg-rose-50 p-1.5 rounded-lg transition cursor-pointer shrink-0 ml-1"
+                        title={isAdmin ? "ลบประกาศออกจากระบบ" : "ลบการแจ้งเตือนนี้"}
+                      >
+                        <Trash2 size={13} />
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -527,10 +592,10 @@ export default function NotificationBell({ hideOnMobileSearch, onOpenMerchantMod
                 adminItems.map((n) => {
                   const unread = !readIds.has(n.id);
                   return (
-                    <button
+                    <div
                       key={n.id}
                       onClick={() => handleMarkAdminRead(n)}
-                      className="w-full text-left px-4 py-3.5 hover:bg-stone-50 transition flex items-start gap-2.5 cursor-pointer"
+                      className="w-full text-left px-4 py-3.5 hover:bg-stone-50 transition flex items-start gap-2.5 cursor-pointer relative group"
                       style={{ borderColor: C.line }}
                     >
                       {unread && (
@@ -543,12 +608,22 @@ export default function NotificationBell({ hideOnMobileSearch, onOpenMerchantMod
                         <p className="text-xs font-bold text-[#231C18] leading-snug">
                           {n.message || "การแจ้งเตือนใหม่ในระบบ"}
                         </p>
-                        <p className="text-[10px] text-[#8A7870] font-semibold mt-0.5">
-                          {n.actor_name ? `${n.actor_name} · ` : ""}
-                          {timeAgo(n.created_at)}
-                        </p>
+                        <div className="flex items-center justify-between mt-1">
+                          <p className="text-[10px] text-[#8A7870] font-semibold">
+                            {n.actor_name ? `${n.actor_name} · ` : ""}
+                            {timeAgo(n.created_at)}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeleteAdminNotification(e, n.id)}
+                            className="text-stone-400 hover:text-rose-600 hover:bg-rose-50 p-1.5 rounded-lg transition cursor-pointer shrink-0"
+                            title="ลบการแจ้งเตือน"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
                       </div>
-                    </button>
+                    </div>
                   );
                 })
               ))}

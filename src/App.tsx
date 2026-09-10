@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Compass, MapPin, BookOpen, User, Plus, Search, X, ShieldCheck, Store, Users, ScrollText, Trophy, Puzzle, QrCode } from "lucide-react";
+import { Compass, MapPin, BookOpen, User, Plus, Search, X, ShieldCheck, Store, Users, ScrollText, Trophy, Puzzle, QrCode, Image } from "lucide-react";
 import { C } from "./constants/mockData";
 import { supabase } from "./supabaseClient";
 import { Session } from "@supabase/supabase-js";
@@ -30,6 +30,7 @@ import { resolveUserDisplayName, resolveUserAvatarUrl, getDeletedUserIds } from 
 import NotificationBell from "./components/NotificationBell";
 import AchievementManagePage from "./components/views/AchievementManagePage";
 import AdminJigsawManagePage from "./components/views/AdminJigsawManagePage";
+import AdminBannerManagePage from "./components/views/AdminBannerManagePage";
 
 export default function App() {
   const [tab, setTab] = useState("explore");
@@ -37,6 +38,7 @@ export default function App() {
   const [editingShop, setEditingShop] = useState<any | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isMerchantApplyOpen, setIsMerchantApplyOpen] = useState(false);
+  const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -121,6 +123,7 @@ export default function App() {
     { id: "profile", label: t("nav.profile"), icon: User, roles: ["user", "store", "admin"] },
     { id: "store_manage", label: "Manage My Shop", icon: Store, roles: ["store", "admin"] },
     { id: "admin", label: "Admin Review", icon: ShieldCheck, roles: ["admin"] },
+    { id: "banners_manage", label: "Manage Banners", icon: Image, roles: ["admin"] },
     { id: "users_manage", label: "User Management", icon: Users, roles: ["admin"] },
     { id: "admin_log", label: "Activity Log", icon: ScrollText, roles: ["admin"] },
     { id: "achievements", label: "Achievements", icon: Trophy, roles: ["admin"] },
@@ -505,6 +508,18 @@ export default function App() {
                   hideOnMobileSearch={showMobileSearch}
                   onOpenMerchantModal={() => setIsMerchantApplyOpen(true)}
                 />
+
+                {/* Mobile Admin Quick Access Button */}
+                {role === "admin" && (
+                  <button
+                    onClick={() => setIsAdminMenuOpen(true)}
+                    className="md:hidden px-2.5 py-1.5 rounded-xl bg-stone-900 text-white text-xs font-black flex items-center gap-1 shadow-xs cursor-pointer shrink-0"
+                    title="เมนูแอดมินสำหรับมือถือ"
+                  >
+                    <ShieldCheck size={14} className="text-rose-400" />
+                    <span className="text-[10px]">แอดมิน</span>
+                  </button>
+                )}
               </div>
             </header>
 
@@ -576,6 +591,11 @@ export default function App() {
               {tab === "jigsaw_manage" && (
                 <ProtectedRoute allowedRoles={["admin"]} onGoHome={() => setTab("explore")}>
                   <AdminJigsawManagePage />
+                </ProtectedRoute>
+              )}
+              {tab === "banners_manage" && (
+                <ProtectedRoute allowedRoles={["admin"]} onGoHome={() => setTab("explore")}>
+                  <AdminBannerManagePage />
                 </ProtectedRoute>
               )}
             </main>
@@ -652,6 +672,76 @@ export default function App() {
               setTab("jigsaw");
             }}
           />
+
+          {/* 📱 Mobile Admin Drawer Modal */}
+          {isAdminMenuOpen && (
+            <div className="fixed inset-0 bg-stone-950/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in md:hidden">
+              <div className="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl border w-full max-w-md overflow-hidden p-5 space-y-4" style={{ borderColor: C.line }}>
+                <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: C.line }}>
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck size={20} className="text-rose-500" />
+                    <h3 className="text-sm font-black text-stone-900">เมนูแอดมินสำหรับมือถือ</h3>
+                  </div>
+                  <button
+                    onClick={() => setIsAdminMenuOpen(false)}
+                    className="p-1.5 rounded-full hover:bg-stone-100 text-stone-500 transition cursor-pointer"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    onClick={() => { setTab("banners_manage"); setIsAdminMenuOpen(false); }}
+                    className={`p-3.5 rounded-2xl border text-left flex flex-col justify-between transition cursor-pointer ${tab === "banners_manage" ? "bg-rose-50 border-rose-400 text-rose-950 font-black shadow-xs" : "bg-stone-50 hover:bg-stone-100 border-stone-200 text-stone-800 font-bold"}`}
+                  >
+                    <Image size={20} className="text-rose-500 mb-2" />
+                    <span className="text-xs">จัดการแบนเนอร์</span>
+                  </button>
+
+                  <button
+                    onClick={() => { setTab("admin"); setIsAdminMenuOpen(false); }}
+                    className={`p-3.5 rounded-2xl border text-left flex flex-col justify-between transition cursor-pointer ${tab === "admin" ? "bg-rose-50 border-rose-400 text-rose-950 font-black shadow-xs" : "bg-stone-50 hover:bg-stone-100 border-stone-200 text-stone-800 font-bold"}`}
+                  >
+                    <ShieldCheck size={20} className="text-amber-500 mb-2" />
+                    <span className="text-xs">คำขอเปิดร้าน</span>
+                  </button>
+
+                  <button
+                    onClick={() => { setTab("users_manage"); setIsAdminMenuOpen(false); }}
+                    className={`p-3.5 rounded-2xl border text-left flex flex-col justify-between transition cursor-pointer ${tab === "users_manage" ? "bg-rose-50 border-rose-400 text-rose-950 font-black shadow-xs" : "bg-stone-50 hover:bg-stone-100 border-stone-200 text-stone-800 font-bold"}`}
+                  >
+                    <Users size={20} className="text-blue-500 mb-2" />
+                    <span className="text-xs">จัดการผู้ใช้งาน</span>
+                  </button>
+
+                  <button
+                    onClick={() => { setTab("admin_log"); setIsAdminMenuOpen(false); }}
+                    className={`p-3.5 rounded-2xl border text-left flex flex-col justify-between transition cursor-pointer ${tab === "admin_log" ? "bg-rose-50 border-rose-400 text-rose-950 font-black shadow-xs" : "bg-stone-50 hover:bg-stone-100 border-stone-200 text-stone-800 font-bold"}`}
+                  >
+                    <ScrollText size={20} className="text-purple-500 mb-2" />
+                    <span className="text-xs">ประวัติการทำงาน</span>
+                  </button>
+
+                  <button
+                    onClick={() => { setTab("achievements"); setIsAdminMenuOpen(false); }}
+                    className={`p-3.5 rounded-2xl border text-left flex flex-col justify-between transition cursor-pointer ${tab === "achievements" ? "bg-rose-50 border-rose-400 text-rose-950 font-black shadow-xs" : "bg-stone-50 hover:bg-stone-100 border-stone-200 text-stone-800 font-bold"}`}
+                  >
+                    <Trophy size={20} className="text-amber-500 mb-2" />
+                    <span className="text-xs">ภารกิจและรางวัล</span>
+                  </button>
+
+                  <button
+                    onClick={() => { setTab("jigsaw_manage"); setIsAdminMenuOpen(false); }}
+                    className={`p-3.5 rounded-2xl border text-left flex flex-col justify-between transition cursor-pointer ${tab === "jigsaw_manage" ? "bg-rose-50 border-rose-400 text-rose-950 font-black shadow-xs" : "bg-stone-50 hover:bg-stone-100 border-stone-200 text-stone-800 font-bold"}`}
+                  >
+                    <Puzzle size={20} className="text-emerald-500 mb-2" />
+                    <span className="text-xs">จัดการจิ๊กซอว์</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </ReviewStampProvider>
     </PasswordGate>
