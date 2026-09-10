@@ -3,7 +3,9 @@ import { ExternalLink, Navigation, Crosshair, MapPin, Loader2, RefreshCw, Puzzle
 import { C, categories } from "../../constants/mockData";
 import { supabase } from "../../supabaseClient";
 import { useLang, localized } from "../../lib/i18n";
-import { MOCK_JIGSAW_QUESTS, JigsawPiece } from "../../constants/jigsawData";
+import { JigsawPiece } from "../../constants/jigsawData";
+import { useJigsawQuests } from "../../hooks/useJigsawQuests";
+import { useUserRole } from "../../hooks/useUserRole";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -31,6 +33,7 @@ interface MapViewProps {
   searchQuery?: string;
   onOpenScanner?: () => void;
   collectedJigsawPieces?: string[];
+  onNavigateTab?: (tab: string) => void;
 }
 
 const PIN_TYPE_FILTERS = [
@@ -79,7 +82,11 @@ export default function MapView({
   searchQuery = "",
   onOpenScanner,
   collectedJigsawPieces = [],
+  onNavigateTab,
 }: MapViewProps) {
+  const { quests } = useJigsawQuests();
+  const { isAdmin } = useUserRole();
+
   const [shops, setShops] = useState<Shop[]>([]);
   const [pinTypeFilter, setPinTypeFilter] = useState("All");
   const [regionFilter, setRegionFilter] = useState("All");
@@ -96,11 +103,11 @@ export default function MapView({
 
   const activeJigsawPieces: (JigsawPiece & { questTitle: string; questBadge: string; questId: string })[] =
     selectedQuestFilter === "all"
-      ? MOCK_JIGSAW_QUESTS.flatMap((q) =>
+      ? quests.flatMap((q) =>
           q.pieces.map((p) => ({ ...p, questTitle: q.title, questBadge: q.badge, questId: q.id }))
         )
-      : (MOCK_JIGSAW_QUESTS.find((q) => q.id === selectedQuestFilter)?.pieces || []).map((p) => {
-          const q = MOCK_JIGSAW_QUESTS.find((quest) => quest.id === selectedQuestFilter)!;
+      : (quests.find((q) => q.id === selectedQuestFilter)?.pieces || []).map((p) => {
+          const q = quests.find((quest) => quest.id === selectedQuestFilter)!;
           return { ...p, questTitle: q.title, questBadge: q.badge, questId: q.id };
         });
 
@@ -499,12 +506,12 @@ export default function MapView({
 
         {/* 🧩 Sub-filter Bar for Jigsaw Quests */}
         {pinTypeFilter === "jigsaw" && (
-          <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none w-full animate-fade-in pt-1">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none w-full animate-fade-in pt-1">
             <button
               onClick={() => {
                 setSelectedQuestFilter("all");
                 if (mapRef.current) {
-                  const allPts = MOCK_JIGSAW_QUESTS.flatMap((q) => q.pieces.map((p) => L.latLng(p.targetLat, p.targetLng)));
+                  const allPts = quests.flatMap((q) => q.pieces.map((p) => L.latLng(p.targetLat, p.targetLng)));
                   if (allPts.length > 0) {
                     mapRef.current.fitBounds(L.latLngBounds(allPts), { padding: [50, 50], maxZoom: 14 });
                   }
@@ -516,9 +523,9 @@ export default function MapView({
                   : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
               }`}
             >
-              🌟 ทั้งหมด ({MOCK_JIGSAW_QUESTS.length} เควสต์)
+              🌟 ทั้งหมด ({quests.length} เควสต์)
             </button>
-            {MOCK_JIGSAW_QUESTS.map((q) => {
+            {quests.map((q) => {
               const isCur = selectedQuestFilter === q.id;
               const emoji =
                 q.badge === "Gourmet Quest"
@@ -555,6 +562,18 @@ export default function MapView({
                 </button>
               );
             })}
+
+            {/* Admin shortcut button to manage & create jigsaws */}
+            {isAdmin && (
+              <button
+                onClick={() => onNavigateTab?.("jigsaw_manage")}
+                className="ml-auto px-3 py-1 rounded-full text-[10.5px] font-black shrink-0 transition cursor-pointer border border-orange-300 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-xs flex items-center gap-1.5"
+                title="ไปยังหน้าแดชบอร์ดจัดการและสร้างจุดสแกนจิ๊กซอว์"
+              >
+                <Puzzle size={12} strokeWidth={2.5} />
+                <span>+ จัดการ/สร้างจุดจิ๊กซอว์ (Admin)</span>
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -607,7 +626,7 @@ export default function MapView({
                     🧩
                   </div>
                   {(() => {
-                    const parentQuest = MOCK_JIGSAW_QUESTS.find((q) => q.pieces.some((p) => p.id === selectedJigsawPiece.id));
+                    const parentQuest = quests.find((q) => q.pieces.some((p) => p.id === selectedJigsawPiece.id));
                     return (
                       <div className="leading-tight min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">

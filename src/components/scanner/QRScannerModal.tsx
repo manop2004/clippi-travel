@@ -14,7 +14,8 @@ import {
   Info,
 } from "lucide-react";
 import { haversineDistance, formatDistance } from "../../lib/geoHelpers";
-import { MOCK_JIGSAW_QUESTS, JigsawPiece } from "../../constants/jigsawData";
+import { JigsawPiece } from "../../constants/jigsawData";
+import { useJigsawQuests } from "../../hooks/useJigsawQuests";
 
 interface QRScannerModalProps {
   isOpen: boolean;
@@ -31,6 +32,8 @@ export default function QRScannerModal({
   onStampCollected,
   onViewBoard,
 }: QRScannerModalProps) {
+  const { quests } = useJigsawQuests();
+
   // GPS State
   const [gpsStatus, setGpsStatus] = useState<"idle" | "checking" | "granted" | "denied" | "unavailable">("idle");
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number; accuracy: number } | null>(null);
@@ -46,7 +49,13 @@ export default function QRScannerModal({
   // Manual/Dev Input
   const [manualCode, setManualCode] = useState("");
   const [activeTab, setActiveTab] = useState<"camera" | "dev">("camera");
-  const [simSelectedQuestId, setSimSelectedQuestId] = useState<string>(MOCK_JIGSAW_QUESTS[0]?.id || "");
+  const [simSelectedQuestId, setSimSelectedQuestId] = useState<string>("");
+
+  useEffect(() => {
+    if (quests.length > 0 && (!simSelectedQuestId || !quests.some((q) => q.id === simSelectedQuestId))) {
+      setSimSelectedQuestId(quests[0].id);
+    }
+  }, [quests, simSelectedQuestId]);
 
   // Result Modal State
   const [scanResult, setScanResult] = useState<{
@@ -212,7 +221,7 @@ export default function QRScannerModal({
     stopCamera();
 
     // 4.1 ตรวจสอบว่าตรงกับชิ้นส่วนจิ๊กซอว์หรือไม่
-    for (const quest of MOCK_JIGSAW_QUESTS) {
+    for (const quest of quests) {
       const piece = quest.pieces.find(
         (p) => p.qrCodeValue.toLowerCase() === trimmed.toLowerCase() || p.id === trimmed
       );
@@ -292,7 +301,7 @@ export default function QRScannerModal({
     // ประมวลผลรหัสทันที
     setTimeout(() => {
       const dist = haversineDistance(simLat, simLng, piece.targetLat, piece.targetLng);
-      for (const quest of MOCK_JIGSAW_QUESTS) {
+      for (const quest of quests) {
         if (quest.pieces.some((p) => p.id === piece.id)) {
           onPieceCollected(quest.id, piece.id, piece);
           setScanResult({
@@ -570,7 +579,7 @@ export default function QRScannerModal({
 
               {/* เลือกเควสต์ใน Dev Simulator */}
               <div className="flex gap-1.5 overflow-x-auto pb-1.5 scrollbar-none">
-                {MOCK_JIGSAW_QUESTS.map((quest) => {
+                {quests.map((quest) => {
                   const isCur = quest.id === simSelectedQuestId;
                   return (
                     <button
@@ -589,7 +598,7 @@ export default function QRScannerModal({
               </div>
 
               <div className="space-y-2">
-                {(MOCK_JIGSAW_QUESTS.find((q) => q.id === simSelectedQuestId) || MOCK_JIGSAW_QUESTS[0]).pieces.map((piece, idx) => {
+                {((quests.find((q) => q.id === simSelectedQuestId) || quests[0])?.pieces || []).map((piece, idx) => {
                   const currentDistance = userCoords
                     ? haversineDistance(userCoords.lat, userCoords.lng, piece.targetLat, piece.targetLng)
                     : null;
