@@ -214,6 +214,28 @@ const dict: Record<string, Record<Lang, string>> = {
   "activity.review":        { en: "reviewed {shop}",         th: "รีวิว {shop}",                jp: "{shop} をレビュー" },
   "activity.badge":         { en: "unlocked {badge} badge",  th: "ปลดล็อกเหรียญ {badge}",       jp: "{badge} バッジを獲得" },
   "activity.aPlace":        { en: "a place",                 th: "ร้านหนึ่ง",                    jp: "ある店舗" },
+  // ── Achievement / Stamp celebration popup ──
+  "celebration.stampLabel":       { en: "Stamp Collected", th: "เก็บแสตมป์สำเร็จ", jp: "スタンプ獲得" },
+  "celebration.stampTitle":       { en: "Nice! You got a new stamp 🎉", th: "เยี่ยม! ได้แสตมป์ใหม่แล้ว 🎉", jp: "やった！新しいスタンプをゲット 🎉" },
+  "celebration.stampDesc":        { en: "You checked in at {shop}. Keep collecting!", th: "คุณเช็คอินที่ {shop} เรียบร้อยแล้ว เก็บต่อไปเรื่อยๆ นะ!", jp: "{shop} にチェックインしました。この調子で集めよう！" },
+  "celebration.achievementLabel": { en: "Achievement Unlocked", th: "ปลดล็อกความสำเร็จใหม่", jp: "実績を解除しました" },
+  "celebration.next":             { en: "Next", th: "ถัดไป", jp: "次へ" },
+  "celebration.awesome":          { en: "Awesome!", th: "เยี่ยมไปเลย!", jp: "やった！" },
+  // ── Campaign banner (Explore page) ──
+  "campaign.sectionTitle": { en: "Campaigns & Rewards", th: "แคมเปญและของรางวัล", jp: "キャンペーン＆特典" },
+  "campaign.sectionSub":   { en: "Join in, complete missions, win prizes", th: "เข้าร่วมกิจกรรม ทำภารกิจ ลุ้นรับของรางวัล", jp: "参加してミッションを達成し、賞品をゲットしよう" },
+  "campaign.slide1Tag":    { en: "Monthly Mission", th: "ภารกิจประจำเดือน", jp: "月間ミッション" },
+  "campaign.slide1Title":  { en: "Stamp Hunt Challenge", th: "ภารกิจล่าแสตมป์ประจำเดือน", jp: "スタンプハントチャレンジ" },
+  "campaign.slide1Desc":   { en: "Collect 5 stamps this month for a bonus badge + partner-shop gift.", th: "เก็บแสตมป์ให้ครบ 5 ดวงภายในเดือนนี้ รับเหรียญพิเศษ + ของที่ระลึกจากร้านค้าพันธมิตร", jp: "今月中にスタンプを5個集めると、限定バッジ＋提携店舗の記念品がもらえます。" },
+  "campaign.slide1Cta":    { en: "Start collecting", th: "เริ่มเก็บแสตมป์", jp: "スタンプを集める" },
+  "campaign.slide2Tag":    { en: "Photo Contest", th: "ประกวดรีวิว", jp: "フォトコンテスト" },
+  "campaign.slide2Title":  { en: "Best Review Contest", th: "ประกวดรีวิวสุดปัง", jp: "ベストレビューコンテスト" },
+  "campaign.slide2Desc":   { en: "Write a review with photos for a chance to win weekly shop discounts.", th: "เขียนรีวิวพร้อมรูปสวยๆ ลุ้นรับส่วนลดร้านค้า/ของรางวัลประจำสัปดาห์", jp: "写真付きレビューを投稿して、週替わりの店舗割引をゲットするチャンス！" },
+  "campaign.slide2Cta":    { en: "Write a review", th: "เขียนรีวิวเลย", jp: "レビューを書く" },
+  "campaign.slide3Tag":    { en: "Invite Friends", th: "ชวนเพื่อน", jp: "友達を招待" },
+  "campaign.slide3Title":  { en: "Invite & Earn XP", th: "ชวนเพื่อนแลก XP", jp: "招待してXPをゲット" },
+  "campaign.slide3Desc":   { en: "Share your profile link — you and your friend both get bonus XP.", th: "แชร์ลิงก์โปรไฟล์ชวนเพื่อนมาสมัคร รับ XP โบนัสทั้งสองฝ่าย", jp: "プロフィールリンクをシェアすると、あなたも友達もボーナスXPがもらえます。" },
+  "campaign.slide3Cta":    { en: "Invite a friend", th: "ชวนเพื่อนเลย", jp: "友達を招待する" },
 };
 
 interface LangCtxType {
@@ -244,9 +266,22 @@ export function localized<T extends Record<string, any>>(
   lang: Lang
 ): string {
   if (!row) return "";
-  if (lang === "en") return row[field] ?? "";
-  const v = row[`${field}_${lang}`];
-  return v && String(v).trim() ? v : (row[field] ?? "");
+  let val = "";
+  if (lang === "en") val = row[field] ?? "";
+  else {
+    const v = row[`${field}_${lang}`];
+    val = v && String(v).trim() ? v : (row[field] ?? "");
+  }
+  return String(val)
+    .replace(/\[SCHEDULE:.*?\]/g, "")
+    .replace(/\[RULES:.*?\]/g, "")
+    .replace(/\[STAMP:.*?\]/g, "")
+    .replace(/,?"holidays":\[.*?\],?"is_closed_today":.*?\}/g, "")
+    .replace(/,?"holidays":\[.*?\}/g, "")
+    .replace(/\{"open_time":.*?\}/g, "")
+    .replace(/\[RULES:.*?$/g, "")
+    .replace(/\[SCHEDULE:.*?$/g, "")
+    .trim();
 }
 
 // ---- ปุ่มสลับภาษา (วางบน header ข้างค้นหา/กระดิ่ง) ----

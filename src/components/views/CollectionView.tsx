@@ -7,6 +7,7 @@ import StarRow from "../StarRow";
 import { MapPin, Building2 } from "lucide-react";
 import { useLang, localized } from "../../lib/i18n";
 import ClippiMascot from "../ClippiMascot";
+import StampSealRenderer from "../StampSealRenderer";
 
 const REGIONS = ["Kanto", "Kansai", "Hokkaido", "Tohoku", "Chubu", "Chugoku", "Kyushu & Okinawa", "Shikoku"];
 const REGION_FILTERS = [{ id: "All", label: "All" }, ...REGIONS.map(r => ({ id: r, label: r }))];
@@ -167,15 +168,8 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
                   className="p-3.5 rounded-2xl bg-white border text-center flex flex-col items-center justify-center min-h-[120px] hover:shadow-xs transition cursor-pointer"
                   style={{ borderColor: C.line, borderLeft: `3px solid ${C.accent}` }}
                 >
-                  <div
-                    className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center text-lg mb-2"
-                    style={{ background: C.accentSoft, border: `2px dashed ${C.accent}` }}
-                  >
-                    {place?.image_url ? (
-                      <img src={place.image_url} alt={shopName} className="w-full h-full object-cover" loading="lazy" />
-                    ) : (
-                      <Building2 size={20} className="text-amber-800" />
-                    )}
+                  <div className="mb-2.5">
+                    <StampSealRenderer shopRecord={place} shopName={shopName} size="md" isCollected={true} />
                   </div>
                   <p className="text-[9px] font-black leading-tight" style={{ color: C.ink }}>
                     {shopName}
@@ -210,15 +204,8 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
                   className="p-3.5 rounded-2xl bg-white border text-center flex flex-col items-center justify-center min-h-[120px] hover:shadow-xs transition cursor-pointer"
                   style={{ borderColor: C.line }}
                 >
-                  <div
-                    className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center text-lg mb-2"
-                    style={{ background: "#EFE5DD", border: "2px dashed #8A7870", filter: "grayscale(1) opacity(0.4)" }}
-                  >
-                    {place.image_url ? (
-                      <img src={place.image_url} alt={shopName} className="w-full h-full object-cover" loading="lazy" />
-                    ) : (
-                      <Building2 size={20} className="text-stone-400" />
-                    )}
+                  <div className="mb-2.5">
+                    <StampSealRenderer shopRecord={place} shopName={shopName} size="md" isCollected={false} />
                   </div>
                   <p className="text-[10px] font-black leading-tight" style={{ color: C.ink }}>
                     {shopName}

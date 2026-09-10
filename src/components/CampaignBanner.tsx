@@ -1,0 +1,106 @@
+import React from "react";
+import { Gift, Camera, Users, LucideIcon } from "lucide-react";
+import { C } from "../constants/mockData";
+import Carousel from "./Carousel";
+import { useLang } from "../lib/i18n";
+
+// 3 ไอเดียแคมเปญเพื่อดึงคนให้เข้ามาเล่น/ใช้แอปต่อเนื่อง:
+//  1) ภารกิจล่าแสตมป์ประจำเดือน (เป้าหมายจำนวน + ของรางวัล)
+//  2) ประกวดรีวิวสุดปัง (UGC + รูปภาพ ลุ้นรางวัล)
+//  3) ชวนเพื่อนแลก XP (referral loop)
+interface CampaignSlide {
+  key: string;
+  icon: LucideIcon;
+  gradient: string;
+  tagKey: string;
+  titleKey: string;
+  descKey: string;
+  ctaKey: string;
+}
+
+const SLIDES: CampaignSlide[] = [
+  {
+    key: "stampRally",
+    icon: Gift,
+    gradient: "linear-gradient(135deg, #FD775C 0%, #E31E27 100%)",
+    tagKey: "campaign.slide1Tag",
+    titleKey: "campaign.slide1Title",
+    descKey: "campaign.slide1Desc",
+    ctaKey: "campaign.slide1Cta",
+  },
+  {
+    key: "reviewContest",
+    icon: Camera,
+    gradient: "linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)",
+    tagKey: "campaign.slide2Tag",
+    titleKey: "campaign.slide2Title",
+    descKey: "campaign.slide2Desc",
+    ctaKey: "campaign.slide2Cta",
+  },
+  {
+    key: "referFriend",
+    icon: Users,
+    gradient: "linear-gradient(135deg, #10B981 0%, #047857 100%)",
+    tagKey: "campaign.slide3Tag",
+    titleKey: "campaign.slide3Title",
+    descKey: "campaign.slide3Desc",
+    ctaKey: "campaign.slide3Cta",
+  },
+];
+
+interface CampaignBannerProps {
+  // เรียกกลับเมื่อกดปุ่ม CTA บนสไลด์ ให้หน้าแม่ (ExploreView) ตัดสินใจว่าจะพาไปหน้าไหน
+  onCtaClick?: (slideKey: string) => void;
+}
+
+export default function CampaignBanner({ onCtaClick }: CampaignBannerProps) {
+  const { t } = useLang();
+
+  return (
+    <div className="w-full min-w-0">
+      <div className="mb-4">
+        <h2 className="text-lg font-black tracking-tight" style={{ color: C.ink }}>
+          {t("campaign.sectionTitle")}
+        </h2>
+        <p className="text-[11px] font-semibold text-[#555555] mt-0.5">
+          {t("campaign.sectionSub")}
+        </p>
+      </div>
+
+      <Carousel
+        items={SLIDES}
+        keyExtractor={(s) => s.key}
+        desktopClassName="md:grid md:grid-cols-3"
+        renderItem={(slide) => {
+          const Icon = slide.icon;
+          return (
+            <div
+              onClick={() => onCtaClick?.(slide.key)}
+              className="w-full rounded-2xl overflow-hidden relative flex flex-col justify-between p-5 text-white min-h-[172px] cursor-pointer hover:shadow-lg transition"
+              style={{ background: slide.gradient }}
+            >
+              <div className="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white/10 blur-xl pointer-events-none" />
+
+              <div className="z-10">
+                <span className="inline-flex items-center gap-1 text-[9px] font-black px-2.5 py-1 rounded-full bg-white/25 backdrop-blur-md uppercase tracking-wider mb-2">
+                  <Icon size={11} /> {t(slide.tagKey)}
+                </span>
+                <h3 className="text-sm font-black leading-snug drop-shadow-xs">{t(slide.titleKey)}</h3>
+                <p className="text-[11px] font-medium text-white/90 mt-1.5 leading-relaxed">
+                  {t(slide.descKey)}
+                </p>
+              </div>
+
+              <span
+                className="z-10 mt-3 inline-flex w-fit items-center gap-1 text-[10px] font-black px-3 py-1.5 rounded-full bg-white/95"
+                style={{ color: C.accentDeep }}
+              >
+                {t(slide.ctaKey)} →
+              </span>
+            </div>
+          );
+        }}
+      />
+    </div>
+  );
+}

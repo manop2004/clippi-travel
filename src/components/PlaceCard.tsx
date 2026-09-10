@@ -3,6 +3,7 @@ import { C } from "../constants/mockData";
 import StarRow from "./StarRow";
 import { useLang, localized } from "../lib/i18n";
 import { Store } from "lucide-react";
+import { getShopStatusToday } from "../lib/scheduleHelpers";
 
 export interface Place {
   id: string | number;
@@ -48,16 +49,20 @@ export default function PlaceCard({ place, onClick, compact = false }: PlaceCard
   const emoji = getShopEmoji(place.shop_name || place.name || "");
   const rating = place.rating || 0;
   const reviewsCount = place.reviews_count || 0;
+  const statusInfo = getShopStatusToday(place);
 
   if (compact) {
     return (
       <div onClick={onClick} className="p-3.5 rounded-2xl bg-white border cursor-pointer" style={{ borderColor: C.line }}>
-        <div className="h-16 rounded-xl overflow-hidden mb-2 flex items-center justify-center text-2xl" style={{ background: C.accentSoft }}>
+        <div className="h-16 rounded-xl overflow-hidden mb-2 relative flex items-center justify-center text-2xl" style={{ background: C.accentSoft }}>
           {place.image_url ? (
             <img src={place.image_url} alt={shopName} className="w-full h-full object-cover" loading="lazy" />
           ) : (
             <Store size={22} className="text-amber-800" />
           )}
+          <span className={`absolute top-1.5 right-1.5 px-2 py-0.5 rounded-full text-[8px] font-black backdrop-blur-md shadow-xs ${statusInfo.badgeBg}`}>
+            {statusInfo.badgeText}
+          </span>
         </div>
         <span className="text-[8px] font-black tracking-wider uppercase block truncate" style={{ color: C.accentDeep }}>{prefecture}</span>
         <h3 className="text-xs font-black leading-tight mt-0.5 truncate" style={{ color: C.ink }}>{shopName}</h3>
@@ -71,14 +76,17 @@ export default function PlaceCard({ place, onClick, compact = false }: PlaceCard
   }
 
   return (
-    <div onClick={onClick} className="w-[180px] min-w-[180px] md:w-auto md:min-w-0 shrink-0 snap-align-start rounded-2xl bg-white p-4 border transition-all duration-200 hover:shadow-md cursor-pointer flex flex-col justify-between h-[210px] sm:h-[220px]" style={{ borderColor: C.line }}>
+    <div onClick={onClick} className="w-[180px] min-w-[180px] md:w-auto md:min-w-0 shrink-0 snap-align-start rounded-2xl bg-white p-4 border transition-all duration-200 hover:shadow-md cursor-pointer flex flex-col justify-between h-[215px] sm:h-[225px]" style={{ borderColor: C.line }}>
       <div>
-        <div className="h-20 rounded-xl overflow-hidden mb-3 shrink-0 select-none flex items-center justify-center text-3xl" style={{ background: C.accentSoft }}>
+        <div className="h-20 rounded-xl overflow-hidden mb-3 relative shrink-0 select-none flex items-center justify-center text-3xl" style={{ background: C.accentSoft }}>
           {place.image_url ? (
             <img src={place.image_url} alt={shopName} className="w-full h-full object-cover" loading="lazy" />
           ) : (
             <Store size={26} className="text-amber-800" />
           )}
+          <span className={`absolute top-1.5 right-1.5 px-2 py-0.5 rounded-full text-[8px] font-black backdrop-blur-md shadow-xs ${statusInfo.badgeBg}`}>
+            {statusInfo.badgeText}
+          </span>
         </div>
         <span className="text-[8px] font-black tracking-wider uppercase block truncate" style={{ color: C.accentDeep }}>{prefecture}</span>
         <h3 className="text-xs font-black leading-tight mt-0.5 truncate" style={{ color: C.ink }}>{shopName}</h3>

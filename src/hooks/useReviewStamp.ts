@@ -99,7 +99,7 @@ export async function getPlaces(): Promise<Place[]> {
   return data || [];
 }
 
-export async function getPlaceById(id: string): Promise<Place | null> {
+export async function getPlaceById(id: string | number): Promise<Place | null> {
   const { data, error } = await supabase
     .from("century_shops")
     .select("*")
@@ -292,4 +292,45 @@ export async function createPlaceSubmission(
   }
 
   return createdRecord;
+}
+
+// Achievement hooks - used to detect newly unlocked achievements after an
+// action (check-in / review) so the UI can celebrate them.
+export async function getUserBadgeCodes(userId: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("user_badges")
+    .select("badge_type")
+    .eq("user_id", userId);
+
+  if (error) {
+    console.error("Error fetching user badges:", error);
+    return [];
+  }
+
+  return (data ?? []).map((row: any) => row.badge_type as string);
+}
+
+// Asks the DB to (re)evaluate achievement rules for this user and award any
+// newly-earned badges into user_badges. Safe to call often (idempotent).
+export async function checkAndAwardAchievements(userId: string): Promise<void> {
+  const { error } = await supabase.rpc("check_and_award_achievements", { p_user_id: userId });
+  if (error) {
+    console.error("Error checking/awarding achievements:", error);
+  }
+}
+
+export async function getAchievementsByCodes(codes: string[]): Promise<any[]> {
+  if (codes.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("achievements")
+    .select("code, name, description, icon")
+    .in("code", codes);
+
+  if (error) {
+    console.error("Error fetching achievement details:", error);
+    return [];
+  }
+
+  return data ?? [];
 }
