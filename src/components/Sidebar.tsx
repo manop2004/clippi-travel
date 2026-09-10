@@ -26,6 +26,7 @@ export default function Sidebar({ activeTab, onTabChange, onAddPlaceClick }: Sid
     { id: "users_manage", label: "User Management", icon: Users, roles: ["admin"] },
     { id: "admin_log", label: "Activity Log", icon: ScrollText, roles: ["admin"] },
     { id: "achievements", label: "Achievements", icon: Trophy, roles: ["admin"] },
+    { id: "jigsaw_manage", label: "Manage Jigsaws", icon: Puzzle, roles: ["admin"] },
   ];
 
   const navTabs = allNavTabs.filter((item) => item.roles.includes(role));

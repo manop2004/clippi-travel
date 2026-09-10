@@ -1,10 +1,11 @@
 // src/components/jigsaw/JigsawBoardView.tsx
 import React, { useState } from "react";
 import {
-  MOCK_JIGSAW_QUESTS,
   JigsawQuest,
   JigsawPiece,
 } from "../../constants/jigsawData";
+import { useJigsawQuests } from "../../hooks/useJigsawQuests";
+import { useUserRole } from "../../hooks/useUserRole";
 import {
   Lock,
   Sparkles,
@@ -18,6 +19,7 @@ import {
   RotateCcw,
   Share2,
   ExternalLink,
+  Settings,
 } from "lucide-react";
 import ClippiMascot from "../ClippiMascot";
 
@@ -25,22 +27,43 @@ interface JigsawBoardViewProps {
   collectedPieceIds: string[]; // ['p1', 'p2', ...]
   onOpenScanner: () => void;
   onResetProgress?: () => void;
+  onNavigateTab?: (tab: string) => void;
 }
 
 export default function JigsawBoardView({
   collectedPieceIds,
   onOpenScanner,
   onResetProgress,
+  onNavigateTab,
 }: JigsawBoardViewProps) {
-  const [selectedQuest] = useState<JigsawQuest>(MOCK_JIGSAW_QUESTS[0]);
+  const { quests } = useJigsawQuests();
+  const { isAdmin } = useUserRole();
+  const [selectedQuestId, setSelectedQuestId] = useState<string>(quests[0]?.id || "");
+  const selectedQuest = quests.find((q) => q.id === selectedQuestId) || quests[0];
   const [selectedPieceForDetail, setSelectedPieceForDetail] = useState<JigsawPiece | null>(null);
   const [copiedReward, setCopiedReward] = useState(false);
 
-  const totalPieces = selectedQuest.pieces.length;
-  const userPiecesCount = selectedQuest.pieces.filter((p) =>
+  // If selectedQuestId not found, fallback to first quest
+  const safeQuest = selectedQuest || {
+    id: "default",
+    title: "เควสต์จิ๊กซอว์",
+    badge: "Quest",
+    category: "General",
+    description: "",
+    rewardTitle: "",
+    rewardDescription: "",
+    rewardCode: "",
+    fullImageUrl: "",
+    gridRows: 2,
+    gridCols: 2,
+    pieces: [],
+  };
+
+  const totalPieces = safeQuest.pieces.length || 4;
+  const userPiecesCount = safeQuest.pieces.filter((p) =>
     collectedPieceIds.includes(p.id)
   ).length;
-  const isComplete = userPiecesCount === totalPieces;
+  const isComplete = totalPieces > 0 && userPiecesCount >= totalPieces;
   const progressPercent = Math.round((userPiecesCount / totalPieces) * 100);
 
   const copyCode = (code: string) => {
@@ -52,24 +75,80 @@ export default function JigsawBoardView({
   return (
     <div className="space-y-6 animate-fade-in w-full min-w-0">
       
+      {/* 🧭 Quest Selector Tabs */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none w-full">
+        {quests.map((quest) => {
+          const isSelected = quest.id === (selectedQuest?.id || safeQuest.id);
+          const questPiecesCollected = quest.pieces.filter((p) => collectedPieceIds.includes(p.id)).length;
+          const questComplete = quest.pieces.length > 0 && questPiecesCollected >= quest.pieces.length;
+
+          return (
+            <button
+              key={quest.id}
+              onClick={() => setSelectedQuestId(quest.id)}
+              className={`px-4 py-2.5 rounded-2xl text-xs font-black shrink-0 border transition-all duration-200 flex items-center gap-2 cursor-pointer shadow-xs ${
+                isSelected
+                  ? "bg-stone-900 text-white border-stone-900 shadow-md scale-102"
+                  : "bg-white text-stone-700 border-stone-200 hover:border-orange-300 hover:bg-stone-50"
+              }`}
+            >
+              <span className="text-sm">
+                {quest.badge === "Gourmet Quest"
+                  ? "🍡"
+                  : quest.badge === "Kyoto Classic"
+                  ? "⛩️"
+                  : quest.badge === "Tokyo Modern"
+                  ? "🗼"
+                  : quest.badge === "Food Paradise"
+                  ? "🐙"
+                  : quest.badge === "Fuji Adventure"
+                  ? "🗻"
+                  : "🏛️"}
+              </span>
+              <span>{quest.title.split(":")[0]}</span>
+              <span className={`text-[9.5px] px-2 py-0.5 rounded-full font-bold ${
+                questComplete
+                  ? "bg-emerald-500 text-white"
+                  : isSelected
+                  ? "bg-orange-500 text-white"
+                  : "bg-stone-100 text-stone-600"
+              }`}>
+                {questPiecesCollected}/{quest.pieces.length}
+              </span>
+            </button>
+          );
+        })}
+
+        {isAdmin && (
+          <button
+            onClick={() => onNavigateTab?.("jigsaw_manage")}
+            className="px-3.5 py-2.5 rounded-2xl text-xs font-black shrink-0 border border-orange-300 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-xs flex items-center gap-1.5 cursor-pointer ml-auto"
+            title="ไปยังหน้าจัดการเควสต์จิ๊กซอว์"
+          >
+            <Settings size={13} />
+            <span>⚙️ จัดการเควสต์ (Admin)</span>
+          </button>
+        )}
+      </div>
+
       {/* 🌟 Top Hero Quest Banner */}
       <div className="bg-gradient-to-r from-stone-900 via-orange-950 to-stone-900 rounded-3xl p-5 sm:p-7 text-white shadow-xl relative overflow-hidden border border-orange-500/30">
         <div className="relative z-10 max-w-xl space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/25 border border-orange-400/40 text-[10px] font-black tracking-wider uppercase text-orange-400">
-              <Sparkles size={13} /> {selectedQuest.badge}
+              <Sparkles size={13} /> {safeQuest.badge}
             </span>
             <span className="text-[10px] font-bold text-stone-400">
-              {selectedQuest.category}
+              {safeQuest.category}
             </span>
           </div>
 
           <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white drop-shadow-sm">
-            {selectedQuest.title}
+            {safeQuest.title}
           </h2>
 
           <p className="text-xs text-stone-300 leading-relaxed">
-            {selectedQuest.description}
+            {safeQuest.description}
           </p>
 
           <div className="pt-3 flex flex-wrap items-center gap-3">
@@ -128,7 +207,7 @@ export default function JigsawBoardView({
           <div className="w-full flex items-center justify-between mb-4">
             <h3 className="font-black text-sm text-stone-900 flex items-center gap-2">
               <span>🖼️ กระดานภาพจิ๊กซอว์</span>
-              <span className="text-[10px] text-stone-400 font-bold">({selectedQuest.gridRows}x{selectedQuest.gridCols} ชิ้นส่วน)</span>
+              <span className="text-[10px] text-stone-400 font-bold">({safeQuest.gridRows}x{safeQuest.gridCols} ชิ้นส่วน)</span>
             </h3>
 
             {onResetProgress && userPiecesCount > 0 && (
@@ -144,7 +223,7 @@ export default function JigsawBoardView({
 
           {/* Jigsaw Frame Container */}
           <div className="relative w-full max-w-[340px] sm:max-w-[360px] aspect-square rounded-3xl overflow-hidden border-4 border-stone-900 bg-stone-950 shadow-2xl p-1.5 grid grid-cols-2 grid-rows-2 gap-1.5">
-            {selectedQuest.pieces.map((piece, idx) => {
+            {safeQuest.pieces.map((piece, idx) => {
               const isCollected = collectedPieceIds.includes(piece.id);
 
               // คำนวณพิกัด Background Position สำหรับตัดชิ้น 2x2
@@ -167,7 +246,7 @@ export default function JigsawBoardView({
                   style={
                     isCollected
                       ? {
-                          backgroundImage: `url(${selectedQuest.fullImageUrl})`,
+                          backgroundImage: `url(${safeQuest.fullImageUrl})`,
                           backgroundSize: "200% 200%",
                           backgroundPosition: `${posX}% ${posY}%`,
                         }
@@ -218,10 +297,10 @@ export default function JigsawBoardView({
               </div>
               <div>
                 <h4 className="font-black text-emerald-950 text-base">
-                  {selectedQuest.rewardTitle}
+                  {safeQuest.rewardTitle}
                 </h4>
                 <p className="text-xs text-emerald-800 mt-1 leading-relaxed">
-                  {selectedQuest.rewardDescription}
+                  {safeQuest.rewardDescription}
                 </p>
               </div>
 
@@ -230,11 +309,11 @@ export default function JigsawBoardView({
                 <div className="text-left">
                   <span className="text-[9px] font-bold text-stone-400 uppercase block">รหัสส่วนลดรางวัล</span>
                   <span className="text-xs font-black text-emerald-700 font-mono tracking-wider">
-                    {selectedQuest.rewardCode}
+                    {safeQuest.rewardCode}
                   </span>
                 </div>
                 <button
-                  onClick={() => copyCode(selectedQuest.rewardCode)}
+                  onClick={() => copyCode(safeQuest.rewardCode)}
                   className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[10px] font-bold transition flex items-center gap-1 cursor-pointer"
                 >
                   {copiedReward ? <Check size={12} /> : <Copy size={12} />}
@@ -250,13 +329,13 @@ export default function JigsawBoardView({
           <div className="flex items-center justify-between">
             <h3 className="font-black text-sm text-stone-900 flex items-center gap-2">
               <MapPin size={16} className="text-[#FD775C]" />
-              <span>จุดล่าชิ้นส่วนตามสถานที่จริง ({selectedQuest.pieces.length} จุด)</span>
+              <span>จุดล่าชิ้นส่วนตามสถานที่จริง ({safeQuest.pieces.length} จุด)</span>
             </h3>
             <span className="text-[10px] font-bold text-stone-400">ต้องเปิด GPS ขณะสแกน</span>
           </div>
 
           <div className="space-y-3">
-            {selectedQuest.pieces.map((piece, idx) => {
+            {safeQuest.pieces.map((piece, idx) => {
               const isCollected = collectedPieceIds.includes(piece.id);
 
               return (
