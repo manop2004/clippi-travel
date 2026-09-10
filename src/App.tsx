@@ -79,6 +79,20 @@ export default function App() {
     if (tab !== "explore") setShowAllTrending(false);
   }, [tab]);
 
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setAuthLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setAuthLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   // Support direct route paths (e.g. /admin/review or #admin/review)
   useEffect(() => {
     const path = (window.location.pathname + window.location.hash).toLowerCase();
@@ -337,173 +351,7 @@ export default function App() {
     );
   }
 
-  // ROOT-LEVEL PENDING MERCHANT INTERCEPTOR
-  if (session && isPendingMerchant && role !== "admin" && role !== "store") {
-    return (
-      <div className="fixed inset-0 z-[99999] bg-stone-950/85 backdrop-blur-md flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full text-center shadow-2xl border border-amber-200 animate-fade-in space-y-5">
-          <div className="w-20 h-20 bg-amber-100 rounded-3xl flex items-center justify-center mx-auto text-4xl shadow-xs">
-            ⏳
-          </div>
-          <div>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 text-[10px] font-black tracking-wider uppercase mb-2">
-              Pending Admin Approval
-            </span>
-            <h2 className="text-xl font-black text-stone-900">บัญชีเจ้าของร้านค้าอยู่ระหว่างการรออนุมัติ</h2>
-            <p className="text-stone-500 text-xs mt-1 leading-relaxed">
-              ข้อมูลการลงทะเบียนและเอกสารสิทธิ์ร้านค้าของคุณถูกส่งไปยังทีมงานแอดมินแล้ว<br />
-              <strong className="text-amber-900 font-bold">คุณต้องรอให้แอดมินอนุมัติสิทธิ์ก่อน ถึงจะสามารถเข้าสู่ระบบและจัดการร้านค้าได้</strong>
-            </p>
-          </div>
 
-          {/* Status timeline */}
-          <div className="bg-stone-50 rounded-2xl p-4 border border-stone-200 text-left space-y-3 select-none">
-            <div className="flex items-center gap-3 text-xs">
-              <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px] font-bold">✓</div>
-              <div>
-                <p className="font-extrabold text-stone-900">1. ลงทะเบียน & แนบเอกสารสิทธิ์</p>
-                <p className="text-[10px] text-stone-500">ส่งข้อมูลร้านค้าเข้าสู่ระบบเรียบร้อย</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 text-xs">
-              <div className="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-[10px] font-bold animate-pulse">2</div>
-              <div>
-                <p className="font-extrabold text-amber-900">2. แอดมินตรวจสอบเอกสาร (กำลังดำเนินการ)</p>
-                <p className="text-[10px] text-amber-700 font-semibold">เจ้าหน้าที่กำลังตรวจสอบข้อมูลร้านค้าของคุณ</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 text-xs opacity-50">
-              <div className="w-6 h-6 rounded-full bg-stone-300 text-stone-600 flex items-center justify-center text-[10px] font-bold">3</div>
-              <div>
-                <p className="font-extrabold text-stone-800">3. เข้าใช้งานระบบ (Merchant Portal)</p>
-                <p className="text-[10px] text-stone-500">เปิดใช้งาน dashboard และเพิ่มร้านค้าได้เต็มรูปแบบ</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
-            <button
-              onClick={() => setIsMerchantApplyOpen(true)}
-              className="flex-1 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold py-3 px-4 rounded-xl text-xs transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
-            >
-              <span>✏️ แก้ไขข้อมูลร้านค้าที่ส่งไป</span>
-            </button>
-            <button
-              onClick={() => refreshRole()}
-              className="flex-1 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold py-3 px-4 rounded-xl text-xs transition cursor-pointer"
-            >
-              🔄 รีเฟรชสถานะ
-            </button>
-            <button
-              onClick={async () => {
-                await supabase.auth.signOut();
-                window.location.href = '/';
-              }}
-              className="bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-300 font-bold py-3 px-4 rounded-xl text-xs transition cursor-pointer"
-            >
-              ออกจากระบบ
-            </button>
-          </div>
-        </div>
-
-        <MerchantRegisterModal
-          isOpen={isMerchantApplyOpen}
-          onClose={() => setIsMerchantApplyOpen(false)}
-          onSuccess={() => {
-            setIsMerchantApplyOpen(false);
-            refreshRole();
-          }}
-          user={session?.user}
-        />
-      </div>
-    );
-  }
-
-  // ROOT-LEVEL REJECTED MERCHANT INTERCEPTOR
-  if (session && isRejectedMerchant && role !== "admin" && role !== "store") {
-    return (
-      <div className="fixed inset-0 z-[99999] bg-stone-950/85 backdrop-blur-md flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full text-center shadow-2xl border border-rose-200 animate-fade-in space-y-5 relative">
-          <div className="w-20 h-20 bg-rose-100 rounded-3xl flex items-center justify-center mx-auto text-4xl shadow-xs">
-            ❌
-          </div>
-          <div>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-100 text-rose-900 text-[10px] font-black tracking-wider uppercase mb-2">
-              Application Rejected / คำขอไม่ผ่านการอนุมัติ
-            </span>
-            <h2 className="text-xl font-black text-stone-900">คำขอลงทะเบียนเจ้าของร้านค้าไม่ผ่านการอนุมัติ</h2>
-            <p className="text-stone-500 text-xs mt-1 leading-relaxed">
-              คำขอสมัครสมาชิกเจ้าของร้านค้าของคุณไม่ผ่านการพิจารณาจากทีมงานแอดมิน<br />
-              <strong className="text-rose-900 font-bold">กรุณาตรวจสอบสาเหตุและแก้ไขข้อมูล/เอกสารเพื่อยื่นคำขอใหม่อีกครั้ง</strong>
-            </p>
-          </div>
-
-          {/* Rejection Cause Highlight Box */}
-          <div className="bg-rose-50 border border-rose-200 p-4 rounded-2xl text-left select-none">
-            <p className="text-[10px] font-black uppercase text-rose-500 tracking-wider mb-1 flex items-center gap-1">
-              ⚠️ สาเหตุที่ไม่ผ่านการอนุมัติ:
-            </p>
-            <p className="text-xs font-bold text-rose-950 leading-relaxed">
-              {`"${merchantRejectionReason || "ข้อมูลเอกสารหรือหลักฐานสิทธิ์ร้านค้าไม่ตรงตามเงื่อนไขที่กำหนด"}"`}
-            </p>
-          </div>
-
-          {/* Status timeline showing rejection */}
-          <div className="bg-stone-50 rounded-2xl p-4 border border-stone-200 text-left space-y-3 select-none">
-            <div className="flex items-center gap-3 text-xs">
-              <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px] font-bold">✓</div>
-              <div>
-                <p className="font-extrabold text-stone-900">1. ลงทะเบียน & แนบเอกสารสิทธิ์</p>
-                <p className="text-[10px] text-stone-500">ส่งข้อมูลร้านค้าเข้าสู่ระบบเรียบร้อย</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 text-xs">
-              <div className="w-6 h-6 rounded-full bg-rose-500 text-white flex items-center justify-center text-[10px] font-bold">✕</div>
-              <div>
-                <p className="font-extrabold text-rose-900">2. แอดมินตรวจสอบเอกสาร (ไม่ผ่านการอนุมัติ)</p>
-                <p className="text-[10px] text-rose-700 font-semibold">แอดมินปฏิเสธคำขอเนื่องจากสาเหตุข้างต้น</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 text-xs opacity-50">
-              <div className="w-6 h-6 rounded-full bg-stone-300 text-stone-600 flex items-center justify-center text-[10px] font-bold">3</div>
-              <div>
-                <p className="font-extrabold text-stone-800">3. เข้าใช้งานระบบ (Merchant Portal)</p>
-                <p className="text-[10px] text-stone-500">รอแก้ไขข้อมูลและได้รับการอนุมัติสิทธิ์</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex gap-3 pt-2">
-            <button
-              onClick={() => setIsMerchantApplyOpen(true)}
-              className="flex-1 bg-gradient-to-r from-[#FD775C] to-rose-600 hover:from-rose-600 hover:to-[#FD775C] text-white font-bold py-3 px-4 rounded-xl text-xs transition shadow-md cursor-pointer flex items-center justify-center gap-1.5 active:scale-98"
-            >
-              <span>🔄 แก้ไขข้อมูล & ยื่นคำขอใหม่</span>
-            </button>
-            <button
-              onClick={async () => {
-                await supabase.auth.signOut();
-                window.location.href = '/';
-              }}
-              className="flex-1 bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-300 font-bold py-3 px-4 rounded-xl text-xs transition cursor-pointer"
-            >
-              ออกจากระบบ (Logout)
-            </button>
-          </div>
-        </div>
-
-        <MerchantRegisterModal
-          isOpen={isMerchantApplyOpen}
-          onClose={() => setIsMerchantApplyOpen(false)}
-          onSuccess={() => {
-            setIsMerchantApplyOpen(false);
-            refreshRole();
-          }}
-          user={session?.user}
-        />
-      </div>
-    );
-  }
 
 
 
@@ -537,7 +385,12 @@ export default function App() {
       <ReviewStampProvider>
         <div className="min-h-screen flex w-full bg-[#FAF9F8] text-[#000000] font-sans overflow-x-hidden">
           {/* 🧭 Desktop Sidebar Navigation */}
-          <Sidebar activeTab={tab} onTabChange={setTab} onAddPlaceClick={() => setIsAddOpen(true)} />
+          <Sidebar
+            activeTab={tab}
+            onTabChange={setTab}
+            onAddPlaceClick={() => setIsAddOpen(true)}
+            onOpenMerchantModal={() => setIsMerchantApplyOpen(true)}
+          />
 
           {/* 💻 Main Content Wrapper */}
           <div className="flex-1 flex flex-col min-w-0 md:ml-64">
@@ -643,34 +496,16 @@ export default function App() {
                   <LangSwitcher />
                 </span>
 
-                {/* Bell Alert (admin-only notifications) */}
-                <NotificationBell hideOnMobileSearch={showMobileSearch} />
+                {/* Bell Alert (Notifications & Shop status tracking for all users) */}
+                <NotificationBell
+                  hideOnMobileSearch={showMobileSearch}
+                  onOpenMerchantModal={() => setIsMerchantApplyOpen(true)}
+                />
               </div>
             </header>
 
             {/* 📄 Main Workspace Pages */}
             <main className="flex-1 p-4 md:p-8 max-w-5xl mx-auto w-full pb-24 md:pb-8">
-              {isRejectedMerchant && (
-                <div className="mb-6 bg-rose-50 border border-rose-200 rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs animate-fade-in">
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-10 h-10 rounded-2xl bg-rose-600 text-white flex items-center justify-center shrink-0 font-extrabold text-lg shadow-xs">
-                      ❌
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-black text-rose-950">คำขอลงทะเบียนเจ้าของร้านค้าไม่ผ่านการอนุมัติ</h4>
-                      <p className="text-xs text-rose-800 mt-0.5">
-                        สาเหตุที่ไม่ผ่าน: <strong className="text-rose-950">{merchantRejectionReason || "ข้อมูลเอกสารหรือหลักฐานสิทธิ์ไม่ผ่านการตรวจสอบ"}</strong>
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setIsMerchantApplyOpen(true)}
-                    className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-2xl text-xs transition shadow-xs shrink-0 cursor-pointer flex items-center gap-2"
-                  >
-                    <span>🔄 แก้ไขข้อมูล & ยื่นคำขอใหม่</span>
-                  </button>
-                </div>
-              )}
               {tab === "explore" && (
                 showAllTrending ? (
                   <TrendingAllView
@@ -695,7 +530,12 @@ export default function App() {
                   onResetProgress={() => setCollectedPieceIds([])}
                 />
               )}
-              {tab === "profile" && <ProfileView />}
+              {tab === "profile" && (
+                <ProfileView
+                  onOpenMerchantModal={() => setIsMerchantApplyOpen(true)}
+                  onGoToStoreManage={() => setTab("store_manage")}
+                />
+              )}
               {(tab === "admin" || tab === "admin_review") && (
                 <ProtectedRoute allowedRoles={["admin"]} onGoHome={() => setTab("explore")}>
                   <AdminReviewView />
@@ -778,7 +618,7 @@ export default function App() {
               setIsMerchantApplyOpen(false);
               refreshRole();
             }}
-            user={session?.user}
+            user={roleUser || session?.user}
           />
           <QRScannerModal
             isOpen={isScannerOpen}

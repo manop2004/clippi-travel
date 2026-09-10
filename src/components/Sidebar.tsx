@@ -9,18 +9,19 @@ interface SidebarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   onAddPlaceClick: () => void;
+  onOpenMerchantModal?: () => void;
 }
 
-export default function Sidebar({ activeTab, onTabChange, onAddPlaceClick }: SidebarProps) {
+export default function Sidebar({ activeTab, onTabChange, onAddPlaceClick, onOpenMerchantModal }: SidebarProps) {
   const { t } = useLang();
-  const { role } = useUserRole();
+  const { role, isPendingMerchant, isRejectedMerchant } = useUserRole();
 
   const allNavTabs: { id: string; label: string; icon: any; roles: UserRole[] }[] = [
-    { id: "explore", label: t("nav.explore"), icon: Compass, roles: ["user", "store", "admin"] },
-    { id: "map", label: t("nav.map"), icon: MapPin, roles: ["user", "store", "admin"] },
-    { id: "collection", label: t("nav.collection"), icon: BookOpen, roles: ["user", "store", "admin"] },
-    { id: "jigsaw", label: "Jigsaw Quest", icon: Puzzle, roles: ["user", "store", "admin"] },
-    { id: "profile", label: t("nav.profile"), icon: User, roles: ["user", "store", "admin"] },
+    { id: "explore", label: t("nav.explore"), icon: Compass, roles: ["user", "pending_store", "store", "admin"] },
+    { id: "map", label: t("nav.map"), icon: MapPin, roles: ["user", "pending_store", "store", "admin"] },
+    { id: "collection", label: t("nav.collection"), icon: BookOpen, roles: ["user", "pending_store", "store", "admin"] },
+    { id: "jigsaw", label: "Jigsaw Quest", icon: Puzzle, roles: ["user", "pending_store", "store", "admin"] },
+    { id: "profile", label: t("nav.profile"), icon: User, roles: ["user", "pending_store", "store", "admin"] },
     { id: "store_manage", label: "Manage My Shop", icon: Store, roles: ["store", "admin"] },
     { id: "admin", label: "Admin Review", icon: ShieldCheck, roles: ["admin"] },
     { id: "users_manage", label: "User Management", icon: Users, roles: ["admin"] },
@@ -72,8 +73,30 @@ export default function Sidebar({ activeTab, onTabChange, onAddPlaceClick }: Sid
         </div>
       </div>
 
-      {/* Action Add Spot Button */}
-      <div className="pt-2 border-t" style={{ borderColor: C.line }}>
+      {/* Action Buttons */}
+      <div className="pt-2 border-t space-y-2" style={{ borderColor: C.line }}>
+        {(role === "user" || role === "pending_store") && onOpenMerchantModal && (
+          <button
+            onClick={onOpenMerchantModal}
+            className={`w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-2xl text-xs font-black shadow-xs transition cursor-pointer active:scale-98 text-white ${
+              isPendingMerchant
+                ? "bg-amber-500 hover:bg-amber-600"
+                : isRejectedMerchant
+                ? "bg-rose-600 hover:bg-rose-700"
+                : "bg-amber-500 hover:bg-amber-600"
+            }`}
+          >
+            <Store size={15} />
+            <span>
+              {isPendingMerchant
+                ? "⏳ คำขอเปิดร้านค้ารออนุมัติ"
+                : isRejectedMerchant
+                ? "🔄 แก้ไขคำขอเปิดร้านค้า"
+                : "🏬 สมัครเปิดร้านค้า"}
+            </span>
+          </button>
+        )}
+
         <button
           onClick={onAddPlaceClick}
           className="w-full py-3 px-4 rounded-2xl text-xs font-black text-white bg-[#FD775C] hover:bg-[#E31E27] transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-98"

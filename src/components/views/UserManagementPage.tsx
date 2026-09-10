@@ -21,7 +21,8 @@ import {
   Clock,
   Mail,
   MessageSquare,
-  MapPin
+  MapPin,
+  Megaphone
 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 import { C } from "../../constants/mockData";
@@ -29,6 +30,7 @@ import { ProtectedRoute } from "../auth/ProtectedRoute";
 import { UserRole } from "../../hooks/useUserRole";
 import { resolveUserDisplayName, resolveUserAvatarUrl, getDeletedUserIds } from "../../lib/activityHelpers";
 import { UserAvatar } from "../UserAvatar";
+import AdminAnnouncementModal from "../AdminAnnouncementModal";
 
 export default function UserManagementPage() {
   return (
@@ -48,6 +50,7 @@ function UserManagementContent() {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [banningId, setBanningId] = useState<string | null>(null);
   const [currentAdmin, setCurrentAdmin] = useState<any>(null);
+  const [isAnnouncementOpen, setIsAnnouncementOpen] = useState(false);
 
   // States for Assign Shop Modal
   const [selectedUserForAssign, setSelectedUserForAssign] = useState<any | null>(null);
@@ -586,16 +589,26 @@ function UserManagementContent() {
   return (
     <div className="space-y-6 w-full min-w-0 text-[#231C18]">
       {/* Page Header */}
-      <div className="flex items-center gap-3 bg-white p-6 rounded-3xl border shadow-xs" style={{ borderColor: C.line }}>
-        <div className="w-12 h-12 rounded-2xl bg-stone-100 border flex items-center justify-center text-[#231C18] shrink-0" style={{ borderColor: C.line }}>
-          <Users size={22} />
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border shadow-xs" style={{ borderColor: C.line }}>
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-2xl bg-stone-100 border flex items-center justify-center text-[#231C18] shrink-0" style={{ borderColor: C.line }}>
+            <Users size={22} />
+          </div>
+          <div>
+            <h2 className="text-lg font-black text-[#231C18]">User Management</h2>
+            <p className="text-xs text-[#8A7870] font-semibold mt-0.5">
+              จัดการสิทธิ์ผู้ใช้งาน บทบาทในระบบ และส่งประกาศแจ้งเตือนกระดิ่ง
+            </p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-lg font-black text-[#231C18]">User Management</h2>
-          <p className="text-xs text-[#8A7870] font-semibold mt-0.5">
-            จัดการสิทธิ์ผู้ใช้งาน บทบาทในระบบ และควบคุมการระงับบัญชี (Banning System)
-          </p>
-        </div>
+
+        <button
+          onClick={() => setIsAnnouncementOpen(true)}
+          className="px-4 py-2.5 rounded-2xl bg-[#FD775C] hover:bg-[#E31E27] text-white text-xs font-black shadow-md flex items-center gap-2 transition cursor-pointer active:scale-98"
+        >
+          <Megaphone size={16} />
+          <span>ส่งประกาศระบบ (Broadcast)</span>
+        </button>
       </div>
 
       {/* 📊 Summary KPI Cards */}
@@ -1358,6 +1371,12 @@ function UserManagementContent() {
           </div>
         </div>
       )}
+
+      {/* 📢 Admin Announcement Modal */}
+      <AdminAnnouncementModal
+        isOpen={isAnnouncementOpen}
+        onClose={() => setIsAnnouncementOpen(false)}
+      />
     </div>
   );
 }

@@ -11,6 +11,7 @@ import {
   Image as ImageIcon,
   Sun,
   Trash2,
+  Type,
 } from "lucide-react";
 import { C } from "../constants/mockData";
 import {
@@ -21,6 +22,7 @@ import {
   STAMP_SHADOW_EFFECTS,
   STAMP_BORDER_WIDTHS,
   STAMP_IMAGE_SIZES,
+  STAMP_FONT_STYLES,
   getShopStampDesign,
 } from "../lib/stampHelpers";
 import StampSealRenderer from "./StampSealRenderer";
@@ -451,11 +453,13 @@ export default function StampDesignerModal({
           {/* TAB 3: ข้อความตราประทับ */}
           {activeTab === "text" && (
             <div className="space-y-4 pt-1">
-              {/* Top Text Section */}
-              <div className="p-3.5 rounded-2xl border bg-stone-50/70 space-y-2.5" style={{ borderColor: C.line }}>
+
+              {/* ⬆️ Top Text Section */}
+              <div className="p-4 rounded-2xl border bg-stone-50/80 space-y-3" style={{ borderColor: C.line }}>
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-black text-[#231C18]">
-                    ข้อความหลักด้านบน (Header Text):
+                  <label className="text-xs font-black text-[#231C18] flex items-center gap-1.5">
+                    <Type size={14} className="text-rose-600" />
+                    <span>ข้อความหลักด้านบน (Header Text):</span>
                   </label>
                   <div className="flex items-center gap-1 bg-white p-0.5 rounded-xl border border-stone-200">
                     <button
@@ -484,7 +488,7 @@ export default function StampDesignerModal({
                 </div>
 
                 {design.show_custom_text !== false && (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <input
                       type="text"
                       value={design.custom_text || ""}
@@ -494,6 +498,34 @@ export default function StampDesignerModal({
                       className="w-full px-3.5 py-2 rounded-xl border text-xs font-semibold focus:outline-hidden focus:ring-2 focus:ring-rose-400 bg-white"
                       style={{ borderColor: C.line }}
                     />
+
+                    {/* Top Font selector */}
+                    <div>
+                      <label className="text-[11px] font-black text-stone-700 block mb-1.5">
+                        เลือกฟอนต์ข้อความหลักด้านบน (Header Font):
+                      </label>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                        {STAMP_FONT_STYLES.map((f) => {
+                          const isSelected = (design.custom_text_font_style || design.font_style || "sans") === f.id;
+                          return (
+                            <button
+                              key={f.id}
+                              type="button"
+                              onClick={() => setDesign((prev) => ({ ...prev, custom_text_font_style: f.id as any }))}
+                              className={`py-1.5 px-2 rounded-xl border text-center transition cursor-pointer ${
+                                isSelected
+                                  ? "bg-rose-600 text-white border-rose-600 font-bold shadow-2xs"
+                                  : "bg-white border-stone-200 text-stone-700 hover:bg-stone-100 font-medium"
+                              }`}
+                            >
+                              <span className="text-[11px] block truncate" style={{ fontFamily: f.family }}>
+                                {f.name}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
 
                     <div className="flex items-center justify-between pt-1">
                       <span className="text-[11px] font-bold text-stone-600">สีข้อความหลักด้านบน:</span>
@@ -521,11 +553,12 @@ export default function StampDesignerModal({
                 <p className="text-[10px] text-stone-500 font-medium">ข้อความที่จะแสดงอยู่ด้านบนสุดของตราประทับ</p>
               </div>
 
-              {/* Bottom Subtext Section */}
-              <div className="p-3.5 rounded-2xl border bg-stone-50/70 space-y-2.5" style={{ borderColor: C.line }}>
+              {/* ⬇️ Bottom Subtext Section */}
+              <div className="p-4 rounded-2xl border bg-stone-50/80 space-y-3" style={{ borderColor: C.line }}>
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-black text-[#231C18]">
-                    ข้อความรองด้านล่าง (Subtext / Slogan):
+                  <label className="text-xs font-black text-[#231C18] flex items-center gap-1.5">
+                    <Type size={14} className="text-rose-600" />
+                    <span>ข้อความรองด้านล่าง (Subtext / Slogan):</span>
                   </label>
                   <div className="flex items-center gap-1 bg-white p-0.5 rounded-xl border border-stone-200">
                     <button
@@ -554,7 +587,7 @@ export default function StampDesignerModal({
                 </div>
 
                 {design.show_sub_text !== false && (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <input
                       type="text"
                       value={design.sub_text || ""}
@@ -564,6 +597,34 @@ export default function StampDesignerModal({
                       className="w-full px-3.5 py-2 rounded-xl border text-xs font-semibold focus:outline-hidden focus:ring-2 focus:ring-rose-400 bg-white"
                       style={{ borderColor: C.line }}
                     />
+
+                    {/* Bottom Font selector */}
+                    <div>
+                      <label className="text-[11px] font-black text-stone-700 block mb-1.5">
+                        เลือกฟอนต์ข้อความรองด้านล่าง (Subtext Font):
+                      </label>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                        {STAMP_FONT_STYLES.map((f) => {
+                          const isSelected = (design.sub_text_font_style || design.font_style || "sans") === f.id;
+                          return (
+                            <button
+                              key={f.id}
+                              type="button"
+                              onClick={() => setDesign((prev) => ({ ...prev, sub_text_font_style: f.id as any }))}
+                              className={`py-1.5 px-2 rounded-xl border text-center transition cursor-pointer ${
+                                isSelected
+                                  ? "bg-amber-600 text-white border-amber-600 font-bold shadow-2xs"
+                                  : "bg-white border-stone-200 text-stone-700 hover:bg-stone-100 font-medium"
+                              }`}
+                            >
+                              <span className="text-[11px] block truncate" style={{ fontFamily: f.family }}>
+                                {f.name}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
 
                     <div className="flex items-center justify-between pt-1">
                       <span className="text-[11px] font-bold text-stone-600">สีข้อความรองด้านล่าง:</span>

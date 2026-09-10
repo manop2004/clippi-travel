@@ -25,6 +25,7 @@ export default function AdminReviewView() {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState<string>("");
   const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
 
   // Main Category Tab ("merchants" = อนุมัติสิทธิ์เจ้าของร้าน, "places" = อนุมัติสถานที่ใหม่)
   const [mainCategory, setMainCategory] = useState<"merchants" | "places">("merchants");
@@ -56,6 +57,91 @@ export default function AdminReviewView() {
     try {
       let rawData: any[] = [];
 
+      // 0. Fetch all admin rejection and approval logs from admin_action_log
+      const { data: adminLogs } = await supabase
+        .from("admin_action_log")
+        .select("action_type, target_id, detail, created_at")
+        .in("action_type", ["reject_merchant", "approve_merchant"]);
+
+      let localRejectedKeys: any[] = [];
+      try {
+        localRejectedKeys = JSON.parse(localStorage.getItem("admin_rejected_keys") || "[]");
+      } catch (e) {}
+
+      let localApprovedKeys: any[] = [];
+      try {
+        localApprovedKeys = JSON.parse(localStorage.getItem("admin_approved_keys") || "[]");
+      } catch (e) {}
+
+      const rejectedMap = new Map<string, number>();
+      const approvedMap = new Map<string, number>();
+
+      (adminLogs || []).forEach((log) => {
+        const logTime = new Date(log.created_at || Date.now()).getTime();
+        const targetId = log.target_id ? String(log.target_id).toLowerCase() : "";
+        const email = log.detail?.email ? String(log.detail.email).toLowerCase() : "";
+        const userId = log.detail?.user_id ? String(log.detail.user_id).toLowerCase() : "";
+
+        if (log.action_type === "reject_merchant") {
+          if (targetId) rejectedMap.set(targetId, Math.max(rejectedMap.get(targetId) || 0, logTime));
+          if (email) rejectedMap.set(email, Math.max(rejectedMap.get(email) || 0, logTime));
+          if (userId) rejectedMap.set(userId, Math.max(rejectedMap.get(userId) || 0, logTime));
+        } else if (log.action_type === "approve_merchant") {
+          if (targetId) approvedMap.set(targetId, Math.max(approvedMap.get(targetId) || 0, logTime));
+          if (email) approvedMap.set(email, Math.max(approvedMap.get(email) || 0, logTime));
+          if (userId) approvedMap.set(userId, Math.max(approvedMap.get(userId) || 0, logTime));
+        }
+      });
+
+      localRejectedKeys.forEach((k: any) => {
+        const rTime = new Date(k.rejected_at || Date.now()).getTime();
+        if (k.uid) rejectedMap.set(String(k.uid).toLowerCase(), Math.max(rejectedMap.get(String(k.uid).toLowerCase()) || 0, rTime));
+        if (k.email) rejectedMap.set(String(k.email).toLowerCase(), Math.max(rejectedMap.get(String(k.email).toLowerCase()) || 0, rTime));
+        if (k.subId) rejectedMap.set(String(k.subId).toLowerCase(), Math.max(rejectedMap.get(String(k.subId).toLowerCase()) || 0, rTime));
+      });
+
+      localApprovedKeys.forEach((k: any) => {
+        const aTime = new Date(k.approved_at || Date.now()).getTime();
+        if (k.uid) approvedMap.set(String(k.uid).toLowerCase(), Math.max(approvedMap.get(String(k.uid).toLowerCase()) || 0, aTime));
+        if (k.email) approvedMap.set(String(k.email).toLowerCase(), Math.max(approvedMap.get(String(k.email).toLowerCase()) || 0, aTime));
+        if (k.subId) approvedMap.set(String(k.subId).toLowerCase(), Math.max(approvedMap.get(String(k.subId).toLowerCase()) || 0, aTime));
+      });
+
+      const isItemRejectedOrApproved = (item: any) => {
+        const itemUid = item.user_id ? String(item.user_id).toLowerCase() : (typeof item.id === "string" ? item.id.replace("prof_", "").replace("local_", "").toLowerCase() : "");
+        const itemEmail = (item.contact_email || item.email || item.profiles?.email || "").toLowerCase();
+        const itemId = item.id ? String(item.id).toLowerCase() : "";
+
+        const itemTime = Math.max(
+          item.updated_at ? new Date(item.updated_at).getTime() : 0,
+          item.created_at ? new Date(item.created_at).getTime() : 0,
+          item.profiles?.updated_at ? new Date(item.profiles.updated_at).getTime() : 0,
+          item.profiles?.created_at ? new Date(item.profiles.created_at).getTime() : 0
+        );
+
+        const rejectTime = Math.max(
+          itemUid ? (rejectedMap.get(itemUid) || 0) : 0,
+          itemEmail ? (rejectedMap.get(itemEmail) || 0) : 0,
+          itemId ? (rejectedMap.get(itemId) || 0) : 0
+        );
+
+        if (rejectTime > 0 && (itemTime === 0 || itemTime <= rejectTime + 5000)) {
+          return true;
+        }
+
+        const approveTime = Math.max(
+          itemUid ? (approvedMap.get(itemUid) || 0) : 0,
+          itemEmail ? (approvedMap.get(itemEmail) || 0) : 0,
+          itemId ? (approvedMap.get(itemId) || 0) : 0
+        );
+
+        if (approveTime > 0 && (itemTime === 0 || itemTime <= approveTime + 5000)) {
+          return true;
+        }
+
+        return false;
+      };
+
       // 1. Fetch place_submissions (try simple query)
       const { data: subData, error: subErr } = await supabase
         .from("place_submissions")
@@ -66,9 +152,15 @@ export default function AdminReviewView() {
         console.error("Error fetching place_submissions:", subErr);
       }
 
-      // Map latest submissions by user_id and email
+      // Map latest submissions by user_id and email using effective timestamp
       const latestSubMap = new Map<string, any>();
-      (subData || []).forEach((s) => {
+      const sortedSubs = [...(subData || [])].sort((a, b) => {
+        const tA = Math.max(new Date(a.updated_at || 0).getTime(), new Date(a.created_at || 0).getTime());
+        const tB = Math.max(new Date(b.updated_at || 0).getTime(), new Date(b.created_at || 0).getTime());
+        return tB - tA;
+      });
+
+      sortedSubs.forEach((s) => {
         const uidStr = s.user_id ? String(s.user_id) : "";
         const emailStr = (s.contact_email || s.email || "").toLowerCase();
         if (uidStr && !latestSubMap.has(uidStr)) latestSubMap.set(uidStr, s);
@@ -80,8 +172,10 @@ export default function AdminReviewView() {
       (subData || []).forEach((s) => {
         const isPending = s.status === "pending" || !s.status || s.status === "incomplete";
         if (isPending && s.id && !addedSubIds.has(String(s.id))) {
-          rawData.push(s);
-          addedSubIds.add(String(s.id));
+          if (!isItemRejectedOrApproved(s)) {
+            rawData.push(s);
+            addedSubIds.add(String(s.id));
+          }
         }
       });
 
@@ -112,7 +206,6 @@ export default function AdminReviewView() {
       });
 
       // 3. Fetch all pending merchant profiles from profiles table
-      const existingUserIds = new Set(rawData.map((s) => s.user_id));
       const { data: allProfiles, error: profErr } = await supabase
         .from("profiles")
         .select("*");
@@ -122,22 +215,43 @@ export default function AdminReviewView() {
       } else if (allProfiles) {
         const pendingProfiles = allProfiles.filter((p) => {
           if (p.is_deleted) return false;
-          if (p.role === "store" || p.merchant_status === "approved") return false;
+          if (p.role === "store" || p.merchant_status === "approved" || p.merchant_status === "rejected") return false;
+
+          const isProfilePending = p.role === "pending_store" || p.merchant_status === "pending";
+          if (isProfilePending) {
+            return !isItemRejectedOrApproved({ profiles: p, user_id: p.id, email: p.email });
+          }
 
           const uidKey = p.id ? String(p.id) : "";
           const emailKey = p.email ? p.email.toLowerCase() : "";
 
           const latestSub = (uidKey && latestSubMap.get(uidKey)) || (emailKey && latestSubMap.get(emailKey));
           if (latestSub) {
-            return latestSub.status === "pending" || !latestSub.status;
+            if (latestSub.status === "pending" || !latestSub.status) {
+              return !isItemRejectedOrApproved(latestSub);
+            }
           }
 
-          const isPending = p.role === "pending_store" || p.merchant_status === "pending";
-          return isPending;
+          return false;
         });
 
         for (const prof of pendingProfiles) {
-          if (!existingUserIds.has(prof.id)) {
+          if (isItemRejectedOrApproved({ profiles: prof, user_id: prof.id, email: prof.email })) continue;
+          const existingIdx = rawData.findIndex(
+            (r) => r.user_id === prof.id || (r.contact_email && prof.email && r.contact_email.toLowerCase() === prof.email.toLowerCase())
+          );
+          if (existingIdx >= 0) {
+            rawData[existingIdx] = {
+              ...rawData[existingIdx],
+              ownership_proof_url: prof.ownership_proof_url || rawData[existingIdx].ownership_proof_url || null,
+              shop_name: prof.shop_name || rawData[existingIdx].shop_name,
+              name_en: prof.shop_name || rawData[existingIdx].name_en,
+              contact_phone: prof.phone || rawData[existingIdx].contact_phone,
+              contact_name: prof.display_name || prof.full_name || rawData[existingIdx].contact_name,
+              status: "pending",
+              profiles: prof,
+            };
+          } else {
             rawData.push({
               id: `prof_${prof.id}`,
               user_id: prof.id,
@@ -152,7 +266,7 @@ export default function AdminReviewView() {
               description: `Pending Merchant Registration for ${prof.shop_name || prof.display_name || prof.email}. Contact: ${prof.phone || prof.email || "-"}`,
               status: "pending",
               created_at: prof.created_at || new Date().toISOString(),
-              updated_at: prof.created_at || new Date().toISOString(),
+              updated_at: prof.updated_at || prof.created_at || new Date().toISOString(),
               ownership_proof_url: prof.ownership_proof_url || null,
               profiles: prof,
               is_profile_only: true,
@@ -165,60 +279,67 @@ export default function AdminReviewView() {
       try {
         const localSubs = JSON.parse(localStorage.getItem("merchant_pending_submissions") || "[]");
         for (const lSub of localSubs) {
+          if (isItemRejectedOrApproved(lSub)) continue;
           const lEmail = (lSub.contact_email || lSub.email || "").toLowerCase();
           const matchedProf = allProfiles?.find(
             (p) => (lEmail && p.email?.toLowerCase() === lEmail) || (lSub.user_id && p.id === lSub.user_id)
           );
-          const latestSub = (lSub.user_id && latestSubMap.get(String(lSub.user_id))) || (lEmail && latestSubMap.get(lEmail));
-          const isDbDone = (matchedProf && (matchedProf.merchant_status === "approved" || matchedProf.role === "store")) ||
-                           (latestSub && (latestSub.status === "approved" || latestSub.status === "rejected"));
+          const isDbApproved = matchedProf?.merchant_status === "approved" || matchedProf?.role === "store";
 
-          if (!isDbDone && lSub.status === "pending" && !rawData.some((r) => (r.user_id && r.user_id === lSub.user_id) || (r.contact_email && r.contact_email.toLowerCase() === lEmail) || r.id === lSub.id)) {
-            rawData.push({
-              ...lSub,
-              id: lSub.id || `local_${lSub.user_id || Date.now()}`,
-              ownership_proof_url: lSub.ownership_proof_url || lSub.profiles?.ownership_proof_url || null,
-              name_en: lSub.shop_name || lSub.name_en || "Merchant Partner Application",
-              shop_name: lSub.shop_name || lSub.name_en,
-              contact_name: lSub.contact_name || "Merchant Owner",
-              contact_phone: lSub.contact_phone || "-",
-              contact_email: lSub.contact_email || lSub.email || "-",
-              category: lSub.category || "food",
-              prefecture: lSub.prefecture || "Tokyo",
-              street: lSub.prefecture ? `Prefecture: ${lSub.prefecture}` : "Address Pending",
-              description: `Pending Merchant Registration for ${lSub.shop_name || lSub.contact_email}. Contact: ${lSub.contact_phone || lSub.contact_email}`,
-              status: "pending",
-              created_at: lSub.created_at || new Date().toISOString(),
-              updated_at: lSub.created_at || new Date().toISOString(),
-              is_profile_only: true,
-            });
-          }
+          if (!isDbApproved && lSub.status === "pending") {
+            const existingIdx = rawData.findIndex(
+              (r) => (r.user_id && r.user_id === lSub.user_id) || (r.contact_email && r.contact_email.toLowerCase() === lEmail) || r.id === lSub.id
+            );
 
-          // Auto-sync profile in DB if matching email is found and DB status was outdated
-          if (lSub.contact_email && allProfiles && lSub.status === "pending" && !isDbDone) {
-            if (
-              matchedProf &&
-              matchedProf.merchant_status !== "pending" &&
-              matchedProf.merchant_status !== "rejected" &&
-              matchedProf.merchant_status !== "approved" &&
-              matchedProf.role !== "store"
-            ) {
-              try {
-                await supabase.from("profiles").update({
-                  role: "pending_store",
-                  merchant_status: "pending",
-                  shop_name: lSub.shop_name || matchedProf.shop_name,
-                  phone: lSub.contact_phone || matchedProf.phone,
-                  prefecture: lSub.prefecture || matchedProf.prefecture,
-                  category: lSub.category || matchedProf.category,
-                  ownership_proof_url: lSub.ownership_proof_url || matchedProf.ownership_proof_url,
-                  ban_reason: null
-                }).eq("id", matchedProf.id);
-              } catch (e) {}
+            if (existingIdx >= 0) {
+              rawData[existingIdx] = {
+                ...rawData[existingIdx],
+                status: "pending",
+                shop_name: lSub.shop_name || rawData[existingIdx].shop_name,
+                name_en: lSub.shop_name || lSub.name_en || rawData[existingIdx].name_en,
+                contact_phone: lSub.contact_phone || lSub.phone || rawData[existingIdx].contact_phone,
+                contact_name: lSub.contact_name || rawData[existingIdx].contact_name,
+                ownership_proof_url: lSub.ownership_proof_url || rawData[existingIdx].ownership_proof_url || null,
+                prefecture: lSub.prefecture || rawData[existingIdx].prefecture,
+                category: lSub.category || rawData[existingIdx].category,
+                updated_at: lSub.updated_at || new Date().toISOString(),
+              };
+            } else {
+              rawData.push({
+                ...lSub,
+                id: lSub.id || `local_${lSub.user_id || Date.now()}`,
+                ownership_proof_url: lSub.ownership_proof_url || lSub.profiles?.ownership_proof_url || null,
+                name_en: lSub.shop_name || lSub.name_en || "Merchant Partner Application",
+                shop_name: lSub.shop_name || lSub.name_en,
+                contact_name: lSub.contact_name || "Merchant Owner",
+                contact_phone: lSub.contact_phone || "-",
+                contact_email: lSub.contact_email || lSub.email || "-",
+                category: lSub.category || "food",
+                prefecture: lSub.prefecture || "Tokyo",
+                street: lSub.prefecture ? `Prefecture: ${lSub.prefecture}` : "Address Pending",
+                description: `Pending Merchant Registration for ${lSub.shop_name || lSub.contact_email}. Contact: ${lSub.contact_phone || lSub.contact_email}`,
+                status: "pending",
+                created_at: lSub.created_at || new Date().toISOString(),
+                updated_at: lSub.created_at || new Date().toISOString(),
+                is_profile_only: true,
+              });
             }
           }
         }
       } catch (e) {}
+
+      // Filter out rejected, approved, or store owner profiles from rawData
+      rawData = rawData.filter((s) => {
+        if (s.status === "rejected" || s.status === "approved") return false;
+        if (isItemRejectedOrApproved(s)) return false;
+        const prof = s.profiles;
+        if (prof) {
+          if (prof.merchant_status === "rejected" || prof.merchant_status === "approved" || prof.role === "store") {
+            return false;
+          }
+        }
+        return true;
+      });
 
       setSubmissions(rawData);
     } catch (err) {
@@ -248,10 +369,12 @@ export default function AdminReviewView() {
 
   // Separate submissions into Merchant Applications vs Spot Submissions
   const rawMerchantSubmissions = submissions.filter((s) => {
-    // If the user submitting this is already an approved Store Owner, this MUST be a spot/shop submission (Tab 2), not a merchant registration (Tab 1)!
-    const isApprovedStoreOwner =
-      s.profiles?.role === "store" || s.profiles?.merchant_status === "approved";
-    if (isApprovedStoreOwner) {
+    if (s.status === "rejected" || s.status === "approved") return false;
+    const isDoneMerchant =
+      s.profiles?.role === "store" ||
+      s.profiles?.merchant_status === "approved" ||
+      s.profiles?.merchant_status === "rejected";
+    if (isDoneMerchant) {
       return false;
     }
 
@@ -276,8 +399,8 @@ export default function AdminReviewView() {
       uniqueMerchantMap.set(key, sub);
     } else {
       const existing = uniqueMerchantMap.get(key)!;
-      const timeNew = new Date(sub.created_at || 0).getTime();
-      const timeOld = new Date(existing.created_at || 0).getTime();
+      const timeNew = Math.max(new Date(sub.updated_at || 0).getTime(), new Date(sub.created_at || 0).getTime());
+      const timeOld = Math.max(new Date(existing.updated_at || 0).getTime(), new Date(existing.created_at || 0).getTime());
       // Prefer newer submission or submission with ownership document attached
       if (timeNew > timeOld || (sub.ownership_proof_url && !existing.ownership_proof_url)) {
         uniqueMerchantMap.set(key, sub);
@@ -285,7 +408,21 @@ export default function AdminReviewView() {
     }
   });
 
-  const merchantSubmissions = Array.from(uniqueMerchantMap.values());
+  const merchantSubmissions = Array.from(uniqueMerchantMap.values()).sort((a, b) => {
+    const tA = Math.max(
+      a.updated_at ? new Date(a.updated_at).getTime() : 0,
+      a.created_at ? new Date(a.created_at).getTime() : 0,
+      a.profiles?.updated_at ? new Date(a.profiles.updated_at).getTime() : 0,
+      a.profiles?.created_at ? new Date(a.profiles.created_at).getTime() : 0
+    );
+    const tB = Math.max(
+      b.updated_at ? new Date(b.updated_at).getTime() : 0,
+      b.created_at ? new Date(b.created_at).getTime() : 0,
+      b.profiles?.updated_at ? new Date(b.profiles.updated_at).getTime() : 0,
+      b.profiles?.created_at ? new Date(b.profiles.created_at).getTime() : 0
+    );
+    return tB - tA;
+  });
 
   const placeSubmissions = submissions.filter(
     (s) => !rawMerchantSubmissions.includes(s)
@@ -296,15 +433,27 @@ export default function AdminReviewView() {
     return !!(sub.name_jp?.trim() && sub.description_jp?.trim() && sub.prefecture);
   };
 
-  const filteredPlaceSubmissions = placeSubmissions.filter((sub) => {
-    if (dataFilter === "complete") {
-      return isSubComplete(sub);
-    }
-    if (dataFilter === "incomplete") {
-      return !isSubComplete(sub);
-    }
-    return true;
-  });
+  const filteredPlaceSubmissions = placeSubmissions
+    .filter((sub) => {
+      if (dataFilter === "complete") {
+        return isSubComplete(sub);
+      }
+      if (dataFilter === "incomplete") {
+        return !isSubComplete(sub);
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      const tA = Math.max(
+        a.updated_at ? new Date(a.updated_at).getTime() : 0,
+        a.created_at ? new Date(a.created_at).getTime() : 0
+      );
+      const tB = Math.max(
+        b.updated_at ? new Date(b.updated_at).getTime() : 0,
+        b.created_at ? new Date(b.created_at).getTime() : 0
+      );
+      return tB - tA;
+    });
 
   // ── Merchant Owner Approvals ──
   const handleApproveMerchant = async (sub: any) => {
@@ -315,6 +464,19 @@ export default function AdminReviewView() {
       const uid = sub.user_id || (typeof sub.id === "string" ? sub.id.replace("prof_", "").replace("local_", "") : null);
       const email = sub.contact_email || sub.email;
       const cleanEmail = email ? email.trim().toLowerCase() : "";
+      const nowIso = new Date().toISOString();
+
+      // Save approval key into localStorage immediately
+      try {
+        const currentApproved = JSON.parse(localStorage.getItem("admin_approved_keys") || "[]");
+        currentApproved.push({
+          uid: uid ? String(uid) : null,
+          email: cleanEmail || null,
+          subId: sub.id || null,
+          approved_at: nowIso
+        });
+        localStorage.setItem("admin_approved_keys", JSON.stringify(currentApproved));
+      } catch (e) {}
 
       // 1. Update profiles table by email
       if (cleanEmail) {
@@ -370,21 +532,21 @@ export default function AdminReviewView() {
         if (typeof sub.id === "string" && !sub.id.startsWith("prof_") && !sub.id.startsWith("local_")) {
           await supabase
             .from("place_submissions")
-            .update({ status: "approved", reviewed_by: adminId, reviewed_at: new Date().toISOString() })
+            .update({ status: "approved", reviewed_by: adminId, reviewed_at: nowIso })
             .eq("id", sub.id);
         }
 
         if (uid && !uid.startsWith("local_")) {
           await supabase
             .from("place_submissions")
-            .update({ status: "approved", reviewed_by: adminId, reviewed_at: new Date().toISOString() })
+            .update({ status: "approved", reviewed_by: adminId, reviewed_at: nowIso })
             .eq("user_id", uid);
         }
 
         if (email) {
           await supabase
             .from("place_submissions")
-            .update({ status: "approved", reviewed_by: adminId, reviewed_at: new Date().toISOString() })
+            .update({ status: "approved", reviewed_by: adminId, reviewed_at: nowIso })
             .ilike("contact_email", email.toLowerCase());
         }
       } catch (e) {}
@@ -397,10 +559,23 @@ export default function AdminReviewView() {
             action_type: "approve_merchant",
             target_table: "profiles",
             target_id: uid || sub.id,
-            detail: { shop_name: sub.shop_name || sub.name_en }
+            detail: { shop_name: sub.shop_name || sub.name_en, email: cleanEmail, user_id: uid, sub_id: sub.id },
+            created_at: nowIso
           });
         } catch (e) {}
       }
+
+      // Clear local storage pending items for this applicant
+      try {
+        const localSubs = JSON.parse(localStorage.getItem("merchant_pending_submissions") || "[]");
+        const updatedLocals = localSubs.filter((l: any) => {
+          const lEmail = (l.contact_email || l.email || "").toLowerCase();
+          const lUid = l.user_id ? String(l.user_id) : "";
+          const isMatch = (cleanEmail && lEmail === cleanEmail) || (uid && lUid === String(uid));
+          return !isMatch;
+        });
+        localStorage.setItem("merchant_pending_submissions", JSON.stringify(updatedLocals));
+      } catch (e) {}
 
       setSubmissions((prev) =>
         prev.filter((s) => {
@@ -412,6 +587,10 @@ export default function AdminReviewView() {
           return true;
         })
       );
+      try {
+        window.dispatchEvent(new CustomEvent("merchant_status_changed", { detail: { status: "approved", userId: uid } }));
+      } catch (e) {}
+
       alert(`🎉 อนุมัติสิทธิ์เจ้าของร้านค้าสำหรับ "${sub.shop_name || sub.name_en || sub.contact_name}" เรียบร้อยแล้ว!`);
     } catch (err: any) {
       console.error("Approve merchant error:", err);
@@ -426,13 +605,26 @@ export default function AdminReviewView() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       const adminId = user?.id || null;
-      const subObj = submissions.find(s => s.id === subId);
-      const uid = subObj?.user_id || (typeof subId === "string" ? subId.replace("prof_", "").replace("local_", "") : null);
-      const email = subObj?.contact_email || subObj?.email;
+      const subObj = submissions.find(s => s.id === subId) || merchantSubmissions.find(s => s.id === subId);
+      const uid = subObj?.user_id || subObj?.profiles?.id || (typeof subId === "string" ? subId.replace("prof_", "").replace("local_", "") : null);
+      const email = subObj?.contact_email || subObj?.email || subObj?.profiles?.email;
       const cleanEmail = email ? email.trim().toLowerCase() : "";
       const finalReason = rejectionReason || "เอกสารหรือข้อมูลสิทธิ์ร้านค้าไม่ผ่านการตรวจสอบ";
+      const nowIso = new Date().toISOString();
 
-      // 1. Update profiles table
+      // Save rejection key into localStorage immediately
+      try {
+        const currentRejected = JSON.parse(localStorage.getItem("admin_rejected_keys") || "[]");
+        currentRejected.push({
+          uid: uid ? String(uid) : null,
+          email: cleanEmail || null,
+          subId: subId || null,
+          rejected_at: nowIso
+        });
+        localStorage.setItem("admin_rejected_keys", JSON.stringify(currentRejected));
+      } catch (e) {}
+
+      // 1. Update profiles table to role 'user' and status 'rejected'
       if (cleanEmail) {
         const { data: targetProf } = await supabase.from("profiles").select("id, role, is_admin").ilike("email", cleanEmail).maybeSingle();
         if (targetProf) {
@@ -497,47 +689,40 @@ export default function AdminReviewView() {
 
       // 3. Update ALL matching place_submissions in Supabase or insert record
       try {
-        let updatedCount = 0;
         if (typeof subId === "string" && !subId.startsWith("prof_") && !subId.startsWith("local_")) {
-          const { data } = await supabase
+          await supabase
             .from("place_submissions")
             .update({
               status: "rejected",
               rejection_reason: finalReason,
               reviewed_by: adminId,
-              reviewed_at: new Date().toISOString()
+              reviewed_at: nowIso
             })
-            .eq("id", subId)
-            .select();
-          if (data && data.length > 0) updatedCount += data.length;
+            .eq("id", subId);
         }
 
         if (uid && !uid.startsWith("local_")) {
-          const { data } = await supabase
+          await supabase
             .from("place_submissions")
             .update({
               status: "rejected",
               rejection_reason: finalReason,
               reviewed_by: adminId,
-              reviewed_at: new Date().toISOString()
+              reviewed_at: nowIso
             })
-            .eq("user_id", uid)
-            .select();
-          if (data && data.length > 0) updatedCount += data.length;
+            .eq("user_id", uid);
         }
 
         if (cleanEmail) {
-          const { data } = await supabase
+          await supabase
             .from("place_submissions")
             .update({
               status: "rejected",
               rejection_reason: finalReason,
               reviewed_by: adminId,
-              reviewed_at: new Date().toISOString()
+              reviewed_at: nowIso
             })
-            .ilike("contact_email", cleanEmail)
-            .select();
-          if (data && data.length > 0) updatedCount += data.length;
+            .ilike("contact_email", cleanEmail);
         }
 
         // Guaranteed place_submissions rejection record insertion
@@ -554,28 +739,22 @@ export default function AdminReviewView() {
           status: "rejected",
           rejection_reason: finalReason,
           reviewed_by: adminId,
-          reviewed_at: new Date().toISOString(),
-          created_at: new Date().toISOString()
+          reviewed_at: nowIso,
+          created_at: nowIso
         };
 
         if (rejectionPayload.user_id || rejectionPayload.contact_email) {
           const { error: insErr } = await supabase.from("place_submissions").insert(rejectionPayload);
-          if (insErr) {
-            console.warn("place_submissions insert notice:", insErr.message);
-            // Fallback insert with adminId if applicant uid was rejected by RLS policy
-            if (targetUid && adminId && targetUid !== adminId) {
-              try {
-                await supabase.from("place_submissions").insert({
-                  ...rejectionPayload,
-                  user_id: adminId
-                });
-              } catch (e) {}
-            }
+          if (insErr && targetUid && adminId && targetUid !== adminId) {
+            try {
+              await supabase.from("place_submissions").insert({
+                ...rejectionPayload,
+                user_id: adminId
+              });
+            } catch (e) {}
           }
         }
-      } catch (e) {
-        console.warn("place_submissions reject update notice:", e);
-      }
+      } catch (e) {}
 
       // 4. Log admin action
       if (adminId) {
@@ -585,10 +764,23 @@ export default function AdminReviewView() {
             action_type: "reject_merchant",
             target_table: "profiles",
             target_id: uid || subId,
-            detail: { reason: finalReason, email: cleanEmail }
+            detail: { reason: finalReason, email: cleanEmail, user_id: uid, sub_id: subId },
+            created_at: nowIso
           });
         } catch (e) {}
       }
+
+      // Clear local storage pending items for this applicant
+      try {
+        const localSubs = JSON.parse(localStorage.getItem("merchant_pending_submissions") || "[]");
+        const updatedLocals = localSubs.filter((l: any) => {
+          const lEmail = (l.contact_email || l.email || "").toLowerCase();
+          const lUid = l.user_id ? String(l.user_id) : "";
+          const isMatch = (cleanEmail && lEmail === cleanEmail) || (uid && lUid === String(uid));
+          return !isMatch;
+        });
+        localStorage.setItem("merchant_pending_submissions", JSON.stringify(updatedLocals));
+      } catch (e) {}
 
       setSubmissions((prev) =>
         prev.filter((s) => {
@@ -602,6 +794,10 @@ export default function AdminReviewView() {
       );
       setRejectingId(null);
       setRejectionReason("");
+      try {
+        window.dispatchEvent(new CustomEvent("merchant_status_changed", { detail: { status: "rejected", userId: uid } }));
+      } catch (e) {}
+
       alert("ปฏิเสธคำขอลงทะเบียนเจ้าของร้านค้าเรียบร้อยแล้ว");
     } catch (err: any) {
       console.error("Reject merchant error:", err);
@@ -943,59 +1139,132 @@ export default function AdminReviewView() {
                     </div>
 
                     {/* Merchant Details Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-stone-50/70 p-3.5 rounded-2xl border" style={{ borderColor: C.line }}>
-                      <div className="flex items-center gap-2 text-xs">
-                        <User size={14} className="text-[#8A7870] shrink-0" />
-                        <div>
-                          <span className="text-[9px] font-black uppercase text-[#8A7870] block">ชื่อผู้ติดต่อ</span>
-                          <span className="font-bold text-[#231C18]">{ownerName}</span>
-                        </div>
-                      </div>
+                    {(() => {
+                      const CATEGORY_MAP: Record<string, string> = {
+                        food: "ร้านอาหาร / คาเฟ่ (Food & Cafe)",
+                        shop: "ร้านค้า / ของฝาก (Shopping & Souvenirs)",
+                        sightseeing: "สถานที่ท่องเที่ยว / วัดเซน (Sightseeing & Shrine)",
+                        service: "บริการ / โรงแรม (Service & Hotel)",
+                        other: "อื่นๆ (Other)",
+                      };
+                      const prefectureStr = m.prefecture || m.profiles?.prefecture || "ไม่ระบุ";
+                      const rawCat = m.category || m.profiles?.category || "food";
+                      const categoryLabel = CATEGORY_MAP[rawCat] || rawCat;
 
-                      <div className="flex items-center gap-2 text-xs">
-                        <Phone size={14} className="text-[#8A7870] shrink-0" />
-                        <div>
-                          <span className="text-[9px] font-black uppercase text-[#8A7870] block">เบอร์โทรศัพท์ติดต่อ</span>
-                          <span className="font-bold text-[#231C18]">{phoneNum}</span>
-                        </div>
-                      </div>
+                      return (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 bg-stone-50/70 p-4 rounded-2xl border" style={{ borderColor: C.line }}>
+                          <div className="flex items-start gap-2.5 text-xs">
+                            <User size={15} className="text-[#8A7870] shrink-0 mt-0.5" />
+                            <div className="min-w-0">
+                              <span className="text-[9.5px] font-black uppercase tracking-wider text-[#8A7870] block">ชื่อผู้ติดต่อ</span>
+                              <span className="font-bold text-[#231C18] break-words">{ownerName}</span>
+                            </div>
+                          </div>
 
-                      <div className="flex items-center gap-2 text-xs">
-                        <Mail size={14} className="text-[#8A7870] shrink-0" />
-                        <div>
-                          <span className="text-[9px] font-black uppercase text-[#8A7870] block">อีเมลบัญชีผู้ใช้</span>
-                          <span className="font-bold text-[#231C18] truncate block max-w-[180px]">{emailStr}</span>
-                        </div>
-                      </div>
-                    </div>
+                          <div className="flex items-start gap-2.5 text-xs">
+                            <Phone size={15} className="text-[#8A7870] shrink-0 mt-0.5" />
+                            <div className="min-w-0">
+                              <span className="text-[9.5px] font-black uppercase tracking-wider text-[#8A7870] block">เบอร์โทรศัพท์ติดต่อ</span>
+                              <span className="font-bold text-[#231C18] break-words">{phoneNum}</span>
+                            </div>
+                          </div>
 
-                    {/* Ownership Proof Document Section */}
-                    <div className="bg-amber-50/50 p-3.5 rounded-2xl border border-amber-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                      <div>
-                        <span className="text-[10px] font-black text-amber-900 uppercase tracking-wider block">
-                          เอกสารหลักฐานยืนยันสิทธิ์ร้านค้า (Ownership Proof)
-                        </span>
-                        <span className="text-[11px] text-amber-800/80 font-medium">
-                          ใบจดทะเบียนพานิชย์ / ใบอนุญาตประกอบกิจการ / ภาพหน้าร้านพร้อมป้าย
-                        </span>
+                          <div className="flex items-start gap-2.5 text-xs">
+                            <Mail size={15} className="text-[#8A7870] shrink-0 mt-0.5" />
+                            <div className="min-w-0">
+                              <span className="text-[9.5px] font-black uppercase tracking-wider text-[#8A7870] block">อีเมลบัญชีผู้ใช้</span>
+                              <span className="font-bold text-[#231C18] break-all">{emailStr}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-start gap-2.5 text-xs">
+                            <MapPin size={15} className="text-[#8A7870] shrink-0 mt-0.5" />
+                            <div className="min-w-0">
+                              <span className="text-[9.5px] font-black uppercase tracking-wider text-[#8A7870] block">จังหวัด (Prefecture)</span>
+                              <span className="font-bold text-[#231C18] break-words">{prefectureStr}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-start gap-2.5 text-xs sm:col-span-2 md:col-span-2">
+                            <Building size={15} className="text-[#8A7870] shrink-0 mt-0.5" />
+                            <div className="min-w-0">
+                              <span className="text-[9.5px] font-black uppercase tracking-wider text-[#8A7870] block">หมวดหมู่ร้านค้า</span>
+                              <span className="font-bold text-[#231C18] break-words leading-relaxed">{categoryLabel}</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Ownership Proof Document & Image Preview Section */}
+                    <div className="bg-amber-50/60 p-4 rounded-2xl border border-amber-200/80 space-y-3">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-amber-200/60 pb-2">
+                        <div>
+                          <span className="text-[10px] font-black text-amber-950 uppercase tracking-wider block">
+                            เอกสารหลักฐานยืนยันสิทธิ์ร้านค้า (Ownership Proof Document)
+                          </span>
+                          <span className="text-[11px] text-amber-800/80 font-medium">
+                            ใบจดทะเบียนพานิชย์ / ใบอนุญาตประกอบกิจการ / ภาพหน้าร้านพร้อมป้าย
+                          </span>
+                        </div>
+
+                        {m.ownership_proof_url && (
+                          <a
+                            href={m.ownership_proof_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3.5 py-1.5 rounded-xl text-xs font-black text-blue-700 bg-white border border-blue-200 hover:bg-blue-50 transition flex items-center gap-1.5 shrink-0 shadow-2xs cursor-pointer"
+                          >
+                            <ExternalLink size={13} className="text-blue-600" />
+                            <span>เปิดดูแท็บใหม่</span>
+                          </a>
+                        )}
                       </div>
 
                       {m.ownership_proof_url ? (
-                        <a
-                          href={m.ownership_proof_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-3.5 py-2 rounded-xl text-xs font-black text-blue-700 bg-white border border-blue-200 hover:bg-blue-50 transition flex items-center gap-1.5 shrink-0 shadow-2xs cursor-pointer"
-                        >
-                          <FileText size={14} className="text-blue-600" />
-                          <span>เปิดดูเอกสารสิทธิ์</span>
-                          <ExternalLink size={12} className="text-blue-500" />
-                        </a>
+                        <div className="flex flex-col sm:flex-row items-start gap-4 pt-1">
+                          {typeof m.ownership_proof_url === "string" &&
+                          (m.ownership_proof_url.startsWith("data:image/") ||
+                            /\.(png|jpg|jpeg|webp|gif)($|\?)/i.test(m.ownership_proof_url)) ? (
+                            <div className="relative group shrink-0">
+                              <img
+                                src={m.ownership_proof_url}
+                                alt="Ownership Proof"
+                                onClick={() => setPreviewImageUrl(m.ownership_proof_url)}
+                                className="h-36 max-w-full sm:max-w-xs object-cover rounded-xl border border-amber-300/80 bg-white shadow-xs cursor-pointer hover:opacity-90 transition"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setPreviewImageUrl(m.ownership_proof_url)}
+                                className="absolute bottom-2 right-2 px-2.5 py-1 rounded-lg bg-black/75 hover:bg-black text-white text-[10px] font-black backdrop-blur-xs flex items-center gap-1 opacity-90 transition cursor-pointer"
+                              >
+                                <FileText size={11} />
+                                <span>คลิกเพื่อขยายดูรูปภาพ</span>
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="p-3 bg-white rounded-xl border border-amber-200 flex items-center gap-3 w-full max-w-md">
+                              <FileText size={24} className="text-amber-700 shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <span className="text-xs font-bold text-stone-900 block truncate">เอกสารแนบหลักฐานสิทธิ์ร้านค้า (PDF / Document)</span>
+                                <span className="text-[10px] text-stone-500 font-medium block">คลิกปุ่มเปิดดูเพื่อตรวจสอบไฟล์เอกสาร</span>
+                              </div>
+                              <a
+                                href={m.ownership_proof_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-black shrink-0 transition"
+                              >
+                                เปิดดูไฟล์
+                              </a>
+                            </div>
+                          )}
+                        </div>
                       ) : (
-                        <span className="px-3 py-1.5 rounded-xl text-xs font-bold text-amber-800 bg-amber-100/80 border border-amber-300/80 inline-flex items-center gap-1 shrink-0">
-                          <AlertCircle size={13} />
-                          <span>ไม่ได้แนบไฟล์หลักฐาน (โปรดตรวจสอบก่อนอนุมัติ)</span>
-                        </span>
+                        <div className="p-3 rounded-xl bg-amber-100/70 border border-amber-300 text-amber-900 text-xs font-bold flex items-center gap-2">
+                          <AlertCircle size={15} className="text-amber-700 shrink-0" />
+                          <span>ไม่ได้แนบไฟล์หลักฐาน (โปรดตรวจสอบข้อมูลหรือติดต่อร้านค้าก่อนอนุมัติ)</span>
+                        </div>
                       )}
                     </div>
 
@@ -1345,7 +1614,7 @@ export default function AdminReviewView() {
                 
                 <div>
                   <label className="text-[9px] font-black uppercase tracking-wider block mb-1 text-[#8A7870]">Photos</label>
-                  {selectedSubmission.image_urls && selectedSubmission.image_urls.length > 0 ? (
+                  {Array.isArray(selectedSubmission.image_urls) && selectedSubmission.image_urls.length > 0 ? (
                     <div className="grid grid-cols-2 gap-2">
                       {selectedSubmission.image_urls.map((url: string, index: number) => (
                         <img key={index} src={url} alt={`submission-${index}`} className="w-full h-28 rounded-xl object-cover border" style={{ borderColor: C.line }} />
@@ -1451,6 +1720,36 @@ export default function AdminReviewView() {
                 <span>Save & Approve Spot</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🖼️ Full-Screen Image Preview Modal for Admin */}
+      {previewImageUrl && (
+        <div
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xs flex flex-col items-center justify-center p-4 select-none animate-fade-in"
+          onClick={() => setPreviewImageUrl(null)}
+        >
+          <div
+            className="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-full flex items-center justify-between mb-3 px-1">
+              <span className="text-xs font-black text-white/90">🖼️ ตัวอย่างเอกสาร / รูปภาพหลักฐานสิทธิ์ร้านค้า</span>
+              <button
+                type="button"
+                onClick={() => setPreviewImageUrl(null)}
+                className="px-3.5 py-1 rounded-full bg-stone-800 hover:bg-stone-700 text-white text-xs font-black transition cursor-pointer flex items-center gap-1 border border-stone-600 shadow-md"
+              >
+                <X size={14} />
+                <span>ปิดหน้าต่าง</span>
+              </button>
+            </div>
+            <img
+              src={previewImageUrl}
+              alt="Ownership Proof Full Preview"
+              className="max-h-[80vh] max-w-full rounded-2xl shadow-2xl object-contain border border-stone-700 bg-stone-950/90"
+            />
           </div>
         </div>
       )}

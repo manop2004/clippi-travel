@@ -19,7 +19,8 @@ import {
   AlertCircle,
   Upload,
   LayoutDashboard,
-  Trash2
+  Trash2,
+  Store
 } from "lucide-react";
 import { C } from "../../constants/mockData";
 import { supabase } from "../../supabaseClient";
@@ -43,10 +44,14 @@ const LEVEL_TITLE_KEYS: Record<number, string> = {
 const getLevelTitleKey = (level: number) =>
   LEVEL_TITLE_KEYS[level] ?? (level >= 6 ? "level.legendary" : "level.wanderer");
 
+interface ProfileViewProps {
+  onOpenMerchantModal?: () => void;
+  onGoToStoreManage?: () => void;
+}
 
-export default function ProfileView() {
+export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage }: ProfileViewProps) {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const { role, isAdmin } = useUserRole();
+  const { role, isAdmin, isPendingMerchant, isRejectedMerchant, merchantRejectionReason, cancelMerchantApp } = useUserRole();
   const { t } = useLang();
 
   // ─── Profile & Real data states ──────────────────────────────────────────
@@ -684,6 +689,104 @@ export default function ProfileView() {
         </div>
 
       </div>
+
+      {/* 🏬 Shop Owner / Merchant Partner Section (Hidden for Admin Role) */}
+      {!isAdmin && (
+        <div className="w-full">
+          <h3 className="text-xs font-black uppercase tracking-wider text-[#8A7870] mb-3 select-none">สำหรับเจ้าของร้านค้า / Merchant Partner</h3>
+          <div className="rounded-3xl bg-gradient-to-br from-amber-50 to-orange-50/80 border border-amber-200 p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="w-11 h-11 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <Store size={22} />
+              </div>
+              <div className="min-w-0">
+                {role === "store" ? (
+                  <>
+                    <h4 className="text-sm font-black text-amber-950 truncate">คุณเป็นเจ้าของร้านค้า (Merchant Partner)</h4>
+                    <p className="text-xs text-amber-800 font-semibold mt-0.5">
+                      เข้าใช้งาน Merchant Portal เพื่อจัดการข้อมูลร้าน รับรองดิจิทัลสแตมป์ และดูสถิติ
+                    </p>
+                  </>
+                ) : isPendingMerchant ? (
+                  <>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h4 className="text-sm font-black text-amber-950">คำขอเปิดร้านค้ารอการอนุมัติ</h4>
+                      <span className="px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 text-[10px] font-extrabold animate-pulse">⏳ รอแอดมินอนุมัติ</span>
+                    </div>
+                    <p className="text-xs text-amber-800 font-semibold mt-0.5">
+                      ข้อมูลร้านค้าและเอกสารของคุณถูกส่งเรียบร้อยแล้ว แอดมินกำลังตรวจสอบ
+                    </p>
+                  </>
+                ) : isRejectedMerchant ? (
+                  <>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h4 className="text-sm font-black text-rose-950">คำขอเปิดร้านค้าไม่ผ่านการอนุมัติ</h4>
+                      <span className="px-2 py-0.5 rounded-full bg-rose-200 text-rose-900 text-[10px] font-extrabold">❌ ไม่ผ่าน</span>
+                    </div>
+                    <p className="text-xs text-rose-800 font-semibold mt-0.5">
+                      {typeof merchantRejectionReason === "object" && merchantRejectionReason !== null ? ((merchantRejectionReason as any).reason || JSON.stringify(merchantRejectionReason)) : (merchantRejectionReason || "ข้อมูลเอกสารไม่ตรงตามเงื่อนไข สามารถแก้ไขเพื่อส่งใหม่ได้")}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h4 className="text-sm font-black text-amber-950">เปิดร้านค้ากับ Clippi / สมัครเป็นเจ้าของร้าน</h4>
+                    <p className="text-xs text-amber-800 font-semibold mt-0.5">
+                      ลงทะเบียนร้านค้าของคุณเพื่อรับดิจิทัลสแตมป์ แจกรางวัล และโปรโมตร้านบนแพลตฟอร์ม
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="shrink-0 w-full sm:w-auto">
+              {role === "store" ? (
+                <button
+                  type="button"
+                  onClick={onGoToStoreManage}
+                  className="w-full sm:w-auto px-4 py-2.5 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-black transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <span>จัดการร้านค้าของฉัน</span>
+                  <ChevronRight size={14} />
+                </button>
+              ) : isPendingMerchant || isRejectedMerchant ? (
+                <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={onOpenMerchantModal}
+                    className="w-full sm:w-auto px-4 py-2.5 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-black transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <span>{isRejectedMerchant ? "🔄 แก้ไข & ส่งคำขอใหม่" : "✏️ ดู/แก้ไขข้อมูลร้านค้า"}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (confirm("คุณต้องการยกเลิกคำขอสมัครเปิดร้านค้า ใช่หรือไม่?\n(สถานะของคุณจะกลับมาเป็นผู้ใช้งานทั่วไป)")) {
+                        try {
+                          await cancelMerchantApp();
+                        } catch (e) {
+                          alert("ไม่สามารถยกเลิกคำขอได้");
+                        }
+                      }
+                    }}
+                    className="w-full sm:w-auto px-3.5 py-2.5 rounded-2xl bg-stone-200 hover:bg-stone-300 text-stone-800 text-xs font-black transition shadow-xs cursor-pointer flex items-center justify-center gap-1"
+                  >
+                    <span>❌ ไม่สมัครแล้ว (ยกเลิกคำขอ)</span>
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={onOpenMerchantModal}
+                  className="w-full sm:w-auto px-4 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-black transition shadow-md cursor-pointer flex items-center justify-center gap-1.5 active:scale-98"
+                >
+                  <Store size={14} />
+                  <span>สมัครเปิดร้านค้า / เป็นเจ้าของร้าน</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 🛠️ Account Settings Section */}
       <div className="w-full">
