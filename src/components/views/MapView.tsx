@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ExternalLink, Navigation, Crosshair, MapPin, Loader2, RefreshCw } from "lucide-react";
+import { ExternalLink, Navigation, Crosshair, MapPin, Loader2, RefreshCw, Puzzle, Camera, Sparkles, CheckCircle2, Lock } from "lucide-react";
 import { C, categories } from "../../constants/mockData";
 import { supabase } from "../../supabaseClient";
 import { useLang, localized } from "../../lib/i18n";
+import { JigsawPiece } from "../../constants/jigsawData";
+import { useJigsawQuests } from "../../hooks/useJigsawQuests";
+import { useUserRole } from "../../hooks/useUserRole";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -28,12 +31,16 @@ interface Shop {
 interface MapViewProps {
   openPlace: (place: any) => void;
   searchQuery?: string;
+  onOpenScanner?: () => void;
+  collectedJigsawPieces?: string[];
+  onNavigateTab?: (tab: string) => void;
 }
 
 const PIN_TYPE_FILTERS = [
   { id: "All", labelKey: "filter.all" },
   { id: "food", labelKey: "cat.restaurantCafe" },
   { id: "shop", labelKey: "cat.serviceShop" },
+  { id: "jigsaw", labelKey: "เควสต์จิ๊กซอว์ 🧩" },
 ];
 
 const REGIONS = ["Kanto", "Kansai", "Hokkaido", "Tohoku", "Chubu", "Chugoku", "Kyushu & Okinawa", "Shikoku"];
@@ -70,7 +77,16 @@ const PureMapContainer = React.memo(({ innerRef }: { innerRef: React.RefObject<H
   return <div ref={innerRef} className="w-full h-full" />;
 });
 
-export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
+export default function MapView({
+  openPlace,
+  searchQuery = "",
+  onOpenScanner,
+  collectedJigsawPieces = [],
+  onNavigateTab,
+}: MapViewProps) {
+  const { quests } = useJigsawQuests();
+  const { isAdmin } = useUserRole();
+
   const [shops, setShops] = useState<Shop[]>([]);
   const [pinTypeFilter, setPinTypeFilter] = useState("All");
   const [regionFilter, setRegionFilter] = useState("All");
@@ -79,8 +95,21 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
   const [locatingUser, setLocatingUser] = useState(false);
   const [nearMeLoading, setNearMeLoading] = useState(false);
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
+  const [selectedJigsawPiece, setSelectedJigsawPiece] = useState<JigsawPiece | null>(null);
+  const [showJigsawPins, setShowJigsawPins] = useState(true);
+  const [selectedQuestFilter, setSelectedQuestFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const { t, lang } = useLang();
+
+  const activeJigsawPieces: (JigsawPiece & { questTitle: string; questBadge: string; questId: string })[] =
+    selectedQuestFilter === "all"
+      ? quests.flatMap((q) =>
+          q.pieces.map((p) => ({ ...p, questTitle: q.title, questBadge: q.badge, questId: q.id }))
+        )
+      : (quests.find((q) => q.id === selectedQuestFilter)?.pieces || []).map((p) => {
+          const q = quests.find((quest) => quest.id === selectedQuestFilter)!;
+          return { ...p, questTitle: q.title, questBadge: q.badge, questId: q.id };
+        });
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -218,43 +247,121 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
     }
   };
 
-  // 3. Render shop markers on map when displayedShops changes
+  // 3. Render shop and jigsaw markers on map when displayedShops / filters change
   useEffect(() => {
     if (!mapRef.current || !markersGroupRef.current) return;
 
     markersGroupRef.current.clearLayers();
 
-    displayedShops.forEach((shop) => {
-      if (!shop.lat || !shop.lng) return;
+    // 3.1 Render shop markers (unless filtered specifically to jigsaw)
+    if (pinTypeFilter !== "jigsaw") {
+      displayedShops.forEach((shop, index) => {
+        if (!shop.lat || !shop.lng) return;
 
-      const emoji = getPinTypeEmoji(shop.pin_type);
-      const isSelected = selectedShop?.id === shop.id;
-      const markerHtml = `
-        <div class="relative flex items-center justify-center">
-          <div class="w-8 h-8 rounded-full border-2 border-white ${
-            isSelected ? "bg-amber-500 scale-110 ring-4 ring-amber-300/50" : "bg-[#E0533C]"
-          } text-white flex items-center justify-center shadow-md hover:scale-110 transition-transform duration-150 text-sm">
-            ${emoji}
+        const emoji = getPinTypeEmoji(shop.pin_type);
+        const isSelected = selectedShop?.id === shop.id && !selectedJigsawPiece;
+        const shopPieceIndex = (index % 4) + 1;
+        const isCollected = collectedJigsawPieces.includes(`p${shopPieceIndex}`) || collectedJigsawPieces.includes(`shop-${shop.id}`);
+
+        const markerHtml = `
+          <div class="relative flex items-center justify-center cursor-pointer">
+            <div class="w-8 h-8 rounded-full border-2 border-white ${
+              isSelected ? "bg-amber-500 scale-110 ring-4 ring-amber-300/50" : "bg-[#E0533C]"
+            } text-white flex items-center justify-center shadow-md hover:scale-110 transition-transform duration-150 text-sm">
+              ${emoji}
+            </div>
+            <!-- Small Jigsaw Badge on top of shop pin -->
+            <div style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:9999px;background:${
+              isCollected ? '#059669' : '#EA580C'
+            };color:white;font-size:8px;font-weight:900;display:flex;align-items:center;justify-content:center;border:1.5px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.3);">
+              🧩
+            </div>
           </div>
-        </div>
-      `;
-      const customIcon = L.divIcon({ html: markerHtml, className: "custom-marker-wrapper", iconSize: [32, 32], iconAnchor: [16, 16] });
+        `;
+        const customIcon = L.divIcon({ html: markerHtml, className: "custom-marker-wrapper", iconSize: [32, 32], iconAnchor: [16, 16] });
 
-      const marker = L.marker([shop.lat, shop.lng], { icon: customIcon }).on("click", () => {
-        setSelectedShop(shop);
+        const marker = L.marker([shop.lat, shop.lng], { icon: customIcon }).on("click", () => {
+          setSelectedShop(shop);
+          setSelectedJigsawPiece(null);
+        });
+        markersGroupRef.current?.addLayer(marker);
       });
-      markersGroupRef.current?.addLayer(marker);
-    });
+    }
 
-    if (displayedShops.length > 0 && mapRef.current && !userCoords) {
-      const validPoints = displayedShops.filter(s => s.lat && s.lng).map(s => L.latLng(s.lat, s.lng));
-      if (validPoints.length > 0) {
+    // 3.2 Render jigsaw checkpoint markers (if showJigsawPins is true or pinTypeFilter === 'jigsaw' or 'All')
+    if (showJigsawPins && (pinTypeFilter === "All" || pinTypeFilter === "jigsaw")) {
+      activeJigsawPieces.forEach((piece) => {
+        if (!piece.targetLat || !piece.targetLng) return;
+
+        const isCollected = collectedJigsawPieces.includes(piece.id);
+        const isSelected = selectedJigsawPiece?.id === piece.id;
+
+        const jigsawMarkerHtml = `
+          <div class="relative flex items-center justify-center cursor-pointer group">
+            ${!isCollected ? '<div style="position:absolute;inset:-4px;border-radius:9999px;background:rgba(249,115,22,0.35);animation:ping 1.8s cubic-bezier(0,0,0.2,1) infinite;"></div>' : ''}
+            <div style="width:36px;height:36px;border-radius:14px;border:2.5px solid white;display:flex;align-items:center;justify-content:center;color:white;font-weight:900;font-size:13px;box-shadow:0 4px 10px rgba(0,0,0,0.25);transition:all 0.15s ease;"
+              class="${
+                isSelected
+                  ? "bg-stone-950 scale-125 ring-4 ring-orange-400"
+                  : isCollected
+                  ? "bg-emerald-600 hover:scale-110"
+                  : "bg-gradient-to-tr from-amber-500 via-orange-500 to-rose-500 hover:scale-110"
+              }"
+            >
+              ${isCollected ? "✓" : "🧩"}
+            </div>
+            <div style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:#1c1917;color:white;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;border:1.5px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.3);">
+              ${piece.pieceIndex + 1}
+            </div>
+          </div>
+        `;
+
+        const customJigsawIcon = L.divIcon({
+          html: jigsawMarkerHtml,
+          className: "custom-jigsaw-marker",
+          iconSize: [36, 36],
+          iconAnchor: [18, 18],
+        });
+
+        const marker = L.marker([piece.targetLat, piece.targetLng], { icon: customJigsawIcon }).on("click", () => {
+          setSelectedJigsawPiece(piece);
+          setSelectedShop(null);
+          if (mapRef.current) {
+            mapRef.current.setView([piece.targetLat, piece.targetLng], 16, { animate: true });
+          }
+        });
+
+        const popupHtml = `
+          <div style="font-family:sans-serif;padding:3px;text-align:center;min-width:140px;">
+            <div style="font-size:9px;font-weight:900;color:#FD775C;text-transform:uppercase;">🧩 ${piece.questTitle.split(":")[0]} • ชิ้นที่ ${piece.pieceIndex + 1}</div>
+            <div style="font-size:12px;font-weight:bold;color:#111;margin:2px 0;">${piece.checkpointName}</div>
+            <div style="font-size:10px;color:#666;">${piece.locationArea}</div>
+            <div style="margin-top:4px;font-size:10px;font-weight:bold;color:${isCollected ? '#059669' : '#D97706'};">
+              ${isCollected ? "✅ เก็บชิ้นส่วนแล้ว" : "🔒 ต้องไปสแกนที่จุดนี้"}
+            </div>
+          </div>
+        `;
+        marker.bindPopup(popupHtml);
+        markersGroupRef.current?.addLayer(marker);
+      });
+    }
+
+    // Auto fit bounds
+    if (mapRef.current && !userCoords) {
+      if (pinTypeFilter === "jigsaw" && activeJigsawPieces.length > 0) {
+        const jigsawPoints = activeJigsawPieces.map((p) => L.latLng(p.targetLat, p.targetLng));
         mapRef.current.invalidateSize();
-        const bounds = L.latLngBounds(validPoints);
-        mapRef.current.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+        mapRef.current.fitBounds(L.latLngBounds(jigsawPoints), { padding: [50, 50], maxZoom: 16 });
+      } else if (displayedShops.length > 0) {
+        const validPoints = displayedShops.filter((s) => s.lat && s.lng).map((s) => L.latLng(s.lat, s.lng));
+        if (validPoints.length > 0) {
+          mapRef.current.invalidateSize();
+          const bounds = L.latLngBounds(validPoints);
+          mapRef.current.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+        }
       }
     }
-  }, [regionFilter, pinTypeFilter, shops, searchQuery]);
+  }, [regionFilter, pinTypeFilter, selectedQuestFilter, shops, searchQuery, showJigsawPins, collectedJigsawPieces, selectedShop, selectedJigsawPiece]);
 
   // 4. Auto-select first matching shop when search query or filter changes
   useEffect(() => {
@@ -310,6 +417,12 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
 
   const selectedName = selectedShop ? (localized(selectedShop as any, "shop_name", lang) || selectedShop.shop_name) : "";
   const selectedDesc = selectedShop ? localized(selectedShop as any, "description", lang) : "";
+  const selectedShopIndex = shops.findIndex((s) => s.id === selectedShop?.id);
+  const selectedShopPieceIndex = (selectedShopIndex >= 0 ? selectedShopIndex % 4 : 0) + 1;
+  const selectedShopPieceId = `p${selectedShopPieceIndex}`;
+  const isSelectedShopPieceCollected =
+    collectedJigsawPieces.includes(selectedShopPieceId) ||
+    (selectedShop ? collectedJigsawPieces.includes(`shop-${selectedShop.id}`) : false);
 
   return (
     <div className="space-y-5 w-full min-w-0 text-[#231C18]">
@@ -359,24 +472,110 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
             ))}
           </div>
 
-          {/* 🏷️ Filter Tabs (by category) */}
+          {/* 🏷️ Filter Tabs (by category & jigsaw) */}
           <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none w-full md:w-auto">
             {PIN_TYPE_FILTERS.map((f) => (
               <button
                 key={f.id}
-                onClick={() => setPinTypeFilter(f.id)}
-                className="px-3.5 py-1.5 rounded-full text-[10px] font-black shrink-0 border transition-all duration-150"
+                onClick={() => {
+                  setPinTypeFilter(f.id);
+                  if (f.id === "jigsaw" && activeJigsawPieces.length > 0) {
+                    setSelectedJigsawPiece(activeJigsawPieces[0]);
+                    setSelectedShop(null);
+                    if (mapRef.current) {
+                      const jigsawPoints = activeJigsawPieces.map((p) => L.latLng(p.targetLat, p.targetLng));
+                      mapRef.current.invalidateSize();
+                      mapRef.current.fitBounds(L.latLngBounds(jigsawPoints), { padding: [50, 50], maxZoom: 16 });
+                    }
+                  } else {
+                    setSelectedJigsawPiece(null);
+                  }
+                }}
+                className="px-3.5 py-1.5 rounded-full text-[10px] font-black shrink-0 border transition-all duration-150 cursor-pointer"
                 style={
                   pinTypeFilter === f.id
-                    ? { background: C.accent, color: "#fff", borderColor: C.accent }
-                    : { background: "#FFFFFF", color: C.inkSoft, borderColor: C.line }
+                    ? { background: f.id === "jigsaw" ? "#1c1917" : C.accent, color: "#fff", borderColor: f.id === "jigsaw" ? "#1c1917" : C.accent }
+                    : { background: f.id === "jigsaw" ? "#FFF7ED" : "#FFFFFF", color: f.id === "jigsaw" ? "#C2410C" : C.inkSoft, borderColor: f.id === "jigsaw" ? "#FFEDD5" : C.line }
                 }
               >
-                {t(f.labelKey)}
+                {f.id === "jigsaw" ? f.labelKey : t(f.labelKey)}
               </button>
             ))}
           </div>
         </div>
+
+        {/* 🧩 Sub-filter Bar for Jigsaw Quests */}
+        {pinTypeFilter === "jigsaw" && (
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none w-full animate-fade-in pt-1">
+            <button
+              onClick={() => {
+                setSelectedQuestFilter("all");
+                if (mapRef.current) {
+                  const allPts = quests.flatMap((q) => q.pieces.map((p) => L.latLng(p.targetLat, p.targetLng)));
+                  if (allPts.length > 0) {
+                    mapRef.current.fitBounds(L.latLngBounds(allPts), { padding: [50, 50], maxZoom: 14 });
+                  }
+                }
+              }}
+              className={`px-3 py-1 rounded-full text-[10.5px] font-extrabold shrink-0 transition cursor-pointer border ${
+                selectedQuestFilter === "all"
+                  ? "bg-stone-900 text-white border-stone-900 shadow-xs"
+                  : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
+              }`}
+            >
+              🌟 ทั้งหมด ({quests.length} เควสต์)
+            </button>
+            {quests.map((q) => {
+              const isCur = selectedQuestFilter === q.id;
+              const emoji =
+                q.badge === "Gourmet Quest"
+                  ? "🍡"
+                  : q.badge === "Kyoto Classic"
+                  ? "⛩️"
+                  : q.badge === "Tokyo Modern"
+                  ? "🗼"
+                  : q.badge === "Food Paradise"
+                  ? "🐙"
+                  : q.badge === "Fuji Adventure"
+                  ? "🗻"
+                  : "🏛️";
+              return (
+                <button
+                  key={q.id}
+                  onClick={() => {
+                    setSelectedQuestFilter(q.id);
+                    if (q.pieces.length > 0 && mapRef.current) {
+                      const pts = q.pieces.map((p) => L.latLng(p.targetLat, p.targetLng));
+                      mapRef.current.fitBounds(L.latLngBounds(pts), { padding: [60, 60], maxZoom: 16 });
+                      setSelectedJigsawPiece(q.pieces[0]);
+                      setSelectedShop(null);
+                    }
+                  }}
+                  className={`px-3 py-1 rounded-full text-[10.5px] font-extrabold shrink-0 transition cursor-pointer border flex items-center gap-1.5 ${
+                    isCur
+                      ? "bg-orange-600 text-white border-orange-600 shadow-xs"
+                      : "bg-white text-stone-700 border-stone-200 hover:border-orange-300 hover:bg-orange-50/50"
+                  }`}
+                >
+                  <span>{emoji}</span>
+                  <span>{q.title.split(":")[0]}</span>
+                </button>
+              );
+            })}
+
+            {/* Admin shortcut button to manage & create jigsaws */}
+            {isAdmin && (
+              <button
+                onClick={() => onNavigateTab?.("jigsaw_manage")}
+                className="ml-auto px-3 py-1 rounded-full text-[10.5px] font-black shrink-0 transition cursor-pointer border border-orange-300 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-xs flex items-center gap-1.5"
+                title="ไปยังหน้าแดชบอร์ดจัดการและสร้างจุดสแกนจิ๊กซอว์"
+              >
+                <Puzzle size={12} strokeWidth={2.5} />
+                <span>+ จัดการ/สร้างจุดจิ๊กซอว์ (Admin)</span>
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* 🗺️ Map Grid Layout */}
@@ -417,8 +616,91 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
           )}
         </div>
 
-        {/* Details side pane */}
-        {selectedShop ? (
+        {/* Details side pane: Jigsaw Piece or Shop */}
+        {selectedJigsawPiece ? (
+          <div className="w-full h-full">
+            <div className="bg-white rounded-3xl p-5 border flex flex-col justify-between h-[340px] md:h-[420px] shadow-xs" style={{ borderColor: C.line }}>
+              <div className="space-y-3.5 overflow-y-auto scrollbar-none pr-1">
+                <div className="flex items-start gap-3">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 text-white border-2 border-white shadow-md flex items-center justify-center text-2xl shrink-0 font-black">
+                    🧩
+                  </div>
+                  {(() => {
+                    const parentQuest = quests.find((q) => q.pieces.some((p) => p.id === selectedJigsawPiece.id));
+                    return (
+                      <div className="leading-tight min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[9px] font-black uppercase tracking-wider text-orange-600 bg-orange-50 px-2 py-0.5 rounded-md border border-orange-200 truncate">
+                            {parentQuest?.title.split(":")[0] || "เควสต์จิ๊กซอว์"}
+                          </span>
+                          <span className="text-[9px] font-black text-stone-500 shrink-0">
+                            ชิ้นที่ {selectedJigsawPiece.pieceIndex + 1} / {parentQuest?.pieces.length || 4}
+                          </span>
+                        </div>
+                        <h3 className="text-sm font-black mt-1 leading-snug truncate" style={{ color: C.ink }}>
+                          {selectedJigsawPiece.checkpointName}
+                        </h3>
+                        <p className="text-[10px] text-[#8A7870] font-bold mt-1 flex items-center gap-1">
+                          <MapPin size={11} className="text-orange-500 shrink-0" /> {selectedJigsawPiece.locationArea}
+                        </p>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* Status Box */}
+                {collectedJigsawPieces.includes(selectedJigsawPiece.id) ? (
+                  <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-800 text-xs font-black flex items-center gap-2">
+                    <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                    <span>คุณสะสมชิ้นส่วนนี้เรียบร้อยแล้ว ✓</span>
+                  </div>
+                ) : (
+                  <div className="p-2.5 bg-orange-50 border border-orange-200 rounded-2xl text-orange-900 text-xs font-black flex items-center gap-2">
+                    <Lock size={15} className="text-orange-600 shrink-0" />
+                    <span>ยังไม่ได้เก็บ (เดินทางไปสแกน ณ จุดจริง)</span>
+                  </div>
+                )}
+
+                <div className="pt-2 border-t space-y-2" style={{ borderColor: C.line }}>
+                  <h4 className="text-[9px] font-black uppercase tracking-wider text-[#8A7870]">คำแนะนำการค้นหา</h4>
+                  <p className="text-xs text-[#8A7870] leading-relaxed">
+                    {selectedJigsawPiece.description}
+                  </p>
+                  <div className="p-2.5 bg-amber-50/80 border border-amber-200/80 rounded-xl text-[10.5px] text-amber-900 font-semibold leading-snug">
+                    💡 คำใบ้: {selectedJigsawPiece.hint}
+                  </div>
+                  <p className="text-[10px] text-stone-400 font-medium">
+                    พิกัด GPS: {selectedJigsawPiece.targetLat.toFixed(4)}, {selectedJigsawPiece.targetLng.toFixed(4)} (รัศมี {selectedJigsawPiece.radiusMeters} ม.)
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2 mt-4 shrink-0">
+                {onOpenScanner && (
+                  <button
+                    onClick={onOpenScanner}
+                    className="w-full py-2.5 rounded-xl text-xs font-black text-white flex items-center justify-center gap-1.5 shadow-md transition hover:bg-orange-700 bg-orange-600 cursor-pointer active:scale-98"
+                  >
+                    <Camera size={14} strokeWidth={2.5} />
+                    <span>สแกน QR Code + GPS จุดนี้</span>
+                  </button>
+                )}
+
+                <button
+                  onClick={() => {
+                    if (mapRef.current) {
+                      mapRef.current.setView([selectedJigsawPiece.targetLat, selectedJigsawPiece.targetLng], 17, { animate: true });
+                    }
+                  }}
+                  className="w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border bg-[#FAF6F0] hover:bg-stone-50 transition cursor-pointer"
+                  style={{ borderColor: C.line, color: C.ink }}
+                >
+                  <Navigation size={13} color={C.accent} /> ซูมไปที่จุดนี้
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : selectedShop ? (
           <div className="w-full h-full">
             <div className="bg-white rounded-3xl p-5 border flex flex-col justify-between h-[340px] md:h-[420px] shadow-xs" style={{ borderColor: C.line }}>
               <div className="space-y-4 overflow-y-auto scrollbar-none pr-1">
@@ -457,6 +739,62 @@ export default function MapView({ openPlace, searchQuery = "" }: MapViewProps) {
                       <span className="block mt-0.5 font-medium">{selectedShop.address}</span>
                     </div>
                   )}
+
+                  {/* 🧩 Jigsaw Piece for this Location */}
+                  <div className="mt-3 pt-3 border-t" style={{ borderColor: C.line }}>
+                    <div
+                      className={`p-3.5 rounded-2xl border transition-all ${
+                        isSelectedShopPieceCollected
+                          ? "bg-emerald-50/80 border-emerald-200"
+                          : "bg-gradient-to-r from-orange-50 via-amber-50 to-orange-50 border-orange-200 shadow-2xs"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div
+                            className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm shrink-0 shadow-xs ${
+                              isSelectedShopPieceCollected
+                                ? "bg-emerald-600 text-white"
+                                : "bg-gradient-to-tr from-amber-500 to-orange-500 text-white"
+                            }`}
+                          >
+                            🧩
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[9px] font-black uppercase tracking-wider text-orange-600">
+                                ชิ้นส่วนจิ๊กซอว์ที่ {selectedShopPieceIndex}
+                              </span>
+                              {isSelectedShopPieceCollected ? (
+                                <span className="text-[8.5px] font-extrabold text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded-full flex items-center gap-0.5">
+                                  <CheckCircle2 size={10} /> เก็บแล้ว
+                                </span>
+                              ) : (
+                                <span className="text-[8.5px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.2 rounded-full flex items-center gap-0.5">
+                                  <Lock size={9} /> ซ่อนอยู่ที่นี่
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] font-extrabold text-stone-900 truncate mt-0.5">
+                              {isSelectedShopPieceCollected
+                                ? "คุณสะสมชิ้นส่วนของร้านนี้แล้ว ✓"
+                                : `มีชิ้นส่วนจิ๊กซอว์ซ่อนอยู่ที่ ${selectedName}!`}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {!isSelectedShopPieceCollected && onOpenScanner && (
+                        <button
+                          onClick={onOpenScanner}
+                          className="mt-2.5 w-full py-2 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-xl text-xs font-black flex items-center justify-center gap-1.5 shadow-xs transition cursor-pointer active:scale-98"
+                        >
+                          <Camera size={13} strokeWidth={2.5} />
+                          <span>สแกน QR + GPS รับจิ๊กซอว์ร้านนี้</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
               <div className="flex flex-col gap-2 mt-4 shrink-0">

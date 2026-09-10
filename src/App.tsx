@@ -29,6 +29,7 @@ import AdminLogPage from "./components/views/AdminLogPage";
 import { resolveUserDisplayName, resolveUserAvatarUrl, getDeletedUserIds } from "./lib/activityHelpers";
 import NotificationBell from "./components/NotificationBell";
 import AchievementManagePage from "./components/views/AchievementManagePage";
+import AdminJigsawManagePage from "./components/views/AdminJigsawManagePage";
 
 export default function App() {
   const [tab, setTab] = useState("explore");
@@ -104,6 +105,8 @@ export default function App() {
       setTab("users_manage");
     } else if (path.includes("store")) {
       setTab("store_manage");
+    } else if (path.includes("jigsaw_manage") || path.includes("jigsaw-manage")) {
+      setTab("jigsaw_manage");
     } else if (path.includes("jigsaw")) {
       setTab("jigsaw");
     }
@@ -121,6 +124,7 @@ export default function App() {
     { id: "users_manage", label: "User Management", icon: Users, roles: ["admin"] },
     { id: "admin_log", label: "Activity Log", icon: ScrollText, roles: ["admin"] },
     { id: "achievements", label: "Achievements", icon: Trophy, roles: ["admin"] },
+    { id: "jigsaw_manage", label: "Manage Jigsaws", icon: Puzzle, roles: ["admin"] },
   ];
 
   const navTabs = allNavTabs.filter((item) => item.roles.includes(role));
@@ -521,13 +525,27 @@ export default function App() {
                   />
                 )
               )}
-              {tab === "map" && <MapView openPlace={(p: any) => setSelectedPlace(p)} searchQuery={searchQuery} />}
-              {tab === "collection" && <CollectionView searchQuery={searchQuery} openPlace={(p: any) => setSelectedPlace(p)} />}
+              {tab === "map" && (
+                <MapView
+                  openPlace={(p: any) => setSelectedPlace(p)}
+                  searchQuery={searchQuery}
+                  onOpenScanner={() => setIsScannerOpen(true)}
+                  collectedJigsawPieces={collectedPieceIds}
+                  onNavigateTab={(t) => setTab(t)}
+                />
+              )}
+              {tab === "collection" && (
+                <CollectionView
+                  searchQuery={searchQuery}
+                  openPlace={(p: any) => setSelectedPlace(p)}
+                />
+              )}
               {tab === "jigsaw" && (
                 <JigsawBoardView
                   collectedPieceIds={collectedPieceIds}
                   onOpenScanner={() => setIsScannerOpen(true)}
                   onResetProgress={() => setCollectedPieceIds([])}
+                  onNavigateTab={(t) => setTab(t)}
                 />
               )}
               {tab === "profile" && (
@@ -553,6 +571,11 @@ export default function App() {
               {tab === "admin_log" && (
                 <ProtectedRoute allowedRoles={["admin"]} onGoHome={() => setTab("explore")}>
                   <AdminLogPage />
+                </ProtectedRoute>
+              )}
+              {tab === "jigsaw_manage" && (
+                <ProtectedRoute allowedRoles={["admin"]} onGoHome={() => setTab("explore")}>
+                  <AdminJigsawManagePage />
                 </ProtectedRoute>
               )}
             </main>
