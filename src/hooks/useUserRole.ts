@@ -27,6 +27,7 @@ export interface UserRoleState {
   isRejectedMerchant: boolean;
   loading: boolean;
   error: string | null;
+  refreshRole: (showLoading?: boolean) => Promise<void>;
   cancelMerchantApp: () => Promise<void>;
 }
 
