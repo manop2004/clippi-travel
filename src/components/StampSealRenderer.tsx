@@ -105,6 +105,22 @@ export default function StampSealRenderer({
   const subTextColor = finalDesign.sub_text_color || inkColor;
   const imageSize = finalDesign.image_size || "lg";
 
+  const fontCssMap: Record<string, string> = {
+    sans: "'Prompt', sans-serif",
+    serif: "'Sarabun', serif",
+    traditional: "'Charm', serif",
+    vintage: "'Chakra Petch', sans-serif",
+    rounded: "'Itim', sans-serif",
+    mono: "'Courier New', monospace",
+    japanese: "'Sawarabi Mincho', serif",
+  };
+
+  const topFontStyle = finalDesign.custom_text_font_style || finalDesign.font_style || "sans";
+  const subFontStyle = finalDesign.sub_text_font_style || finalDesign.font_style || "sans";
+
+  const topFontFamily = fontCssMap[topFontStyle] || fontCssMap.sans;
+  const subFontFamily = fontCssMap[subFontStyle] || fontCssMap.sans;
+
   // Icon renderer lookup
   const renderIcon = () => {
     if (customImg) {
@@ -182,7 +198,7 @@ export default function StampSealRenderer({
         {showCustomText && (
           <span
             className={`font-black tracking-tight leading-none text-center px-1 max-w-[88%] truncate ${sz.mainFont}`}
-            style={{ color: customTextColor }}
+            style={{ color: customTextColor, fontFamily: topFontFamily }}
           >
             {mainText}
           </span>
@@ -197,7 +213,7 @@ export default function StampSealRenderer({
         {showSubText && subText && (
           <span
             className={`font-extrabold uppercase tracking-wider text-center px-1 max-w-[85%] truncate opacity-80 ${sz.subFont}`}
-            style={{ color: subTextColor }}
+            style={{ color: subTextColor, fontFamily: subFontFamily }}
           >
             {subText}
           </span>

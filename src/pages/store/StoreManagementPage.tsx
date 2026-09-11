@@ -3022,6 +3022,93 @@ function AdminShopSummaryModal({
   const [activeTab, setActiveTab] = useState<"overview" | "collectors" | "time" | "monthly">("overview");
   const [stampsData, setStampsData] = useState<any[]>([]);
   const [loadingStamps, setLoadingStamps] = useState<boolean>(true);
+  const [ownerInfo, setOwnerInfo] = useState<{
+    email?: string | null;
+    display_name?: string | null;
+    full_name?: string | null;
+    username?: string | null;
+  } | null>(null);
+  const [loadingOwner, setLoadingOwner] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!shop?.owner_id) {
+      setOwnerInfo(null);
+      setLoadingOwner(false);
+      return;
+    }
+
+    let isMounted = true;
+    setLoadingOwner(true);
+
+    async function fetchOwnerInfo() {
+      try {
+        const ownerUid = shop.owner_id;
+        if (!ownerUid) return;
+
+        // 1. Fetch profile by id or user_id
+        const { data: profData, error: profErr } = await supabase
+          .from("profiles")
+          .select("id, user_id, email, display_name, full_name, username")
+          .or(`id.eq.${ownerUid},user_id.eq.${ownerUid}`)
+          .maybeSingle();
+
+        if (!profErr && profData && (profData.email || profData.display_name || profData.full_name || profData.username)) {
+          if (isMounted) {
+            setOwnerInfo(profData);
+            setLoadingOwner(false);
+          }
+          return;
+        }
+
+        // 2. Query RPC get_admin_user_list if email or display_name is missing
+        const { data: rpcUsers } = await supabase.rpc("get_admin_user_list");
+        if (rpcUsers && Array.isArray(rpcUsers)) {
+          const match = rpcUsers.find(
+            (u: any) => String(u.id) === String(ownerUid) || String(u.user_id) === String(ownerUid)
+          );
+          if (match && isMounted) {
+            setOwnerInfo({
+              email: match.email || profData?.email || null,
+              display_name: match.display_name || profData?.display_name || null,
+              full_name: match.full_name || profData?.full_name || null,
+              username: match.username || profData?.username || null,
+            });
+            setLoadingOwner(false);
+            return;
+          }
+        }
+
+        // 3. Fallback to place_submissions if contact_email or contact_name exists
+        const { data: subData } = await supabase
+          .from("place_submissions")
+          .select("contact_email, contact_name")
+          .eq("user_id", ownerUid)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (subData && isMounted) {
+          setOwnerInfo({
+            email: subData.contact_email || profData?.email || null,
+            display_name: subData.contact_name || profData?.display_name || null,
+            full_name: profData?.full_name || null,
+            username: profData?.username || null,
+          });
+        } else if (profData && isMounted) {
+          setOwnerInfo(profData);
+        }
+      } catch (err) {
+        console.warn("Failed to fetch owner info:", err);
+      } finally {
+        if (isMounted) setLoadingOwner(false);
+      }
+    }
+
+    fetchOwnerInfo();
+    return () => {
+      isMounted = false;
+    };
+  }, [shop?.owner_id]);
 
   useEffect(() => {
     if (!shop?.id) return;
@@ -3048,6 +3135,20 @@ function AdminShopSummaryModal({
 
     fetchAnalyticsData();
   }, [shop?.id]);
+
+  let ownerDisplayText = "";
+  if (ownerInfo) {
+    const nameStr = (ownerInfo.display_name || ownerInfo.full_name || ownerInfo.username || "").trim();
+    const emailStr = (ownerInfo.email || "").trim();
+
+    if (nameStr && emailStr && nameStr.toLowerCase() !== emailStr.toLowerCase()) {
+      ownerDisplayText = `${nameStr} (${emailStr})`;
+    } else if (emailStr) {
+      ownerDisplayText = emailStr;
+    } else if (nameStr) {
+      ownerDisplayText = nameStr;
+    }
+  }
 
   const totalStampsCount = stampsData.length;
   const ratingVal = shop.rating !== undefined && shop.rating !== null ? Number(shop.rating) : 0;
@@ -3305,8 +3406,19 @@ function AdminShopSummaryModal({
 
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-bold text-[#8A7870]">เจ้าของร้าน (Owner ID):</span>
-                      <span className="font-mono text-[11px] text-stone-600 truncate max-w-[220px]">
-                        {shop.owner_id || "ระบบ (Admin/Unassigned)"}
+                      <span
+                        className="font-medium text-xs text-stone-700 truncate max-w-[260px] text-right"
+                        title={shop.owner_id ? `Owner ID: ${shop.owner_id}` : "ไม่มี Owner ID"}
+                      >
+                        {loadingOwner ? (
+                          <span className="text-stone-400 font-mono text-[11px] animate-pulse">กำลังโหลด...</span>
+                        ) : ownerDisplayText ? (
+                          <span className="font-semibold text-stone-800">{ownerDisplayText}</span>
+                        ) : shop.owner_id ? (
+                          <span className="font-mono text-[11px] text-stone-600">{shop.owner_id}</span>
+                        ) : (
+                          <span className="text-stone-500">ระบบ (Admin/Unassigned)</span>
+                        )}
                       </span>
                     </div>
                   </div>

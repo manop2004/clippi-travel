@@ -14,8 +14,20 @@ export interface StampDesign {
   image_size?: "sm" | "md" | "lg" | "full";
   border_width?: "none" | "thin" | "medium" | "bold";
   shadow_effect?: "none" | "subtle" | "vintage" | "glow";
-  font_style?: "sans" | "serif" | "mono" | "rounded";
+  font_style?: "sans" | "serif" | "traditional" | "vintage" | "rounded" | "mono" | "japanese";
+  custom_text_font_style?: "sans" | "serif" | "traditional" | "vintage" | "rounded" | "mono" | "japanese";
+  sub_text_font_style?: "sans" | "serif" | "traditional" | "vintage" | "rounded" | "mono" | "japanese";
 }
+
+export const STAMP_FONT_STYLES = [
+  { id: "sans", name: "Prompt", label: "Prompt (โมเดิร์น สบายตา)", family: "'Prompt', sans-serif" },
+  { id: "serif", name: "Sarabun", label: "Sarabun (ทางการ คลาสสิก)", family: "'Sarabun', serif" },
+  { id: "traditional", name: "Charm", label: "Charm (ตราประทับโบราณ)", family: "'Charm', serif" },
+  { id: "vintage", name: "Chakra Petch", label: "Chakra Petch (วินเทจ ย้อนยุค)", family: "'Chakra Petch', sans-serif" },
+  { id: "rounded", name: "Itim", label: "Itim (ตัวมน น่ารัก Hanko)", family: "'Itim', sans-serif" },
+  { id: "mono", name: "Monospace", label: "Monospace (พิมพ์ดีด หนาดิ่ง)", family: "'Courier New', monospace" },
+  { id: "japanese", name: "Sawarabi", label: "Sawarabi (พู่กัน Mincho ญี่ปุ่น)", family: "'Sawarabi Mincho', serif" },
+];
 
 export const STAMP_IMAGE_SIZES = [
   { id: "sm", label: "เล็ก (Small)" },

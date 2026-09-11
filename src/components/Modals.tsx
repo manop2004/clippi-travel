@@ -1147,13 +1147,20 @@ export function AddPlaceModal({
         setCoords(null);
       }
 
-      if (activeData.image_urls && activeData.image_urls.length > 0) {
-        setPreviewUrls(activeData.image_urls);
+      let initialUrls: string[] = [];
+      if (Array.isArray(activeData.image_urls) && activeData.image_urls.length > 0) {
+        initialUrls = activeData.image_urls;
+      } else if (typeof activeData.image_urls === "string" && activeData.image_urls.trim()) {
+        try {
+          const parsed = JSON.parse(activeData.image_urls);
+          initialUrls = Array.isArray(parsed) ? parsed : [activeData.image_urls];
+        } catch {
+          initialUrls = [activeData.image_urls];
+        }
       } else if (activeData.image_url) {
-        setPreviewUrls([activeData.image_url]);
-      } else {
-        setPreviewUrls([]);
+        initialUrls = [activeData.image_url];
       }
+      setPreviewUrls(initialUrls);
       setSelectedFiles([]);
       setImageError("");
       setLocationError("");
@@ -1188,9 +1195,11 @@ export function AddPlaceModal({
   // Cleanup object URLs on unmount
   useEffect(() => {
     return () => {
-      previewUrls.forEach(url => {
-        if (url.startsWith("blob:")) URL.revokeObjectURL(url);
-      });
+      if (Array.isArray(previewUrls)) {
+        previewUrls.forEach((url) => {
+          if (typeof url === "string" && url.startsWith("blob:")) URL.revokeObjectURL(url);
+        });
+      }
     };
   }, [previewUrls]);
 
