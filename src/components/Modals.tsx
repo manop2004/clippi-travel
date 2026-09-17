@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { X, Navigation, Crosshair, Landmark, MapPin, ExternalLink, Send, Loader2, Star, Camera, Edit3, Trash2, Globe, FileText, AlertCircle, AlertTriangle, CheckCircle2, Clock, CalendarOff, CameraOff, CigaretteOff, UtensilsCrossed, Ban, Banknote, VolumeX, ShieldAlert } from "lucide-react";
+import { X, Navigation, Crosshair, Landmark, MapPin, ExternalLink, Send, Loader2, Star, Camera, Edit3, Trash2, Globe, FileText, AlertCircle, AlertTriangle, CheckCircle2, Clock, CalendarOff, CameraOff, CigaretteOff, UtensilsCrossed, Ban, Banknote, VolumeX, ShieldAlert, Layers } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { C, categories } from "../constants/mockData";
@@ -15,6 +15,8 @@ import AchievementCelebration, { CelebrationItem } from "./AchievementCelebratio
 import { getShopStatusToday, cleanAllMetadataTags } from "../lib/scheduleHelpers";
 import StampSealRenderer from "./StampSealRenderer";
 import { getShopRules, StoreRuleItem } from "../lib/ruleHelpers";
+import { getShopStampVersions, getCurrentActiveStampVersion } from "../lib/stampHelpers";
+import ShopVersionHistoryModal from "./ShopVersionHistoryModal";
 
 interface PlaceDetailModalProps {
   place: any;
@@ -30,6 +32,7 @@ export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }:
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [userStamps, setUserStamps] = useState<UserStamp[]>([]);
   const [collectingStamp, setCollectingStamp] = useState<string | null>(null);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [celebration, setCelebration] = useState<CelebrationItem[]>([]);
   const [user, setUser] = useState<any>(null);
   const [realRating, setRealRating] = useState<number | null>(null);
@@ -159,36 +162,38 @@ export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }:
           return;
         }
 
-        // อยู่ในรัศมี → ทำงานต่อตามเดิม
+        // อยู่ในรัศมี → ทำงานต่อตามเดิม (สามารถสะสมแสตมป์รอบใหม่ได้เรื่อยๆ)
         try {
-          const alreadyCollected = await hasUserCollectedStamp(user.id, placeId);
-          if (!alreadyCollected) {
-            // จำ badge ที่มีอยู่ก่อน เพื่อเทียบว่ามี achievement ใหม่ปลดล็อกไหม
-            const badgesBefore = await getUserBadgeCodes(user.id);
+          const badgesBefore = await getUserBadgeCodes(user.id);
 
-            await collectStamp(placeId);
-            const updated = await getUserStamps(user.id);
-            setUserStamps(updated);
+          // นับจำนวนรอบที่เคยสะสมร้านนี้
+          const previousCount = userStamps.filter((us) => String(us.shop_id) === String(placeId)).length;
+          const newRoundNumber = previousCount + 1;
 
-            // สั่งให้ฝั่ง DB ประเมินเงื่อนไข achievement ใหม่ทันที (ก่อนหน้านี้ฟังก์ชันนี้
-            // มีอยู่แล้วบน Supabase แต่ไม่เคยถูกเรียกจากแอป จึงไม่มี badge ปลดล็อกอัตโนมัติ)
-            await checkAndAwardAchievements(user.id);
-            const badgesAfter = await getUserBadgeCodes(user.id);
-            const newCodes = badgesAfter.filter((c) => !badgesBefore.includes(c));
-            const newAchievements = newCodes.length > 0 ? await getAchievementsByCodes(newCodes) : [];
+          const versions = getShopStampVersions(livePlace || place);
+          const currentActive = getCurrentActiveStampVersion(versions);
 
-            // คิว popup: การ์ด "เก็บสแตมป์สำเร็จ" ก่อน ตามด้วย achievement ใหม่ (ถ้ามี)
-            setCelebration([
-              { type: "stamp", shopName },
-              ...newAchievements.map((a) => ({
-                type: "achievement" as const,
-                code: a.code,
-                name: a.name,
-                icon: a.icon || "🏆",
-                description: a.description,
-              })),
-            ]);
-          }
+          await collectStamp(placeId, currentActive?.id, currentActive?.id, undefined, currentActive?.version_code);
+          const updated = await getUserStamps(user.id);
+          setUserStamps(updated);
+
+          // สั่งให้ฝั่ง DB ประเมินเงื่อนไข achievement ใหม่
+          await checkAndAwardAchievements(user.id);
+          const badgesAfter = await getUserBadgeCodes(user.id);
+          const newCodes = badgesAfter.filter((c) => !badgesBefore.includes(c));
+          const newAchievements = newCodes.length > 0 ? await getAchievementsByCodes(newCodes) : [];
+
+          // คิว popup: การ์ด "เก็บสแตมป์สำเร็จ (รอบที่ X)" พร้อมส่ง shopRecord เพื่อเรนเดอร์ดีไซน์สแตมป์จริง
+          setCelebration([
+            { type: "stamp", shopName, shopRecord: place, roundNumber: newRoundNumber },
+            ...newAchievements.map((a) => ({
+              type: "achievement" as const,
+              code: a.code,
+              name: a.name,
+              icon: a.icon || "🏆",
+              description: a.description,
+            })),
+          ]);
         } catch (error) {
           console.error("Error collecting stamp:", error);
         } finally {
@@ -354,7 +359,7 @@ export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }:
               <button
                 onClick={handleCollectStamp}
                 disabled={collectingStamp !== null || !placeId}
-                className="flex-1 py-2.5 px-3 rounded-xl text-xs font-black text-white flex items-center justify-center gap-1.5 shadow-sm transition hover:opacity-95 disabled:opacity-70"
+                className="flex-1 py-2.5 px-3 rounded-xl text-xs font-black text-white flex items-center justify-center gap-1.5 shadow-sm transition hover:opacity-95 disabled:opacity-70 cursor-pointer"
                 style={{ background: C.accent }}
               >
                 {collectingStamp ? (
@@ -362,7 +367,9 @@ export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }:
                 ) : (
                   <Crosshair size={13} />
                 )}
-                {hasCollectedStamp ? t("place.stampCollected") : t("place.checkinHere")}
+                {placeId && userStamps.filter(us => String(us.shop_id) === String(placeId)).length > 0
+                  ? `🔄 เช็คอินรับแสตมป์รอบใหม่ (รอบที่ ${userStamps.filter(us => String(us.shop_id) === String(placeId)).length + 1})`
+                  : t("place.checkinHere")}
               </button>
             </div>
 
@@ -399,13 +406,22 @@ export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }:
               <Landmark size={16} className="shrink-0 mt-0.5" />
               <div>
                 <span className="block leading-tight">{t("collection.available")}</span>
-                <span className="font-semibold text-[9px] opacity-80 block mt-0.5">
-                  {hasCollectedStamp
-                    ? t("place.stampGot")
+                <span className="font-semibold text-[9.5px] opacity-90 block mt-0.5">
+                  {placeId && userStamps.filter(us => String(us.shop_id) === String(placeId)).length > 0
+                    ? `คุณสะสมแสตมป์สถานที่นี้แล้ว ${userStamps.filter(us => String(us.shop_id) === String(placeId)).length} รอบ! (เดินทางมาเช็คอินรับแสตมป์รอบใหม่ได้เรื่อยๆ 🔄)`
                     : t("place.checkinHint")}
                 </span>
               </div>
             </div>
+
+            {/* View Stamp History & Versions Button */}
+            <button
+              onClick={() => setShowVersionHistory(true)}
+              className="w-full py-2.5 px-3.5 rounded-xl text-xs font-black bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-200 flex items-center justify-center gap-2 transition cursor-pointer shadow-2xs"
+            >
+              <Layers size={14} className="text-amber-500" />
+              <span>ดูประวัติเวอร์ชัน & รอบการสะสมแสตมป์ร้านนี้ 🏷️</span>
+            </button>
 
             {/* About Section */}
             <div>
@@ -522,6 +538,16 @@ export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }:
               }
             }
           }}
+        />
+      )}
+
+      {/* 🏷️ Shop Version & Rounds History Modal */}
+      {showVersionHistory && (
+        <ShopVersionHistoryModal
+          isOpen={showVersionHistory}
+          shop={place}
+          userStamps={userStamps}
+          onClose={() => setShowVersionHistory(false)}
         />
       )}
 

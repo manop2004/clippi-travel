@@ -128,6 +128,30 @@ export async function createPlace(input: CreatePlaceInput): Promise<Place | null
 }
 
 
+// LocalStorage Cache Key for Stamp Version Mapping
+const STAMP_VER_LOCAL_KEY = "clippi_stamp_version_cache_v1";
+
+function getLocalStampVersionCache(): Record<string, { stamp_version_id?: string; version_code?: string }> {
+  try {
+    const raw = localStorage.getItem(STAMP_VER_LOCAL_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+export function saveLocalStampVersion(stampId: string, versionId?: string, versionCode?: string) {
+  if (!stampId) return;
+  try {
+    const cache = getLocalStampVersionCache();
+    cache[String(stampId)] = {
+      stamp_version_id: versionId,
+      version_code: versionCode,
+    };
+    localStorage.setItem(STAMP_VER_LOCAL_KEY, JSON.stringify(cache));
+  } catch (e) {}
+}
+
 // Stamp collection hooks - uses shop_id directly instead of stamp_id
 export async function getUserStamps(userId: string): Promise<any[]> {
   const { data, error } = await supabase
@@ -140,30 +164,99 @@ export async function getUserStamps(userId: string): Promise<any[]> {
     console.error("Error fetching user stamps:", error);
     return [];
   }
-  return data || [];
+
+  const cache = getLocalStampVersionCache();
+  const list = data || [];
+
+  return list.map((st: any) => {
+    const cached = cache[String(st.id)];
+    return {
+      ...st,
+      stamp_version_id: st.stamp_version_id || st.stamp_variant_id || cached?.stamp_version_id,
+      version_code: st.version_code || st.stamp_version?.version_code || cached?.version_code,
+    };
+  });
 }
 
-export async function collectStamp(shopId: string | number): Promise<UserStamp | null> {
+export async function collectStamp(
+  shopId: string | number,
+  stampVersionId?: string,
+  stampVariantId?: string,
+  seasonalStamp?: any,
+  versionCode?: string
+): Promise<UserStamp | null> {
   const { data: { user } } = await supabase.auth.getUser();
   
   if (!user) {
     throw new Error("User not authenticated");
   }
 
+  // Auto-fill active version details if not passed explicitly
+  if ((!versionCode || !stampVersionId) && shopId) {
+    try {
+      const shopData = await getPlaceById(shopId);
+      if (shopData) {
+        const { getShopStampVersions, getCurrentActiveStampVersion } = await import("../lib/stampHelpers");
+        const versions = getShopStampVersions(shopData);
+        const active = getCurrentActiveStampVersion(versions);
+        if (active) {
+          if (!versionCode) versionCode = active.version_code;
+          if (!stampVersionId) stampVersionId = active.id;
+        }
+      }
+    } catch (e) {
+      console.warn("Notice auto-fetching stamp version info:", e);
+    }
+  }
+
+  const payload: Record<string, any> = {
+    user_id: user.id,
+    shop_id: shopId,
+  };
+  if (stampVersionId) {
+    payload.stamp_version_id = stampVersionId;
+  }
+  if (stampVariantId || stampVersionId) {
+    payload.stamp_variant_id = stampVariantId || stampVersionId;
+  }
+
+  let createdRecord: any = null;
+
   const { data, error } = await supabase
     .from("user_stamps")
-    .insert({
-      user_id: user.id,
-      shop_id: shopId,
-    })
+    .insert(payload)
     .select()
     .single();
 
   if (error) {
-    console.error("Error collecting stamp:", error);
-    throw error;
+    delete payload.stamp_version_id;
+    delete payload.stamp_variant_id;
+    const { data: retryData, error: retryError } = await supabase
+      .from("user_stamps")
+      .insert(payload)
+      .select()
+      .single();
+
+    if (retryError) {
+      console.error("Error collecting stamp:", retryError);
+      throw retryError;
+    }
+    createdRecord = retryData;
+  } else {
+    createdRecord = data;
   }
-  return data;
+
+  if (createdRecord?.id) {
+    saveLocalStampVersion(createdRecord.id, stampVersionId, versionCode);
+  }
+
+  return {
+    ...createdRecord,
+    stamp_version_id: stampVersionId,
+    stamp_variant_id: stampVariantId || stampVersionId,
+    version_code: versionCode,
+    seasonal_stamp: seasonalStamp,
+  };
 }
 
 // Check if user has collected a stamp for a specific shop

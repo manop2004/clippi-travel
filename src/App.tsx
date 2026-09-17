@@ -419,7 +419,7 @@ export default function App() {
                       style={{ borderColor: C.accent }}
                     />
                   ) : (
-                    <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-white bg-[#000000] text-xs">
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-white bg-gradient-to-br from-[#FD775C] to-[#E31E27] text-xs shadow-xs">
                       {headerUserInitial}
                     </div>
                   )}

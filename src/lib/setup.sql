@@ -57,6 +57,18 @@ CREATE INDEX IF NOT EXISTS idx_user_stamps_shop_id ON user_stamps(shop_id);
 -- ('Fushimi Inari Shrine', 'Kyoto', 711, 34.9672, 135.7522),
 -- ('Osaka Castle', 'Osaka', 1583, 34.5553, 135.5256),
 -- ('Mount Fuji Viewpoint', 'Yamanashi', 0, 35.3606, 138.7182);
+
+-- ===================================================================
+-- Step 8: Stamp Versions & Multi-Version Support (Optional Column Extensions)
+-- ===================================================================
+-- 1. Add stamp_versions JSONB column to century_shops
+ALTER TABLE century_shops ADD COLUMN IF NOT EXISTS stamp_versions JSONB DEFAULT '[]'::jsonb;
+
+-- 2. Add stamp_version_id column to user_stamps
+ALTER TABLE user_stamps ADD COLUMN IF NOT EXISTS stamp_version_id TEXT;
+
+-- 3. (Optional) Allow users to collect multiple versions per shop
+ALTER TABLE user_stamps DROP CONSTRAINT IF EXISTS user_stamps_user_id_shop_id_key;
 </arg_value>
 <task_progress>
 - [x] Remove trending prop
