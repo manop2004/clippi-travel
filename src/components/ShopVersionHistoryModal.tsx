@@ -31,10 +31,10 @@ export default function ShopVersionHistoryModal({
   // Find collected stamps for this shop
   const collectedForShop = userStamps.filter((us) => String(us.shop_id) === String(shop.id));
 
-  // Deduplicate versions by version_code (preferring current active version if duplicates exist)
+  // Deduplicate versions by unique ID (falling back to version_code if id not set)
   const uniqueVersionsMap = new Map<string, ShopStampVersion>();
   stampVersions.forEach((v) => {
-    const codeKey = (v.version_code || v.id).trim().toLowerCase();
+    const codeKey = (v.id || v.version_code || Math.random().toString()).trim().toLowerCase();
     const existing = uniqueVersionsMap.get(codeKey);
     if (!existing) {
       uniqueVersionsMap.set(codeKey, v);

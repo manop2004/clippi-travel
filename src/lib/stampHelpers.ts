@@ -237,14 +237,17 @@ export function getShopStampVersions(shopRecord?: any): ShopStampVersion[] {
     return shopRecord.stamp_versions;
   }
 
-  const fromText =
-    parseShopStampVersionsFromText(shopRecord.description_jp) ||
-    parseShopStampVersionsFromText(shopRecord.description);
-  if (fromText && fromText.length > 0) {
-    return fromText;
+  const fromJp = parseShopStampVersionsFromText(shopRecord.description_jp);
+  if (fromJp && fromJp.length > 0) {
+    return fromJp;
   }
 
-  // Fallback to seasonal stamps mapped or default versions with shop's active stamp design
+  const fromDesc = parseShopStampVersionsFromText(shopRecord.description);
+  if (fromDesc && fromDesc.length > 0) {
+    return fromDesc;
+  }
+
+  // Fallback to default versions with shop's active stamp design
   const shopName = shopRecord.shop_name || shopRecord.name || "Shop";
   const customDesign = getShopStampDesign(shopRecord);
   return getDefaultStampVersions(shopName, customDesign);
