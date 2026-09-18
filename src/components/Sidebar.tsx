@@ -53,11 +53,11 @@ export default function Sidebar({ activeTab, onTabChange, onAddPlaceClick, onOpe
               onClick={() => onTabChange(item.id)}
               className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl text-xs font-black transition cursor-pointer ${
                 active
-                  ? "bg-[#000000] text-white shadow-md"
-                  : "text-[#555555] hover:bg-stone-50 hover:text-[#000000]"
+                  ? "bg-gradient-to-r from-[#FD775C] to-[#E31E27] text-white shadow-md shadow-[#FD775C]/30"
+                  : "text-[#555555] hover:bg-[#FFF0ED] hover:text-[#FD775C]"
               }`}
             >
-              <item.icon size={18} color={active ? "#FD775C" : C.inkSoft} strokeWidth={active ? 2.4 : 1.8} />
+              <item.icon size={18} color={active ? "#FFFFFF" : C.inkSoft} strokeWidth={active ? 2.4 : 1.8} />
               <span>{item.label}</span>
             </button>
           );

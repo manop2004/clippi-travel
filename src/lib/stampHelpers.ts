@@ -1,4 +1,6 @@
 // stampHelpers.ts
+import { ShopStampVersion, StampSeason } from "../types/review-stamp";
+
 export interface StampDesign {
   ink_color?: string;
   custom_text_color?: string;
@@ -162,3 +164,139 @@ export function getShopStampDesign(shopRecord?: any): StampDesign {
 
   return getDefaultStampDesign(shopRecord?.shop_name || shopRecord?.name);
 }
+
+// ----------------------------------------------------
+// Stamp Versions & Expiry Validity Helpers
+// ----------------------------------------------------
+
+export function getDefaultStampVersions(shopName: string, customDesign?: StampDesign): ShopStampVersion[] {
+  const baseDesign = customDesign || getDefaultStampDesign(shopName);
+  return [
+    {
+      id: "version_v1",
+      version_code: "v1.0",
+      title: "เวอร์ชัน 1.0 (ดีไซน์ดั้งเดิม)",
+      valid_from: "2024-01-01",
+      valid_until: "2025-12-31",
+      is_current: false,
+      status: "archived",
+      note: "ดีไซน์ตราแสตมป์รุ่นแรกประจำร้าน",
+      design: customDesign
+        ? { ...baseDesign }
+        : {
+            ...baseDesign,
+            ink_color: "#BC6C25",
+            preset_icon: "store",
+            sub_text: "CLASSIC V1.0",
+            shape: "circle",
+          },
+    },
+    {
+      id: "version_v2",
+      version_code: "v2.0",
+      title: "เวอร์ชัน 2.0 (ปรับโฉมใหม่ล่าสุด)",
+      valid_from: "2026-01-01",
+      valid_until: "2026-12-31",
+      is_current: true,
+      status: "current",
+      note: "เปิดให้เก็บสะสมในปัจจุบัน",
+      design: customDesign
+        ? { ...baseDesign }
+        : {
+            ...baseDesign,
+            ink_color: "#D9381E",
+            preset_icon: "sparkles",
+            sub_text: "RENEWAL V2.0",
+            shape: "double_circle",
+          },
+    },
+  ];
+}
+
+export function parseShopStampVersionsFromText(text: string | null | undefined): ShopStampVersion[] {
+  if (!text) return [];
+  const match = String(text).match(/\[STAMP_VERSIONS:(.*?)\]/);
+  if (match && match[1]) {
+    try {
+      return JSON.parse(match[1]);
+    } catch (e) {}
+  }
+  return [];
+}
+
+export function encodeShopStampVersionsInText(baseText: string | null | undefined, versions: ShopStampVersion[]): string {
+  const cleanText = String(baseText || "").replace(/\[STAMP_VERSIONS:.*?\]/g, "").replace(/\[SEASONAL_STAMPS:.*?\]/g, "").trim();
+  const jsonStr = JSON.stringify(versions);
+  return cleanText ? `${cleanText}\n[STAMP_VERSIONS:${jsonStr}]` : `[STAMP_VERSIONS:${jsonStr}]`;
+}
+
+export function getShopStampVersions(shopRecord?: any): ShopStampVersion[] {
+  if (!shopRecord) return [];
+
+  if (Array.isArray(shopRecord.stamp_versions) && shopRecord.stamp_versions.length > 0) {
+    return shopRecord.stamp_versions;
+  }
+
+  const fromJp = parseShopStampVersionsFromText(shopRecord.description_jp);
+  if (fromJp && fromJp.length > 0) {
+    return fromJp;
+  }
+
+  const fromDesc = parseShopStampVersionsFromText(shopRecord.description);
+  if (fromDesc && fromDesc.length > 0) {
+    return fromDesc;
+  }
+
+  // Fallback to default versions with shop's active stamp design
+  const shopName = shopRecord.shop_name || shopRecord.name || "Shop";
+  const customDesign = getShopStampDesign(shopRecord);
+  return getDefaultStampVersions(shopName, customDesign);
+}
+
+export function getCurrentActiveStampVersion(versions: ShopStampVersion[]): ShopStampVersion | null {
+  if (!versions || versions.length === 0) return null;
+
+  // Find version with is_current === true
+  const currentFlag = versions.find((v) => v.is_current === true);
+  if (currentFlag) return currentFlag;
+
+  // Otherwise find version active today by date
+  const todayStr = new Date().toISOString().split("T")[0];
+  const activeByDate = versions.find((v) => {
+    if (v.valid_until && v.valid_until < todayStr) return false;
+    if (v.valid_from && v.valid_from > todayStr) return false;
+    return true;
+  });
+
+  return activeByDate || versions[versions.length - 1] || null;
+}
+
+export function formatExpiryLabel(validUntil?: string): string {
+  if (!validUntil) return "ไม่มีวันหมดเขต";
+  
+  const today = new Date();
+  const expiry = new Date(validUntil);
+  
+  if (isNaN(expiry.getTime())) return `เก็บได้ถึง ${validUntil}`;
+
+  const isExpired = expiry < today;
+  const daysLeft = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 3600 * 24));
+
+  if (isExpired) {
+    return `หมดเขตสะสมแล้ว (${validUntil})`;
+  } else if (daysLeft <= 30) {
+    return `เหลืออีก ${daysLeft} วัน (เก็บได้ถึง ${validUntil})`;
+  } else {
+    return `เก็บได้ถึง ${validUntil}`;
+  }
+}
+
+// Backward-compatible alias helpers
+export function getShopSeasonalStamps(shopRecord?: any): any[] {
+  return getShopStampVersions(shopRecord);
+}
+export function getActiveSeasonalStamp(seasonalStamps: any[]): any {
+  return getCurrentActiveStampVersion(seasonalStamps);
+}
+
+

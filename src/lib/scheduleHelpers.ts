@@ -193,8 +193,8 @@ export function getShopStatusToday(shop: any, overrideSchedule?: ShopSchedule) {
 
   const [oH, oM] = openTime.split(":").map(Number);
   const [cH, cM] = closeTime.split(":").map(Number);
-  const openMinutes = (oH || 9) * 60 + (oM || 0);
-  const closeMinutes = (cH || 18) * 60 + (cM || 0);
+  const openMinutes = (isNaN(oH) ? 9 : oH) * 60 + (isNaN(oM) ? 0 : oM);
+  const closeMinutes = (isNaN(cH) ? 18 : cH) * 60 + (isNaN(cM) ? 0 : cM);
 
   let isOpenNow = false;
   if (closeMinutes > openMinutes) {

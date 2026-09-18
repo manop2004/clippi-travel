@@ -67,7 +67,9 @@ import {
   encodeScheduleInText,
 } from "../../lib/scheduleHelpers";
 import StampDesignerModal from "../../components/StampDesignerModal";
-import { StampDesign, encodeStampDesignInText } from "../../lib/stampHelpers";
+import { StampDesign, encodeStampDesignInText, getShopStampVersions, encodeShopStampVersionsInText } from "../../lib/stampHelpers";
+import ShopVersionManagerModal from "../../components/ShopVersionManagerModal";
+import { ShopStampVersion } from "../../types/review-stamp";
 import StoreRulesModal from "../../components/StoreRulesModal";
 import { StoreRuleItem, getShopRules, encodeRulesInText } from "../../lib/ruleHelpers";
 import { ShieldAlert } from "lucide-react";
@@ -102,6 +104,8 @@ export interface ShopRecord {
   closed_days?: string[] | null;
   holidays?: HolidayItem[] | null;
   is_closed_today?: boolean;
+  stamp_design?: any;
+  stamp_versions?: ShopStampVersion[];
 }
 
 export interface SubmissionItem {
@@ -169,7 +173,68 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
   const [scheduleShop, setScheduleShop] = useState<ShopRecord | null>(null);
   const [stampDesignerShop, setStampDesignerShop] = useState<ShopRecord | null>(null);
   const [rulesShop, setRulesShop] = useState<ShopRecord | null>(null);
+  const [versionManagerShop, setVersionManagerShop] = useState<ShopRecord | null>(null);
+  const [editingVersionStamp, setEditingVersionStamp] = useState<{ shop: ShopRecord; version: ShopStampVersion } | null>(null);
   const [storeSchedules, setStoreSchedules] = useState<Record<string, ShopSchedule>>({});
+
+  const handleSaveStampVersions = async (newVersions: ShopStampVersion[]) => {
+    if (!versionManagerShop) return;
+    const shopId = versionManagerShop.id;
+    const updatedDescJp = encodeShopStampVersionsInText(versionManagerShop.description_jp, newVersions);
+
+    const { error } = await supabase
+      .from("century_shops")
+      .update({
+        stamp_versions: newVersions,
+        description_jp: updatedDescJp,
+      })
+      .eq("id", shopId);
+
+    if (error) {
+      console.warn("Notice updating native stamp_versions column:", error.message);
+    }
+
+    setShops((prevShops) =>
+      prevShops.map((s) =>
+        s.id === shopId
+          ? { ...s, stamp_versions: newVersions, description_jp: updatedDescJp }
+          : s
+      )
+    );
+  };
+
+  const handleSaveSingleVersionDesign = async (newDesign: StampDesign) => {
+    if (!editingVersionStamp) return;
+    const { shop, version } = editingVersionStamp;
+    const currentVersions = getShopStampVersions(shop);
+    const updatedVersions = currentVersions.map((v) =>
+      v.id === version.id ? { ...v, design: newDesign } : v
+    );
+
+    const shopId = shop.id;
+    const updatedDescJp = encodeShopStampVersionsInText(shop.description_jp, updatedVersions);
+
+    const { error } = await supabase
+      .from("century_shops")
+      .update({
+        stamp_versions: updatedVersions,
+        description_jp: updatedDescJp,
+      })
+      .eq("id", shopId);
+
+    if (error) {
+      console.warn("Notice updating single version design:", error.message);
+    }
+
+    setShops((prevShops) =>
+      prevShops.map((s) =>
+        s.id === shopId
+          ? { ...s, stamp_versions: updatedVersions, description_jp: updatedDescJp }
+          : s
+      )
+    );
+    setEditingVersionStamp(null);
+  };
 
   const handleSaveRules = async (newRules: StoreRuleItem[]) => {
     if (!rulesShop) return;
@@ -197,27 +262,49 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
     );
   };
 
-  const handleSaveStampDesign = async (newDesign: StampDesign) => {
+  const handleSaveStampDesign = async (newDesign: StampDesign, updatedVersions?: ShopStampVersion[]) => {
     if (!stampDesignerShop) return;
     const shopId = stampDesignerShop.id;
-    const updatedDescJp = encodeStampDesignInText(stampDesignerShop.description_jp, newDesign);
+    let updatedDescJp = encodeStampDesignInText(stampDesignerShop.description_jp, newDesign);
+    if (updatedVersions && updatedVersions.length > 0) {
+      updatedDescJp = encodeShopStampVersionsInText(updatedDescJp, updatedVersions);
+    }
+
+    const updatePayload: any = {
+      stamp_design: newDesign,
+      description_jp: updatedDescJp,
+    };
+    if (updatedVersions) {
+      updatePayload.stamp_versions = updatedVersions;
+    }
 
     const { error } = await supabase
       .from("century_shops")
-      .update({
-        stamp_design: newDesign,
-        description_jp: updatedDescJp,
-      })
+      .update(updatePayload)
       .eq("id", shopId);
 
     if (error) {
-      console.warn("Notice updating native stamp_design column:", error.message);
+      console.warn("Notice updating stamp_design/stamp_versions column:", error.message);
+      if (updatedVersions) {
+        await supabase
+          .from("century_shops")
+          .update({
+            stamp_design: newDesign,
+            description_jp: updatedDescJp,
+          })
+          .eq("id", shopId);
+      }
     }
 
     setShops((prevShops) =>
       prevShops.map((s) =>
         s.id === shopId
-          ? { ...s, stamp_design: newDesign, description_jp: updatedDescJp }
+          ? {
+              ...s,
+              stamp_design: newDesign,
+              stamp_versions: updatedVersions || s.stamp_versions,
+              description_jp: updatedDescJp,
+            }
           : s
       )
     );
@@ -2009,16 +2096,16 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         onClick={() => setStampDesignerShop(shop)}
-                        className="w-full py-2.5 px-2.5 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 hover:border-stone-300 text-stone-800 text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-2xs cursor-pointer"
-                        title="ออกแบบแสตมป์ประจำร้าน"
+                        className="w-full py-2.5 px-2 rounded-xl border border-rose-200/90 bg-gradient-to-r from-rose-50 to-pink-50 hover:from-rose-100 hover:to-pink-100 hover:border-rose-300 text-rose-900 text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-2xs cursor-pointer"
+                        title="ออกแบบดีไซน์ตราแสตมป์และจัดการเวอร์ชัน/วันหมดเขต"
                       >
-                        <Stamp size={14} className="text-rose-500 shrink-0" />
-                        <span className="whitespace-nowrap">ออกแบบแสตมป์</span>
+                        <Stamp size={14} className="text-rose-600 shrink-0" />
+                        <span className="whitespace-nowrap">ออกแบบแสตมป์ 🎨</span>
                       </button>
 
                       <button
                         onClick={() => setRulesShop(shop)}
-                        className="w-full py-2.5 px-2.5 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 hover:border-stone-300 text-stone-800 text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-2xs cursor-pointer"
+                        className="w-full py-2.5 px-2 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 hover:border-stone-300 text-stone-800 text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-2xs cursor-pointer"
                         title="กำหนดกฎระเบียบประจำร้าน"
                       >
                         <ShieldAlert size={14} className="text-amber-600 shrink-0" />
@@ -2244,7 +2331,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
         />
       )}
 
-      {/* 🎨 Modal: Custom Store Stamp Designer */}
+      {/* 🎨 Modal: Custom Store Stamp Designer & Version Manager */}
       {stampDesignerShop && (
         <StampDesignerModal
           isOpen={!!stampDesignerShop}
@@ -2261,6 +2348,18 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
           shop={rulesShop}
           onClose={() => setRulesShop(null)}
           onSave={handleSaveRules}
+        />
+      )}
+
+      {/* 🎨 Modal: Edit Specific Stamp Version Design with Full Designer */}
+      {editingVersionStamp && (
+        <StampDesignerModal
+          isOpen={!!editingVersionStamp}
+          shop={editingVersionStamp.shop}
+          initialDesign={editingVersionStamp.version.design}
+          seasonalTitle={`${editingVersionStamp.version.version_code}: ${editingVersionStamp.version.title}`}
+          onClose={() => setEditingVersionStamp(null)}
+          onSave={handleSaveSingleVersionDesign}
         />
       )}
     </div>

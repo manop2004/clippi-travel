@@ -32,12 +32,33 @@ export interface Place {
   created_at?: string;
   region?: string;
   image_url?: string;
+  stamp_design?: any;
+  stamp_versions?: ShopStampVersion[];
+  seasonal_stamps?: any[];
 }
+
+export interface ShopStampVersion {
+  id: string;
+  version_code: string; // e.g. "v1.0", "v2.0", "SPECIAL-2026"
+  title: string;        // e.g. "ตราแสตมป์เวอร์ชัน 1.0 (ดีไซน์ดั้งเดิม)"
+  valid_from?: string;  // YYYY-MM-DD
+  valid_until?: string; // YYYY-MM-DD (กำหนดว่าแสตมป์ปัจจุบันเก็บได้ถึงวันไหน)
+  is_current?: boolean; // active current stamp flag
+  status?: "current" | "archived" | "upcoming";
+  design: any;          // StampDesign
+  note?: string;
+}
+
+export type StampSeason = "spring" | "summer" | "autumn" | "winter" | "special" | "all_year";
 
 export interface UserStamp {
   id: string;
   user_id: string;
   shop_id: string | number;
+  stamp_variant_id?: string;
+  stamp_version_id?: string;
+  stamp_version?: ShopStampVersion;
+  seasonal_stamp?: any;
   collected_at: string;
 }
 

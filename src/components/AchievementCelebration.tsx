@@ -4,13 +4,14 @@ import { C } from "../constants/mockData";
 import { useLang } from "../lib/i18n";
 import ClippiMascot from "./ClippiMascot";
 import StampSealRenderer from "./StampSealRenderer";
+import { getShopStampDesign, getShopStampVersions, getCurrentActiveStampVersion } from "../lib/stampHelpers";
 
 // A celebration is either a "you just collected a stamp" moment or a
 // "you just unlocked an achievement" moment. Multiple items can be queued
 // (e.g. collect a stamp AND unlock an achievement from the same action) and
 // are shown one at a time.
 export type CelebrationItem =
-  | { type: "stamp"; shopName: string; shopRecord?: any }
+  | { type: "stamp"; shopName: string; shopRecord?: any; roundNumber?: number }
   | { type: "achievement"; code: string; name: string; icon: string; description?: string | null };
 
 interface AchievementCelebrationProps {
@@ -40,6 +41,10 @@ export default function AchievementCelebration({ items, onClose }: AchievementCe
     }
   };
 
+  const currentShopRecord = (current as any).shopRecord;
+  const activeVersion = currentShopRecord ? getCurrentActiveStampVersion(getShopStampVersions(currentShopRecord)) : null;
+  const stampDesignToRender = activeVersion?.design || (currentShopRecord ? getShopStampDesign(currentShopRecord) : undefined);
+
   return (
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/55 backdrop-blur-sm animate-fade-in"
@@ -54,7 +59,7 @@ export default function AchievementCelebration({ items, onClose }: AchievementCe
         {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 w-7 h-7 rounded-full flex items-center justify-center bg-stone-50 hover:bg-stone-100 transition z-20"
+          className="absolute top-3 right-3 w-7 h-7 rounded-full flex items-center justify-center bg-stone-50 hover:bg-stone-100 transition z-20 cursor-pointer"
           aria-label="Close"
         >
           <X size={14} color={C.ink} />
@@ -73,17 +78,27 @@ export default function AchievementCelebration({ items, onClose }: AchievementCe
         {current.type === "stamp" ? (
           <>
             <div className="my-2 animate-bounce">
-              <StampSealRenderer shopRecord={(current as any).shopRecord} shopName={current.shopName} size="lg" isCollected={true} />
+              <StampSealRenderer
+                shopRecord={currentShopRecord}
+                design={stampDesignToRender}
+                shopName={current.shopName}
+                size="lg"
+                isCollected={true}
+              />
             </div>
             <div
               className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black tracking-wider uppercase mb-2"
               style={{ background: C.accentSoft, color: C.accentDeep }}
             >
-              <PartyPopper size={12} /> {t("celebration.stampLabel")}
+              <PartyPopper size={12} />
+              <span>{current.roundNumber ? `สะสมสำเร็จ • รอบที่ ${current.roundNumber}` : t("celebration.stampLabel")}</span>
             </div>
-            <h2 className="text-lg font-black" style={{ color: C.ink }}>{t("celebration.stampTitle")}</h2>
+            <h2 className="text-lg font-black" style={{ color: C.ink }}>
+              {current.roundNumber ? `สะสมแสตมป์รอบที่ ${current.roundNumber} สำเร็จ!` : t("celebration.stampTitle")}
+            </h2>
             <p className="text-xs font-semibold text-[#8A7870] mt-1.5">
               {t("celebration.stampDesc").replace("{shop}", current.shopName)}
+              {current.roundNumber ? ` (สะสมร้านนี้แล้ว ${current.roundNumber} รอบ)` : ""}
             </p>
           </>
         ) : (

@@ -25,3 +25,4 @@ dist-ssr
 commit_msg.txt 
 .env 
 supabase/.temp/
+.gemini/
