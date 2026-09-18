@@ -416,14 +416,14 @@ export default function NotificationBell({ hideOnMobileSearch, onOpenMerchantMod
                       disabled={cancellingMerchant}
                       className="text-[10px] font-black px-2 py-1 rounded-lg bg-amber-200/80 hover:bg-amber-300 text-amber-950 transition cursor-pointer"
                     >
-                      {cancellingMerchant ? "กำลังยกเลิก..." : "❌ ยกเลิกคำขอ"}
+                      {cancellingMerchant ? "กำลังยกเลิก..." : " ยกเลิกคำขอ"}
                     </button>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* ❌ Merchant Status Notification Item: Rejected */}
+            {/* Merchant Status Notification Item: Rejected */}
             {isRejectedMerchant && (
               <div
                 onClick={() => {
@@ -475,14 +475,14 @@ export default function NotificationBell({ hideOnMobileSearch, onOpenMerchantMod
                       disabled={cancellingMerchant}
                       className="text-[10px] font-black px-2.5 py-1 rounded-lg bg-rose-200/80 hover:bg-rose-300 text-rose-950 transition cursor-pointer"
                     >
-                      {cancellingMerchant ? "กำลังยกเลิก..." : "❌ ยกเลิกคำขอ (ไม่สมัครแล้ว)"}
+                      {cancellingMerchant ? "กำลังยกเลิก..." : " ยกเลิกคำขอ (ไม่สมัครแล้ว)"}
                     </button>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* 📢 System Announcements from Admin */}
+            {/* System Announcements from Admin */}
             {announcements.map((ann) => {
               const unread = !readIds.has(ann.id);
               const isUrgent = ann.priority === "urgent";

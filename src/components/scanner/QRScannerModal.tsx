@@ -211,7 +211,7 @@ export default function QRScannerModal({
     if (gpsStatus !== "granted" || !userCoords) {
       setScanResult({
         success: false,
-        title: "⚠️ ต้องเปิด GPS ก่อนสแกน",
+        title: " ต้องเปิด GPS ก่อนสแกน",
         message: "ระบบต้องการพิกัด GPS ของคุณเพื่อยืนยันว่าคุณอยู่ ณ สถานที่จริง กรุณากดเปิด GPS",
       });
       return;
@@ -242,7 +242,7 @@ export default function QRScannerModal({
         if (!isNearby) {
           setScanResult({
             success: false,
-            title: "📍 คุณอยู่ไกลจากสถานที่จริง!",
+            title: " คุณอยู่ไกลจากสถานที่จริง!",
             message: `QR Code ถูกต้องสำหรับ "${piece.checkpointName}" แต่ตำแหน่งปัจจุบันของคุณอยู่ห่างออกไป ${formatDistance(
               distMeters
             )} (ต้องอยู่ในระยะไม่เกิน ${formatDistance(piece.radiusMeters)})`,
@@ -256,7 +256,7 @@ export default function QRScannerModal({
         onPieceCollected(quest.id, piece.id, piece);
         setScanResult({
           success: true,
-          title: "🎉 ปลดล็อกชิ้นส่วนสำเร็จ!",
+          title: " ปลดล็อกชิ้นส่วนสำเร็จ!",
           message: `คุณได้รับชิ้นส่วนจิ๊กซอว์จาก "${piece.checkpointName}" แล้ว! (พิกัดถูกต้อง ระยะห่าง ${formatDistance(
             distMeters
           )})`,
@@ -306,7 +306,7 @@ export default function QRScannerModal({
           onPieceCollected(quest.id, piece.id, piece);
           setScanResult({
             success: true,
-            title: "🎉 ปลดล็อกชิ้นส่วนสำเร็จ (GPS Test)!",
+            title: " ปลดล็อกชิ้นส่วนสำเร็จ (GPS Test)!",
             message: `จำลองเดินทางมาถึง "${piece.checkpointName}" สำเร็จ! (ระยะห่าง ${formatDistance(dist)})`,
             piece,
             distance: dist,
@@ -349,7 +349,7 @@ export default function QRScannerModal({
           </button>
         </div>
 
-        {/* 📡 Live GPS Status Bar */}
+        {/* Live GPS Status Bar */}
         <div
           className={`px-4 py-2.5 border-b text-xs flex items-center justify-between transition-colors ${
             gpsStatus === "granted"
@@ -386,7 +386,7 @@ export default function QRScannerModal({
 
           <button
             onClick={requestGPS}
-            className="px-2.5 py-1 bg-stone-900 hover:bg-stone-800 text-white font-black rounded-xl text-[10px] flex items-center gap-1 transition shrink-0 cursor-pointer"
+            className="px-2.5 py-1 bg-[#FD775C] hover:bg-[#E31E27] text-white font-black rounded-xl text-[10px] flex items-center gap-1 transition shrink-0 cursor-pointer"
           >
             <RefreshCw size={11} /> รีเฟรช GPS
           </button>
@@ -439,7 +439,7 @@ export default function QRScannerModal({
                 <p className="font-bold flex items-center gap-1">
                   <Info size={13} /> วิธีเปิดสิทธิ์:
                 </p>
-                <p>1. กดไอคอนแม่กุญแจ 🔒 หรือสิทธิ์ที่แถบ URL บนเบราว์เซอร์</p>
+ <p>1. กดไอคอนแม่กุญแจ  หรือสิทธิ์ที่แถบ URL บนเบราว์เซอร์</p>
                 <p>2. ปรับการตั้งค่า Location / ตำแหน่ง ให้เป็น <strong>"อนุญาต (Allow)"</strong></p>
               </div>
 
@@ -506,7 +506,7 @@ export default function QRScannerModal({
           ) : activeTab === "camera" ? (
             /* หน้าต่างกล้องสแกนจริง */
             <div className="w-full flex flex-col items-center">
-              <div className="relative w-full max-w-[300px] aspect-square bg-stone-950 rounded-3xl overflow-hidden border-2 border-dashed border-orange-400 shadow-inner flex items-center justify-center">
+              <div className="relative w-full max-w-[300px] aspect-square bg-[#FD775C] rounded-3xl overflow-hidden border-2 border-dashed border-orange-400 shadow-inner flex items-center justify-center">
                 <video
                   ref={videoRef}
                   className="w-full h-full object-cover"
@@ -561,7 +561,7 @@ export default function QRScannerModal({
                 />
                 <button
                   onClick={() => handleScannedData(manualCode)}
-                  className="px-3 py-2 bg-stone-900 text-white rounded-xl text-xs font-extrabold hover:bg-stone-800 transition cursor-pointer"
+                  className="px-3 py-2 bg-[#FD775C] text-white rounded-xl text-xs font-extrabold hover:bg-[#E31E27] transition cursor-pointer"
                 >
                   ตรวจสอบ
                 </button>
@@ -587,7 +587,7 @@ export default function QRScannerModal({
                       onClick={() => setSimSelectedQuestId(quest.id)}
                       className={`px-3 py-1.5 rounded-xl text-[11px] font-bold shrink-0 transition cursor-pointer ${
                         isCur
-                          ? "bg-stone-900 text-white shadow-xs"
+                          ? "bg-[#FD775C] text-white shadow-xs"
                           : "bg-stone-100 text-stone-600 hover:bg-stone-200"
                       }`}
                     >

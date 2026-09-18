@@ -493,7 +493,7 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage }: 
   // สร้างรายการ badge จากตาราง achievements (dynamic) แทน hardcode
   const badgeList = allAchievements.map((ach) => ({
     key: ach.code,
-    icon: ach.icon || "🏆",
+    icon: ach.icon || "",
     name: ach.name,
     desc: ach.description || "",
     locked: !unlockedSet.has(ach.code),
@@ -511,16 +511,16 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage }: 
   return (
     <div className="space-y-6 md:space-y-8 w-full min-w-0 text-[#231C18] relative">
 
-      {/* 🔔 Floating Toast Notification */}
+      {/* Floating Toast Notification */}
       {toast && (
         <div className="fixed top-5 right-5 z-50 animate-in fade-in slide-in-from-top-4 duration-300">
           <div
             className={`px-4 py-3 rounded-2xl shadow-xl border flex items-center gap-3 text-xs font-bold ${
               toast.type === "success"
-                ? "bg-[#231C18] text-white border-[#E7A93C]"
+                ? "bg-[#FD775C] text-white border-[#E31E27]"
                 : toast.type === "error"
                 ? "bg-red-900 text-white border-red-500"
-                : "bg-stone-800 text-white border-stone-600"
+                : "bg-[#FD775C] text-white border-[#FD775C]"
             }`}
           >
             {toast.type === "success" && <CheckCircle2 size={16} className="text-[#E7A93C]" />}
@@ -531,7 +531,7 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage }: 
         </div>
       )}
 
-      {/* 👤 Profile Header Card */}
+      {/* Profile Header Card */}
       <div className="bg-white rounded-3xl p-6 border flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-xs relative overflow-hidden" style={{ borderColor: C.line }}>
         <div className="flex items-center gap-4 select-none min-w-0 z-10">
           <div className="relative shrink-0">
@@ -590,7 +590,7 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage }: 
         </div>
       </div>
 
-      {/* 📊 Level & Achievements Grid */}
+      {/* Level & Achievements Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
 
         {/* Left: Traveler Rank (Dynamic XP & Level) */}
@@ -690,7 +690,7 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage }: 
 
       </div>
 
-      {/* 🏬 Shop Owner / Merchant Partner Section (Hidden for Admin Role) */}
+      {/* Shop Owner / Merchant Partner Section (Hidden for Admin Role) */}
       {!isAdmin && (
         <div className="w-full">
           <h3 className="text-xs font-black uppercase tracking-wider text-[#8A7870] mb-3 select-none">สำหรับเจ้าของร้านค้า / Merchant Partner</h3>
@@ -721,7 +721,7 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage }: 
                   <>
                     <div className="flex flex-wrap items-center gap-2">
                       <h4 className="text-sm font-black text-rose-950">คำขอเปิดร้านค้าไม่ผ่านการอนุมัติ</h4>
-                      <span className="px-2 py-0.5 rounded-full bg-rose-200 text-rose-900 text-[10px] font-extrabold">❌ ไม่ผ่าน</span>
+ <span className="px-2 py-0.5 rounded-full bg-rose-200 text-rose-900 text-[10px] font-extrabold"> ไม่ผ่าน</span>
                     </div>
                     <p className="text-xs text-rose-800 font-semibold mt-0.5">
                       {typeof merchantRejectionReason === "object" && merchantRejectionReason !== null ? ((merchantRejectionReason as any).reason || JSON.stringify(merchantRejectionReason)) : (merchantRejectionReason || "ข้อมูลเอกสารไม่ตรงตามเงื่อนไข สามารถแก้ไขเพื่อส่งใหม่ได้")}
@@ -755,7 +755,7 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage }: 
                     onClick={onOpenMerchantModal}
                     className="w-full sm:w-auto px-4 py-2.5 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-black transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
                   >
-                    <span>{isRejectedMerchant ? "🔄 แก้ไข & ส่งคำขอใหม่" : "✏️ ดู/แก้ไขข้อมูลร้านค้า"}</span>
+ <span>{isRejectedMerchant ? " แก้ไข & ส่งคำขอใหม่" : " ดู/แก้ไขข้อมูลร้านค้า"}</span>
                   </button>
                   <button
                     type="button"
@@ -770,7 +770,7 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage }: 
                     }}
                     className="w-full sm:w-auto px-3.5 py-2.5 rounded-2xl bg-stone-200 hover:bg-stone-300 text-stone-800 text-xs font-black transition shadow-xs cursor-pointer flex items-center justify-center gap-1"
                   >
-                    <span>❌ ไม่สมัครแล้ว (ยกเลิกคำขอ)</span>
+ <span> ไม่สมัครแล้ว (ยกเลิกคำขอ)</span>
                   </button>
                 </div>
               ) : (
@@ -788,7 +788,7 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage }: 
         </div>
       )}
 
-      {/* 🛠️ Account Settings Section */}
+      {/* Account Settings Section */}
       <div className="w-full">
         <h3 className="text-xs font-black uppercase tracking-wider text-[#8A7870] mb-3 select-none">{t("profile.accountSettings")}</h3>
         <div className="rounded-3xl bg-white border divide-y overflow-hidden shadow-xs" style={{ borderColor: C.line }}>
@@ -864,7 +864,7 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage }: 
         </div>
       </div>
 
-      {/* ✏️ MODAL 1: EDIT PROFILE MODAL ("แก้ไขโปรไฟล์") */}
+      {/* MODAL 1: EDIT PROFILE MODAL ("แก้ไขโปรไฟล์") */}
       {isEditModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl p-6 w-full max-w-md border shadow-2xl space-y-5" style={{ borderColor: C.line }}>
@@ -899,7 +899,7 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage }: 
                       style={{ borderColor: C.accent }}
                     />
                   ) : (
-                    <div className="w-24 h-24 rounded-full flex items-center justify-center font-black text-[#E7A93C] bg-[#231C18] text-2xl shadow-md group-hover:opacity-85 transition">
+                    <div className="w-24 h-24 rounded-full flex items-center justify-center font-black text-white bg-[#FD775C] text-2xl shadow-md group-hover:opacity-85 transition">
                       {userInitial}
                     </div>
                   )}
@@ -947,7 +947,7 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage }: 
               {/* Set Password Field */}
               <div className="space-y-1 pt-2 border-t" style={{ borderColor: C.line }}>
                 <label className="text-[11px] font-black text-[#231C18] block">
-                  🔒 ตั้งรหัสผ่านสำหรับเข้าสู่ระบบด้วยอีเมล (Set Email Login Password)
+                   ตั้งรหัสผ่านสำหรับเข้าสู่ระบบด้วยอีเมล (Set Email Login Password)
                 </label>
                 <input
                   type="password"
@@ -996,7 +996,7 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage }: 
         </div>
       )}
 
-      {/* ❓ MODAL 2: HELP CENTER MODAL ("ศูนย์ช่วยเหลือ") */}
+      {/* MODAL 2: HELP CENTER MODAL ("ศูนย์ช่วยเหลือ") */}
       {isHelpModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl p-6 w-full max-w-lg border shadow-2xl space-y-5" style={{ borderColor: C.line }}>
@@ -1047,7 +1047,7 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage }: 
                   showToast("ส่งอีเมลหาทีมสนับสนุนแล้ว: support@ekitag.jp", "info");
                   setIsHelpModalOpen(false);
                 }}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#231C18] hover:bg-stone-800 transition cursor-pointer"
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#FD775C] hover:bg-[#E31E27] transition cursor-pointer"
               >
                 ติดต่อทีมงาน Support
               </button>
@@ -1057,7 +1057,7 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage }: 
         </div>
       )}
 
-      {/* 🛡️ MODAL 3: PRIVACY SETTINGS MODAL ("ความเป็นส่วนตัวและข้อมูล") */}
+      {/* MODAL 3: PRIVACY SETTINGS MODAL ("ความเป็นส่วนตัวและข้อมูล") */}
       {isPrivacyModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl p-6 w-full max-w-md border shadow-2xl space-y-5" style={{ borderColor: C.line }}>

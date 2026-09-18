@@ -321,7 +321,7 @@ export default function ManageShopsPage({ onGoHome, onAddNewPlaceClick }: Manage
             onClick={() => setActiveTab("history")}
             className={`px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-2 ${
               activeTab === "history"
-                ? "bg-[#231C18] text-white shadow-xs"
+                ? "bg-[#FD775C] text-white shadow-xs"
                 : "bg-white text-[#8A7870] hover:text-[#231C18] border"
             }`}
             style={activeTab !== "history" ? { borderColor: C.line } : undefined}
@@ -342,7 +342,7 @@ export default function ManageShopsPage({ onGoHome, onAddNewPlaceClick }: Manage
           }}
           className={`px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-2 ${
             activeTab === "approved"
-              ? "bg-[#231C18] text-white shadow-xs"
+              ? "bg-[#FD775C] text-white shadow-xs"
               : "bg-white text-[#8A7870] hover:text-[#231C18] border"
           }`}
           style={activeTab !== "approved" ? { borderColor: C.line } : undefined}
@@ -410,7 +410,7 @@ export default function ManageShopsPage({ onGoHome, onAddNewPlaceClick }: Manage
               onClick={() => setStatusFilter("deleted")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer border ${
                 statusFilter === "deleted"
-                  ? "bg-stone-600 text-white border-stone-600"
+                  ? "bg-stone-600 text-white border-[#FD775C]"
                   : "bg-white text-stone-600 hover:bg-stone-100"
               }`}
               style={statusFilter !== "deleted" ? { borderColor: C.line } : undefined}

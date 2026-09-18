@@ -109,7 +109,7 @@ export default function AchievementCelebration({ items, onClose }: AchievementCe
             >
               <Trophy size={12} /> {t("celebration.achievementLabel")}
             </div>
-            <div className="text-4xl mb-1">{current.icon || "🏆"}</div>
+ <div className="text-4xl mb-1">{current.icon || ""}</div>
             <h2 className="text-lg font-black" style={{ color: C.ink }}>{current.name}</h2>
             {current.description && (
               <p className="text-xs font-semibold text-[#8A7870] mt-1.5">{current.description}</p>

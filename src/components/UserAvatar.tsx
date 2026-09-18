@@ -43,7 +43,7 @@ export function UserAvatar({
 
   return (
     <div
-      className={`${sizeClassName} ${roundedClass} flex items-center justify-center font-black text-[#E7A93C] bg-[#231C18] ${textClassName} shrink-0 border border-stone-800 shadow-2xs ${className}`}
+      className={`${sizeClassName} ${roundedClass} flex items-center justify-center font-black text-white bg-[#FD775C] ${textClassName} shrink-0 border border-[#FD775C] shadow-2xs ${className}`}
       style={style}
     >
       {initial}

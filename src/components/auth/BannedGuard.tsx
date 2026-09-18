@@ -49,7 +49,7 @@ export const BannedGuard = ({ children }: { children: React.ReactNode }) => {
   // 1. Show Loading Screen (Prevents page flashing/bypass while fetching)
   if (loading) {
     return (
-      <div className="fixed inset-0 z-[999999] bg-slate-900 flex items-center justify-center text-white font-semibold">
+      <div className="fixed inset-0 z-[999999] bg-[#FD775C] flex items-center justify-center text-white font-semibold">
         กำลังตรวจสอบสิทธิ์การใช้งาน...
       </div>
     );
@@ -58,7 +58,7 @@ export const BannedGuard = ({ children }: { children: React.ReactNode }) => {
   // 2. ABSOLUTE BLOCK: If user is banned, return ONLY the ban screen
   if (isBanned) {
     return (
-      <div className="fixed inset-0 z-[999999] bg-slate-900 flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[999999] bg-[#FD775C] flex items-center justify-center p-4">
         <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center shadow-2xl border border-red-100">
           <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-5 text-red-600">
             <Ban size={40} />

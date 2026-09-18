@@ -120,7 +120,7 @@ export function getShopStatusToday(shop: any, overrideSchedule?: ShopSchedule) {
   if (!shop || !shop.id) {
     return {
       statusKey: "open",
-      badgeText: "🟢 เปิดอยู่ (09:00 - 18:00)",
+      badgeText: " เปิดอยู่ (09:00 - 18:00)",
       badgeBg: "bg-emerald-600 text-white",
       borderClr: "border-emerald-200",
       description: "เปิดให้บริการอยู่ (09:00 - 18:00)",
@@ -145,7 +145,7 @@ export function getShopStatusToday(shop: any, overrideSchedule?: ShopSchedule) {
   if (isClosedToday) {
     return {
       statusKey: "closed_today",
-      badgeText: "🔴 ปิดบริการวันนี้",
+      badgeText: " ปิดบริการวันนี้",
       badgeBg: "bg-rose-600 text-white",
       borderClr: "border-rose-200",
       description: "ปิดบริการชั่วคราววันนี้ (แจ้งปิดด่วนจากทางร้าน)",
@@ -160,7 +160,7 @@ export function getShopStatusToday(shop: any, overrideSchedule?: ShopSchedule) {
   if (holidayMatch) {
     return {
       statusKey: "holiday",
-      badgeText: `🔴 วันหยุด: ${holidayMatch.title || "พิเศษ"}`,
+      badgeText: ` วันหยุด: ${holidayMatch.title || "พิเศษ"}`,
       badgeBg: "bg-rose-700 text-white",
       borderClr: "border-rose-300",
       description: `วันหยุดพิเศษ (${holidayMatch.title})`,
@@ -176,7 +176,7 @@ export function getShopStatusToday(shop: any, overrideSchedule?: ShopSchedule) {
   if (isDayClosed) {
     return {
       statusKey: "closed_day",
-      badgeText: `🟡 ปิดทุกวัน${thaiDayName}`,
+      badgeText: ` ปิดทุกวัน${thaiDayName}`,
       badgeBg: "bg-amber-600 text-white",
       borderClr: "border-amber-200",
       description: `ปิดบริการประจำวัน${thaiDayName}`,
@@ -206,7 +206,7 @@ export function getShopStatusToday(shop: any, overrideSchedule?: ShopSchedule) {
   if (isOpenNow) {
     return {
       statusKey: "open",
-      badgeText: `🟢 เปิดอยู่ (${openTime} - ${closeTime})`,
+      badgeText: ` เปิดอยู่ (${openTime} - ${closeTime})`,
       badgeBg: "bg-emerald-600 text-white",
       borderClr: "border-emerald-200",
       description: `เปิดให้บริการอยู่ (${openTime} - ${closeTime})`,
@@ -217,7 +217,7 @@ export function getShopStatusToday(shop: any, overrideSchedule?: ShopSchedule) {
   } else {
     return {
       statusKey: "closed_now",
-      badgeText: `🟡 ปิดแล้ว (เปิด ${openTime})`,
+      badgeText: ` ปิดแล้ว (เปิด ${openTime})`,
       badgeBg: "bg-stone-700 text-white",
       borderClr: "border-stone-200",
       description: `อยู่นอกเวลาทำการ (${openTime} - ${closeTime})`,

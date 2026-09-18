@@ -591,7 +591,7 @@ export default function AdminReviewView() {
         window.dispatchEvent(new CustomEvent("merchant_status_changed", { detail: { status: "approved", userId: uid } }));
       } catch (e) {}
 
-      alert(`🎉 อนุมัติสิทธิ์เจ้าของร้านค้าสำหรับ "${sub.shop_name || sub.name_en || sub.contact_name}" เรียบร้อยแล้ว!`);
+      alert(` อนุมัติสิทธิ์เจ้าของร้านค้าสำหรับ "${sub.shop_name || sub.name_en || sub.contact_name}" เรียบร้อยแล้ว!`);
     } catch (err: any) {
       console.error("Approve merchant error:", err);
       alert("เกิดข้อผิดพลาดในการอนุมัติ: " + (err.message || "Failed"));
@@ -1236,7 +1236,7 @@ export default function AdminReviewView() {
                               <button
                                 type="button"
                                 onClick={() => setPreviewImageUrl(m.ownership_proof_url)}
-                                className="absolute bottom-2 right-2 px-2.5 py-1 rounded-lg bg-black/75 hover:bg-black text-white text-[10px] font-black backdrop-blur-xs flex items-center gap-1 opacity-90 transition cursor-pointer"
+                                className="absolute bottom-2 right-2 px-2.5 py-1 rounded-lg bg-black/75 hover:bg-[#E31E27] text-white text-[10px] font-black backdrop-blur-xs flex items-center gap-1 opacity-90 transition cursor-pointer"
                               >
                                 <FileText size={11} />
                                 <span>คลิกเพื่อขยายดูรูปภาพ</span>
@@ -1319,7 +1319,7 @@ export default function AdminReviewView() {
             <button
               onClick={() => setDataFilter("all")}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                dataFilter === "all" ? "bg-[#231C18] text-white border-[#231C18]" : "bg-white text-[#8A7870] hover:bg-stone-50"
+                dataFilter === "all" ? "bg-[#FD775C] text-white border-[#FD775C]" : "bg-white text-[#8A7870] hover:bg-stone-50"
               }`}
               style={dataFilter !== "all" ? { borderColor: C.line } : undefined}
             >
@@ -1447,7 +1447,7 @@ export default function AdminReviewView() {
                 className="w-8 h-8 rounded-full flex items-center justify-center bg-stone-50 border hover:bg-stone-100 transition cursor-pointer"
                 style={{ borderColor: C.line }}
               >
-                ✕
+                
               </button>
             </div>
 
@@ -1724,7 +1724,7 @@ export default function AdminReviewView() {
         </div>
       )}
 
-      {/* 🖼️ Full-Screen Image Preview Modal for Admin */}
+      {/* Full-Screen Image Preview Modal for Admin */}
       {previewImageUrl && (
         <div
           className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xs flex flex-col items-center justify-center p-4 select-none animate-fade-in"
@@ -1735,11 +1735,11 @@ export default function AdminReviewView() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="w-full flex items-center justify-between mb-3 px-1">
-              <span className="text-xs font-black text-white/90">🖼️ ตัวอย่างเอกสาร / รูปภาพหลักฐานสิทธิ์ร้านค้า</span>
+ <span className="text-xs font-black text-white/90"> ตัวอย่างเอกสาร / รูปภาพหลักฐานสิทธิ์ร้านค้า</span>
               <button
                 type="button"
                 onClick={() => setPreviewImageUrl(null)}
-                className="px-3.5 py-1 rounded-full bg-stone-800 hover:bg-stone-700 text-white text-xs font-black transition cursor-pointer flex items-center gap-1 border border-stone-600 shadow-md"
+                className="px-3.5 py-1 rounded-full bg-[#FD775C] hover:bg-stone-700 text-white text-xs font-black transition cursor-pointer flex items-center gap-1 border border-[#FD775C] shadow-md"
               >
                 <X size={14} />
                 <span>ปิดหน้าต่าง</span>

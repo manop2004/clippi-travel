@@ -120,7 +120,7 @@ export default function CampaignBanner({ onCtaClick }: CampaignBannerProps) {
 
                 <div className="z-10">
                   <span className="inline-flex items-center gap-1 text-[9px] font-black px-2.5 py-1 rounded-full bg-white/25 backdrop-blur-md uppercase tracking-wider mb-2">
-                    <Tag size={10} /> {banner.tag || "📎 PROMOTION"}
+ <Tag size={10} /> {banner.tag || " PROMOTION"}
                   </span>
                   <h3 className="text-sm font-black leading-snug drop-shadow-xs">{banner.title}</h3>
                   {banner.subtitle && (

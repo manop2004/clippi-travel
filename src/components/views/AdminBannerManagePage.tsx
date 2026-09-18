@@ -41,7 +41,7 @@ export default function AdminBannerManagePage() {
   const [formData, setFormData] = useState({
     title: "",
     subtitle: "",
-    tag: "📎 PROMOTION",
+    tag: " PROMOTION",
     cta_text: "ดูรายละเอียด",
     cta_link: "",
     image_url: "",
@@ -89,7 +89,7 @@ export default function AdminBannerManagePage() {
     setFormData({
       title: "",
       subtitle: "",
-      tag: "📎 PROMOTION",
+      tag: " PROMOTION",
       cta_text: "ดูรายละเอียด",
       cta_link: "",
       image_url: "",
@@ -108,7 +108,7 @@ export default function AdminBannerManagePage() {
     setFormData({
       title: b.title || "",
       subtitle: b.subtitle || "",
-      tag: b.tag || "📎 PROMOTION",
+      tag: b.tag || " PROMOTION",
       cta_text: b.cta_text || "ดูรายละเอียด",
       cta_link: b.cta_link || "",
       image_url: b.image_url || "",
@@ -239,7 +239,7 @@ export default function AdminBannerManagePage() {
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <div
           onClick={() => setFilter("all")}
-          className={`p-4 rounded-2xl border transition cursor-pointer ${filter === "all" ? "bg-stone-900 text-white border-stone-900 shadow-md" : "bg-white text-stone-800 border-stone-200 hover:bg-stone-50"}`}
+          className={`p-4 rounded-2xl border transition cursor-pointer ${filter === "all" ? "bg-[#FD775C] text-white border-[#FD775C] shadow-md" : "bg-white text-stone-800 border-stone-200 hover:bg-stone-50"}`}
         >
           <p className="text-[11px] font-bold opacity-80">แบนเนอร์ทั้งหมด</p>
           <p className="text-xl font-black mt-1">{stats.total}</p>
@@ -249,7 +249,7 @@ export default function AdminBannerManagePage() {
           onClick={() => setFilter("active")}
           className={`p-4 rounded-2xl border transition cursor-pointer ${filter === "active" ? "bg-emerald-600 text-white border-emerald-600 shadow-md" : "bg-emerald-50/70 text-emerald-950 border-emerald-200 hover:bg-emerald-100"}`}
         >
-          <p className="text-[11px] font-bold opacity-80">🟢 แสดงผลอยู่</p>
+ <p className="text-[11px] font-bold opacity-80"> แสดงผลอยู่</p>
           <p className="text-xl font-black mt-1">{stats.active}</p>
         </div>
 
@@ -265,15 +265,15 @@ export default function AdminBannerManagePage() {
           onClick={() => setFilter("expired")}
           className={`p-4 rounded-2xl border transition cursor-pointer ${filter === "expired" ? "bg-rose-600 text-white border-rose-600 shadow-md" : "bg-rose-50/70 text-rose-950 border-rose-200 hover:bg-rose-100"}`}
         >
-          <p className="text-[11px] font-bold opacity-80">🔴 หมดอายุแล้ว</p>
+ <p className="text-[11px] font-bold opacity-80"> หมดอายุแล้ว</p>
           <p className="text-xl font-black mt-1">{stats.expired}</p>
         </div>
 
         <div
           onClick={() => setFilter("disabled")}
-          className={`p-4 rounded-2xl border transition cursor-pointer ${filter === "disabled" ? "bg-stone-600 text-white border-stone-600 shadow-md" : "bg-stone-100 text-stone-900 border-stone-200 hover:bg-stone-200"}`}
+          className={`p-4 rounded-2xl border transition cursor-pointer ${filter === "disabled" ? "bg-stone-600 text-white border-[#FD775C] shadow-md" : "bg-stone-100 text-stone-900 border-stone-200 hover:bg-stone-200"}`}
         >
-          <p className="text-[11px] font-bold opacity-80">⚪ ปิดใช้งาน</p>
+ <p className="text-[11px] font-bold opacity-80"> ปิดใช้งาน</p>
           <p className="text-xl font-black mt-1">{stats.disabled}</p>
         </div>
       </div>
@@ -289,7 +289,7 @@ export default function AdminBannerManagePage() {
           <p className="text-sm font-bold">ไม่พบแบนเนอร์ในหมวดหมู่นี้</p>
           <button
             onClick={handleOpenAddModal}
-            className="px-4 py-2 rounded-xl bg-stone-900 text-white text-xs font-bold hover:bg-stone-800 transition inline-flex items-center gap-1.5 cursor-pointer"
+            className="px-4 py-2 rounded-xl bg-[#FD775C] text-white text-xs font-bold hover:bg-[#E31E27] transition inline-flex items-center gap-1.5 cursor-pointer"
           >
             <Plus size={14} />
             <span>สร้างแบนเนอร์ใหม่</span>
@@ -317,7 +317,7 @@ export default function AdminBannerManagePage() {
                 >
                   <div className="flex items-start justify-between gap-2 z-10">
                     <span className="inline-flex items-center gap-1 text-[9px] font-black px-2.5 py-1 rounded-full bg-white/25 backdrop-blur-md uppercase tracking-wider">
-                      <Tag size={10} /> {b.tag || "📎 PROMOTION"}
+ <Tag size={10} /> {b.tag || " PROMOTION"}
                     </span>
                     <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full shadow-xs ${statusInfo.color}`}>
                       {statusInfo.label}
@@ -339,7 +339,7 @@ export default function AdminBannerManagePage() {
                     </span>
                     {b.cta_link && (
                       <span className="text-[10px] font-mono text-white/80 truncate max-w-[140px]" title={b.cta_link}>
-                        🔗 {b.cta_link}
+                         {b.cta_link}
                       </span>
                     )}
                   </div>
@@ -460,7 +460,7 @@ export default function AdminBannerManagePage() {
                   </label>
                   <input
                     type="text"
-                    placeholder="เช่น 📎 PROMOTION"
+                    placeholder="เช่น  PROMOTION"
                     value={formData.tag}
                     onChange={(e) => setFormData({ ...formData, tag: e.target.value })}
                     className="w-full px-3.5 py-2 rounded-xl border border-stone-300 text-xs font-bold focus:outline-none focus:border-[#E0533C]"
@@ -496,7 +496,7 @@ export default function AdminBannerManagePage() {
                 />
               </div>
 
-              {/* 📸 Image Upload & Recommended Dimensions Box */}
+              {/* Image Upload & Recommended Dimensions Box */}
               <div className="p-4 bg-stone-50 rounded-2xl border space-y-3" style={{ borderColor: C.line }}>
                 <div className="flex items-center justify-between">
                   <label className="block text-xs font-black text-stone-900">
@@ -513,7 +513,7 @@ export default function AdminBannerManagePage() {
                   )}
                 </div>
 
-                {/* 📏 Recommended Size Banner Guidelines */}
+                {/* Recommended Size Banner Guidelines */}
                 <div className="p-3 bg-amber-50/80 rounded-xl border border-amber-200/80 text-[11px] text-amber-950 space-y-1">
                   <div className="font-bold flex items-center gap-1.5 text-amber-900">
                     <Sparkles size={13} className="text-amber-600 shrink-0" />
@@ -528,7 +528,7 @@ export default function AdminBannerManagePage() {
 
                 {/* Upload File Control */}
                 <div className="flex flex-col sm:flex-row items-center gap-3">
-                  <label className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-stone-900 text-white text-xs font-black hover:bg-stone-800 transition flex items-center justify-center gap-2 cursor-pointer shrink-0 shadow-xs">
+                  <label className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-[#FD775C] text-white text-xs font-black hover:bg-[#E31E27] transition flex items-center justify-center gap-2 cursor-pointer shrink-0 shadow-xs">
                     <Plus size={15} />
                     <span>อัปโหลดรูปภาพจากเครื่อง / มือถือ</span>
                     <input

@@ -17,7 +17,7 @@ const REGION_FILTERS = [{ id: "All", label: "All" }, ...REGIONS.map(r => ({ id: 
 
 const VERSION_STATUS_FILTERS = [
   { id: "All", label: "ทุกแสตมป์" },
-  { id: "current", label: "แสตมป์ปัจจุบัน 📍" },
+  { id: "current", label: "แสตมป์ปัจจุบัน " },
 ];
 
 export default function CollectionView({ searchQuery = "", openPlace }: { searchQuery?: string; openPlace?: (place: any) => void }) {
@@ -122,11 +122,11 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
   return (
     <div className="space-y-5 w-full min-w-0 text-[#000000]">
       
-      {/* 📎 Clippi Stamp Counter Card */}
+      {/* Clippi Stamp Counter Card */}
       <div className="bg-gradient-to-r from-stone-900 via-[#000000] to-stone-900 rounded-3xl p-5 text-white flex items-center justify-between shadow-lg relative overflow-hidden">
         <div className="space-y-1 z-10">
           <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#FD775C]/20 border border-[#FD775C]/40 text-[9.5px] font-black text-[#FD775C] tracking-wider uppercase">
-            <span>📎 CLIPPI STAMP BOOK</span>
+ <span> CLIPPI STAMP BOOK</span>
           </div>
           <h3 className="text-xl font-black drop-shadow-xs">
             สะสมแล้ว {totalCollectedShops} / {places.length} สถานที่ (รวม {totalCollectedTotalStamps} แสตมป์)
@@ -140,14 +140,14 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
         <div className="shrink-0 z-10">
           <ClippiMascot
             size="md"
-            speech={totalCollectedShops > 0 ? `ได้ ${totalCollectedTotalStamps} แสตมป์แล้ว! 🎉` : "มาเก็บแสตมป์กัน! 📎"}
+            speech={totalCollectedShops > 0 ? `ได้ ${totalCollectedTotalStamps} แสตมป์แล้ว! ` : "มาเก็บแสตมป์กัน! "}
             animate={true}
           />
         </div>
         <div className="absolute -right-8 -top-8 w-36 h-36 rounded-full bg-[#FD775C]/20 blur-xl pointer-events-none" />
       </div>
 
-      {/* 🌏 Filter Tabs (by region) */}
+      {/* Filter Tabs (by region) */}
       <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none w-full">
         {REGION_FILTERS.map((r) => (
           <button
@@ -209,7 +209,7 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
 
                   {/* Round Badge */}
                   <div className="inline-flex items-center gap-1 my-1 px-2.5 py-0.5 rounded-full text-[8.5px] font-black bg-amber-50 text-amber-900 border border-amber-300">
-                    <span>🔄 สะสมแล้ว {roundsCount} รอบ</span>
+ <span> สะสมแล้ว {roundsCount} รอบ</span>
                   </div>
 
                   <span className="text-[7.5px] font-bold text-green-600 mt-0.5">{t("collection.collectedTag")}</span>
@@ -299,7 +299,7 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
         </div>
       ) : null}
 
-      {/* 🏷️ Modal: Shop Version History Modal */}
+      {/* Modal: Shop Version History Modal */}
       {selectedShopForHistory && (
         <ShopVersionHistoryModal
           isOpen={!!selectedShopForHistory}

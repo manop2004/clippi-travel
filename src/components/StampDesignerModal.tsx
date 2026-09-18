@@ -228,7 +228,7 @@ export default function StampDesignerModal({
       <div className="bg-white w-full max-w-3xl rounded-3xl shadow-2xl overflow-hidden border my-auto" style={{ borderColor: C.line }}>
         
         {/* Header */}
-        <div className="p-4 sm:p-5 border-b flex items-center justify-between bg-stone-900 text-white">
+        <div className="p-4 sm:p-5 border-b flex items-center justify-between bg-[#FD775C] text-white">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-gradient-to-tr from-rose-500 to-amber-500 text-white shadow-xs">
               <Stamp size={20} />
@@ -264,11 +264,11 @@ export default function StampDesignerModal({
             </div>
 
             <p className="text-[10.5px] font-bold text-stone-600 text-center">
-              ตราชนิดนี้จะแสดงในสมุดสะสมแสตมป์ของผู้ใช้งาน 📍 {formatExpiryLabel(currentEditingVersion?.valid_until)}
+              ตราชนิดนี้จะแสดงในสมุดสะสมแสตมป์ของผู้ใช้งาน  {formatExpiryLabel(currentEditingVersion?.valid_until)}
             </p>
           </div>
 
-          {/* 📌 Navigation Tabs Grid - 5 Full Tabs */}
+          {/* Navigation Tabs Grid - 5 Full Tabs */}
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 p-1.5 bg-stone-100/90 rounded-2xl border" style={{ borderColor: C.line }}>
             <button
               type="button"
@@ -327,12 +327,12 @@ export default function StampDesignerModal({
               onClick={() => setActiveTab("versions")}
               className={`py-2 px-2 rounded-xl text-[11px] sm:text-xs font-black flex items-center justify-center gap-1 transition cursor-pointer col-span-2 sm:col-span-1 ${
                 activeTab === "versions"
-                  ? "bg-stone-900 text-amber-400 shadow-sm border border-stone-900"
+                  ? "bg-[#FD775C] text-white shadow-sm border border-[#FD775C]"
                   : "bg-amber-50 text-amber-900 border border-amber-200/80 hover:bg-amber-100"
               }`}
             >
               <Tag size={13} className={activeTab === "versions" ? "text-amber-400" : "text-amber-600"} />
-              <span className="whitespace-nowrap">5. เวอร์ชัน 🏷️</span>
+ <span className="whitespace-nowrap">5. เวอร์ชัน </span>
             </button>
           </div>
 
@@ -675,7 +675,7 @@ export default function StampDesignerModal({
             </div>
           )}
 
-          {/* TAB 5: เวอร์ชันแสตมป์ & กำหนดวันหมดเขต 🏷️ */}
+          {/* TAB 5: เวอร์ชันแสตมป์ & กำหนดวันหมดเขต  */}
           {activeTab === "versions" && (
             <div className="space-y-4 pt-1 animate-in fade-in duration-150">
               <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -725,7 +725,7 @@ export default function StampDesignerModal({
 
                           <div className="space-y-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-stone-900 text-white font-mono">
+                              <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-[#FD775C] text-white font-mono">
                                 {ver.version_code || "v1.0"}
                               </span>
 

@@ -28,7 +28,7 @@ export default function ActivityCard({ activity: a }: { activity: ActivityLogRow
           className="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs text-white shrink-0 select-none"
           style={{ background: isBadge ? C.accent : "#231C18" }}
         >
-          {isBadge ? "★" : displayName[0]?.toUpperCase() ?? "U"}
+          {isBadge ? "" : displayName[0]?.toUpperCase() ?? "U"}
         </div>
         <div className="flex-1 min-w-0 leading-tight">
           <p className="text-xs text-[#231C18]">

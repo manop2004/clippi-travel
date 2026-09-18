@@ -35,7 +35,7 @@ export function ProtectedRoute({ children, allowedRoles, onGoHome }: ProtectedRo
         {onGoHome && (
           <button
             onClick={onGoHome}
-            className="px-5 py-2.5 rounded-xl text-xs font-black text-white bg-[#231C18] hover:bg-stone-800 transition cursor-pointer"
+            className="px-5 py-2.5 rounded-xl text-xs font-black text-white bg-[#FD775C] hover:bg-[#E31E27] transition cursor-pointer"
           >
             Return to Explore Page
           </button>

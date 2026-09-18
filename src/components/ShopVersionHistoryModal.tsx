@@ -99,7 +99,7 @@ export default function ShopVersionHistoryModal({
       <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border my-auto" style={{ borderColor: C.line }}>
         
         {/* Header */}
-        <div className="p-5 border-b bg-stone-900 text-white flex items-center justify-between">
+        <div className="p-5 border-b bg-[#FD775C] text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-amber-500 via-rose-500 to-indigo-500 text-white shadow-md">
               <Tag size={22} />
@@ -108,8 +108,8 @@ export default function ShopVersionHistoryModal({
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-black tracking-tight">{shopName}</h3>
                 {shop.prefecture && (
-                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-stone-800 text-stone-300 border border-stone-700">
-                    📍 {shop.prefecture}
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#FD775C] text-stone-300 border border-stone-700">
+                     {shop.prefecture}
                   </span>
                 )}
               </div>
@@ -144,7 +144,7 @@ export default function ShopVersionHistoryModal({
               </div>
 
               <span className="px-3 py-1 rounded-full text-xs font-black bg-amber-500 text-stone-950 shrink-0 self-start sm:self-auto">
-                 active ปัจจุบัน 📍
+                 active ปัจจุบัน 
               </span>
             </div>
           )}
@@ -157,7 +157,7 @@ export default function ShopVersionHistoryModal({
                 <span>ประวัติการสะสมแสตมป์ร้านนี้ ({collectedForShop.length} รอบ)</span>
               </span>
               <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-200">
-                สะสมได้เรื่อยๆ 🔄
+                สะสมได้เรื่อยๆ 
               </span>
             </div>
 
@@ -204,7 +204,7 @@ export default function ShopVersionHistoryModal({
                 >
                   {/* Status Badge Top Right */}
                   {isCurrent && (
-                    <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[9px] font-black bg-stone-900 text-white shadow-2xs flex items-center gap-1">
+                    <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[9px] font-black bg-[#FD775C] text-white shadow-2xs flex items-center gap-1">
                       <span>{ver.version_code}</span>
                     </div>
                   )}
@@ -242,7 +242,7 @@ export default function ShopVersionHistoryModal({
                           <span>สะสมเวอร์ชันนี้แล้ว!</span>
                         </span>
                         <span className="text-[9.5px] font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full inline-block border border-amber-200">
-                          สะสมเวอร์ชันนี้ไปแล้ว {versionTimesCollected} ครั้ง 🎖️
+                          สะสมเวอร์ชันนี้ไปแล้ว {versionTimesCollected} ครั้ง 
                         </span>
                       </div>
                     ) : (

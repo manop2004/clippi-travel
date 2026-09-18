@@ -125,7 +125,7 @@ export default function StoreRulesModal({
       <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border my-auto" style={{ borderColor: C.line }}>
         
         {/* Header */}
-        <div className="p-4 sm:p-5 border-b flex items-center justify-between bg-stone-900 text-white">
+        <div className="p-4 sm:p-5 border-b flex items-center justify-between bg-[#FD775C] text-white">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-gradient-to-tr from-rose-500 to-amber-500 text-white shadow-xs">
               <ShieldAlert size={20} />
@@ -215,7 +215,7 @@ export default function StoreRulesModal({
                   type="button"
                   onClick={handleAddCustomRule}
                   disabled={!customTitle.trim()}
-                  className="px-4 py-2 rounded-xl bg-stone-900 text-white text-xs font-black hover:bg-stone-800 transition disabled:opacity-40 cursor-pointer shrink-0"
+                  className="px-4 py-2 rounded-xl bg-[#FD775C] text-white text-xs font-black hover:bg-[#E31E27] transition disabled:opacity-40 cursor-pointer shrink-0"
                 >
                   + เพิ่มกฎ
                 </button>

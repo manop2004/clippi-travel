@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { X, Navigation, Crosshair, Landmark, MapPin, ExternalLink, Send, Loader2, Star, Camera, Edit3, Trash2, Globe, FileText, AlertCircle, AlertTriangle, CheckCircle2, Clock, CalendarOff, CameraOff, CigaretteOff, UtensilsCrossed, Ban, Banknote, VolumeX, ShieldAlert, Layers } from "lucide-react";
+import { X, Navigation, Crosshair, Landmark, MapPin, ExternalLink, Send, Loader2, Star, Camera, Edit3, Trash2, Globe, FileText, AlertCircle, AlertTriangle, CheckCircle2, Clock, ShoppingBag, CalendarOff, CameraOff, CigaretteOff, UtensilsCrossed, Ban, Banknote, VolumeX, ShieldAlert, Layers } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { C, categories } from "../constants/mockData";
@@ -190,7 +190,7 @@ export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }:
               type: "achievement" as const,
               code: a.code,
               name: a.name,
-              icon: a.icon || "🏆",
+              icon: a.icon || "",
               description: a.description,
             })),
           ]);
@@ -293,7 +293,7 @@ export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }:
               <p className="text-xs font-bold text-[#231C18]">{statusInfo.description}</p>
               {statusInfo.sched.closed_days && statusInfo.sched.closed_days.length > 0 && (
                 <p className="text-[11px] text-amber-800 font-semibold">
-                  🗓️ วันหยุดประจำสัปดาห์: {statusInfo.sched.closed_days.join(", ")}
+                   วันหยุดประจำสัปดาห์: {statusInfo.sched.closed_days.join(", ")}
                 </p>
               )}
               {statusInfo.sched.holidays && statusInfo.sched.holidays.length > 0 && (
@@ -313,13 +313,13 @@ export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }:
               )}
             </div>
 
-            {/* 📜 Store Rules Section */}
+            {/* Store Rules Section */}
             {storeRules.length > 0 && (
               <div className="p-3.5 rounded-2xl border bg-stone-50/90 space-y-2 select-none" style={{ borderColor: C.line }}>
                 <div className="flex items-center gap-1.5">
                   <ShieldAlert size={13} className="text-amber-700 shrink-0" />
                   <span className="text-[10px] font-black uppercase tracking-wider text-[#8A7870]">
-                    📜 กฎระเบียบประจำร้าน / Store Rules
+                     กฎระเบียบประจำร้าน / Store Rules
                   </span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-0.5">
@@ -368,7 +368,7 @@ export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }:
                   <Crosshair size={13} />
                 )}
                 {placeId && userStamps.filter(us => String(us.shop_id) === String(placeId)).length > 0
-                  ? `🔄 เช็คอินรับแสตมป์รอบใหม่ (รอบที่ ${userStamps.filter(us => String(us.shop_id) === String(placeId)).length + 1})`
+                  ? ` เช็คอินรับแสตมป์รอบใหม่ (รอบที่ ${userStamps.filter(us => String(us.shop_id) === String(placeId)).length + 1})`
                   : t("place.checkinHere")}
               </button>
             </div>
@@ -408,7 +408,7 @@ export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }:
                 <span className="block leading-tight">{t("collection.available")}</span>
                 <span className="font-semibold text-[9.5px] opacity-90 block mt-0.5">
                   {placeId && userStamps.filter(us => String(us.shop_id) === String(placeId)).length > 0
-                    ? `คุณสะสมแสตมป์สถานที่นี้แล้ว ${userStamps.filter(us => String(us.shop_id) === String(placeId)).length} รอบ! (เดินทางมาเช็คอินรับแสตมป์รอบใหม่ได้เรื่อยๆ 🔄)`
+                    ? `คุณสะสมแสตมป์สถานที่นี้แล้ว ${userStamps.filter(us => String(us.shop_id) === String(placeId)).length} รอบ! (เดินทางมาเช็คอินรับแสตมป์รอบใหม่ได้เรื่อยๆ )`
                     : t("place.checkinHint")}
                 </span>
               </div>
@@ -420,7 +420,7 @@ export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }:
               className="w-full py-2.5 px-3.5 rounded-xl text-xs font-black bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-200 flex items-center justify-center gap-2 transition cursor-pointer shadow-2xs"
             >
               <Layers size={14} className="text-amber-500" />
-              <span>ดูประวัติเวอร์ชัน & รอบการสะสมแสตมป์ร้านนี้ 🏷️</span>
+ <span>ดูประวัติเวอร์ชัน & รอบการสะสมแสตมป์ร้านนี้ </span>
             </button>
 
             {/* About Section */}
@@ -468,7 +468,7 @@ export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }:
                         <div key={r.id} className="p-3 rounded-xl bg-white border" style={{ borderColor: C.line }}>
                           <div className="flex items-center justify-between mb-1.5 select-none">
                             <div className="flex items-center gap-1.5">
-                              <div className="w-5 h-5 rounded-full bg-[#231C18] text-white flex items-center justify-center text-[9px] font-bold">
+                              <div className="w-5 h-5 rounded-full bg-[#FD775C] text-white flex items-center justify-center text-[9px] font-bold">
                                 {reviewerName[0]?.toUpperCase() ?? "U"}
                               </div>
                               <span className="text-xs font-bold" style={{ color: C.ink }}>
@@ -531,7 +531,7 @@ export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }:
                     type: "achievement" as const,
                     code: a.code,
                     name: a.name,
-                    icon: a.icon || "🏆",
+                    icon: a.icon || "",
                     description: a.description,
                   }))
                 );
@@ -541,7 +541,7 @@ export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }:
         />
       )}
 
-      {/* 🏷️ Shop Version & Rounds History Modal */}
+      {/* Shop Version & Rounds History Modal */}
       {showVersionHistory && (
         <ShopVersionHistoryModal
           isOpen={showVersionHistory}
@@ -551,7 +551,7 @@ export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }:
         />
       )}
 
-      {/* 🎉 Stamp / Achievement celebration popup */}
+      {/* Stamp / Achievement celebration popup */}
       <AchievementCelebration items={celebration} onClose={() => setCelebration([])} />
     </>
   );
@@ -805,8 +805,8 @@ const getDistanceInMeters = (lat1: number, lon1: number, lat2: number, lon2: num
 };
 
 const PIN_TYPES = [
-  { id: "food", labelKey: "cat.restaurantCafe", emoji: "🍜" },
-  { id: "shop", labelKey: "cat.serviceShop", emoji: "🛍️" },
+  { id: "food", labelKey: "cat.restaurantCafe", Icon: UtensilsCrossed },
+  { id: "shop", labelKey: "cat.serviceShop", Icon: ShoppingBag },
 ];
 
 function LocationPickerMap({
@@ -859,7 +859,7 @@ function LocationPickerMap({
 
     const storeIcon = L.divIcon({
       className: "custom-store-pin",
-      html: `<div style="background:#E0533C;width:24px;height:24px;border-radius:50%;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:white;font-size:12px;">📍</div>`,
+      html: `<div style="background:#E0533C;width:24px;height:24px;border-radius:50%;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:white;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></div>`,
       iconSize: [24, 24],
       iconAnchor: [12, 12],
     });
@@ -970,7 +970,7 @@ function LocationPickerMap({
 
     const storeIcon = L.divIcon({
       className: "custom-store-pin",
-      html: `<div style="background:#E0533C;width:24px;height:24px;border-radius:50%;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:white;font-size:12px;">📍</div>`,
+      html: `<div style="background:#E0533C;width:24px;height:24px;border-radius:50%;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:white;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></div>`,
       iconSize: [24, 24],
       iconAnchor: [12, 12],
     });
@@ -1803,7 +1803,7 @@ export function AddPlaceModal({
             onClick={handleClose}
             className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors"
           >
-            ✕
+            
           </button>
         </div>
 
@@ -1945,7 +1945,7 @@ export function AddPlaceModal({
                   className="px-3.5 py-1.5 rounded-full text-[10px] font-black flex items-center gap-1.5 border transition-all duration-150"
                   style={cat === c.id ? { background: "#F0FDF4", color: "#166534", borderColor: "#BBF7D0" } : { background: "#fff", color: C.inkSoft, borderColor: C.line }}
                 >
-                  {c.emoji} {t(c.labelKey)}
+                  <c.Icon size={13} /> {t(c.labelKey)}
                 </button>
               ))}
             </div>

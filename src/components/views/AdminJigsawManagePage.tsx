@@ -89,7 +89,7 @@ function AdminJigsawManageContent() {
   return (
     <div className="space-y-6 w-full min-w-0 text-[#231C18]">
       
-      {/* 🌟 Header Bar */}
+      {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-3xl border shadow-xs" style={{ borderColor: C.line }}>
         <div className="flex items-center gap-3.5">
           <div
@@ -120,7 +120,7 @@ function AdminJigsawManageContent() {
               setEditingQuest(null);
               setIsQuestModalOpen(true);
             }}
-            className="px-3.5 py-2.5 rounded-xl text-xs font-black text-white bg-stone-900 hover:bg-stone-800 transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+            className="px-3.5 py-2.5 rounded-xl text-xs font-black text-white bg-[#FD775C] hover:bg-[#E31E27] transition flex items-center gap-1.5 cursor-pointer shadow-xs"
           >
             <Plus size={15} strokeWidth={2.5} /> สร้างเควสต์ใหม่
           </button>
@@ -138,7 +138,7 @@ function AdminJigsawManageContent() {
         </div>
       </div>
 
-      {/* 🧭 Quest Selector Tabs */}
+      {/* Quest Selector Tabs */}
       <div className="flex gap-2 overflow-x-auto pb-1.5 scrollbar-none w-full">
         {quests.map((quest) => {
           const isSelected = quest.id === activeQuest?.id;
@@ -148,11 +148,10 @@ function AdminJigsawManageContent() {
               onClick={() => setSelectedQuestId(quest.id)}
               className={`px-4 py-2.5 rounded-2xl text-xs font-black shrink-0 border transition-all duration-200 flex items-center gap-2 cursor-pointer shadow-xs ${
                 isSelected
-                  ? "bg-stone-900 text-white border-stone-900 shadow-md scale-102"
+                  ? "bg-[#FD775C] text-white border-[#FD775C] shadow-md scale-102"
                   : "bg-white text-stone-700 border-stone-200 hover:border-orange-300 hover:bg-stone-50"
               }`}
             >
-              <span>🧩</span>
               <span>{quest.title.split(":")[0]}</span>
               <span className={`text-[9.5px] px-2 py-0.5 rounded-full font-bold ${
                 quest.pieces.length >= 4 ? "bg-emerald-500 text-white" : isSelected ? "bg-orange-500 text-white" : "bg-stone-100 text-stone-600"
@@ -164,7 +163,7 @@ function AdminJigsawManageContent() {
         })}
       </div>
 
-      {/* 📋 Active Quest Details & Checkpoints Card */}
+      {/* Active Quest Details & Checkpoints Card */}
       {activeQuest ? (
         <div className="bg-white rounded-3xl p-6 border shadow-xs space-y-6" style={{ borderColor: C.line }}>
           
@@ -205,7 +204,7 @@ function AdminJigsawManageContent() {
                 </p>
 
                 <div className="flex items-center gap-3 pt-1 text-xs text-stone-600">
-                  <span>🎁 รางวัล: <strong className="text-stone-900">{activeQuest.rewardTitle}</strong></span>
+ <span> รางวัล: <strong className="text-stone-900">{activeQuest.rewardTitle}</strong></span>
                   <span className="text-stone-300">•</span>
                   <span>โค้ด: <code className="bg-stone-100 px-1.5 py-0.5 rounded font-mono text-[11px]">{activeQuest.rewardCode}</code></span>
                 </div>
@@ -238,7 +237,7 @@ function AdminJigsawManageContent() {
             </div>
           </div>
 
-          {/* 📍 Checkpoints & Map Pins List */}
+          {/* Checkpoints & Map Pins List */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
@@ -335,7 +334,7 @@ function AdminJigsawManageContent() {
                         </p>
 
                         <div className="pl-8 text-[10.5px] bg-amber-50/70 p-2 rounded-xl border border-amber-200/60 text-amber-900 font-medium">
-                          💡 <strong>คำใบ้:</strong> {piece.hint}
+ <strong>คำใบ้:</strong> {piece.hint}
                         </div>
                       </div>
 
@@ -368,7 +367,7 @@ function AdminJigsawManageContent() {
       ) : null}
 
       {/* ========================================================================= */}
-      {/* 🖼️ MODAL 1: CREATE / EDIT QUEST */}
+      {/* MODAL 1: CREATE / EDIT QUEST */}
       {/* ========================================================================= */}
       {isQuestModalOpen && (
         <QuestFormModal
@@ -392,7 +391,7 @@ function AdminJigsawManageContent() {
       )}
 
       {/* ========================================================================= */}
-      {/* 📍 MODAL 2: ADD / EDIT CHECKPOINT & MAP PIN PICKER */}
+      {/* MODAL 2: ADD / EDIT CHECKPOINT & MAP PIN PICKER */}
       {/* ========================================================================= */}
       {isPieceModalOpen && editingPiece && (
         <PieceFormModal
@@ -417,7 +416,7 @@ function AdminJigsawManageContent() {
       )}
 
       {/* ========================================================================= */}
-      {/* 🖨️ MODAL 3: PRINTABLE QR CODE CARD MODAL */}
+      {/* MODAL 3: PRINTABLE QR CODE CARD MODAL */}
       {/* ========================================================================= */}
       {printPiece && (
         <PrintQRCardModal
@@ -449,7 +448,7 @@ function QuestFormModal({
   const [badge, setBadge] = useState(initialQuest?.badge || "Special Quest");
   const [category, setCategory] = useState(initialQuest?.category || "Culture & Heritage");
   const [description, setDescription] = useState(initialQuest?.description || "");
-  const [rewardTitle, setRewardTitle] = useState(initialQuest?.rewardTitle || "🏆 ตราประทับเกียรติยศ + ส่วนลด 20%");
+  const [rewardTitle, setRewardTitle] = useState(initialQuest?.rewardTitle || " ตราประทับเกียรติยศ + ส่วนลด 20%");
   const [rewardDescription, setRewardDescription] = useState(initialQuest?.rewardDescription || "ยินดีด้วย! คุณสะสมจิ๊กซอว์ครบทั้ง 4 ชิ้น ปลดล็อกภาพสมบูรณ์และรับส่วนลดพิเศษ");
   const [rewardCode, setRewardCode] = useState(initialQuest?.rewardCode || `CLIPPI-${Date.now().toString().slice(-6)}`);
   const [fullImageUrl, setFullImageUrl] = useState(initialQuest?.fullImageUrl || PRESET_REWARD_IMAGES[0].url);
@@ -487,7 +486,6 @@ function QuestFormModal({
       <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-stone-200 animate-fade-in space-y-4 my-8">
         <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: C.line }}>
           <div className="flex items-center gap-2">
-            <span className="text-xl">🧩</span>
             <h3 className="text-base font-black text-stone-900">
               {initialQuest ? "แก้ไขเควสต์จิ๊กซอว์" : "สร้างเควสต์จิ๊กซอว์ใหม่"}
             </h3>
@@ -593,8 +591,7 @@ function QuestFormModal({
 
           {/* Reward Details */}
           <div className="p-3.5 bg-orange-50/60 rounded-2xl border border-orange-200/70 space-y-2.5">
-            <h4 className="font-black text-orange-950 text-xs flex items-center gap-1.5">
-              <span>🎁</span> ข้อมูลของรางวัลเมื่อประกอบครบ 4 ชิ้น
+            <h4 className="font-black text-orange-950 text-xs flex items-center gap-1.5"> ข้อมูลของรางวัลเมื่อประกอบครบ 4 ชิ้น
             </h4>
 
             <div>
@@ -603,7 +600,7 @@ function QuestFormModal({
                 type="text"
                 value={rewardTitle}
                 onChange={(e) => setRewardTitle(e.target.value)}
-                placeholder="เช่น 🏆 ตราประทับผู้พิชิต + รับสิทธิ์เครื่องดื่มฟรี"
+                placeholder="เช่น  ตราประทับผู้พิชิต + รับสิทธิ์เครื่องดื่มฟรี"
                 className="w-full bg-white border border-orange-200 rounded-xl px-3 py-1.5 text-xs outline-none focus:border-orange-500 font-medium"
               />
             </div>
@@ -750,7 +747,7 @@ function PieceFormModal({
         className: "custom-picker-pin",
         html: `
           <div style="position:relative;display:flex;align-items:center;justify-content:center;width:34px;height:34px;background:#EA580C;border:2.5px solid white;border-radius:12px;color:white;font-weight:900;font-size:14px;box-shadow:0 3px 8px rgba(0,0,0,0.3);">
-            🧩
+            
           </div>
         `,
         iconSize: [34, 34],
@@ -843,7 +840,6 @@ function PieceFormModal({
       <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-stone-200 animate-fade-in space-y-4 my-8">
         <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: C.line }}>
           <div className="flex items-center gap-2">
-            <span className="text-xl text-orange-600">📍</span>
             <div>
               <h3 className="text-base font-black text-stone-900">
                 {initialPiece ? "แก้ไขจุดเช็คพอยต์ & พิกัดบนแผนที่" : "ปักหมุดจุดสแกนจิ๊กซอว์บนแผนที่"}
@@ -930,7 +926,7 @@ function PieceFormModal({
               />
             </div>
             <div>
-              <label className="block font-black text-stone-800 mb-1">💡 คำใบ้สำหรับผู้เล่น (Hint)</label>
+ <label className="block font-black text-stone-800 mb-1"> คำใบ้สำหรับผู้เล่น (Hint)</label>
               <input
                 type="text"
                 value={hint}
@@ -941,7 +937,7 @@ function PieceFormModal({
             </div>
           </div>
 
-          {/* 🗺️ LEAFLET INTERACTIVE MAP PIN PICKER */}
+          {/* LEAFLET INTERACTIVE MAP PIN PICKER */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="font-black text-stone-900 text-xs flex items-center gap-1.5">
@@ -964,7 +960,7 @@ function PieceFormModal({
             <div className="w-full h-48 rounded-2xl overflow-hidden border border-stone-300 relative shadow-inner">
               <div ref={mapContainerRef} className="w-full h-full" />
               <div className="absolute top-2 left-2 z-[1000] bg-white/90 backdrop-blur-xs px-2.5 py-1 rounded-lg text-[10px] font-bold text-stone-700 shadow-xs pointer-events-none">
-                📍 คลิกบนแผนที่เพื่อย้ายหมุด
+                 คลิกบนแผนที่เพื่อย้ายหมุด
               </div>
             </div>
 
@@ -1020,7 +1016,7 @@ function PieceFormModal({
                 onClick={randomizeQr}
                 className="text-[10px] font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1 cursor-pointer"
               >
-                <Sparkles size={11} /> 🎲 สุ่มรหัสใหม่
+ <Sparkles size={11} /> สุ่มรหัสใหม่
               </button>
             </div>
 
@@ -1100,13 +1096,13 @@ function PrintQRCardModal({
           </button>
         </div>
 
-        {/* 🖨️ Printable Card Body */}
+        {/* Printable Card Body */}
         <div id="printable-qr-card" className="bg-[#FAF9F8] rounded-3xl p-6 border-2 border-dashed border-orange-300 text-center space-y-4">
           
           {/* Brand Logo & Quest Badge */}
           <div className="space-y-1">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-100 text-orange-800 text-[10px] font-black uppercase tracking-wider">
-              🧩 {quest.badge}
+               {quest.badge}
             </div>
             <h3 className="text-base font-black text-stone-900">
               {quest.title.split(":")[0]}
@@ -1142,11 +1138,11 @@ function PrintQRCardModal({
               {piece.checkpointName}
             </h4>
             <p className="text-[11px] text-stone-600">
-              📍 {piece.locationArea}
+               {piece.locationArea}
             </p>
             {piece.hint && (
               <p className="text-[10px] text-amber-800 pt-1 border-t border-stone-100">
-                💡 <strong>คำใบ้:</strong> {piece.hint}
+ <strong>คำใบ้:</strong> {piece.hint}
               </p>
             )}
           </div>
@@ -1177,7 +1173,7 @@ function PrintQRCardModal({
             </button>
             <button
               onClick={handlePrint}
-              className="px-4 py-2 rounded-xl text-xs font-black text-white bg-stone-900 hover:bg-stone-800 transition flex items-center gap-1.5 cursor-pointer shadow-md"
+              className="px-4 py-2 rounded-xl text-xs font-black text-white bg-[#FD775C] hover:bg-[#E31E27] transition flex items-center gap-1.5 cursor-pointer shadow-md"
             >
               <Printer size={14} /> สั่งพิมพ์การ์ด
             </button>

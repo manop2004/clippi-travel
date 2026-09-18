@@ -216,7 +216,7 @@ const dict: Record<string, Record<Lang, string>> = {
   "activity.aPlace":        { en: "a place",                 th: "ร้านหนึ่ง",                    jp: "ある店舗" },
   // ── Achievement / Stamp celebration popup ──
   "celebration.stampLabel":       { en: "Stamp Collected", th: "เก็บแสตมป์สำเร็จ", jp: "スタンプ獲得" },
-  "celebration.stampTitle":       { en: "Nice! You got a new stamp 🎉", th: "เยี่ยม! ได้แสตมป์ใหม่แล้ว 🎉", jp: "やった！新しいスタンプをゲット 🎉" },
+  "celebration.stampTitle":       { en: "Nice! You got a new stamp ", th: "เยี่ยม! ได้แสตมป์ใหม่แล้ว ", jp: "やった！新しいスタンプをゲット " },
   "celebration.stampDesc":        { en: "You checked in at {shop}. Keep collecting!", th: "คุณเช็คอินที่ {shop} เรียบร้อยแล้ว เก็บต่อไปเรื่อยๆ นะ!", jp: "{shop} にチェックインしました。この調子で集めよう！" },
   "celebration.achievementLabel": { en: "Achievement Unlocked", th: "ปลดล็อกความสำเร็จใหม่", jp: "実績を解除しました" },
   "celebration.next":             { en: "Next", th: "ถัดไป", jp: "次へ" },

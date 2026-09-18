@@ -357,7 +357,7 @@ export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user
             <div>
               <div className="font-black text-rose-950 flex items-center gap-2">
                 <span>คำขอเปิดร้านค้าก่อนหน้านี้ไม่ผ่านการอนุมัติ</span>
-                <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-rose-200 text-rose-900">❌ Rejected</span>
+ <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-rose-200 text-rose-900"> Rejected</span>
               </div>
               <p className="text-[11px] text-rose-800 font-medium mt-0.5 leading-snug">
                 สาเหตุที่ไม่ผ่าน: <strong className="font-bold">{typeof merchantRejectionReason === "object" && merchantRejectionReason !== null ? ((merchantRejectionReason as any).reason || JSON.stringify(merchantRejectionReason)) : (merchantRejectionReason || "ข้อมูลเอกสารไม่ตรงตามเงื่อนไข")}</strong>. สามารถแก้ไขข้อมูลด้านล่างเพื่อยื่นคำขอใหม่ได้ครับ
@@ -484,7 +484,7 @@ export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user
                 disabled={loading}
                 className="py-3 px-4 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs transition cursor-pointer"
               >
-                ❌ ไม่สมัครแล้ว (ยกเลิกคำขอ)
+                 ไม่สมัครแล้ว (ยกเลิกคำขอ)
               </button>
             )}
             <button
