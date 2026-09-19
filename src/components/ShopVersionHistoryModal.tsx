@@ -1,6 +1,7 @@
 // ShopVersionHistoryModal.tsx
 import React from "react";
 import { X, Sparkles, Calendar, CheckCircle2, Lock, MapPin, Award, Clock, Tag } from "lucide-react";
+import { useLang } from "../lib/i18n";
 import { C } from "../constants/mockData";
 import { Place, UserStamp, ShopStampVersion } from "../types/review-stamp";
 import { getShopStampVersions, getCurrentActiveStampVersion, formatExpiryLabel } from "../lib/stampHelpers";
@@ -22,6 +23,7 @@ export default function ShopVersionHistoryModal({
   userStamps,
   openPlace,
 }: ShopVersionHistoryModalProps) {
+  const { t } = useLang();
   if (!isOpen || !shop) return null;
 
   const shopName = shop.shop_name || shop.name || "ร้านค้า";
@@ -139,7 +141,7 @@ export default function ShopVersionHistoryModal({
                 </div>
                 <p className="text-[11px] text-amber-800 flex items-center gap-1 font-semibold">
                   <Clock size={12} className="text-amber-600" />
-                  <span>กำหนดระยะเวลา: <strong>{formatExpiryLabel(currentActiveVersion.valid_until)}</strong></span>
+                  <span>{t("ver.validUntil")} <strong>{formatExpiryLabel(currentActiveVersion.valid_until)}</strong></span>
                 </p>
               </div>
 
@@ -181,7 +183,7 @@ export default function ShopVersionHistoryModal({
                 })}
               </div>
             ) : (
-              <p className="text-[11px] text-stone-500 italic">คุณยังไม่เคยสะสมแสตมป์ร้านนี้ ออกเดินทางเช็คอินเพื่อรับแสตมป์รอบแรกได้เลย!</p>
+              <p className="text-[11px] text-stone-500 italic">{t("ver.noStampYet")}</p>
             )}
           </div>
 
@@ -239,7 +241,7 @@ export default function ShopVersionHistoryModal({
                       <div className="space-y-0.5">
                         <span className="text-[11px] font-black text-emerald-600 flex items-center justify-center gap-1">
                           <CheckCircle2 size={13} />
-                          <span>สะสมเวอร์ชันนี้แล้ว!</span>
+                          <span>{t("ver.collected")}</span>
                         </span>
                         <span className="text-[9.5px] font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full inline-block border border-amber-200">
                           สะสมเวอร์ชันนี้ไปแล้ว {versionTimesCollected} ครั้ง 
@@ -268,7 +270,7 @@ export default function ShopVersionHistoryModal({
             className="px-4 py-2 rounded-xl text-xs font-black text-stone-900 bg-amber-400 hover:bg-amber-300 transition shadow-2xs flex items-center gap-1.5 cursor-pointer"
           >
             <MapPin size={14} />
-            <span>เดินทางไปเช็คอินร้านนี้ →</span>
+            <span>{t("ver.goCheckin")}</span>
           </button>
 
           <button

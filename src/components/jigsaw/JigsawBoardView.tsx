@@ -22,6 +22,7 @@ import {
   Settings,
 } from "lucide-react";
 import ClippiMascot from "../ClippiMascot";
+import { useLang } from "../../lib/i18n";
 
 interface JigsawBoardViewProps {
   collectedPieceIds: string[]; // ['p1', 'p2', ...]
@@ -36,6 +37,7 @@ export default function JigsawBoardView({
   onResetProgress,
   onNavigateTab,
 }: JigsawBoardViewProps) {
+  const { t } = useLang();
   const { quests } = useJigsawQuests();
   const { isAdmin } = useUserRole();
   const [selectedQuestId, setSelectedQuestId] = useState<string>(quests[0]?.id || "");
@@ -110,10 +112,10 @@ export default function JigsawBoardView({
           <button
             onClick={() => onNavigateTab?.("jigsaw_manage")}
             className="px-3.5 py-2.5 rounded-2xl text-xs font-black shrink-0 border border-orange-300 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-xs flex items-center gap-1.5 cursor-pointer ml-auto"
-            title="ไปยังหน้าจัดการเควสต์จิ๊กซอว์"
+            title={t("jig.manageTitle")}
           >
             <Settings size={13} />
- <span> จัดการเควสต์ (Admin)</span>
+ <span>{t("jig.manageQuests")}</span>
           </button>
         )}
       </div>
@@ -144,7 +146,7 @@ export default function JigsawBoardView({
               className="bg-[#FD775C] hover:bg-[#E31E27] text-white font-black px-4 py-2.5 rounded-2xl text-xs flex items-center gap-2 shadow-lg shadow-orange-500/20 transition cursor-pointer active:scale-98"
             >
               <Camera size={16} strokeWidth={2.5} />
-              <span>เปิดกล้องสแกน QR + GPS</span>
+              <span>{t("jig.openScanner")}</span>
             </button>
 
             <span className="text-xs font-extrabold text-stone-300 bg-white/10 px-3 py-2 rounded-xl backdrop-blur-xs">
@@ -193,14 +195,14 @@ export default function JigsawBoardView({
         <div className="lg:col-span-6 bg-white p-5 sm:p-6 rounded-3xl border border-stone-200 shadow-sm flex flex-col items-center">
           <div className="w-full flex items-center justify-between mb-4">
             <h3 className="font-black text-sm text-stone-900 flex items-center gap-2">
- <span> กระดานภาพจิ๊กซอว์</span>
+ <span>{t("jig.board")}</span>
               <span className="text-[10px] text-stone-400 font-bold">({safeQuest.gridRows}x{safeQuest.gridCols} ชิ้นส่วน)</span>
             </h3>
 
             {onResetProgress && userPiecesCount > 0 && (
               <button
                 onClick={onResetProgress}
-                title="รีเซ็ตเพื่อทดสอบใหม่"
+                title={t("jig.reset")}
                 className="text-[10px] font-bold text-stone-400 hover:text-stone-700 flex items-center gap-1 cursor-pointer"
               >
                 <RotateCcw size={11} /> รีเซ็ต
@@ -294,7 +296,7 @@ export default function JigsawBoardView({
               {/* Promo Code Box */}
               <div className="bg-white border border-emerald-200 rounded-2xl p-3 flex items-center justify-between max-w-xs mx-auto shadow-xs">
                 <div className="text-left">
-                  <span className="text-[9px] font-bold text-stone-400 uppercase block">รหัสส่วนลดรางวัล</span>
+                  <span className="text-[9px] font-bold text-stone-400 uppercase block">{t("jig.rewardCode")}</span>
                   <span className="text-xs font-black text-emerald-700 font-mono tracking-wider">
                     {safeQuest.rewardCode}
                   </span>
@@ -318,7 +320,7 @@ export default function JigsawBoardView({
               <MapPin size={16} className="text-[#FD775C]" />
               <span>จุดล่าชิ้นส่วนตามสถานที่จริง ({safeQuest.pieces.length} จุด)</span>
             </h3>
-            <span className="text-[10px] font-bold text-stone-400">ต้องเปิด GPS ขณะสแกน</span>
+            <span className="text-[10px] font-bold text-stone-400">{t("jig.gpsNeeded")}</span>
           </div>
 
           <div className="space-y-3">
@@ -378,7 +380,7 @@ export default function JigsawBoardView({
                           className="bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 px-3 py-1.5 rounded-2xl text-xs font-black flex items-center gap-1 transition shadow-xs cursor-pointer active:scale-95"
                         >
                           <Camera size={13} />
-                          <span>ไปสแกน</span>
+                          <span>{t("jig.goScan")}</span>
                         </button>
                       )}
                     </div>
@@ -421,7 +423,7 @@ export default function JigsawBoardView({
                 {selectedPieceForDetail.description}
               </p>
               <div className="p-2.5 bg-white rounded-xl border border-orange-200 text-amber-900 text-[11px]">
- <strong> คำใบ้:</strong> {selectedPieceForDetail.hint}
+ <strong>{t("jig.hint")}</strong> {selectedPieceForDetail.hint}
               </div>
               <p className="text-[10px] text-stone-500">
                 พิกัดเป้าหมาย: {selectedPieceForDetail.targetLat}, {selectedPieceForDetail.targetLng} (รัศมี {selectedPieceForDetail.radiusMeters} ม.)

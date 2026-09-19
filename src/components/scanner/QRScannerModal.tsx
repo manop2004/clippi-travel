@@ -16,6 +16,7 @@ import {
 import { haversineDistance, formatDistance } from "../../lib/geoHelpers";
 import { JigsawPiece } from "../../constants/jigsawData";
 import { useJigsawQuests } from "../../hooks/useJigsawQuests";
+import { useLang } from "../../lib/i18n";
 
 interface QRScannerModalProps {
   isOpen: boolean;
@@ -32,6 +33,7 @@ export default function QRScannerModal({
   onStampCollected,
   onViewBoard,
 }: QRScannerModalProps) {
+  const { t } = useLang();
   const { quests } = useJigsawQuests();
 
   // GPS State
@@ -428,7 +430,7 @@ export default function QRScannerModal({
                 <AlertTriangle size={32} />
               </div>
               <div>
-                <h4 className="font-black text-stone-900 text-base">จำเป็นต้องเปิดและอนุญาต GPS</h4>
+                <h4 className="font-black text-stone-900 text-base">{t("qr.gpsRequired")}</h4>
                 <p className="text-xs text-stone-600 mt-1.5 leading-relaxed">
                   {gpsErrorMsg ||
                     "กติกากิจกรรม Clippi Jigsaw Hunt บังคับให้ผู้เล่นต้องเปิดตำแหน่ง GPS เพื่อยืนยันว่าคุณเดินทางมาถึงสถานที่จริง"}
@@ -551,7 +553,7 @@ export default function QRScannerModal({
               <div className="mt-4 pt-3 border-t w-full flex items-center gap-2">
                 <input
                   type="text"
-                  placeholder="พิมพ์รหัส QR Code (ถ้ามี)..."
+                  placeholder={t("qr.codePlaceholder")}
                   value={manualCode}
                   onChange={(e) => setManualCode(e.target.value)}
                   onKeyDown={(e) => {
@@ -573,7 +575,7 @@ export default function QRScannerModal({
               <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200 text-amber-900 text-xs flex items-center gap-2">
                 <Sparkles size={16} className="shrink-0 text-amber-600" />
                 <p className="text-[11px] leading-tight">
-                  <strong>โหมดทดสอบ (Dev GPS Simulator):</strong> กดปุ่มด้านล่างเพื่อจำลองว่าคุณเดินทางไปถึงพิกัดสถานที่จริงและสแกน QR Code ประจำจุดนั้น
+                  <strong>{t("qr.devMode")}</strong> {t("qr.devModeDesc")}
                 </p>
               </div>
 
@@ -631,7 +633,7 @@ export default function QRScannerModal({
                         {/* ปุ่มทดสอบสแกนตรงๆ */}
                         <button
                           onClick={() => handleScannedData(piece.qrCodeValue)}
-                          title="สแกนด้วยพิกัดปัจจุบันของคุณ"
+                          title={t("qr.scanHere")}
                           className="px-2.5 py-1.5 bg-stone-200 hover:bg-stone-300 text-stone-800 text-[10px] font-bold rounded-xl transition cursor-pointer"
                         >
                           สแกนจริง
@@ -639,7 +641,7 @@ export default function QRScannerModal({
                         {/* ปุ่มวาร์ป/จำลองให้พิกัดตรง */}
                         <button
                           onClick={() => simulateCheckinAt(piece)}
-                          title="จำลองพิกัดให้อยู่ที่นี่และเช็คอินสำเร็จ"
+                          title={t("qr.simulateHere")}
                           className="px-2.5 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-[10px] font-black rounded-xl transition shadow-xs cursor-pointer flex items-center gap-1"
                         >
                           <Compass size={11} /> วาร์ป & เก็บ

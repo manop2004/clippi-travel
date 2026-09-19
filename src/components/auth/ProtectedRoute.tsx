@@ -2,6 +2,7 @@ import React from "react";
 import { useUserRole, UserRole } from "../../hooks/useUserRole";
 import { ShieldAlert } from "lucide-react";
 import { C } from "../../constants/mockData";
+import { useLang } from "../../lib/i18n";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -11,11 +12,12 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children, allowedRoles, onGoHome }: ProtectedRouteProps) {
   const { role, loading } = useUserRole();
+  const { t } = useLang();
 
   if (loading) {
     return (
       <div className="p-12 text-center text-xs font-bold text-[#8A7870] animate-pulse">
-        Checking access permissions...
+        {t("protect.checking")}
       </div>
     );
   }
@@ -27,9 +29,9 @@ export function ProtectedRoute({ children, allowedRoles, onGoHome }: ProtectedRo
           <ShieldAlert size={24} />
         </div>
         <div>
-          <h3 className="text-base font-black text-[#231C18]">Access Restricted</h3>
+          <h3 className="text-base font-black text-[#231C18]">{t("protect.title")}</h3>
           <p className="text-xs text-[#8A7870] font-semibold mt-1">
-            You do not have permission to access this page. Required role: {allowedRoles.join(", ")}.
+            {t("protect.desc")} ({allowedRoles.join(", ")})
           </p>
         </div>
         {onGoHome && (
@@ -37,7 +39,7 @@ export function ProtectedRoute({ children, allowedRoles, onGoHome }: ProtectedRo
             onClick={onGoHome}
             className="px-5 py-2.5 rounded-xl text-xs font-black text-white bg-[#FD775C] hover:bg-[#E31E27] transition cursor-pointer"
           >
-            Return to Explore Page
+            {t("protect.goHome")}
           </button>
         )}
       </div>

@@ -1,6 +1,7 @@
 import React, { useState, useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { C } from "../constants/mockData";
+import { useLang } from "../lib/i18n";
 
 interface CarouselProps<T> {
   items: T[];
@@ -19,6 +20,7 @@ export default function Carousel<T>({
   showDots = true,
   itemClassName,
 }: CarouselProps<T>) {
+  const { t } = useLang();
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -48,7 +50,7 @@ export default function Carousel<T>({
             onClick={() => scrollBy(-360)}
             className="hidden md:flex absolute -left-3 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-white/90 shadow-md border items-center justify-center text-stone-700 hover:bg-white transition cursor-pointer opacity-0 group-hover:opacity-100"
             style={{ borderColor: C.line }}
-            title="สไลด์ไปทางซ้าย"
+            title={t("carousel.prev")}
           >
             <ChevronLeft size={20} />
           </button>
@@ -57,7 +59,7 @@ export default function Carousel<T>({
             onClick={() => scrollBy(360)}
             className="hidden md:flex absolute -right-3 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-white/90 shadow-md border items-center justify-center text-stone-700 hover:bg-white transition cursor-pointer opacity-0 group-hover:opacity-100"
             style={{ borderColor: C.line }}
-            title="สไลด์ไปทางขวา"
+            title={t("carousel.next")}
           >
             <ChevronRight size={20} />
           </button>

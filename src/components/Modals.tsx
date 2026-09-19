@@ -1801,9 +1801,10 @@ export function AddPlaceModal({
           <button
             type="button"
             onClick={handleClose}
+            aria-label="ปิด"
             className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors"
           >
-            
+            <X size={20} />
           </button>
         </div>
 
