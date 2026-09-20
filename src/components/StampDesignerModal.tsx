@@ -12,12 +12,35 @@ import {
   Sun,
   Trash2,
   Type,
+  Smile,
   Tag,
   Clock,
   Plus,
   CheckCircle2,
   AlertCircle,
   Edit3,
+  Store,
+  Train,
+  Landmark,
+  Flower2,
+  Building2,
+  Coffee,
+  Utensils,
+  Beer,
+  Waves,
+  Hotel,
+  ShoppingBag,
+  Ticket,
+  Camera,
+  Heart,
+  Crown,
+  MapPin,
+  Compass,
+  Flame,
+  Gift,
+  PawPrint,
+  Music,
+  Scissors,
 } from "lucide-react";
 import { C } from "../constants/mockData";
 import { ShopStampVersion } from "../types/review-stamp";
@@ -26,6 +49,7 @@ import {
   STAMP_INK_COLORS,
   STAMP_SHAPES,
   STAMP_PRESET_ICONS,
+  STAMP_PRESET_EMOJIS,
   STAMP_SHADOW_EFFECTS,
   STAMP_BORDER_WIDTHS,
   STAMP_IMAGE_SIZES,
@@ -37,6 +61,133 @@ import {
   getDefaultStampDesign,
 } from "../lib/stampHelpers";
 import StampSealRenderer from "./StampSealRenderer";
+
+// Helper to render preset icon visuals
+const renderPresetIconVisual = (iconId: string, size = 20) => {
+  const iconProps = { size, strokeWidth: 2 };
+  switch (iconId) {
+    case "store": return <Store {...iconProps} />;
+    case "train": return <Train {...iconProps} />;
+    case "fuji": return <Landmark {...iconProps} />;
+    case "coffee": return <Coffee {...iconProps} />;
+    case "utensils": return <Utensils {...iconProps} />;
+    case "beer": return <Beer {...iconProps} />;
+    case "sakura": return <Flower2 {...iconProps} />;
+    case "torii": return <Building2 {...iconProps} />;
+    case "waves": return <Waves {...iconProps} />;
+    case "hotel": return <Hotel {...iconProps} />;
+    case "shopping_bag": return <ShoppingBag {...iconProps} />;
+    case "ticket": return <Ticket {...iconProps} />;
+    case "camera": return <Camera {...iconProps} />;
+    case "heart": return <Heart {...iconProps} />;
+    case "sparkles": return <Sparkles {...iconProps} />;
+    case "crown": return <Crown {...iconProps} />;
+    case "map_pin": return <MapPin {...iconProps} />;
+    case "compass": return <Compass {...iconProps} />;
+    case "flame": return <Flame {...iconProps} />;
+    case "gift": return <Gift {...iconProps} />;
+    case "paw": return <PawPrint {...iconProps} />;
+    case "music": return <Music {...iconProps} />;
+    case "scissors": return <Scissors {...iconProps} />;
+    case "hanko":
+    default:
+      return <Stamp {...iconProps} />;
+  }
+};
+
+// Helper to render seal shape SVG previews
+const renderSealShapeVisual = (shapeId: string) => {
+  const strokeWidth = 2;
+  switch (shapeId) {
+    case "circle":
+      return (
+        <svg viewBox="0 0 32 32" className="w-5 h-5">
+          <circle cx="16" cy="16" r="12" fill="none" stroke="currentColor" strokeWidth={strokeWidth} />
+        </svg>
+      );
+    case "double_circle":
+      return (
+        <svg viewBox="0 0 32 32" className="w-5 h-5">
+          <circle cx="16" cy="16" r="13" fill="none" stroke="currentColor" strokeWidth={1.5} />
+          <circle cx="16" cy="16" r="9" fill="none" stroke="currentColor" strokeWidth={1.5} />
+        </svg>
+      );
+    case "oval":
+      return (
+        <svg viewBox="0 0 32 32" className="w-5 h-5">
+          <ellipse cx="16" cy="16" rx="14" ry="9" fill="none" stroke="currentColor" strokeWidth={strokeWidth} />
+        </svg>
+      );
+    case "square":
+      return (
+        <svg viewBox="0 0 32 32" className="w-5 h-5">
+          <rect x="4" y="4" width="24" height="24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} />
+        </svg>
+      );
+    case "rounded_square":
+      return (
+        <svg viewBox="0 0 32 32" className="w-5 h-5">
+          <rect x="4" y="4" width="24" height="24" rx="7" fill="none" stroke="currentColor" strokeWidth={strokeWidth} />
+        </svg>
+      );
+    case "double_square":
+      return (
+        <svg viewBox="0 0 32 32" className="w-5 h-5">
+          <rect x="3" y="3" width="26" height="26" fill="none" stroke="currentColor" strokeWidth={1.5} />
+          <rect x="7" y="7" width="18" height="18" fill="none" stroke="currentColor" strokeWidth={1.5} />
+        </svg>
+      );
+    case "hexagon":
+      return (
+        <svg viewBox="0 0 32 32" className="w-5 h-5">
+          <polygon points="16,2 29,9 29,23 16,30 3,23 3,9" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinejoin="miter" />
+        </svg>
+      );
+    case "octagon":
+      return (
+        <svg viewBox="0 0 32 32" className="w-5 h-5">
+          <polygon points="10,2 22,2 30,10 30,22 22,30 10,30 2,22 2,10" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinejoin="miter" />
+        </svg>
+      );
+    case "diamond":
+      return (
+        <svg viewBox="0 0 32 32" className="w-5 h-5">
+          <polygon points="16,2 30,16 16,30 2,16" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinejoin="miter" />
+        </svg>
+      );
+    case "shield":
+      return (
+        <svg viewBox="0 0 32 32" className="w-5 h-5">
+          <polygon points="16,2 29,6 29,20 16,30 3,20 3,6" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinejoin="round" />
+        </svg>
+      );
+    case "star_badge":
+      return (
+        <svg viewBox="0 0 32 32" className="w-5 h-5">
+          <polygon points="16,2 20,7 27,6 25,12 30,16 25,20 27,26 20,25 16,30 12,25 5,26 7,20 2,16 7,12 5,6 12,7" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinejoin="round" />
+        </svg>
+      );
+    case "ticket_cut":
+      return (
+        <svg viewBox="0 0 32 32" className="w-5 h-5">
+          <polygon points="6,2 26,2 30,6 30,26 26,30 6,30 2,26 2,6" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinejoin="miter" />
+        </svg>
+      );
+    case "flower":
+      return (
+        <svg viewBox="0 0 32 32" className="w-5 h-5">
+          <path d="M 16 2 C 19 2 21 6 24 4 C 27 2 30 5 29 9 C 28 12 31 15 30 18 C 29 21 27 24 24 25 C 21 26 19 30 16 30 C 13 30 11 26 8 25 C 5 24 3 21 2 18 C 1 15 4 12 3 9 C 2 5 5 2 8 4 C 11 6 13 2 16 2 Z" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinejoin="round" />
+        </svg>
+      );
+    case "stamp_edge":
+    default:
+      return (
+        <svg viewBox="0 0 32 32" className="w-5 h-5">
+          <rect x="4" y="4" width="24" height="24" rx="2" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeDasharray="3 1.5" />
+        </svg>
+      );
+  }
+};
 
 interface StampDesignerModalProps {
   isOpen: boolean;
@@ -60,6 +211,8 @@ export default function StampDesignerModal({
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<"style" | "icon" | "text" | "effects" | "versions">("style");
+  const [iconSubTab, setIconSubTab] = useState<"preset" | "emoji" | "image">("preset");
+  const [fontTarget, setFontTarget] = useState<"top" | "sub">("top");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -123,9 +276,31 @@ export default function StampDesignerModal({
     );
   };
 
-  const handleUpdateVersionTitle = (verId: string, field: "version_code" | "title", val: string) => {
+  const handleUpdateVersionTitle = (verId: string, field: "version_code" | "title" | "sub_text", val: string) => {
     setVersions((prev) =>
-      prev.map((v) => (v.id === verId ? { ...v, [field]: val } : v))
+      prev.map((v) => {
+        if (v.id !== verId) return v;
+        if (field === "sub_text") {
+          const nextDesign = { ...v.design, sub_text: val };
+          if (v.id === selectedVersionId) setDesign(nextDesign);
+          return { ...v, design: nextDesign };
+        }
+        if (field === "version_code") {
+          const cleanVal = val.trim();
+          let formattedSub = cleanVal ? cleanVal.toUpperCase() : "";
+          if (formattedSub && !formattedSub.startsWith("VERSION")) {
+            const numPart = cleanVal.replace(/^[vV]\.?/i, "");
+            formattedSub = numPart ? `VERSION ${numPart}` : `VERSION ${cleanVal}`;
+          }
+          const nextDesign = {
+            ...v.design,
+            sub_text: formattedSub || v.design?.sub_text,
+          };
+          if (v.id === selectedVersionId) setDesign(nextDesign);
+          return { ...v, version_code: val, design: nextDesign };
+        }
+        return { ...v, [field]: val };
+      })
     );
   };
 
@@ -256,7 +431,7 @@ export default function StampDesignerModal({
           <div className="p-4 rounded-2xl bg-gradient-to-br from-stone-50 via-amber-50/20 to-stone-100 border flex flex-col items-center justify-center relative overflow-hidden" style={{ borderColor: C.line }}>
             <div className="absolute top-2.5 left-3 flex items-center gap-1 text-[10px] font-black uppercase text-stone-500 bg-white/90 px-2.5 py-0.5 rounded-full border border-stone-200 shadow-2xs">
               <Sparkles size={11} className="text-amber-500" />
-              <span>ตัวอย่างตราแสตมป์: {currentEditingVersion?.version_code || "v1.0"} ({currentEditingVersion?.title || shopName})</span>
+              <span>ตัวอย่างตราแสตมป์: {currentEditingVersion?.version_code ? `${currentEditingVersion.version_code} - ` : ""}{currentEditingVersion?.title || shopName}</span>
             </div>
 
             <div className="mt-5 mb-1.5 p-3 bg-white rounded-3xl shadow-md border border-stone-100 flex items-center justify-center">
@@ -413,26 +588,32 @@ export default function StampDesignerModal({
                 </div>
               </div>
 
-              {/* Shape Selector */}
+              {/* Shape Selector with Visual Icons */}
               <div>
                 <label className="text-xs font-black text-[#231C18] mb-2 block">
                   เลือกรูปทรงกรอบตราแสตมป์ (Seal Shape):
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
                   {STAMP_SHAPES.map((shape) => {
                     const isSelected = (design.shape || "circle") === shape.id;
                     return (
                       <button
                         key={shape.id}
                         type="button"
+                        title={shape.label}
                         onClick={() => updateDesignState((prev) => ({ ...prev, shape: shape.id as any }))}
-                        className={`p-2.5 rounded-2xl border text-center transition text-xs font-black cursor-pointer ${
+                        className={`p-2.5 rounded-2xl border text-center transition flex flex-col items-center justify-center gap-1 cursor-pointer group ${
                           isSelected
-                            ? "bg-rose-50 border-rose-500 text-rose-600 shadow-xs ring-2 ring-rose-500/20"
-                            : "bg-white border-stone-200 text-stone-700 hover:border-stone-300 hover:bg-stone-50"
+                            ? "bg-rose-50 border-rose-500 text-rose-600 shadow-xs ring-2 ring-rose-500/20 font-extrabold"
+                            : "bg-white border-stone-200 text-stone-600 hover:border-stone-300 hover:text-stone-900 hover:bg-stone-50"
                         }`}
                       >
-                        {shape.label}
+                        <div className="w-6 h-6 flex items-center justify-center transition-transform group-hover:scale-110">
+                          {renderSealShapeVisual(shape.id)}
+                        </div>
+                        <span className="text-[10px] font-bold truncate max-w-full">
+                          {shape.label}
+                        </span>
                       </button>
                     );
                   })}
@@ -469,96 +650,241 @@ export default function StampDesignerModal({
 
           {/* TAB 2: ไอคอน & รูปภาพ */}
           {activeTab === "icon" && (
-            <div className="space-y-4 pt-1">
-              {/* Custom Image Upload Option */}
-              <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <ImageIcon size={16} className="text-amber-600" />
-                    <label className="text-xs font-black text-amber-900">
-                      อัปโหลดรูปภาพ / โลโก้ตรงกลางตราประทับ (Custom Image Logo):
+            <div className="space-y-3 pt-1">
+              {/* Segmented Sub-Tab Switcher */}
+              <div className="flex items-center gap-1.5 p-1.5 bg-stone-100 rounded-2xl border border-stone-200">
+                <button
+                  type="button"
+                  onClick={() => setIconSubTab("preset")}
+                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                    iconSubTab === "preset"
+                      ? "bg-white text-rose-600 shadow-xs border border-stone-200"
+                      : "text-stone-600 hover:text-stone-900 hover:bg-white/50"
+                  }`}
+                >
+                  <Sparkles size={14} className={iconSubTab === "preset" ? "text-rose-500" : "text-stone-400"} />
+                  <span>ไอคอนสำเร็จรูป</span>
+                  {!design.image_url && !design.custom_emoji && (
+                    <span className="text-[10px] bg-rose-100 text-rose-700 px-1.5 py-0.2 rounded-full font-bold">ใช้อยู่</span>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIconSubTab("emoji")}
+                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                    iconSubTab === "emoji"
+                      ? "bg-white text-rose-600 shadow-xs border border-stone-200"
+                      : "text-stone-600 hover:text-stone-900 hover:bg-white/50"
+                  }`}
+                >
+                  <Smile size={14} className={iconSubTab === "emoji" ? "text-rose-500" : "text-stone-400"} />
+                  <span>อิโมจิ</span>
+                  {Boolean(design.custom_emoji && !design.image_url) && (
+                    <span className="text-[10px] bg-rose-100 text-rose-700 px-1.5 py-0.2 rounded-full font-bold">ใช้อยู่</span>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIconSubTab("image")}
+                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                    iconSubTab === "image"
+                      ? "bg-white text-rose-600 shadow-xs border border-stone-200"
+                      : "text-stone-600 hover:text-stone-900 hover:bg-white/50"
+                  }`}
+                >
+                  <ImageIcon size={14} className={iconSubTab === "image" ? "text-rose-500" : "text-stone-400"} />
+                  <span>โลโก้รูปภาพ</span>
+                  {Boolean(design.image_url) && (
+                    <span className="text-[10px] bg-rose-100 text-rose-700 px-1.5 py-0.2 rounded-full font-bold">ใช้อยู่</span>
+                  )}
+                </button>
+              </div>
+
+              {/* Sub-tab 1: Preset Icons */}
+              {iconSubTab === "preset" && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-black text-[#231C18]">
+                      เลือกสัญลักษณ์ไอคอนสำเร็จรูป (Preset Icon):
                     </label>
                   </div>
-                  {design.image_url && (
-                    <button
-                      type="button"
-                      onClick={handleRemoveCustomImage}
-                      className="text-xs font-bold text-rose-600 hover:underline flex items-center gap-1 cursor-pointer"
-                    >
-                      <Trash2 size={13} />
-                      <span>ลบรูปภาพ</span>
-                    </button>
-                  )}
-                </div>
-
-                <p className="text-[11px] text-amber-800 leading-relaxed">
-                  หากคุณมีโลโก้ร้านค้า รูปถ่ายสถานที่ หรือตราสัญลักษณ์เฉพาะ สามารถเลือกไฟล์รูปภาพ (PNG/JPG) เพื่อนำมาประทับใจกลางตราแสตมป์ได้ทันที
-                </p>
-
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileUpload}
-                    className="text-xs text-stone-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-amber-500 file:text-stone-950 hover:file:bg-amber-400 cursor-pointer"
-                  />
-                  {design.image_url && (
-                    <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full border border-emerald-200 inline-flex items-center gap-1">
-                      <Check size={13} /> อัปโหลดสำเร็จ
-                    </span>
-                  )}
-                </div>
-
-                {/* Custom Image Size Picker */}
-                {design.image_url && (
-                  <div className="pt-2 border-t border-amber-200/60 flex items-center gap-2">
-                    <span className="text-xs font-bold text-amber-900">ขนาดรูปภาพโลโก้:</span>
-                    <div className="flex items-center gap-1.5">
-                      {STAMP_IMAGE_SIZES.map((sz) => (
+                  <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 max-h-64 overflow-y-auto pr-1">
+                    {STAMP_PRESET_ICONS.map((icon) => {
+                      const isSelected = (design.preset_icon || "hanko") === icon.id && !design.image_url && !design.custom_emoji;
+                      return (
                         <button
-                          key={sz.id}
+                          key={icon.id}
                           type="button"
-                          onClick={() => updateDesignState((prev) => ({ ...prev, image_size: sz.id as any }))}
-                          className={`px-2.5 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
-                            (design.image_size || "lg") === sz.id
-                              ? "bg-amber-600 text-white font-black"
-                              : "bg-white text-stone-700 border border-stone-200"
+                          title={icon.label}
+                          onClick={() =>
+                            updateDesignState((prev) => ({
+                              ...prev,
+                              preset_icon: icon.id,
+                              custom_emoji: "",
+                              image_url: "",
+                            }))
+                          }
+                          className={`p-2.5 rounded-2xl border text-center transition flex flex-col items-center justify-center gap-1 cursor-pointer group ${
+                            isSelected
+                              ? "bg-rose-50 border-rose-500 text-rose-600 shadow-xs ring-2 ring-rose-500/20 font-extrabold"
+                              : "bg-white border-stone-200 text-stone-600 hover:border-stone-300 hover:text-stone-900 hover:bg-stone-50"
                           }`}
                         >
-                          {sz.label}
+                          <div className="w-6 h-6 flex items-center justify-center transition-transform group-hover:scale-110">
+                            {renderPresetIconVisual(icon.id, 22)}
+                          </div>
+                          <span className="text-[10px] font-bold truncate max-w-full">
+                            {icon.label}
+                          </span>
                         </button>
-                      ))}
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Sub-tab 2: Custom Emoji */}
+              {iconSubTab === "emoji" && (
+                <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-200 pb-2">
+                    <div>
+                      <label className="text-xs font-black text-[#231C18] flex items-center gap-1.5">
+                        <span>✨ ใส่อิโมจิสัญลักษณ์ (Custom Emoji Icon):</span>
+                      </label>
+                      <p className="text-[10px] text-stone-500">
+                        เลือกอิโมจิยอดนิยม หรือพิมพ์/วางอิโมจิใดๆ เพื่อแสดงเป็นไอคอนตรงกลางตราแสตมป์
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-[10px] font-bold text-stone-500">พิมพ์อิโมจิ:</span>
+                      <input
+                        type="text"
+                        value={design.custom_emoji || ""}
+                        onChange={(e) =>
+                          updateDesignState((prev) => ({
+                            ...prev,
+                            custom_emoji: e.target.value,
+                            image_url: "",
+                          }))
+                        }
+                        className="w-16 px-2 py-1 rounded-xl border border-stone-300 text-center text-base focus:outline-none focus:border-rose-500 bg-white font-bold"
+                        placeholder="🌸"
+                      />
+                      {design.custom_emoji && (
+                        <button
+                          type="button"
+                          onClick={() => updateDesignState((prev) => ({ ...prev, custom_emoji: "" }))}
+                          className="text-[10px] font-bold text-rose-600 hover:underline cursor-pointer"
+                        >
+                          ลบอิโมจิ
+                        </button>
+                      )}
                     </div>
                   </div>
-                )}
-              </div>
 
-              {/* Preset Icon Selector */}
-              <div>
-                <label className="text-xs font-black text-[#231C18] mb-2 block">
-                  หรือเลือกสัญลักษณ์ไอคอนสำเร็จรูป (Preset Icon):
-                </label>
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 max-h-56 overflow-y-auto pr-1">
-                  {STAMP_PRESET_ICONS.map((icon) => {
-                    const isSelected = (design.preset_icon || "hanko") === icon.id && !design.image_url;
-                    return (
-                      <button
-                        key={icon.id}
-                        type="button"
-                        onClick={() => updateDesignState((prev) => ({ ...prev, preset_icon: icon.id, image_url: "" }))}
-                        className={`p-2.5 rounded-2xl border text-center transition flex flex-col items-center justify-center gap-1 cursor-pointer ${
-                          isSelected
-                            ? "bg-rose-50 border-rose-500 text-rose-600 shadow-xs ring-2 ring-rose-500/20"
-                            : "bg-white border-stone-200 text-stone-700 hover:border-stone-300 hover:bg-stone-50"
-                        }`}
-                      >
-                        <span className="text-xs font-black truncate w-full">{icon.label}</span>
-                      </button>
-                    );
-                  })}
+                  <div className="space-y-2">
+                    {STAMP_PRESET_EMOJIS.map((group) => (
+                      <div key={group.category} className="space-y-1">
+                        <span className="text-[10px] font-extrabold text-stone-500 block">{group.category}:</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {group.emojis.map((emoji) => {
+                            const isSelected = design.custom_emoji === emoji && !design.image_url;
+                            return (
+                              <button
+                                key={emoji}
+                                type="button"
+                                onClick={() =>
+                                  updateDesignState((prev) => ({
+                                    ...prev,
+                                    custom_emoji: emoji,
+                                    image_url: "",
+                                  }))
+                                }
+                                className={`w-8 h-8 rounded-xl border flex items-center justify-center text-base transition cursor-pointer hover:scale-110 ${
+                                  isSelected
+                                    ? "bg-rose-50 border-rose-500 shadow-xs ring-2 ring-rose-500/20"
+                                    : "bg-white border-stone-200 hover:bg-stone-50"
+                                }`}
+                                title={`ใช้อิโมจิ ${emoji}`}
+                              >
+                                {emoji}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* Sub-tab 3: Custom Image Upload */}
+              {iconSubTab === "image" && (
+                <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <ImageIcon size={16} className="text-amber-600" />
+                      <label className="text-xs font-black text-amber-900">
+                        อัปโหลดรูปภาพ / โลโก้ตรงกลางตราประทับ (Custom Image Logo):
+                      </label>
+                    </div>
+                    {design.image_url && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveCustomImage}
+                        className="text-xs font-bold text-rose-600 hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <Trash2 size={13} />
+                        <span>ลบรูปภาพ</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <p className="text-[11px] text-amber-800 leading-relaxed">
+                    หากคุณมีโลโก้ร้านค้า รูปถ่ายสถานที่ หรือตราสัญลักษณ์เฉพาะ สามารถเลือกไฟล์รูปภาพ (PNG/JPG) เพื่อนำมาประทับใจกลางตราแสตมป์ได้ทันที
+                  </p>
+
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileUpload}
+                      className="text-xs text-stone-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-amber-500 file:text-stone-950 hover:file:bg-amber-400 cursor-pointer"
+                    />
+                    {design.image_url && (
+                      <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full border border-emerald-200 inline-flex items-center gap-1">
+                        <Check size={13} /> อัปโหลดสำเร็จ
+                      </span>
+                    )}
+                  </div>
+
+                  {design.image_url && (
+                    <div className="pt-2 border-t border-amber-200/60 flex items-center gap-2">
+                      <span className="text-xs font-bold text-amber-900">ขนาดรูปภาพโลโก้:</span>
+                      <div className="flex items-center gap-1.5">
+                        {STAMP_IMAGE_SIZES.map((sz) => (
+                          <button
+                            key={sz.id}
+                            type="button"
+                            onClick={() => updateDesignState((prev) => ({ ...prev, image_size: sz.id as any }))}
+                            className={`px-2.5 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
+                              (design.image_size || "lg") === sz.id
+                                ? "bg-amber-600 text-white font-black"
+                                : "bg-white text-stone-700 border border-stone-200"
+                            }`}
+                          >
+                            {sz.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -567,16 +893,17 @@ export default function StampDesignerModal({
             <div className="space-y-4 pt-1">
               {/* Custom Text Inputs */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1.5 p-3 rounded-2xl bg-stone-50 border" style={{ borderColor: C.line }}>
+                {/* Top Text (Custom Text) */}
+                <div className="space-y-2 p-3 rounded-2xl bg-stone-50 border" style={{ borderColor: C.line }}>
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-black text-[#231C18]">ข้อความหลัก (Custom Text):</label>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5">
                       <span className="text-[10px] font-bold text-stone-500">สีข้อความ:</span>
                       <input
                         type="color"
                         value={design.custom_text_color || design.ink_color || "#D9381E"}
                         onChange={(e) => updateDesignState((prev) => ({ ...prev, custom_text_color: e.target.value }))}
-                        className="w-6 h-6 rounded-md cursor-pointer border border-stone-300 p-0.5 bg-white"
+                        className="w-5 h-5 rounded-md cursor-pointer border border-stone-300 p-0.5 bg-white"
                         title="เปลี่ยนสีข้อความหลัก"
                       />
                     </div>
@@ -588,18 +915,39 @@ export default function StampDesignerModal({
                     className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs font-black text-[#231C18] focus:outline-none focus:border-rose-500 bg-white"
                     placeholder={shopName}
                   />
+                  <div className="flex items-center justify-between pt-0.5">
+                    <span className="text-[10px] font-bold text-stone-500">ฟอนต์ข้อความหลัก:</span>
+                    <select
+                      value={design.custom_text_font_style || design.font_style || "sans"}
+                      onChange={(e) =>
+                        updateDesignState((prev) => ({
+                          ...prev,
+                          custom_text_font_style: e.target.value as any,
+                          font_style: e.target.value as any,
+                        }))
+                      }
+                      className="text-[11px] font-bold px-2 py-1 rounded-lg border border-stone-300 bg-white text-stone-800 focus:outline-none focus:border-rose-500"
+                    >
+                      {STAMP_FONT_STYLES.map((f) => (
+                        <option key={f.id} value={f.id}>
+                          {f.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
-                <div className="space-y-1.5 p-3 rounded-2xl bg-stone-50 border" style={{ borderColor: C.line }}>
+                {/* Sub Text (Bottom Text) */}
+                <div className="space-y-2 p-3 rounded-2xl bg-stone-50 border" style={{ borderColor: C.line }}>
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-black text-[#231C18]">ข้อความรองด้านล่าง (Sub Text):</label>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5">
                       <span className="text-[10px] font-bold text-stone-500">สีข้อความรอง:</span>
                       <input
                         type="color"
                         value={design.sub_text_color || design.ink_color || "#D9381E"}
                         onChange={(e) => updateDesignState((prev) => ({ ...prev, sub_text_color: e.target.value }))}
-                        className="w-6 h-6 rounded-md cursor-pointer border border-stone-300 p-0.5 bg-white"
+                        className="w-5 h-5 rounded-md cursor-pointer border border-stone-300 p-0.5 bg-white"
                         title="เปลี่ยนสีข้อความรอง"
                       />
                     </div>
@@ -611,31 +959,116 @@ export default function StampDesignerModal({
                     className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs font-black text-[#231C18] focus:outline-none focus:border-rose-500 bg-white"
                     placeholder="EKITAG SEAL"
                   />
+                  <div className="flex items-center justify-between pt-0.5">
+                    <span className="text-[10px] font-bold text-stone-500">ฟอนต์ข้อความรอง:</span>
+                    <select
+                      value={design.sub_text_font_style || design.font_style || "sans"}
+                      onChange={(e) =>
+                        updateDesignState((prev) => ({
+                          ...prev,
+                          sub_text_font_style: e.target.value as any,
+                        }))
+                      }
+                      className="text-[11px] font-bold px-2 py-1 rounded-lg border border-stone-300 bg-white text-stone-800 focus:outline-none focus:border-rose-500"
+                    >
+                      {STAMP_FONT_STYLES.map((f) => (
+                        <option key={f.id} value={f.id}>
+                          {f.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
 
-              {/* Font Style Selection */}
-              <div>
-                <label className="text-xs font-black text-[#231C18] mb-2 block">
-                  เลือกรูปแบบฟอนต์ตัวอักษรประจำตราแสตมป์ (Font Family):
-                </label>
+              {/* Font Style Selection with Target Switcher */}
+              <div className="space-y-3 p-3.5 rounded-2xl bg-stone-50 border border-stone-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-200/80 pb-2.5">
+                  <div>
+                    <label className="text-xs font-black text-[#231C18] block">
+                      เลือกรูปแบบฟอนต์ (Font Family Grid):
+                    </label>
+                    <p className="text-[10px] text-stone-500 font-medium">
+                      เลือกสลับปรับฟอนต์ข้อความหลัก (บน) หรือข้อความรอง (ล่าง)
+                    </p>
+                  </div>
+
+                  {/* Font Target Toggle Buttons */}
+                  <div className="flex items-center p-1 rounded-xl bg-stone-200/80 text-xs font-bold gap-1 shrink-0 self-start sm:self-auto">
+                    <button
+                      type="button"
+                      onClick={() => setFontTarget("top")}
+                      className={`px-3 py-1 rounded-lg transition flex items-center gap-1.5 cursor-pointer ${
+                        fontTarget === "top"
+                          ? "bg-rose-500 text-white shadow-2xs font-extrabold"
+                          : "text-stone-700 hover:text-stone-900 hover:bg-stone-300/60"
+                      }`}
+                    >
+                      <span>🔤 ข้อความหลัก (บน)</span>
+                      <span className="text-[9px] px-1.5 py-0.2 bg-white/20 rounded-full font-black">
+                        {STAMP_FONT_STYLES.find((f) => f.id === (design.custom_text_font_style || design.font_style || "sans"))?.name}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setFontTarget("sub")}
+                      className={`px-3 py-1 rounded-lg transition flex items-center gap-1.5 cursor-pointer ${
+                        fontTarget === "sub"
+                          ? "bg-rose-500 text-white shadow-2xs font-extrabold"
+                          : "text-stone-700 hover:text-stone-900 hover:bg-stone-300/60"
+                      }`}
+                    >
+                      <span>🔤 ข้อความรอง (ล่าง)</span>
+                      <span className="text-[9px] px-1.5 py-0.2 bg-white/20 rounded-full font-black">
+                        {STAMP_FONT_STYLES.find((f) => f.id === (design.sub_text_font_style || design.font_style || "sans"))?.name}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {STAMP_FONT_STYLES.map((font) => {
-                    const isSelected = (design.font_style || "sans") === font.id;
+                    const activeFontId =
+                      fontTarget === "top"
+                        ? design.custom_text_font_style || design.font_style || "sans"
+                        : design.sub_text_font_style || design.font_style || "sans";
+                    const isSelected = activeFontId === font.id;
+
                     return (
                       <button
                         key={font.id}
                         type="button"
-                        onClick={() => updateDesignState((prev) => ({ ...prev, font_style: font.id as any }))}
+                        onClick={() => {
+                          if (fontTarget === "top") {
+                            updateDesignState((prev) => ({
+                              ...prev,
+                              custom_text_font_style: font.id as any,
+                              font_style: font.id as any,
+                            }));
+                          } else {
+                            updateDesignState((prev) => ({
+                              ...prev,
+                              sub_text_font_style: font.id as any,
+                            }));
+                          }
+                        }}
                         className={`p-3 rounded-2xl border text-left transition flex flex-col gap-0.5 cursor-pointer ${
                           isSelected
                             ? "bg-rose-50 border-rose-500 shadow-xs ring-2 ring-rose-500/20"
                             : "bg-white border-stone-200 hover:border-stone-300 hover:bg-stone-50"
                         }`}
                       >
-                        <span className="text-xs font-black text-[#231C18]" style={{ fontFamily: font.family }}>
-                          {font.name}
-                        </span>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black text-[#231C18]" style={{ fontFamily: font.family }}>
+                            {font.name}
+                          </span>
+                          {isSelected && (
+                            <span className="text-[9px] font-black text-rose-600 bg-rose-100 px-1.5 py-0.5 rounded-full">
+                              เลือกอยู่
+                            </span>
+                          )}
+                        </div>
                         <span className="text-[10px] text-stone-500 truncate">{font.label}</span>
                       </button>
                     );
@@ -723,31 +1156,55 @@ export default function StampDesignerModal({
                             <StampSealRenderer design={ver.design} shopName={shopName} size="sm" />
                           </div>
 
-                          <div className="space-y-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-stone-900 text-white font-mono">
-                                {ver.version_code || "v1.0"}
-                              </span>
+                          <div className="space-y-2 min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <div className="flex items-center gap-1.5 bg-stone-900 text-amber-400 px-2.5 py-1 rounded-xl shadow-xs border border-stone-800">
+                                <span className="text-[10px] font-extrabold text-amber-400 shrink-0">รหัสเวอร์ชัน:</span>
+                                <input
+                                  type="text"
+                                  value={ver.version_code ?? ""}
+                                  onChange={(e) => handleUpdateVersionTitle(ver.id, "version_code", e.target.value)}
+                                  className="bg-stone-800 text-amber-300 font-mono font-black text-xs focus:outline-none focus:ring-1 focus:ring-amber-400 rounded px-1.5 py-0.5 w-24 text-center border border-amber-500/40"
+                                  placeholder="(เว้นว่างได้)"
+                                  title="พิมพ์ปรับรหัส หรือลบออกได้เลยหากต้องการตั้งเฉพาะชื่อคอลเล็กชั่น"
+                                />
+                              </div>
 
                               {isCurrent ? (
-                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-green-500 text-white shadow-2xs flex items-center gap-1">
-                                  <CheckCircle2 size={11} />
+                                <span className="px-2.5 py-1 rounded-full text-[10.5px] font-black bg-emerald-500 text-white shadow-2xs flex items-center gap-1">
+                                  <CheckCircle2 size={12} />
                                   <span>แสตมป์ปัจจุบัน (Active)</span>
                                 </span>
                               ) : (
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-stone-200 text-stone-600">
+                                <span className="px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-stone-200 text-stone-600">
                                   เวอร์ชันเดิม (Archived)
                                 </span>
                               )}
                             </div>
 
-                            <input
-                              type="text"
-                              value={ver.title}
-                              onChange={(e) => handleUpdateVersionTitle(ver.id, "title", e.target.value)}
-                              className="text-sm font-black text-stone-900 bg-transparent border-b border-dashed border-stone-300 focus:border-amber-500 focus:outline-none w-full sm:w-64"
-                              placeholder="ชื่อเวอร์ชันตราแสตมป์"
-                            />
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                              <div>
+                                <label className="text-[10px] font-extrabold text-stone-500 block mb-0.5">ชื่อเวอร์ชัน (Display Title):</label>
+                                <input
+                                  type="text"
+                                  value={ver.title}
+                                  onChange={(e) => handleUpdateVersionTitle(ver.id, "title", e.target.value)}
+                                  className="w-full px-2.5 py-1 text-xs font-black text-stone-900 bg-white rounded-xl border border-stone-300 focus:border-amber-500 focus:outline-none shadow-2xs"
+                                  placeholder="ชื่อเวอร์ชันตราแสตมป์"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="text-[10px] font-extrabold text-stone-500 block mb-0.5">ข้อความบนตรา (Stamp Sub-Text):</label>
+                                <input
+                                  type="text"
+                                  value={ver.design?.sub_text || ""}
+                                  onChange={(e) => handleUpdateVersionTitle(ver.id, "sub_text", e.target.value)}
+                                  className="w-full px-2.5 py-1 text-xs font-bold text-rose-700 font-mono bg-white rounded-xl border border-stone-300 focus:border-rose-500 focus:outline-none shadow-2xs"
+                                  placeholder="VERSION 1.0"
+                                />
+                              </div>
+                            </div>
                           </div>
                         </div>
 

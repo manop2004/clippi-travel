@@ -7,7 +7,13 @@ interface ReviewStampContextType {
   user: any;
   userStamps: UserStamp[];
   loading: boolean;
-  collectStamp: (shopId: string | number) => Promise<void>;
+  collectStamp: (
+    shopId: string | number,
+    stampVersionId?: string,
+    stampVariantId?: string,
+    seasonalStamp?: any,
+    versionCode?: string
+  ) => Promise<void>;
   refreshStamps: () => Promise<void>;
 }
 
@@ -60,11 +66,17 @@ export function ReviewStampProvider({ children }: ReviewStampProviderProps) {
     fetchStamps();
   }, [user]);
 
-  const handleCollectStamp = async (shopId: string | number) => {
+  const handleCollectStamp = async (
+    shopId: string | number,
+    stampVersionId?: string,
+    stampVariantId?: string,
+    seasonalStamp?: any,
+    versionCode?: string
+  ) => {
     if (!user?.id) return;
     
     try {
-      await collectStamp(shopId);
+      await collectStamp(shopId, stampVersionId, stampVariantId, seasonalStamp, versionCode);
       // Refresh user stamps
       const updated = await getUserStamps(user.id);
       setUserStamps(updated);

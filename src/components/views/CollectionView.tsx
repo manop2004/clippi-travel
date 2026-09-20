@@ -111,6 +111,32 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
   );
   const filteredRemainingPlaces = remainingPlaces.filter((place) => matchesFilters(place));
 
+  // Pagination State for Collected and Remaining Places (Fixed 12 items per page)
+  const [collectedPage, setCollectedPage] = useState(1);
+  const [remainingPage, setRemainingPage] = useState(1);
+
+  useEffect(() => {
+    setCollectedPage(1);
+    setRemainingPage(1);
+  }, [regionFilter, searchQuery]);
+
+  const totalCollectedPages = Math.ceil(collectedShopCards.length / 12) || 1;
+  const safeCollectedPage = Math.min(Math.max(collectedPage, 1), totalCollectedPages);
+  const paginatedCollectedShopCards = React.useMemo(() => {
+    const start = (safeCollectedPage - 1) * 12;
+    return collectedShopCards.slice(start, start + 12);
+  }, [collectedShopCards, safeCollectedPage]);
+
+  const totalRemainingPages = Math.ceil(filteredRemainingPlaces.length / 12) || 1;
+  const safeRemainingPage = Math.min(Math.max(remainingPage, 1), totalRemainingPages);
+  const paginatedRemainingPlaces = React.useMemo(() => {
+    const start = (safeRemainingPage - 1) * 12;
+    return filteredRemainingPlaces.slice(start, start + 12);
+  }, [filteredRemainingPlaces, safeRemainingPage]);
+
+  const remainingStartIndex = filteredRemainingPlaces.length > 0 ? (safeRemainingPage - 1) * 12 + 1 : 0;
+  const remainingEndIndex = Math.min(safeRemainingPage * 12, filteredRemainingPlaces.length);
+
   if (loading) {
     return (
       <div className="h-96 w-full flex items-center justify-center text-xs font-black text-[#555555]">
@@ -176,13 +202,21 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
 
       {/* Collected Stamps Section */}
       {collectedShopCards.length > 0 && (
-        <div>
-          <h3 className="text-[10px] font-black uppercase tracking-wider text-[#8A7870] mb-4 flex items-center gap-1.5 select-none">
-            <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
-            {t("collection.collected")} ({collectedShopCards.length} สถานที่)
-          </h3>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between flex-wrap gap-2 select-none">
+            <h3 className="text-[10px] font-black uppercase tracking-wider text-[#8A7870] flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
+              {t("collection.collected")} ({collectedShopCards.length} สถานที่)
+            </h3>
+            {totalCollectedPages > 1 && (
+              <span className="text-[9.5px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
+                หน้า {safeCollectedPage} / {totalCollectedPages} (12 สถานที่/หน้า)
+              </span>
+            )}
+          </div>
+
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {collectedShopCards.map(({ shopId, place, stamps, roundsCount, latestStamp }) => {
+            {paginatedCollectedShopCards.map(({ shopId, place, stamps, roundsCount, latestStamp }) => {
               const shopName = localized(place, "shop_name", lang) || place?.name || `Place ${shopId}`;
               const prefecture = place?.prefecture || "";
               const collectedDate = new Date(latestStamp.collected_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
@@ -231,18 +265,74 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
               );
             })}
           </div>
+
+          {/* Collected Pagination Control Bar */}
+          {totalCollectedPages > 1 && (
+            <div className="flex items-center justify-between pt-2 text-xs font-bold text-stone-600 select-none">
+              <span>แสดงหน้า {safeCollectedPage} / {totalCollectedPages}</span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setCollectedPage((p) => Math.max(p - 1, 1))}
+                  disabled={safeCollectedPage === 1}
+                  className="px-3 py-1 rounded-xl border bg-stone-50 hover:bg-stone-100 disabled:opacity-40 disabled:cursor-not-allowed text-[11px] cursor-pointer"
+                  style={{ borderColor: C.line }}
+                >
+                  ← ก่อนหน้า
+                </button>
+                {Array.from({ length: totalCollectedPages }, (_, i) => i + 1)
+                  .filter((p) => totalCollectedPages <= 7 || p === 1 || p === totalCollectedPages || Math.abs(p - safeCollectedPage) <= 2)
+                  .map((page, idx, array) => {
+                    const prevPage = array[idx - 1];
+                    const showEllipsis = prevPage && page - prevPage > 1;
+                    return (
+                      <React.Fragment key={page}>
+                        {showEllipsis && <span className="px-1 text-[10px] text-stone-400">...</span>}
+                        <button
+                          type="button"
+                          onClick={() => setCollectedPage(page)}
+                          className={`w-7 h-7 rounded-lg text-[10px] font-black transition cursor-pointer flex items-center justify-center ${
+                            safeCollectedPage === page ? "bg-[#E0533C] text-white" : "bg-stone-50 hover:bg-stone-100 text-stone-700 border"
+                          }`}
+                          style={safeCollectedPage !== page ? { borderColor: C.line } : undefined}
+                        >
+                          {page}
+                        </button>
+                      </React.Fragment>
+                    );
+                  })}
+                <button
+                  type="button"
+                  onClick={() => setCollectedPage((p) => Math.min(p + 1, totalCollectedPages))}
+                  disabled={safeCollectedPage === totalCollectedPages}
+                  className="px-3 py-1 rounded-xl border bg-stone-50 hover:bg-stone-100 disabled:opacity-40 disabled:cursor-not-allowed text-[11px] cursor-pointer"
+                  style={{ borderColor: C.line }}
+                >
+                  ถัดไป →
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {/* Remaining Places Section */}
       {filteredRemainingPlaces.length > 0 && (
-        <div>
-          <h3 className="text-[10px] font-black uppercase tracking-wider text-[#8A7870] mb-4 flex items-center gap-1.5 select-none">
-            <span className="w-2 h-2 rounded-full bg-[#8A7870] inline-block" />
-            {t("collection.remaining")}
-          </h3>
+        <div className="space-y-3">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 select-none">
+            <h3 className="text-[10px] font-black uppercase tracking-wider text-[#8A7870] flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-[#8A7870] inline-block" />
+              {t("collection.remaining")} (แสดง {remainingStartIndex} - {remainingEndIndex} จาก {filteredRemainingPlaces.length} สถานที่)
+            </h3>
+            {totalRemainingPages > 1 && (
+              <span className="text-[9.5px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200">
+                ⚡ หน้า {safeRemainingPage} จาก {totalRemainingPages} (12 สถานที่ / หน้า)
+              </span>
+            )}
+          </div>
+
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {filteredRemainingPlaces.map((place) => {
+            {paginatedRemainingPlaces.map((place) => {
               const shopName = localized(place, "shop_name", lang) || place.name || `Place ${place.id}`;
               const versions = getShopStampVersions(place);
               const currentActive = getCurrentActiveStampVersion(versions);
@@ -286,6 +376,54 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
               );
             })}
           </div>
+
+          {/* Remaining Pagination Control Bar */}
+          {totalRemainingPages > 1 && (
+            <div className="flex items-center justify-between pt-2 text-xs font-bold text-stone-600 select-none">
+              <span>กำลังแสดงหน้า {safeRemainingPage} / {totalRemainingPages}</span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setRemainingPage((p) => Math.max(p - 1, 1))}
+                  disabled={safeRemainingPage === 1}
+                  className="px-3 py-1 rounded-xl border bg-stone-50 hover:bg-stone-100 disabled:opacity-40 disabled:cursor-not-allowed text-[11px] cursor-pointer"
+                  style={{ borderColor: C.line }}
+                >
+                  ← ก่อนหน้า
+                </button>
+                {Array.from({ length: totalRemainingPages }, (_, i) => i + 1)
+                  .filter((p) => totalRemainingPages <= 7 || p === 1 || p === totalRemainingPages || Math.abs(p - safeRemainingPage) <= 2)
+                  .map((page, idx, array) => {
+                    const prevPage = array[idx - 1];
+                    const showEllipsis = prevPage && page - prevPage > 1;
+                    return (
+                      <React.Fragment key={page}>
+                        {showEllipsis && <span className="px-1 text-[10px] text-stone-400">...</span>}
+                        <button
+                          type="button"
+                          onClick={() => setRemainingPage(page)}
+                          className={`w-7 h-7 rounded-lg text-[10px] font-black transition cursor-pointer flex items-center justify-center ${
+                            safeRemainingPage === page ? "bg-[#E0533C] text-white" : "bg-stone-50 hover:bg-stone-100 text-stone-700 border"
+                          }`}
+                          style={safeRemainingPage !== page ? { borderColor: C.line } : undefined}
+                        >
+                          {page}
+                        </button>
+                      </React.Fragment>
+                    );
+                  })}
+                <button
+                  type="button"
+                  onClick={() => setRemainingPage((p) => Math.min(p + 1, totalRemainingPages))}
+                  disabled={safeRemainingPage === totalRemainingPages}
+                  className="px-3.5 py-1 rounded-xl border bg-stone-50 hover:bg-stone-100 disabled:opacity-40 disabled:cursor-not-allowed text-[11px] cursor-pointer"
+                  style={{ borderColor: C.line }}
+                >
+                  ถัดไป →
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

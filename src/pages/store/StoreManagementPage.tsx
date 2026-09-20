@@ -322,6 +322,10 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
   const [totalStamps, setTotalStamps] = useState(0);
   const [avgRating, setAvgRating] = useState<number | string>(0);
 
+  // Pagination State for Shop Management (Fixed 12 shops per page)
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 12;
+
   const [isAdmin, setIsAdmin] = useState(false);
   const [isStoreOwner, setIsStoreOwner] = useState(false);
 
@@ -1165,6 +1169,22 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
     selectedMinRating > 0 ||
     statusFilter !== "all";
 
+  // Reset to page 1 whenever any filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedPrefecture, selectedCategory, selectedMinRating, statusFilter, sortOption]);
+
+  const totalPages = Math.ceil(filteredShops.length / itemsPerPage) || 1;
+  const safeCurrentPage = Math.min(Math.max(currentPage, 1), totalPages);
+
+  const paginatedShops = React.useMemo(() => {
+    const startIndex = (safeCurrentPage - 1) * itemsPerPage;
+    return filteredShops.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredShops, safeCurrentPage, itemsPerPage]);
+
+  const shopStartIndex = filteredShops.length > 0 ? (safeCurrentPage - 1) * itemsPerPage + 1 : 0;
+  const shopEndIndex = Math.min(safeCurrentPage * itemsPerPage, filteredShops.length);
+
   const handleResetFilters = () => {
     setSearchQuery("");
     setSelectedPrefecture("all");
@@ -1954,6 +1974,23 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
           </div>
         </div>
 
+        {/* Pagination Bar Header Info */}
+        {filteredShops.length > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white px-5 py-3 rounded-3xl border shadow-2xs select-none" style={{ borderColor: C.line }}>
+            <div className="text-xs font-bold text-[#8A7870] flex items-center gap-1.5 flex-wrap">
+              <span>แสดงผลร้านค้าลำดับที่ <strong className="text-[#231C18] font-black">{shopStartIndex} - {shopEndIndex}</strong> จากทั้งหมด <strong className="text-[#E0533C] font-black">{filteredShops.length}</strong> รายการ</span>
+              {totalPages > 1 && (
+                <span className="px-2 py-0.5 rounded-md bg-stone-100 text-stone-700 font-bold text-[11px] border border-stone-200">
+                  หน้า {safeCurrentPage} จาก {totalPages}
+                </span>
+              )}
+            </div>
+            <span className="text-[11px] font-bold text-amber-800 bg-amber-50 px-2.5 py-1 rounded-xl border border-amber-200/80">
+              ⚡ แสดงผล 12 ร้านค้า / หน้า
+            </span>
+          </div>
+        )}
+
         {/* Shops Grid */}
         {filteredShops.length === 0 ? (
           <div className="p-14 text-center bg-white rounded-3xl border flex flex-col items-center justify-center gap-3" style={{ borderColor: C.line }}>
@@ -1965,7 +2002,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {filteredShops.map((shop) => {
+            {paginatedShops.map((shop) => {
               const statusInfo = getShopStatusToday(shop, storeSchedules[String(shop.id)]);
               const isClosedToday = statusInfo.sched.is_closed_today;
 
@@ -2155,6 +2192,66 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Bottom Pagination Controls */}
+        {filteredShops.length > 0 && totalPages > 1 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-4.5 rounded-3xl border shadow-2xs select-none" style={{ borderColor: C.line }}>
+            <div className="text-xs font-bold text-[#8A7870]">
+              กำลังแสดงหน้า <strong className="text-[#231C18] font-black">{safeCurrentPage}</strong> / <strong className="text-[#231C18] font-black">{totalPages}</strong> (รวมทั้งหมด {filteredShops.length} ร้าน)
+            </div>
+
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={safeCurrentPage === 1}
+                className="px-3.5 py-2 rounded-xl border text-xs font-bold bg-stone-50 hover:bg-stone-100 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer text-[#231C18] flex items-center gap-1"
+                style={{ borderColor: C.line }}
+              >
+                ← ก่อนหน้า
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter((page) => {
+                  if (totalPages <= 7) return true;
+                  if (page === 1 || page === totalPages) return true;
+                  return Math.abs(page - safeCurrentPage) <= 2;
+                })
+                .map((page, idx, array) => {
+                  const prevPage = array[idx - 1];
+                  const showEllipsis = prevPage && page - prevPage > 1;
+
+                  return (
+                    <React.Fragment key={page}>
+                      {showEllipsis && <span className="px-1 text-xs text-stone-400 font-black">...</span>}
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage(page)}
+                        className={`w-9 h-9 rounded-xl text-xs font-black transition cursor-pointer flex items-center justify-center ${
+                          safeCurrentPage === page
+                            ? "bg-[#E0533C] text-white shadow-xs"
+                            : "bg-stone-50 hover:bg-stone-100 text-stone-700 border"
+                        }`}
+                        style={safeCurrentPage !== page ? { borderColor: C.line } : undefined}
+                      >
+                        {page}
+                      </button>
+                    </React.Fragment>
+                  );
+                })}
+
+              <button
+                type="button"
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                disabled={safeCurrentPage === totalPages}
+                className="px-3.5 py-2 rounded-xl border text-xs font-bold bg-stone-50 hover:bg-stone-100 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer text-[#231C18] flex items-center gap-1"
+                style={{ borderColor: C.line }}
+              >
+                ถัดไป →
+              </button>
+            </div>
           </div>
         )}
       </div>
