@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ChevronLeft, Loader2, MapPin, Clock, CheckCircle, XCircle } from "lucide-react";
+import { ChevronLeft, Loader2, MapPin, Clock, CheckCircle, XCircle, Store } from "lucide-react";
 import { C } from "../../constants/mockData";
 import { supabase } from "../../supabaseClient";
 
@@ -138,7 +138,7 @@ export default function AdminDashboardView({ onBack }: AdminDashboardViewProps) 
               >
                 {sub.image_url ? (
                   <img src={sub.image_url} alt={sub.name_en} className="w-full h-full object-cover" />
-                ) : "🏬"}
+                ) : <Store size={20} style={{ color: C.accent }} />}
               </div>
 
               {/* ข้อมูล */}

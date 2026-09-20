@@ -30,23 +30,11 @@ interface PlaceCardProps {
   compact?: boolean;
 }
 
-function getShopEmoji(name: string): string {
-  const n = name.toLowerCase();
-  if (n.includes("soba") || n.includes("ramen") || n.includes("noodle") || n.includes("shokudo")) return "🍜";
-  if (n.includes("sweet") || n.includes("confection") || n.includes("wagashi") || n.includes("senbei") || n.includes("mochi") || n.includes("yokan") || n.includes("daifuku")) return "🍡";
-  if (n.includes("sake") || n.includes("brewery") || n.includes("shuzo") || n.includes("shouryu") || n.includes("shōzō")) return "🍶";
-  if (n.includes("sushi") || n.includes("fish")) return "🍣";
-  if (n.includes("tea") || n.includes("cha")) return "🍵";
-  if (n.includes("temple") || n.includes("shrine") || n.includes("jinja") || n.includes("ji ")) return "⛩️";
-  return "🏬";
-}
-
 export default function PlaceCard({ place, onClick, compact = false }: PlaceCardProps) {
   const { t, lang } = useLang();
   const shopName = localized(place as any, "shop_name", lang) || place.name || "Unknown Shop";
   const prefecture = place.prefecture || place.tag || "Japan";
   const founded = place.founded || place.year || "-";
-  const emoji = getShopEmoji(place.shop_name || place.name || "");
   const rating = place.rating || 0;
   const reviewsCount = place.reviews_count || 0;
   const statusInfo = getShopStatusToday(place);

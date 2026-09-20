@@ -266,7 +266,7 @@ export default function AdminAnnouncementModal({ isOpen, onClose, onSuccess }: A
               {[
                 { id: "normal", label: "ปกติ", bg: "bg-stone-100 text-stone-700 border-stone-300" },
                 { id: "high", label: "สำคัญ", bg: "bg-amber-100 text-amber-800 border-amber-400" },
-                { id: "urgent", label: "ด่วนที่สุด 🚨", bg: "bg-rose-100 text-rose-800 border-rose-400" },
+                { id: "urgent", label: "ด่วนที่สุด ", bg: "bg-rose-100 text-rose-800 border-rose-400" },
               ].map((p) => (
                 <button
                   key={p.id}
@@ -339,7 +339,7 @@ export default function AdminAnnouncementModal({ isOpen, onClose, onSuccess }: A
             </div>
             <div className="p-3 bg-white rounded-xl border border-stone-200 shadow-xs">
               <div className="flex items-center gap-1.5">
-                {priority === "urgent" && <span className="text-xs">🚨</span>}
+                {priority === "urgent" && <AlertTriangle size={13} className="text-red-500 shrink-0" />}
                 <p className="text-xs font-bold text-[#231C18] truncate">
                   {title.trim() || "หัวข้อประกาศจะปรากฏที่นี่"}
                 </p>

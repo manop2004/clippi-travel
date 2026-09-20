@@ -363,7 +363,7 @@ export default function ShopVersionManagerModal({
       <div className="bg-white w-full max-w-3xl rounded-3xl shadow-2xl overflow-hidden border my-auto" style={{ borderColor: C.line }}>
         
         {/* Header */}
-        <div className="p-4 sm:p-5 border-b bg-stone-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="p-4 sm:p-5 border-b bg-[#FD775C] text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-amber-500 via-rose-500 to-indigo-500 text-white shadow-md">
               <Stamp size={22} />
@@ -383,7 +383,7 @@ export default function ShopVersionManagerModal({
 
           <div className="flex items-center gap-2">
             {/* Unified Modal Tab Selector */}
-            <div className="bg-stone-800 p-1 rounded-xl flex items-center gap-1 border border-stone-700">
+            <div className="bg-[#FD775C] p-1 rounded-xl flex items-center gap-1 border border-stone-700">
               <button
                 type="button"
                 onClick={() => setActiveTab("versions")}
@@ -435,7 +435,7 @@ export default function ShopVersionManagerModal({
             </div>
 
             <p className="text-[10.5px] font-bold text-stone-600 text-center">
-              ตราแสตมป์เวอร์ชันนี้จะแสดงในสมุดสะสมแสตมป์ของผู้ใช้งาน 📍 {formatExpiryLabel(currentEditingVersion?.valid_until)}
+              ตราแสตมป์เวอร์ชันนี้จะแสดงในสมุดสะสมแสตมป์ของผู้ใช้งาน  {formatExpiryLabel(currentEditingVersion?.valid_until)}
             </p>
           </div>
 
@@ -1054,7 +1054,7 @@ export default function ShopVersionManagerModal({
         {/* Footer Actions */}
         <div className="p-4 sm:p-5 border-t bg-stone-50 flex items-center justify-between" style={{ borderColor: C.line }}>
           <span className="text-xs text-stone-500 font-medium">
-            ตราแสตมป์เวอร์ชันปัจจุบัน ({currentEditingVersion?.version_code}) พร้อมแจกให้กับผู้ใช้เดินทางไปเช็คอิน 📍
+            ตราแสตมป์เวอร์ชันปัจจุบัน ({currentEditingVersion?.version_code}) พร้อมแจกให้กับผู้ใช้เดินทางไปเช็คอิน 
           </span>
 
           <div className="flex items-center gap-2">
@@ -1069,7 +1069,7 @@ export default function ShopVersionManagerModal({
               type="button"
               onClick={handleSaveAll}
               disabled={saving}
-              className="px-5 py-2 rounded-xl text-xs font-black bg-stone-900 hover:bg-stone-800 text-white shadow-md transition cursor-pointer"
+              className="px-5 py-2 rounded-xl text-xs font-black bg-[#FD775C] hover:bg-[#E31E27] text-white shadow-md transition cursor-pointer"
             >
               {saving ? "กำลังบันทึก..." : "บันทึกการเปลี่ยนแปลงทั้งหมด"}
             </button>

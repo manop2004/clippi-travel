@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../../supabaseClient";
 import { Ban } from "lucide-react";
+import { useLang } from "../../lib/i18n";
 
 export const BannedGuard = ({ children }: { children: React.ReactNode }) => {
+  const { t } = useLang();
   const [loading, setLoading] = useState(true);
   const [isBanned, setIsBanned] = useState(false);
   const [banReason, setBanReason] = useState("");
@@ -32,7 +34,7 @@ export const BannedGuard = ({ children }: { children: React.ReactNode }) => {
 
         if (data && data.is_banned === true) {
           setIsBanned(true);
-          setBanReason(data.ban_reason || "ละเมิดเงื่อนไขการใช้งานระบบ");
+          setBanReason(data.ban_reason || t("ban.defaultReason"));
         } else {
           setIsBanned(false);
         }
@@ -49,8 +51,8 @@ export const BannedGuard = ({ children }: { children: React.ReactNode }) => {
   // 1. Show Loading Screen (Prevents page flashing/bypass while fetching)
   if (loading) {
     return (
-      <div className="fixed inset-0 z-[999999] bg-slate-900 flex items-center justify-center text-white font-semibold">
-        กำลังตรวจสอบสิทธิ์การใช้งาน...
+      <div className="fixed inset-0 z-[999999] bg-[#FD775C] flex items-center justify-center text-white font-semibold">
+        {t("ban.checking")}
       </div>
     );
   }
@@ -58,16 +60,16 @@ export const BannedGuard = ({ children }: { children: React.ReactNode }) => {
   // 2. ABSOLUTE BLOCK: If user is banned, return ONLY the ban screen
   if (isBanned) {
     return (
-      <div className="fixed inset-0 z-[999999] bg-slate-900 flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[999999] bg-[#FD775C] flex items-center justify-center p-4">
         <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center shadow-2xl border border-red-100">
           <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-5 text-red-600">
             <Ban size={40} />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">บัญชีของคุณถูกระงับการใช้งาน</h2>
-          <p className="text-gray-500 text-sm mb-6">คุณถูกระงับสิทธิ์การใช้งานระบบ ไม่สามารถเข้าถึงส่วนใดๆ ได้</p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">{t("ban.title")}</h2>
+          <p className="text-gray-500 text-sm mb-6">{t("ban.desc")}</p>
 
           <div className="bg-red-50 text-red-700 p-4 rounded-2xl border border-red-200 text-left mb-6">
-            <p className="text-xs font-bold uppercase text-red-500 mb-1">สาเหตุการแบน:</p>
+            <p className="text-xs font-bold uppercase text-red-500 mb-1">{t("ban.reasonLabel")}</p>
             <p className="text-sm font-semibold">{banReason}</p>
           </div>
 
@@ -79,7 +81,7 @@ export const BannedGuard = ({ children }: { children: React.ReactNode }) => {
             }}
             className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 px-4 rounded-xl transition shadow-lg shadow-red-200 cursor-pointer"
           >
-            ออกจากระบบ (Logout)
+            {t("action.signOut")}
           </button>
         </div>
       </div>

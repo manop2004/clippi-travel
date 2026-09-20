@@ -96,7 +96,7 @@ export default function TrendingSpots({ openPlace, onViewMap, searchQuery = "" }
                   <div className="relative w-28 shrink-0" style={{ background: C.accentSoft }}>
                     <span
                       className="absolute top-2 left-2 w-6 h-6 rounded-full text-white text-xs font-black flex items-center justify-center z-10"
-                      style={{ background: C.ink }}
+                      style={{ background: C.accent }}
                     >
                       {idx + 1}
                     </span>

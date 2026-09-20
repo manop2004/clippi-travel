@@ -3,6 +3,7 @@ import { X, Store, Phone, MapPin, Tag, Upload, FileText, Loader2, CheckCircle2, 
 import { supabase } from "../supabaseClient";
 import { C } from "../constants/mockData";
 import { useUserRole } from "../hooks/useUserRole";
+import { useLang } from "../lib/i18n";
 
 interface MerchantRegisterModalProps {
   isOpen: boolean;
@@ -26,6 +27,7 @@ const SHOP_CATEGORIES = [
 ];
 
 export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user }: MerchantRegisterModalProps) {
+  const { t } = useLang();
   const { isPendingMerchant, isRejectedMerchant, merchantRejectionReason, cancelMerchantApp } = useUserRole();
 
   const [shopName, setShopName] = useState("");
@@ -332,7 +334,7 @@ export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user
                 ? "แก้ไข & ยื่นคำขอเปิดร้านค้าใหม่"
                 : "ลงทะเบียนเปิดร้านค้า (รออนุมัติ)"}
             </h2>
-            <p className="text-xs text-stone-500 font-medium">กรอกข้อมูลร้านค้าเพื่อส่งให้แอดมินพิจารณาอนุมัติสิทธิ์</p>
+            <p className="text-xs text-stone-500 font-medium">{t("merchant.subtitle")}</p>
           </div>
         </div>
 
@@ -341,7 +343,7 @@ export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user
             <Clock size={18} className="text-amber-600 shrink-0 mt-0.5" />
             <div>
               <div className="font-black text-amber-950 flex items-center gap-2">
-                <span>คำขอเปิดร้านค้าของคุณอยู่ระหว่างการรออนุมัติ</span>
+                <span>{t("merchant.pending")}</span>
                 <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-200 text-amber-900">⏳ Pending</span>
               </div>
               <p className="text-[11px] text-amber-800 font-medium mt-0.5 leading-snug">
@@ -356,8 +358,8 @@ export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user
             <AlertCircle size={18} className="text-rose-600 shrink-0 mt-0.5" />
             <div>
               <div className="font-black text-rose-950 flex items-center gap-2">
-                <span>คำขอเปิดร้านค้าก่อนหน้านี้ไม่ผ่านการอนุมัติ</span>
-                <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-rose-200 text-rose-900">❌ Rejected</span>
+                <span>{t("merchant.rejected")}</span>
+ <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-rose-200 text-rose-900"> Rejected</span>
               </div>
               <p className="text-[11px] text-rose-800 font-medium mt-0.5 leading-snug">
                 สาเหตุที่ไม่ผ่าน: <strong className="font-bold">{typeof merchantRejectionReason === "object" && merchantRejectionReason !== null ? ((merchantRejectionReason as any).reason || JSON.stringify(merchantRejectionReason)) : (merchantRejectionReason || "ข้อมูลเอกสารไม่ตรงตามเงื่อนไข")}</strong>. สามารถแก้ไขข้อมูลด้านล่างเพื่อยื่นคำขอใหม่ได้ครับ
@@ -383,7 +385,7 @@ export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user
               required
               value={shopName}
               onChange={(e) => setShopName(e.target.value)}
-              placeholder="เช่น Tokyo Ramen Bar, Kyoto Tea House"
+              placeholder={t("merchant.shopNamePlaceholder")}
               className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-xs outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
             />
           </div>
@@ -398,7 +400,7 @@ export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user
                 required
                 value={contactName}
                 onChange={(e) => setContactName(e.target.value)}
-                placeholder="ชื่อ-นามสกุล"
+                placeholder={t("merchant.fullNamePlaceholder")}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-xs outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
               />
             </div>
@@ -411,7 +413,7 @@ export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user
                 required
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="เช่น 081-234-5678"
+                placeholder={t("merchant.phonePlaceholder")}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-xs outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
               />
             </div>
@@ -419,7 +421,7 @@ export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-black text-stone-700 mb-1">จังหวัด (Prefecture)</label>
+              <label className="block text-xs font-black text-stone-700 mb-1">{t("merchant.prefecture")}</label>
               <select
                 value={prefecture}
                 onChange={(e) => setPrefecture(e.target.value)}
@@ -431,7 +433,7 @@ export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user
               </select>
             </div>
             <div>
-              <label className="block text-xs font-black text-stone-700 mb-1">หมวดหมู่ร้านค้า</label>
+              <label className="block text-xs font-black text-stone-700 mb-1">{t("merchant.category")}</label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
@@ -459,7 +461,7 @@ export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user
               <p className="text-xs font-bold text-stone-700">
                 {ownershipFile ? ownershipFile.name : "คลิกเพื่อเลือกไฟล์ หรือลากไฟล์มาวางที่นี่"}
               </p>
-              <p className="text-[10px] text-stone-400 mt-0.5">รองรับ PDF, PNG, JPG ขนาดไม่เกิน 10MB</p>
+              <p className="text-[10px] text-stone-400 mt-0.5">{t("merchant.fileHint")}</p>
             </div>
           </div>
 
@@ -475,7 +477,7 @@ export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user
                       onSuccess();
                       onClose();
                     } catch (e) {
-                      alert("ไม่สามารถยกเลิกคำขอได้ กรุณาลองใหม่อีกครั้ง");
+                      alert(t("merchant.cancelFail"));
                     } finally {
                       setLoading(false);
                     }
@@ -484,7 +486,7 @@ export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user
                 disabled={loading}
                 className="py-3 px-4 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs transition cursor-pointer"
               >
-                ❌ ไม่สมัครแล้ว (ยกเลิกคำขอ)
+                 ไม่สมัครแล้ว (ยกเลิกคำขอ)
               </button>
             )}
             <button

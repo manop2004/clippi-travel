@@ -18,6 +18,7 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import { C } from "../constants/mockData";
+import { useLang } from "../lib/i18n";
 import {
   StoreRuleItem,
   PRESET_STORE_RULES,
@@ -37,6 +38,7 @@ export default function StoreRulesModal({
   shop,
   onSave,
 }: StoreRulesModalProps) {
+  const { t } = useLang();
   const [activeRules, setActiveRules] = useState<StoreRuleItem[]>([]);
   const [customTitle, setCustomTitle] = useState("");
   const [customDetail, setCustomDetail] = useState("");
@@ -125,14 +127,14 @@ export default function StoreRulesModal({
       <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border my-auto" style={{ borderColor: C.line }}>
         
         {/* Header */}
-        <div className="p-4 sm:p-5 border-b flex items-center justify-between bg-stone-900 text-white">
+        <div className="p-4 sm:p-5 border-b flex items-center justify-between bg-[#FD775C] text-white">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-gradient-to-tr from-rose-500 to-amber-500 text-white shadow-xs">
               <ShieldAlert size={20} />
             </div>
             <div>
-              <h2 className="text-base font-black tracking-tight">กำหนดกฎระเบียบและข้อห้ามประจำร้าน</h2>
-              <p className="text-xs text-stone-300">เลือกกฎสำเร็จรูป (เช่น ห้ามถ่ายรูป) หรือเพิ่มข้อกำหนดเฉพาะร้านของคุณ</p>
+              <h2 className="text-base font-black tracking-tight">{t("rules.title")}</h2>
+              <p className="text-xs text-stone-300">{t("rules.subtitle")}</p>
             </div>
           </div>
           <button
@@ -190,7 +192,7 @@ export default function StoreRulesModal({
           <div className="p-4 rounded-2xl border bg-stone-50/70 space-y-3" style={{ borderColor: C.line }}>
             <label className="text-xs font-black text-[#231C18] flex items-center gap-1.5">
               <Plus size={14} className="text-rose-600" />
-              <span>เพิ่มข้อกำหนด / กฎระเบียบพิเศษพิมพ์เอง:</span>
+              <span>{t("rules.addCustom")}</span>
             </label>
 
             <div className="space-y-2">
@@ -198,7 +200,7 @@ export default function StoreRulesModal({
                 type="text"
                 value={customTitle}
                 onChange={(e) => setCustomTitle(e.target.value)}
-                placeholder="เช่น ห้ามใส่รองเท้าแตะ, กรุณาสวมถุงเท้า, สั่งขั้นต่ำ 100 บาท"
+                placeholder={t("rules.customPlaceholder")}
                 className="w-full px-3.5 py-2 rounded-xl border text-xs font-semibold focus:outline-hidden focus:ring-2 focus:ring-rose-400 bg-white"
                 style={{ borderColor: C.line }}
               />
@@ -207,7 +209,7 @@ export default function StoreRulesModal({
                   type="text"
                   value={customDetail}
                   onChange={(e) => setCustomDetail(e.target.value)}
-                  placeholder="คำอธิบายเพิ่มเติม (ถ้ามี)"
+                  placeholder={t("rules.notePlaceholder")}
                   className="flex-1 px-3.5 py-2 rounded-xl border text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-rose-400 bg-white"
                   style={{ borderColor: C.line }}
                 />
@@ -215,7 +217,7 @@ export default function StoreRulesModal({
                   type="button"
                   onClick={handleAddCustomRule}
                   disabled={!customTitle.trim()}
-                  className="px-4 py-2 rounded-xl bg-stone-900 text-white text-xs font-black hover:bg-stone-800 transition disabled:opacity-40 cursor-pointer shrink-0"
+                  className="px-4 py-2 rounded-xl bg-[#FD775C] text-white text-xs font-black hover:bg-[#E31E27] transition disabled:opacity-40 cursor-pointer shrink-0"
                 >
                   + เพิ่มกฎ
                 </button>
@@ -253,7 +255,7 @@ export default function StoreRulesModal({
                       type="button"
                       onClick={() => handleRemoveRule(rule.id)}
                       className="p-1 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer shrink-0"
-                      title="ลบข้อนี้"
+                      title={t("rules.removeItem")}
                     >
                       <Trash2 size={14} />
                     </button>

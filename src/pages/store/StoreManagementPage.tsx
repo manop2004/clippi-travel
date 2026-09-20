@@ -1217,11 +1217,11 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
     );
   }
 
-  // 📊 DEDICATED PAGE: CUSTOMER REVIEWS ANALYTICS & FILTER DASHBOARD
+  // DEDICATED PAGE: CUSTOMER REVIEWS ANALYTICS & FILTER DASHBOARD
   if (isReviewsModalOpen) {
     return (
       <div className="space-y-6 text-[#231C18] w-full min-w-0 animate-in fade-in duration-200">
-        {/* 👑 Dedicated Header Banner for Customer Reviews Analytics Page */}
+        {/* Dedicated Header Banner for Customer Reviews Analytics Page */}
         <div className="bg-gradient-to-r from-stone-900 via-stone-900 to-amber-950 p-6 rounded-3xl border border-amber-500/30 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative overflow-hidden">
           <div className="flex items-center gap-4 relative z-10">
             <button
@@ -1256,7 +1256,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
           </button>
         </div>
 
-        {/* 📈 Analytics KPI Cards Grid */}
+        {/* Analytics KPI Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white p-5 rounded-3xl border shadow-2xs space-y-1.5" style={{ borderColor: C.line }}>
             <span className="text-[10px] font-black uppercase text-[#8A7870] tracking-wider">Average Rating Score</span>
@@ -1294,7 +1294,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
           </div>
         </div>
 
-        {/* 📊 Star Rating Breakdown Progress Bars */}
+        {/* Star Rating Breakdown Progress Bars */}
         <div className="bg-white p-6 rounded-3xl border shadow-2xs space-y-4" style={{ borderColor: C.line }}>
           <h4 className="text-xs font-black uppercase tracking-wider text-[#8A7870] flex items-center gap-2">
             <TrendingUp size={16} className="text-amber-600" /> สถิติการกระจายของคะแนนดาว (Star Rating Distribution)
@@ -1333,7 +1333,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
           </div>
         </div>
 
-        {/* 🔍 Multi-Filter & Search Bar */}
+        {/* Multi-Filter & Search Bar */}
         <div className="bg-white p-5 rounded-3xl border shadow-2xs space-y-4" style={{ borderColor: C.line }}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-0">
@@ -1395,7 +1395,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
             <button
               onClick={() => setReviewRatingFilter(0)}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-                reviewRatingFilter === 0 ? "bg-[#231C18] text-white" : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                reviewRatingFilter === 0 ? "bg-[#FD775C] text-white" : "bg-stone-100 text-stone-600 hover:bg-stone-200"
               }`}
             >
               ทั้งหมด ({recentReviews.length})
@@ -1417,7 +1417,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
           </div>
         </div>
 
-        {/* 💬 Filtered Reviews Feed Cards */}
+        {/* Filtered Reviews Feed Cards */}
         {filteredModalReviews.length === 0 ? (
           <div className="p-14 text-center bg-white rounded-3xl border flex flex-col items-center justify-center gap-3 text-stone-400" style={{ borderColor: C.line }}>
             <MessageSquare size={36} className="text-stone-300" />
@@ -1429,7 +1429,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                 setReviewSearch("");
                 setReviewSort("newest");
               }}
-              className="px-4 py-2 bg-[#231C18] text-white text-xs font-black rounded-xl cursor-pointer"
+              className="px-4 py-2 bg-[#FD775C] text-white text-xs font-black rounded-xl cursor-pointer"
             >
               ล้างการกรองทั้งหมด
             </button>
@@ -1586,8 +1586,8 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                             : "bg-emerald-100 text-emerald-900 border-emerald-300"
                       }`}>
                         {sub.status === "pending" && "⏳ แอดมินยังไม่อนุมัติ (Pending Review)"}
-                        {sub.status === "rejected" && "❌ คำขอถูกปฏิเสธ (Rejected)"}
-                        {sub.status === "approved" && "✓ อนุมัติแล้ว (Approved)"}
+                        {sub.status === "rejected" && " คำขอถูกปฏิเสธ (Rejected)"}
+                        {sub.status === "approved" && " อนุมัติแล้ว (Approved)"}
                       </span>
                     </div>
 
@@ -1630,7 +1630,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
 
   return (
     <div className="space-y-6 text-[#231C18] w-full min-w-0">
-      {/* 👑 Header Banner: Admin Executive Mode vs Merchant Mode */}
+      {/* Header Banner: Admin Executive Mode vs Merchant Mode */}
       {isAdmin ? (
         <div className="relative overflow-hidden bg-gradient-to-r from-stone-900 via-stone-900 to-amber-950 p-6 rounded-3xl border border-amber-500/30 text-white shadow-xl">
           <div className="absolute top-0 right-0 -mt-8 -mr-8 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -1672,7 +1672,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
         </div>
       ) : (
         <div
-          className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-gradient-to-r from-stone-900 via-stone-850 to-stone-900 p-6 rounded-3xl border border-stone-800 text-white shadow-md relative overflow-hidden"
+          className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-gradient-to-r from-stone-900 via-stone-850 to-stone-900 p-6 rounded-3xl border border-[#FD775C] text-white shadow-md relative overflow-hidden"
         >
           <div className="flex items-center gap-4 relative z-10">
             <div className="w-13 h-13 rounded-2xl bg-amber-400/20 border border-amber-400/30 text-amber-400 flex items-center justify-center shrink-0 shadow-inner">
@@ -1709,7 +1709,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
             {shops.length > 0 && (
               <button
                 onClick={() => setQrShop(shops[0])}
-                className="px-3.5 py-2.5 bg-stone-800 hover:bg-stone-700 text-amber-300 border border-stone-700 text-xs font-bold rounded-xl flex items-center gap-1.5 transition cursor-pointer"
+                className="px-3.5 py-2.5 bg-[#FD775C] hover:bg-stone-700 text-amber-300 border border-stone-700 text-xs font-bold rounded-xl flex items-center gap-1.5 transition cursor-pointer"
               >
                 <QrCode size={15} />
                 <span>QR Code ร้าน</span>
@@ -1719,7 +1719,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
         </div>
       )}
 
-      {/* ⚠️ REJECTED SUBMISSIONS ALERT CARD (FOR REGULAR STORE OWNERS ONLY) */}
+      {/* REJECTED SUBMISSIONS ALERT CARD (FOR REGULAR STORE OWNERS ONLY) */}
       {!isAdmin && countRejected > 0 && (
         <div className="bg-rose-50 border-2 border-rose-300 p-5 rounded-3xl space-y-3.5 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-rose-200 pb-3">
@@ -1782,7 +1782,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
         </div>
       )}
 
-      {/* 📊 4 Quick KPI Summary Cards */}
+      {/* 4 Quick KPI Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white p-4.5 rounded-3xl border shadow-2xs flex items-center gap-3.5" style={{ borderColor: C.line }}>
           <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center shrink-0">
@@ -1838,12 +1838,12 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
         </div>
 
       </div>
-        {/* 🏪 SHOPS MANAGEMENT SECTION (SEARCH, FILTERS & SHOPS GRID) */}
+        {/* SHOPS MANAGEMENT SECTION (SEARCH, FILTERS & SHOPS GRID) */}
       <div className="space-y-4">
         {/* Section Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-[#231C18] text-amber-400 flex items-center justify-center font-bold">
+            <div className="w-8 h-8 rounded-xl bg-[#FD775C] text-white flex items-center justify-center font-bold">
               <Building2 size={16} />
             </div>
             <div>
@@ -1867,7 +1867,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
             <button
               onClick={() => setStatusFilter("all")}
               className={`px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer shrink-0 ${
-                statusFilter === "all" ? "bg-[#231C18] text-white shadow-xs" : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                statusFilter === "all" ? "bg-[#FD775C] text-white shadow-xs" : "bg-stone-100 text-stone-600 hover:bg-stone-200"
               }`}
             >
               ทั้งหมด ({combinedAllShops.length})
@@ -1878,7 +1878,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                 statusFilter === "approved" ? "bg-emerald-600 text-white shadow-xs" : "bg-emerald-50 text-emerald-700 border border-emerald-200"
               }`}
             >
-              ✓ อนุมัติแล้ว ({countApprovedAll})
+               อนุมัติแล้ว ({countApprovedAll})
             </button>
             <button
               onClick={() => setStatusFilter("pending")}
@@ -1894,7 +1894,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                 statusFilter === "rejected" ? "bg-rose-600 text-white shadow-xs" : "bg-rose-50 text-rose-700 border border-rose-200"
               }`}
             >
-              ✕ ถูกปฏิเสธ ({countRejectedAll})
+               ถูกปฏิเสธ ({countRejectedAll})
             </button>
           </div>
 
@@ -1996,7 +1996,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
           <div className="p-14 text-center bg-white rounded-3xl border flex flex-col items-center justify-center gap-3" style={{ borderColor: C.line }}>
             <Store size={32} className="text-stone-300" />
             <h3 className="text-base font-black text-[#231C18]">ไม่พบรายการร้านค้าที่ตรงตามเงื่อนไข</h3>
-            <button onClick={handleResetFilters} className="px-4 py-2 bg-[#231C18] text-white text-xs font-black rounded-xl">
+            <button onClick={handleResetFilters} className="px-4 py-2 bg-[#FD775C] text-white text-xs font-black rounded-xl">
               ล้างการกรองทั้งหมด
             </button>
           </div>
@@ -2137,7 +2137,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                         title="ออกแบบดีไซน์ตราแสตมป์และจัดการเวอร์ชัน/วันหมดเขต"
                       >
                         <Stamp size={14} className="text-rose-600 shrink-0" />
-                        <span className="whitespace-nowrap">ออกแบบแสตมป์ 🎨</span>
+ <span className="whitespace-nowrap">ออกแบบแสตมป์ </span>
                       </button>
 
                       <button
@@ -2256,7 +2256,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
         )}
       </div>
 
-      {/* ⭐ CUSTOMER REVIEWS & FEEDBACK FEED */}
+      {/* CUSTOMER REVIEWS & FEEDBACK FEED */}
       <div className="bg-white p-6 rounded-3xl border space-y-4 shadow-2xs" style={{ borderColor: C.line }}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-4" style={{ borderColor: C.line }}>
           <div className="flex items-center gap-3">
@@ -2346,7 +2346,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
 
 
 
-      {/* ➕ Modal: Add New Shop */}
+      {/* Modal: Add New Shop */}
       {isCreateOpen && (
         <CreateShopModal
           isOpen={isCreateOpen}
@@ -2360,7 +2360,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
         />
       )}
 
-      {/* ✏️ Modal: Edit Shop (using AddPlaceModal with initialData) */}
+      {/* Modal: Edit Shop (using AddPlaceModal with initialData) */}
       {editingShop && (
         <AddPlaceModal
           isOpen={!!editingShop}
@@ -2377,7 +2377,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
         />
       )}
 
-      {/* 🔄 Modal: Edit & Resubmit Submission (using AddPlaceModal) */}
+      {/* Modal: Edit & Resubmit Submission (using AddPlaceModal) */}
       {editingSubmission && (
         <AddPlaceModal
           isOpen={!!editingSubmission}
@@ -2390,7 +2390,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
         />
       )}
 
-      {/* 📱 Modal: Stamp Code / Merchant Verification QR */}
+      {/* Modal: Stamp Code / Merchant Verification QR */}
       {qrShop && (
         <MerchantQrModal
           isOpen={!!qrShop}
@@ -2399,7 +2399,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
         />
       )}
 
-      {/* 📊 Modal: Admin Shop Summary Analytics */}
+      {/* Modal: Admin Shop Summary Analytics */}
       {selectedSummaryShop && (
         <AdminShopSummaryModal
           isOpen={!!selectedSummaryShop}
@@ -2428,7 +2428,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
         />
       )}
 
-      {/* 🎨 Modal: Custom Store Stamp Designer & Version Manager */}
+      {/* Modal: Custom Store Stamp Designer & Version Manager */}
       {stampDesignerShop && (
         <StampDesignerModal
           isOpen={!!stampDesignerShop}
@@ -2438,7 +2438,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
         />
       )}
 
-      {/* 📜 Modal: Store Rules & Guidelines */}
+      {/* Modal: Store Rules & Guidelines */}
       {rulesShop && (
         <StoreRulesModal
           isOpen={!!rulesShop}
@@ -2448,7 +2448,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
         />
       )}
 
-      {/* 🎨 Modal: Edit Specific Stamp Version Design with Full Designer */}
+      {/* Modal: Edit Specific Stamp Version Design with Full Designer */}
       {editingVersionStamp && (
         <StampDesignerModal
           isOpen={!!editingVersionStamp}
@@ -3183,7 +3183,7 @@ function MerchantQrModal({ isOpen, shop, onClose }: MerchantQrModalProps) {
           </button>
           <button
             onClick={onClose}
-            className="px-5 py-2.5 rounded-xl bg-[#231C18] text-white hover:bg-black text-xs font-black transition cursor-pointer"
+            className="px-5 py-2.5 rounded-xl bg-[#FD775C] text-white hover:bg-[#E31E27] text-xs font-black transition cursor-pointer"
           >
             ปิดหน้าต่าง
           </button>
@@ -3447,7 +3447,7 @@ function AdminShopSummaryModal({
         style={{ borderColor: C.line }}
       >
         {/* Cover Header */}
-        <div className="relative h-40 sm:h-48 w-full bg-stone-900 overflow-hidden shrink-0">
+        <div className="relative h-40 sm:h-48 w-full bg-[#FD775C] overflow-hidden shrink-0">
           <img
             src={
               shop.image_url ||
@@ -3460,7 +3460,7 @@ function AdminShopSummaryModal({
 
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black transition cursor-pointer backdrop-blur-xs z-20"
+            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-[#E31E27] transition cursor-pointer backdrop-blur-xs z-20"
           >
             <X size={18} />
           </button>
@@ -3471,7 +3471,7 @@ function AdminShopSummaryModal({
                 {shop.category || "Shop"}
               </span>
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500 text-white">
-                📊 สถิติแสตมป์ร้านค้า
+                 สถิติแสตมป์ร้านค้า
               </span>
               {shop.prefecture && (
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/20 backdrop-blur-md text-white">
@@ -3664,7 +3664,7 @@ function AdminShopSummaryModal({
                                   className="w-8 h-8 rounded-full object-cover border border-stone-200 shrink-0"
                                 />
                               ) : (
-                                <div className="w-8 h-8 rounded-full bg-stone-800 text-white font-bold text-xs flex items-center justify-center shrink-0">
+                                <div className="w-8 h-8 rounded-full bg-[#FD775C] text-white font-bold text-xs flex items-center justify-center shrink-0">
                                   {name[0]?.toUpperCase() || "U"}
                                 </div>
                               )}
@@ -4038,7 +4038,7 @@ export function StoreScheduleModal({
         </div>
 
         {/* Status Preview Header Banner */}
-        <div className="px-6 py-3 bg-stone-900 text-white flex items-center justify-between gap-3 text-xs">
+        <div className="px-6 py-3 bg-[#FD775C] text-white flex items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-2">
             <span className="font-bold text-stone-300">สถานะคำนวณวันนี้:</span>
             <span className={`px-2.5 py-0.5 rounded-full font-black text-[11px] ${statusInfo.badgeBg}`}>
@@ -4111,7 +4111,7 @@ export function StoreScheduleModal({
                     </div>
                     <div>
                       <p className="text-xs font-black text-[#231C18]">
-                        {isClosedToday ? "🔴 สถานะปัจจุบัน: วันนี้ปิดบริการชั่วคราว" : "🟢 สถานะปัจจุบัน: เปิดให้บริการตามตารางเวลา"}
+                        {isClosedToday ? " สถานะปัจจุบัน: วันนี้ปิดบริการชั่วคราว" : " สถานะปัจจุบัน: เปิดให้บริการตามตารางเวลา"}
                       </p>
                       <p className="text-[11px] text-[#8A7870]">
                         {isClosedToday ? "นักท่องเที่ยวจะเห็นป้ายเตือนว่าร้านปิดบริการวันนี้" : `เวลาทำการวันนี้: ${openTime} - ${closeTime}`}
@@ -4149,7 +4149,7 @@ export function StoreScheduleModal({
                     className="px-3 py-2 rounded-xl border bg-stone-50 hover:bg-amber-50 hover:border-amber-300 text-[#231C18] text-xs font-bold transition cursor-pointer"
                     style={{ borderColor: C.line }}
                   >
-                    ⚡ เปิดทุกวัน 09:00 - 18:00
+                     เปิดทุกวัน 09:00 - 18:00
                   </button>
                   <button
                     type="button"
@@ -4157,7 +4157,7 @@ export function StoreScheduleModal({
                     className="px-3 py-2 rounded-xl border bg-stone-50 hover:bg-amber-50 hover:border-amber-300 text-[#231C18] text-xs font-bold transition cursor-pointer"
                     style={{ borderColor: C.line }}
                   >
-                    ⚡ 10:00 - 20:00 (หยุดเสาร์-อาทิตย์)
+                     10:00 - 20:00 (หยุดเสาร์-อาทิตย์)
                   </button>
                   <button
                     type="button"
@@ -4165,7 +4165,7 @@ export function StoreScheduleModal({
                     className="px-3 py-2 rounded-xl border bg-stone-50 hover:bg-amber-50 hover:border-amber-300 text-[#231C18] text-xs font-bold transition cursor-pointer"
                     style={{ borderColor: C.line }}
                   >
-                    ⚡ 08:30 - 17:30 (หยุดวันจันทร์)
+                     08:30 - 17:30 (หยุดวันจันทร์)
                   </button>
                 </div>
               </div>

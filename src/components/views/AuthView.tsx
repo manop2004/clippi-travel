@@ -435,11 +435,11 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
         if (error) {
           const errMsg = error.message || "";
           if (errMsg.includes("Email not confirmed")) {
-            setErrorMsg("⚠️ บัญชีนี้ยังไม่ได้ยืนยันอีเมล กรุณาตรวจสอบกล่องจดหมาย (Inbox / Spam) ของอีเมล " + email.trim() + " แล้วกดลิงก์ยืนยันตัวตนก่อนเข้าสู่ระบบ");
+            setErrorMsg(" บัญชีนี้ยังไม่ได้ยืนยันอีเมล กรุณาตรวจสอบกล่องจดหมาย (Inbox / Spam) ของอีเมล " + email.trim() + " แล้วกดลิงก์ยืนยันตัวตนก่อนเข้าสู่ระบบ");
           } else if (isPendingMerchant) {
             setErrorMsg(
               "⏳ บัญชีเจ้าของร้านของคุณ (" + email.trim() + ") ลงทะเบียนเรียบร้อยแล้วและอยู่ระหว่างรอแอดมินอนุมัติสิทธิ์ (Pending Approval)\n\n" +
-              "💡 หากเคยเข้าใช้งานผ่าน Google ไม่จำเป็นต้องยืนยันอีเมล สามารถกดปุ่ม 'Google Workspace' ด้านล่างเพื่อเข้าสู่ระบบได้ทันที!\n" +
+              " หากเคยเข้าใช้งานผ่าน Google ไม่จำเป็นต้องยืนยันอีเมล สามารถกดปุ่ม 'Google Workspace' ด้านล่างเพื่อเข้าสู่ระบบได้ทันที!\n" +
               "(หากต้องการเข้าด้วยรหัสผ่าน สามารถกด 'ลืมรหัสผ่าน? / ตั้งรหัสผ่านใหม่' ด้านล่างเพื่อตั้งรหัสผ่านได้)"
             );
           } else if (emailExists) {
@@ -650,7 +650,7 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
 
         if (existingProf && !existingProf.is_deleted) {
           if (existingProf.role === "store" || existingProf.merchant_status === "approved") {
-            setErrorMsg(`⚠️ อีเมล ${cleanEmail} ได้รับอนุมัติสิทธิ์เป็นเจ้าของร้านค้าเรียบร้อยแล้ว กรุณาเข้าสู่ระบบด้วยบัญชีนี้`);
+            setErrorMsg(` อีเมล ${cleanEmail} ได้รับอนุมัติสิทธิ์เป็นเจ้าของร้านค้าเรียบร้อยแล้ว กรุณาเข้าสู่ระบบด้วยบัญชีนี้`);
             setLoading(false);
             handleSwitchMode("login");
             return;
@@ -819,7 +819,7 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
               } catch (e) {}
             }
 
-            setSuccessMsg(`🎉 ยื่นคำขอลงทะเบียนเจ้าของร้านค้าสำหรับ ${cleanEmail} เรียบร้อยแล้ว! (เนื่องจากบัญชีนี้สมัครไว้ผ่าน Google กรุณากดปุ่ม 'Google Workspace' ด้านล่างเพื่อเข้าสู่ระบบ)`);
+            setSuccessMsg(` ยื่นคำขอลงทะเบียนเจ้าของร้านค้าสำหรับ ${cleanEmail} เรียบร้อยแล้ว! (เนื่องจากบัญชีนี้สมัครไว้ผ่าน Google กรุณากดปุ่ม 'Google Workspace' ด้านล่างเพื่อเข้าสู่ระบบ)`);
             setLoading(false);
             handleSwitchMode("login");
             return;
@@ -944,7 +944,7 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
         {/* Brand Header with Clippi Logo & Mascot */}
         <div className="flex flex-col items-center text-center mb-6 select-none relative">
           <div className="mb-2">
-            <ClippiMascot size="sm" speech="clip, collect, connect! 📎" animate={true} />
+ <ClippiMascot size="sm" speech="clip, collect, connect! " animate={true} />
           </div>
           <img src="/clippi-logo.png" alt="Clippi Logo" className="h-12 object-contain mb-1" />
           <p className="text-xs text-[#555555] font-semibold mt-1">

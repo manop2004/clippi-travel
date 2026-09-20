@@ -399,7 +399,7 @@ export default function AdminLogPage() {
           id: `review_${row.id}`,
           category: "review",
           action_type: "review",
-          action_title: `เขียนรีวิว ⭐ ${row.rating || 5}.0 ดาว`,
+          action_title: `เขียนรีวิว  ${row.rating || 5}.0 ดาว`,
           actor_id: uid,
           actor_name: actorName,
           actor_avatar: actor.avatar_url || null,
@@ -773,7 +773,7 @@ export default function AdminLogPage() {
               onClick={() => setSearchQuery("")}
               className="text-xs font-bold text-stone-400 hover:text-stone-700"
             >
-              ✕
+              
             </button>
           )}
         </div>
@@ -784,7 +784,7 @@ export default function AdminLogPage() {
             onClick={() => setCategoryFilter("all")}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border flex items-center gap-1.5 ${
               categoryFilter === "all"
-                ? "bg-[#231C18] text-white border-[#231C18] shadow-xs"
+                ? "bg-[#FD775C] text-white border-[#FD775C] shadow-xs"
                 : "bg-white text-stone-700 hover:bg-stone-50"
             }`}
             style={categoryFilter !== "all" ? { borderColor: C.line } : undefined}
@@ -885,7 +885,7 @@ export default function AdminLogPage() {
           {(searchQuery || categoryFilter !== "all") && (
             <button
               onClick={handleResetFilters}
-              className="mt-2 px-3.5 py-1.5 bg-[#231C18] text-white text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer"
+              className="mt-2 px-3.5 py-1.5 bg-[#FD775C] text-white text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer"
             >
               <RotateCcw size={13} />
               <span>ล้างตัวกรองทั้งหมด</span>
@@ -989,8 +989,8 @@ export default function AdminLogPage() {
 
                 {/* Expandable JSON Detail Payload Inspector */}
                 {isExpanded && log.raw_detail && (
-                  <div className="mt-2 p-3 bg-stone-900 text-amber-300 rounded-xl text-[11px] font-mono overflow-x-auto shadow-inner border border-stone-800 animate-in fade-in duration-200">
-                    <div className="flex items-center justify-between border-b border-stone-800 pb-1 mb-2 text-[10px] font-bold text-stone-400">
+                  <div className="mt-2 p-3 bg-[#FD775C] text-white rounded-xl text-[11px] font-mono overflow-x-auto shadow-inner border border-[#FD775C] animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between border-b border-[#FD775C] pb-1 mb-2 text-[10px] font-bold text-stone-400">
                       <span>JSON Payload Detail</span>
                       <span>Event: {log.action_type}</span>
                     </div>
@@ -1005,7 +1005,7 @@ export default function AdminLogPage() {
         </div>
       )}
 
-      {/* 👤 Interactive User Profile Summary Modal */}
+      {/* Interactive User Profile Summary Modal */}
       {selectedUserSummaryId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
           <div

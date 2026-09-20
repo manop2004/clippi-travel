@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ExternalLink, Navigation, Crosshair, MapPin, Loader2, RefreshCw, Puzzle, Camera, Sparkles, CheckCircle2, Lock } from "lucide-react";
+import { ExternalLink, Navigation, Crosshair, MapPin, Utensils, Gift, Loader2, RefreshCw, Puzzle, Camera, Sparkles, CheckCircle2, Lock } from "lucide-react";
 import { C, categories } from "../../constants/mockData";
 import { supabase } from "../../supabaseClient";
 import { useLang, localized } from "../../lib/i18n";
@@ -40,7 +40,7 @@ const PIN_TYPE_FILTERS = [
   { id: "All", labelKey: "filter.all" },
   { id: "food", labelKey: "cat.restaurantCafe" },
   { id: "shop", labelKey: "cat.serviceShop" },
-  { id: "jigsaw", labelKey: "เควสต์จิ๊กซอว์ 🧩" },
+  { id: "jigsaw", labelKey: "เควสต์จิ๊กซอว์ " },
 ];
 
 const REGIONS = ["Kanto", "Kansai", "Hokkaido", "Tohoku", "Chubu", "Chugoku", "Kyushu & Okinawa", "Shikoku"];
@@ -61,15 +61,33 @@ function getDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): 
   return R * c;
 }
 
-function getPinTypeEmoji(pinType: string): string {
+// ไอคอนหมุดบนแผนที่ (Leaflet ใช้ HTML string จึงต้องเป็น inline SVG ไม่ใช่ React component)
+function getPinTypeSvg(pinType: string): string {
+  const base = 'width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"';
   switch (pinType) {
     case "food":
-      return "🍜";
+      return `<svg ${base}><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>`;
     case "shop":
-      return "🎁";
+      return `<svg ${base}><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/></svg>`;
     default:
-      return "📍";
+      return `<svg ${base}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>`;
   }
+}
+
+// ไอคอนหมุด jigsaw (เก็บแล้ว = ติ๊กถูก, ยังไม่เก็บ = ชิ้นจิ๊กซอว์)
+function getJigsawSvg(isCollected: boolean): string {
+  const base = 'width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"';
+  if (isCollected) {
+    return `<svg ${base}><path d="M20 6 9 17l-5-5"/></svg>`;
+  }
+  return `<svg ${base}><path d="M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474 2.5 2.5 0 1 1-3.014-3.015 1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z"/></svg>`;
+}
+
+// ไอคอนประเภทร้าน สำหรับใช้ใน JSX
+function PinTypeIcon({ pinType, size = 26 }: { pinType: string; size?: number }) {
+  if (pinType === "food") return <Utensils size={size} />;
+  if (pinType === "shop") return <Gift size={size} />;
+  return <MapPin size={size} />;
 }
 
 // React.memo wrapper around map container to prevent re-creation on render
@@ -258,7 +276,7 @@ export default function MapView({
       displayedShops.forEach((shop, index) => {
         if (!shop.lat || !shop.lng) return;
 
-        const emoji = getPinTypeEmoji(shop.pin_type);
+        const pinSvg = getPinTypeSvg(shop.pin_type);
         const isSelected = selectedShop?.id === shop.id && !selectedJigsawPiece;
         const shopPieceIndex = (index % 4) + 1;
         const isCollected = collectedJigsawPieces.includes(`p${shopPieceIndex}`) || collectedJigsawPieces.includes(`shop-${shop.id}`);
@@ -268,13 +286,13 @@ export default function MapView({
             <div class="w-8 h-8 rounded-full border-2 border-white ${
               isSelected ? "bg-amber-500 scale-110 ring-4 ring-amber-300/50" : "bg-[#E0533C]"
             } text-white flex items-center justify-center shadow-md hover:scale-110 transition-transform duration-150 text-sm">
-              ${emoji}
+              ${pinSvg}
             </div>
             <!-- Small Jigsaw Badge on top of shop pin -->
             <div style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:9999px;background:${
               isCollected ? '#059669' : '#EA580C'
             };color:white;font-size:8px;font-weight:900;display:flex;align-items:center;justify-content:center;border:1.5px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.3);">
-              🧩
+              
             </div>
           </div>
         `;
@@ -302,13 +320,13 @@ export default function MapView({
             <div style="width:36px;height:36px;border-radius:14px;border:2.5px solid white;display:flex;align-items:center;justify-content:center;color:white;font-weight:900;font-size:13px;box-shadow:0 4px 10px rgba(0,0,0,0.25);transition:all 0.15s ease;"
               class="${
                 isSelected
-                  ? "bg-stone-950 scale-125 ring-4 ring-orange-400"
+                  ? "bg-[#FD775C] scale-125 ring-4 ring-orange-400"
                   : isCollected
                   ? "bg-emerald-600 hover:scale-110"
                   : "bg-gradient-to-tr from-amber-500 via-orange-500 to-rose-500 hover:scale-110"
               }"
             >
-              ${isCollected ? "✓" : "🧩"}
+              ${getJigsawSvg(isCollected)}
             </div>
             <div style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:#1c1917;color:white;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;border:1.5px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.3);">
               ${piece.pieceIndex + 1}
@@ -333,11 +351,11 @@ export default function MapView({
 
         const popupHtml = `
           <div style="font-family:sans-serif;padding:3px;text-align:center;min-width:140px;">
-            <div style="font-size:9px;font-weight:900;color:#FD775C;text-transform:uppercase;">🧩 ${piece.questTitle.split(":")[0]} • ชิ้นที่ ${piece.pieceIndex + 1}</div>
+ <div style="font-size:9px;font-weight:900;color:#FD775C;text-transform:uppercase;"> ${piece.questTitle.split(":")[0]} • ชิ้นที่ ${piece.pieceIndex + 1}</div>
             <div style="font-size:12px;font-weight:bold;color:#111;margin:2px 0;">${piece.checkpointName}</div>
             <div style="font-size:10px;color:#666;">${piece.locationArea}</div>
             <div style="margin-top:4px;font-size:10px;font-weight:bold;color:${isCollected ? '#059669' : '#D97706'};">
-              ${isCollected ? "✅ เก็บชิ้นส่วนแล้ว" : "🔒 ต้องไปสแกนที่จุดนี้"}
+              ${isCollected ? " เก็บชิ้นส่วนแล้ว" : " ต้องไปสแกนที่จุดนี้"}
             </div>
           </div>
         `;
@@ -427,7 +445,7 @@ export default function MapView({
   return (
     <div className="space-y-5 w-full min-w-0 text-[#231C18]">
 
-      {/* 📍 Header and Filters */}
+      {/* Header and Filters */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 py-1 select-none">
         <div>
           <h2 className="text-lg font-black tracking-tight" style={{ color: C.ink }}>{t("nav.map")}</h2>
@@ -437,7 +455,7 @@ export default function MapView({
         </div>
 
         <div className="flex flex-col gap-2 w-full md:w-auto">
-          {/* 🌏 Filter Tabs (by region & Near Me) */}
+          {/* Filter Tabs (by region & Near Me) */}
           <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none w-full md:w-auto items-center">
             {/* Near Me Locator Button */}
             <button
@@ -472,7 +490,7 @@ export default function MapView({
             ))}
           </div>
 
-          {/* 🏷️ Filter Tabs (by category & jigsaw) */}
+          {/* Filter Tabs (by category & jigsaw) */}
           <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none w-full md:w-auto">
             {PIN_TYPE_FILTERS.map((f) => (
               <button
@@ -504,7 +522,7 @@ export default function MapView({
           </div>
         </div>
 
-        {/* 🧩 Sub-filter Bar for Jigsaw Quests */}
+        {/* Sub-filter Bar for Jigsaw Quests */}
         {pinTypeFilter === "jigsaw" && (
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none w-full animate-fade-in pt-1">
             <button
@@ -519,26 +537,26 @@ export default function MapView({
               }}
               className={`px-3 py-1 rounded-full text-[10.5px] font-extrabold shrink-0 transition cursor-pointer border ${
                 selectedQuestFilter === "all"
-                  ? "bg-stone-900 text-white border-stone-900 shadow-xs"
+                  ? "bg-[#FD775C] text-white border-[#FD775C] shadow-xs"
                   : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
               }`}
             >
-              🌟 ทั้งหมด ({quests.length} เควสต์)
+               ทั้งหมด ({quests.length} เควสต์)
             </button>
             {quests.map((q) => {
               const isCur = selectedQuestFilter === q.id;
               const emoji =
                 q.badge === "Gourmet Quest"
-                  ? "🍡"
+                  ? ""
                   : q.badge === "Kyoto Classic"
-                  ? "⛩️"
+                  ? ""
                   : q.badge === "Tokyo Modern"
-                  ? "🗼"
+                  ? ""
                   : q.badge === "Food Paradise"
-                  ? "🐙"
+                  ? ""
                   : q.badge === "Fuji Adventure"
-                  ? "🗻"
-                  : "🏛️";
+                  ? ""
+                  : "";
               return (
                 <button
                   key={q.id}
@@ -578,7 +596,7 @@ export default function MapView({
         )}
       </div>
 
-      {/* 🗺️ Map Grid Layout */}
+      {/* Map Grid Layout */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
 
         {/* Map Viewport Area */}
@@ -604,7 +622,6 @@ export default function MapView({
           {/* Active Near Me Radius Badge */}
           {isNearMeActive && (
             <div className="absolute bottom-4 left-4 z-[1000] bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-full border shadow-md flex items-center gap-2 text-[10px] font-black text-blue-700" style={{ borderColor: C.line }}>
-              <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
               <span>Showing shops within 50km radius</span>
               <button
                 onClick={() => setIsNearMeActive(false)}
@@ -623,7 +640,7 @@ export default function MapView({
               <div className="space-y-3.5 overflow-y-auto scrollbar-none pr-1">
                 <div className="flex items-start gap-3">
                   <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 text-white border-2 border-white shadow-md flex items-center justify-center text-2xl shrink-0 font-black">
-                    🧩
+                    
                   </div>
                   {(() => {
                     const parentQuest = quests.find((q) => q.pieces.some((p) => p.id === selectedJigsawPiece.id));
@@ -652,7 +669,7 @@ export default function MapView({
                 {collectedJigsawPieces.includes(selectedJigsawPiece.id) ? (
                   <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-800 text-xs font-black flex items-center gap-2">
                     <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
-                    <span>คุณสะสมชิ้นส่วนนี้เรียบร้อยแล้ว ✓</span>
+ <span>คุณสะสมชิ้นส่วนนี้เรียบร้อยแล้ว </span>
                   </div>
                 ) : (
                   <div className="p-2.5 bg-orange-50 border border-orange-200 rounded-2xl text-orange-900 text-xs font-black flex items-center gap-2">
@@ -667,7 +684,7 @@ export default function MapView({
                     {selectedJigsawPiece.description}
                   </p>
                   <div className="p-2.5 bg-amber-50/80 border border-amber-200/80 rounded-xl text-[10.5px] text-amber-900 font-semibold leading-snug">
-                    💡 คำใบ้: {selectedJigsawPiece.hint}
+                     คำใบ้: {selectedJigsawPiece.hint}
                   </div>
                   <p className="text-[10px] text-stone-400 font-medium">
                     พิกัด GPS: {selectedJigsawPiece.targetLat.toFixed(4)}, {selectedJigsawPiece.targetLng.toFixed(4)} (รัศมี {selectedJigsawPiece.radiusMeters} ม.)
@@ -709,7 +726,7 @@ export default function MapView({
                     className="w-14 h-14 rounded-full border-2 border-dashed flex items-center justify-center text-3xl shrink-0 select-none"
                     style={{ background: C.accentSoft, borderColor: C.accent }}
                   >
-                    {getPinTypeEmoji(selectedShop.pin_type)}
+                    <PinTypeIcon pinType={selectedShop.pin_type} size={26} />
                   </div>
                   <div className="leading-tight">
                     <span className="text-[9px] font-black uppercase tracking-wider block" style={{ color: C.accent }}>{selectedShop.prefecture}</span>
@@ -740,7 +757,7 @@ export default function MapView({
                     </div>
                   )}
 
-                  {/* 🧩 Jigsaw Piece for this Location */}
+                  {/* Jigsaw Piece for this Location */}
                   <div className="mt-3 pt-3 border-t" style={{ borderColor: C.line }}>
                     <div
                       className={`p-3.5 rounded-2xl border transition-all ${
@@ -758,7 +775,7 @@ export default function MapView({
                                 : "bg-gradient-to-tr from-amber-500 to-orange-500 text-white"
                             }`}
                           >
-                            🧩
+                            
                           </div>
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5">
@@ -777,7 +794,7 @@ export default function MapView({
                             </div>
                             <p className="text-[11px] font-extrabold text-stone-900 truncate mt-0.5">
                               {isSelectedShopPieceCollected
-                                ? "คุณสะสมชิ้นส่วนของร้านนี้แล้ว ✓"
+                                ? "คุณสะสมชิ้นส่วนของร้านนี้แล้ว "
                                 : `มีชิ้นส่วนจิ๊กซอว์ซ่อนอยู่ที่ ${selectedName}!`}
                             </p>
                           </div>

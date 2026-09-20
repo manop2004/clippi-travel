@@ -16,6 +16,7 @@ import {
 import { haversineDistance, formatDistance } from "../../lib/geoHelpers";
 import { JigsawPiece } from "../../constants/jigsawData";
 import { useJigsawQuests } from "../../hooks/useJigsawQuests";
+import { useLang } from "../../lib/i18n";
 
 interface QRScannerModalProps {
   isOpen: boolean;
@@ -32,6 +33,7 @@ export default function QRScannerModal({
   onStampCollected,
   onViewBoard,
 }: QRScannerModalProps) {
+  const { t } = useLang();
   const { quests } = useJigsawQuests();
 
   // GPS State
@@ -211,7 +213,7 @@ export default function QRScannerModal({
     if (gpsStatus !== "granted" || !userCoords) {
       setScanResult({
         success: false,
-        title: "⚠️ ต้องเปิด GPS ก่อนสแกน",
+        title: " ต้องเปิด GPS ก่อนสแกน",
         message: "ระบบต้องการพิกัด GPS ของคุณเพื่อยืนยันว่าคุณอยู่ ณ สถานที่จริง กรุณากดเปิด GPS",
       });
       return;
@@ -242,7 +244,7 @@ export default function QRScannerModal({
         if (!isNearby) {
           setScanResult({
             success: false,
-            title: "📍 คุณอยู่ไกลจากสถานที่จริง!",
+            title: " คุณอยู่ไกลจากสถานที่จริง!",
             message: `QR Code ถูกต้องสำหรับ "${piece.checkpointName}" แต่ตำแหน่งปัจจุบันของคุณอยู่ห่างออกไป ${formatDistance(
               distMeters
             )} (ต้องอยู่ในระยะไม่เกิน ${formatDistance(piece.radiusMeters)})`,
@@ -256,7 +258,7 @@ export default function QRScannerModal({
         onPieceCollected(quest.id, piece.id, piece);
         setScanResult({
           success: true,
-          title: "🎉 ปลดล็อกชิ้นส่วนสำเร็จ!",
+          title: " ปลดล็อกชิ้นส่วนสำเร็จ!",
           message: `คุณได้รับชิ้นส่วนจิ๊กซอว์จาก "${piece.checkpointName}" แล้ว! (พิกัดถูกต้อง ระยะห่าง ${formatDistance(
             distMeters
           )})`,
@@ -306,7 +308,7 @@ export default function QRScannerModal({
           onPieceCollected(quest.id, piece.id, piece);
           setScanResult({
             success: true,
-            title: "🎉 ปลดล็อกชิ้นส่วนสำเร็จ (GPS Test)!",
+            title: " ปลดล็อกชิ้นส่วนสำเร็จ (GPS Test)!",
             message: `จำลองเดินทางมาถึง "${piece.checkpointName}" สำเร็จ! (ระยะห่าง ${formatDistance(dist)})`,
             piece,
             distance: dist,
@@ -349,7 +351,7 @@ export default function QRScannerModal({
           </button>
         </div>
 
-        {/* 📡 Live GPS Status Bar */}
+        {/* Live GPS Status Bar */}
         <div
           className={`px-4 py-2.5 border-b text-xs flex items-center justify-between transition-colors ${
             gpsStatus === "granted"
@@ -386,7 +388,7 @@ export default function QRScannerModal({
 
           <button
             onClick={requestGPS}
-            className="px-2.5 py-1 bg-stone-900 hover:bg-stone-800 text-white font-black rounded-xl text-[10px] flex items-center gap-1 transition shrink-0 cursor-pointer"
+            className="px-2.5 py-1 bg-[#FD775C] hover:bg-[#E31E27] text-white font-black rounded-xl text-[10px] flex items-center gap-1 transition shrink-0 cursor-pointer"
           >
             <RefreshCw size={11} /> รีเฟรช GPS
           </button>
@@ -428,7 +430,7 @@ export default function QRScannerModal({
                 <AlertTriangle size={32} />
               </div>
               <div>
-                <h4 className="font-black text-stone-900 text-base">จำเป็นต้องเปิดและอนุญาต GPS</h4>
+                <h4 className="font-black text-stone-900 text-base">{t("qr.gpsRequired")}</h4>
                 <p className="text-xs text-stone-600 mt-1.5 leading-relaxed">
                   {gpsErrorMsg ||
                     "กติกากิจกรรม Clippi Jigsaw Hunt บังคับให้ผู้เล่นต้องเปิดตำแหน่ง GPS เพื่อยืนยันว่าคุณเดินทางมาถึงสถานที่จริง"}
@@ -439,7 +441,7 @@ export default function QRScannerModal({
                 <p className="font-bold flex items-center gap-1">
                   <Info size={13} /> วิธีเปิดสิทธิ์:
                 </p>
-                <p>1. กดไอคอนแม่กุญแจ 🔒 หรือสิทธิ์ที่แถบ URL บนเบราว์เซอร์</p>
+ <p>1. กดไอคอนแม่กุญแจ  หรือสิทธิ์ที่แถบ URL บนเบราว์เซอร์</p>
                 <p>2. ปรับการตั้งค่า Location / ตำแหน่ง ให้เป็น <strong>"อนุญาต (Allow)"</strong></p>
               </div>
 
@@ -506,7 +508,7 @@ export default function QRScannerModal({
           ) : activeTab === "camera" ? (
             /* หน้าต่างกล้องสแกนจริง */
             <div className="w-full flex flex-col items-center">
-              <div className="relative w-full max-w-[300px] aspect-square bg-stone-950 rounded-3xl overflow-hidden border-2 border-dashed border-orange-400 shadow-inner flex items-center justify-center">
+              <div className="relative w-full max-w-[300px] aspect-square bg-[#FD775C] rounded-3xl overflow-hidden border-2 border-dashed border-orange-400 shadow-inner flex items-center justify-center">
                 <video
                   ref={videoRef}
                   className="w-full h-full object-cover"
@@ -551,7 +553,7 @@ export default function QRScannerModal({
               <div className="mt-4 pt-3 border-t w-full flex items-center gap-2">
                 <input
                   type="text"
-                  placeholder="พิมพ์รหัส QR Code (ถ้ามี)..."
+                  placeholder={t("qr.codePlaceholder")}
                   value={manualCode}
                   onChange={(e) => setManualCode(e.target.value)}
                   onKeyDown={(e) => {
@@ -561,7 +563,7 @@ export default function QRScannerModal({
                 />
                 <button
                   onClick={() => handleScannedData(manualCode)}
-                  className="px-3 py-2 bg-stone-900 text-white rounded-xl text-xs font-extrabold hover:bg-stone-800 transition cursor-pointer"
+                  className="px-3 py-2 bg-[#FD775C] text-white rounded-xl text-xs font-extrabold hover:bg-[#E31E27] transition cursor-pointer"
                 >
                   ตรวจสอบ
                 </button>
@@ -573,7 +575,7 @@ export default function QRScannerModal({
               <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200 text-amber-900 text-xs flex items-center gap-2">
                 <Sparkles size={16} className="shrink-0 text-amber-600" />
                 <p className="text-[11px] leading-tight">
-                  <strong>โหมดทดสอบ (Dev GPS Simulator):</strong> กดปุ่มด้านล่างเพื่อจำลองว่าคุณเดินทางไปถึงพิกัดสถานที่จริงและสแกน QR Code ประจำจุดนั้น
+                  <strong>{t("qr.devMode")}</strong> {t("qr.devModeDesc")}
                 </p>
               </div>
 
@@ -587,7 +589,7 @@ export default function QRScannerModal({
                       onClick={() => setSimSelectedQuestId(quest.id)}
                       className={`px-3 py-1.5 rounded-xl text-[11px] font-bold shrink-0 transition cursor-pointer ${
                         isCur
-                          ? "bg-stone-900 text-white shadow-xs"
+                          ? "bg-[#FD775C] text-white shadow-xs"
                           : "bg-stone-100 text-stone-600 hover:bg-stone-200"
                       }`}
                     >
@@ -631,7 +633,7 @@ export default function QRScannerModal({
                         {/* ปุ่มทดสอบสแกนตรงๆ */}
                         <button
                           onClick={() => handleScannedData(piece.qrCodeValue)}
-                          title="สแกนด้วยพิกัดปัจจุบันของคุณ"
+                          title={t("qr.scanHere")}
                           className="px-2.5 py-1.5 bg-stone-200 hover:bg-stone-300 text-stone-800 text-[10px] font-bold rounded-xl transition cursor-pointer"
                         >
                           สแกนจริง
@@ -639,7 +641,7 @@ export default function QRScannerModal({
                         {/* ปุ่มวาร์ป/จำลองให้พิกัดตรง */}
                         <button
                           onClick={() => simulateCheckinAt(piece)}
-                          title="จำลองพิกัดให้อยู่ที่นี่และเช็คอินสำเร็จ"
+                          title={t("qr.simulateHere")}
                           className="px-2.5 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-[10px] font-black rounded-xl transition shadow-xs cursor-pointer flex items-center gap-1"
                         >
                           <Compass size={11} /> วาร์ป & เก็บ

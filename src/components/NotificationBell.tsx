@@ -19,6 +19,7 @@ import {
   dismissAllAdminNotifs,
 } from "../lib/announcementHelpers";
 import AdminAnnouncementModal from "./AdminAnnouncementModal";
+import { useLang } from "../lib/i18n";
 
 interface NotificationItem {
   id: string;
@@ -41,6 +42,7 @@ interface NotificationBellProps {
 const REFRESH_INTERVAL_MS = 30000;
 
 export default function NotificationBell({ hideOnMobileSearch, onOpenMerchantModal }: NotificationBellProps) {
+  const { t } = useLang();
   const {
     isAdmin,
     user,
@@ -229,7 +231,7 @@ export default function NotificationBell({ hideOnMobileSearch, onOpenMerchantMod
   const handleDeleteAnnouncement = async (e: React.MouseEvent, annId: string) => {
     e.stopPropagation();
     if (isAdmin) {
-      if (confirm("คุณต้องการลบประกาศนี้ใช่หรือไม่?")) {
+      if (confirm(t("notif.confirmDeleteAnn"))) {
         await deleteSystemAnnouncement(annId);
         dismissAnnouncement(annId, user?.id);
         loadAnnouncements();
@@ -298,7 +300,7 @@ export default function NotificationBell({ hideOnMobileSearch, onOpenMerchantMod
           hideOnMobileSearch ? "hidden sm:flex" : "flex"
         }`}
         style={{ borderColor: C.line }}
-        title="การแจ้งเตือนและสถานะคำขอ"
+        title={t("notif.bellTitle")}
       >
         <Bell size={16} color={hasMerchantStatusNotif ? (isRejectedMerchant ? "#E0533C" : "#F59E0B") : C.ink} />
         {totalDisplayUnread > 0 && (
@@ -324,7 +326,7 @@ export default function NotificationBell({ hideOnMobileSearch, onOpenMerchantMod
           >
             <div className="flex items-center gap-2">
               <Bell size={15} className="text-[#E0533C]" />
-              <span className="text-xs font-black text-[#231C18]">การแจ้งเตือน (Notifications)</span>
+              <span className="text-xs font-black text-[#231C18]">{t("notif.title")}</span>
             </div>
             <div className="flex items-center gap-2">
               {isAdmin && (
@@ -334,30 +336,30 @@ export default function NotificationBell({ hideOnMobileSearch, onOpenMerchantMod
                     setIsAnnouncementModalOpen(true);
                   }}
                   className="px-2.5 py-1 rounded-xl bg-[#FD775C] text-white text-[10px] font-extrabold hover:bg-[#E31E27] transition flex items-center gap-1 shadow-xs cursor-pointer"
-                  title="สร้างประกาศใหม่"
+                  title={t("notif.newAnn")}
                 >
                   <Plus size={12} />
-                  <span>ประกาศ</span>
+                  <span>{t("notif.announce")}</span>
                 </button>
               )}
               {totalDisplayUnread > 0 && (
                 <button
                   onClick={handleMarkAllRead}
                   className="text-[10px] font-bold text-[#8A7870] hover:text-[#FD775C] transition flex items-center gap-1 cursor-pointer"
-                  title="อ่านทั้งหมด"
+                  title={t("notif.readAll")}
                 >
                   <CheckCheck size={12} />
-                  <span>อ่านทั้งหมด</span>
+                  <span>{t("notif.readAll")}</span>
                 </button>
               )}
               {(announcements.length > 0 || adminItems.length > 0) && (
                 <button
                   onClick={handleClearAll}
                   className="text-[10px] font-bold text-[#8A7870] hover:text-rose-600 transition flex items-center gap-1 cursor-pointer"
-                  title="ลบการแจ้งเตือนทั้งหมด"
+                  title={t("notif.deleteAll")}
                 >
                   <Trash2 size={12} />
-                  <span>ลบทั้งหมด</span>
+                  <span>{t("notif.deleteAll")}</span>
                 </button>
               )}
             </div>
@@ -378,7 +380,7 @@ export default function NotificationBell({ hideOnMobileSearch, onOpenMerchantMod
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-1">
-                    <span className="text-xs font-black text-amber-950">คำขอเปิดร้านค้ารอการอนุมัติ</span>
+                    <span className="text-xs font-black text-amber-950">{t("notif.merchantPending")}</span>
                     <span className="text-[9px] font-extrabold px-1.5 py-0.5 bg-amber-200 text-amber-900 rounded-full">Pending</span>
                   </div>
                   <p className="text-[11px] text-amber-900 font-medium mt-1 leading-snug">
@@ -393,7 +395,7 @@ export default function NotificationBell({ hideOnMobileSearch, onOpenMerchantMod
                       }}
                       className="text-[10px] text-amber-800 font-black inline-flex items-center gap-1 hover:underline cursor-pointer"
                     >
-                      <span>ดูรายละเอียด / แก้ไขข้อมูล</span>
+                      <span>{t("notif.viewEdit")}</span>
                       <ChevronRight size={12} />
                     </span>
 
@@ -401,13 +403,13 @@ export default function NotificationBell({ hideOnMobileSearch, onOpenMerchantMod
                       type="button"
                       onClick={async (e) => {
                         e.stopPropagation();
-                        if (confirm("คุณต้องการยกเลิกคำขอสมัครเปิดร้านค้า ใช่หรือไม่?\n(สถานะของคุณจะกลับมาเป็นผู้ใช้งานทั่วไป)")) {
+                        if (confirm(t("notif.confirmCancel1"))) {
                           setCancellingMerchant(true);
                           try {
                             await cancelMerchantApp();
                             setIsOpen(false);
                           } catch (err) {
-                            alert("ไม่สามารถยกเลิกคำขอได้ กรุณาลองใหม่อีกครั้ง");
+                            alert(t("merchant.cancelFail"));
                           } finally {
                             setCancellingMerchant(false);
                           }
@@ -416,14 +418,14 @@ export default function NotificationBell({ hideOnMobileSearch, onOpenMerchantMod
                       disabled={cancellingMerchant}
                       className="text-[10px] font-black px-2 py-1 rounded-lg bg-amber-200/80 hover:bg-amber-300 text-amber-950 transition cursor-pointer"
                     >
-                      {cancellingMerchant ? "กำลังยกเลิก..." : "❌ ยกเลิกคำขอ"}
+                      {cancellingMerchant ? "กำลังยกเลิก..." : " ยกเลิกคำขอ"}
                     </button>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* ❌ Merchant Status Notification Item: Rejected */}
+            {/* Merchant Status Notification Item: Rejected */}
             {isRejectedMerchant && (
               <div
                 onClick={() => {
@@ -437,7 +439,7 @@ export default function NotificationBell({ hideOnMobileSearch, onOpenMerchantMod
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-1">
-                    <span className="text-xs font-black text-rose-950">คำขอเปิดร้านค้าไม่ผ่านการอนุมัติ</span>
+                    <span className="text-xs font-black text-rose-950">{t("notif.merchantRejected")}</span>
                     <span className="text-[9px] font-extrabold px-1.5 py-0.5 bg-rose-200 text-rose-900 rounded-full">Rejected</span>
                   </div>
                   <p className="text-[11px] text-rose-900 font-medium mt-1 leading-snug">
@@ -452,7 +454,7 @@ export default function NotificationBell({ hideOnMobileSearch, onOpenMerchantMod
                       }}
                       className="text-[10px] text-rose-800 font-black inline-flex items-center gap-1 hover:underline cursor-pointer"
                     >
-                      <span>แก้ไขข้อมูล & ยื่นคำขอใหม่</span>
+                      <span>{t("notif.editResubmit")}</span>
                       <ChevronRight size={12} />
                     </span>
 
@@ -460,13 +462,13 @@ export default function NotificationBell({ hideOnMobileSearch, onOpenMerchantMod
                       type="button"
                       onClick={async (e) => {
                         e.stopPropagation();
-                        if (confirm("คุณต้องการยกเลิกคำขอสมัครเปิดร้านค้า ใช่หรือไม่?\n(การยกเลิกจะลบคำขอนี้และรีเซ็ตสถานะของคุณเป็นผู้ใช้งานทั่วไป)")) {
+                        if (confirm(t("notif.confirmCancel2"))) {
                           setCancellingMerchant(true);
                           try {
                             await cancelMerchantApp();
                             setIsOpen(false);
                           } catch (err) {
-                            alert("ไม่สามารถยกเลิกคำขอได้ กรุณาลองใหม่อีกครั้ง");
+                            alert(t("merchant.cancelFail"));
                           } finally {
                             setCancellingMerchant(false);
                           }
@@ -475,14 +477,14 @@ export default function NotificationBell({ hideOnMobileSearch, onOpenMerchantMod
                       disabled={cancellingMerchant}
                       className="text-[10px] font-black px-2.5 py-1 rounded-lg bg-rose-200/80 hover:bg-rose-300 text-rose-950 transition cursor-pointer"
                     >
-                      {cancellingMerchant ? "กำลังยกเลิก..." : "❌ ยกเลิกคำขอ (ไม่สมัครแล้ว)"}
+                      {cancellingMerchant ? "กำลังยกเลิก..." : " ยกเลิกคำขอ (ไม่สมัครแล้ว)"}
                     </button>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* 📢 System Announcements from Admin */}
+            {/* System Announcements from Admin */}
             {announcements.map((ann) => {
               const unread = !readIds.has(ann.id);
               const isUrgent = ann.priority === "urgent";
@@ -587,7 +589,7 @@ export default function NotificationBell({ hideOnMobileSearch, onOpenMerchantMod
             {/* Admin Notifications (for admin users) */}
             {isAdmin &&
               (loading ? (
-                <div className="p-6 text-center text-xs font-bold text-[#8A7870]">กำลังโหลดข้อมูล...</div>
+                <div className="p-6 text-center text-xs font-bold text-[#8A7870]">{t("common.loading")}</div>
               ) : (
                 adminItems.map((n) => {
                   const unread = !readIds.has(n.id);
@@ -617,7 +619,7 @@ export default function NotificationBell({ hideOnMobileSearch, onOpenMerchantMod
                             type="button"
                             onClick={(e) => handleDeleteAdminNotification(e, n.id)}
                             className="text-stone-400 hover:text-rose-600 hover:bg-rose-50 p-1.5 rounded-lg transition cursor-pointer shrink-0"
-                            title="ลบการแจ้งเตือน"
+                            title={t("notif.deleteOne")}
                           >
                             <Trash2 size={12} />
                           </button>

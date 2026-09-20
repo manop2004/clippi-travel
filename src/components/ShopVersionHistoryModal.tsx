@@ -1,6 +1,7 @@
 // ShopVersionHistoryModal.tsx
 import React from "react";
 import { X, Sparkles, Calendar, CheckCircle2, Lock, MapPin, Award, Clock, Tag } from "lucide-react";
+import { useLang } from "../lib/i18n";
 import { C } from "../constants/mockData";
 import { Place, UserStamp, ShopStampVersion } from "../types/review-stamp";
 import { getShopStampVersions, getCurrentActiveStampVersion, formatExpiryLabel, getDefaultStampDesign } from "../lib/stampHelpers";
@@ -22,6 +23,7 @@ export default function ShopVersionHistoryModal({
   userStamps,
   openPlace,
 }: ShopVersionHistoryModalProps) {
+  const { t } = useLang();
   const [currentShop, setCurrentShop] = React.useState<Place | null>(shop);
 
   React.useEffect(() => {
@@ -149,7 +151,7 @@ export default function ShopVersionHistoryModal({
       <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border my-auto" style={{ borderColor: C.line }}>
         
         {/* Header */}
-        <div className="p-5 border-b bg-stone-900 text-white flex items-center justify-between">
+        <div className="p-5 border-b bg-[#FD775C] text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-amber-500 via-rose-500 to-indigo-500 text-white shadow-md">
               <Tag size={22} />
@@ -189,12 +191,12 @@ export default function ShopVersionHistoryModal({
                 </div>
                 <p className="text-[11px] text-amber-800 flex items-center gap-1 font-semibold">
                   <Clock size={12} className="text-amber-600" />
-                  <span>กำหนดระยะเวลา: <strong>{formatExpiryLabel(currentActiveVersion.valid_until)}</strong></span>
+                  <span>{t("ver.validUntil")} <strong>{formatExpiryLabel(currentActiveVersion.valid_until)}</strong></span>
                 </p>
               </div>
 
               <span className="px-3 py-1 rounded-full text-xs font-black bg-amber-500 text-stone-950 shrink-0 self-start sm:self-auto">
-                 active ปัจจุบัน 📍
+                 active ปัจจุบัน 
               </span>
             </div>
           )}
@@ -207,7 +209,7 @@ export default function ShopVersionHistoryModal({
                 <span>ประวัติการสะสมแสตมป์ร้านนี้ ({collectedForShop.length} รอบ)</span>
               </span>
               <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-200">
-                สะสมได้เรื่อยๆ 🔄
+                สะสมได้เรื่อยๆ 
               </span>
             </div>
 
@@ -232,7 +234,7 @@ export default function ShopVersionHistoryModal({
                 })}
               </div>
             ) : (
-              <p className="text-[11px] text-stone-500 italic">คุณยังไม่เคยสะสมแสตมป์ร้านนี้ ออกเดินทางเช็คอินเพื่อรับแสตมป์รอบแรกได้เลย!</p>
+              <p className="text-[11px] text-stone-500 italic">{t("ver.noStampYet")}</p>
             )}
           </div>
 
@@ -255,7 +257,7 @@ export default function ShopVersionHistoryModal({
                 >
                   {/* Status Badge Top Right */}
                   {isCurrent && (
-                    <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[9px] font-black bg-stone-900 text-white shadow-2xs flex items-center gap-1">
+                    <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[9px] font-black bg-[#FD775C] text-white shadow-2xs flex items-center gap-1">
                       <span>{ver.version_code}</span>
                     </div>
                   )}
@@ -292,10 +294,10 @@ export default function ShopVersionHistoryModal({
                       <div className="space-y-0.5">
                         <span className="text-[11px] font-black text-emerald-600 flex items-center justify-center gap-1">
                           <CheckCircle2 size={13} />
-                          <span>สะสมเวอร์ชันนี้แล้ว!</span>
+                          <span>{t("ver.collected")}</span>
                         </span>
                         <span className="text-[9.5px] font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full inline-block border border-amber-200">
-                          สะสมเวอร์ชันนี้ไปแล้ว {versionTimesCollected} ครั้ง 🎖️
+                          สะสมเวอร์ชันนี้ไปแล้ว {versionTimesCollected} ครั้ง 
                         </span>
                       </div>
                     ) : (
@@ -321,7 +323,7 @@ export default function ShopVersionHistoryModal({
             className="px-4 py-2 rounded-xl text-xs font-black text-stone-900 bg-amber-400 hover:bg-amber-300 transition shadow-2xs flex items-center gap-1.5 cursor-pointer"
           >
             <MapPin size={14} />
-            <span>เดินทางไปเช็คอินร้านนี้ →</span>
+            <span>{t("ver.goCheckin")}</span>
           </button>
 
           <button

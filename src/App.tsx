@@ -331,10 +331,10 @@ export default function App() {
   // ROOT-LEVEL BANNED INTERCEPTOR FOR BANNED USERS
   if (session && isBanned) {
     return (
-      <div className="fixed inset-0 z-[99999] bg-slate-900 flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[99999] bg-[#FD775C] flex items-center justify-center p-4">
         <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center shadow-2xl border border-red-100 animate-fade-in">
           <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-5 text-4xl">
-            🛑
+            
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">บัญชีของคุณถูกระงับการใช้งาน</h2>
           <p className="text-gray-500 text-sm mb-6">คุณไม่สามารถเข้าถึงส่วนใดๆ ของระบบได้เนื่องจากบัญชีถูกแบน</p>
@@ -391,7 +391,7 @@ export default function App() {
     <PasswordGate>
       <ReviewStampProvider>
         <div className="min-h-screen flex w-full bg-[#FAF9F8] text-[#000000] font-sans overflow-x-hidden">
-          {/* 🧭 Desktop Sidebar Navigation */}
+          {/* Desktop Sidebar Navigation */}
           <Sidebar
             activeTab={tab}
             onTabChange={setTab}
@@ -399,10 +399,10 @@ export default function App() {
             onOpenMerchantModal={() => setIsMerchantApplyOpen(true)}
           />
 
-          {/* 💻 Main Content Wrapper */}
+          {/* Main Content Wrapper */}
           <div className="flex-1 flex flex-col min-w-0 md:ml-64">
 
-            {/* 📋 Top Header Bar */}
+            {/* Top Header Bar */}
             <header className="flex items-center justify-between py-3.5 px-4 md:px-8 border-b bg-white shadow-xs" style={{ borderColor: C.line }}>
               {/* Left Greeting & Mobile Logo */}
               <div className={`items-center gap-3 select-none ${showMobileSearch ? "hidden sm:flex" : "flex"}`}>
@@ -513,7 +513,7 @@ export default function App() {
                 {role === "admin" && (
                   <button
                     onClick={() => setIsAdminMenuOpen(true)}
-                    className="md:hidden px-2.5 py-1.5 rounded-xl bg-stone-900 text-white text-xs font-black flex items-center gap-1 shadow-xs cursor-pointer shrink-0"
+                    className="md:hidden px-2.5 py-1.5 rounded-xl bg-[#FD775C] text-white text-xs font-black flex items-center gap-1 shadow-xs cursor-pointer shrink-0"
                     title="เมนูแอดมินสำหรับมือถือ"
                   >
                     <ShieldCheck size={14} className="text-rose-400" />
@@ -523,7 +523,7 @@ export default function App() {
               </div>
             </header>
 
-            {/* 📄 Main Workspace Pages */}
+            {/* Main Workspace Pages */}
             <main className="flex-1 p-4 md:p-8 max-w-5xl mx-auto w-full pb-24 md:pb-8">
               {tab === "explore" && (
                 showAllTrending ? (
@@ -601,7 +601,7 @@ export default function App() {
             </main>
           </div>
 
-          {/* 📱 Mobile Bottom Navigation Bar */}
+          {/* Mobile Bottom Navigation Bar */}
           <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around py-2 bg-white border-t px-4 shrink-0" style={{ borderColor: C.line }}>
             {navTabs.map((t) => {
               const active = tab === t.id;
@@ -621,7 +621,7 @@ export default function App() {
             </button>
           </nav>
 
-          {/* 📦 Modals */}
+          {/* Modals */}
           <PlaceDetailModal
             place={selectedPlace}
             onClose={() => setSelectedPlace(null)}
@@ -673,7 +673,7 @@ export default function App() {
             }}
           />
 
-          {/* 📱 Mobile Admin Drawer Modal */}
+          {/* Mobile Admin Drawer Modal */}
           {isAdminMenuOpen && (
             <div className="fixed inset-0 bg-stone-950/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in md:hidden">
               <div className="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl border w-full max-w-md overflow-hidden p-5 space-y-4" style={{ borderColor: C.line }}>

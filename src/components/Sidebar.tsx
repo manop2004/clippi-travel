@@ -93,8 +93,8 @@ export default function Sidebar({ activeTab, onTabChange, onAddPlaceClick, onOpe
               {isPendingMerchant
                 ? "⏳ คำขอเปิดร้านค้ารออนุมัติ"
                 : isRejectedMerchant
-                ? "🔄 แก้ไขคำขอเปิดร้านค้า"
-                : "🏬 สมัครเปิดร้านค้า"}
+                ? " แก้ไขคำขอเปิดร้านค้า"
+                : " สมัครเปิดร้านค้า"}
             </span>
           </button>
         )}

@@ -69,11 +69,11 @@ export default function ExploreView({ openPlace, onViewMap, onSeeAllTrending, se
   return (
     <div className="space-y-6 md:space-y-8 w-full min-w-0 text-[#000000]">
       
-      {/* 📎 Clippi Mascot Welcome Banner */}
+      {/* Clippi Mascot Welcome Banner */}
       <div className="w-full bg-gradient-to-r from-[#FD775C] via-[#FD775C] to-[#E31E27] rounded-3xl p-5 md:p-6 text-white shadow-lg relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="z-10 space-y-1.5 text-center md:text-left">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-[10px] font-black tracking-wider uppercase">
-            <span>📎 CLIP, COLLECT, CONNECT</span>
+ <span> CLIP, COLLECT, CONNECT</span>
           </div>
           <h1 className="text-xl md:text-2xl font-black tracking-tight drop-shadow-xs">
             ยินดีต้อนรับสู่ Clippi Stamp Rally!
@@ -83,12 +83,12 @@ export default function ExploreView({ openPlace, onViewMap, onSeeAllTrending, se
           </p>
         </div>
         <div className="shrink-0 z-10">
-          <ClippiMascot size="lg" speech="พร้อมสะสมแสตมป์กันหรือยัง? 📎" animate={true} />
+ <ClippiMascot size="lg" speech="พร้อมสะสมแสตมป์กันหรือยัง? " animate={true} />
         </div>
         <div className="absolute -right-8 -bottom-8 w-48 h-48 rounded-full bg-white/10 blur-2xl pointer-events-none" />
       </div>
 
-      {/* 🎁 Campaign Banner: rewards & activities to pull users back in */}
+      {/* Campaign Banner: rewards & activities to pull users back in */}
       <CampaignBanner />
 
       <div className="w-full min-w-0">

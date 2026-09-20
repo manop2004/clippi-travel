@@ -611,7 +611,7 @@ function UserManagementContent() {
         </button>
       </div>
 
-      {/* 📊 Summary KPI Cards */}
+      {/* Summary KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-3xl border shadow-2xs flex items-center gap-3.5" style={{ borderColor: C.line }}>
           <div className="w-11 h-11 rounded-2xl bg-stone-100 flex items-center justify-center text-[#231C18] shrink-0 border" style={{ borderColor: C.line }}>
@@ -705,7 +705,7 @@ function UserManagementContent() {
               onClick={() => setRoleFilter("all")}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
                 roleFilter === "all"
-                  ? "bg-[#231C18] text-white font-black border-[#231C18] shadow-xs"
+                  ? "bg-[#FD775C] text-white font-black border-[#FD775C] shadow-xs"
                   : "bg-white text-[#8A7870] hover:bg-stone-50"
               }`}
               style={roleFilter !== "all" ? { borderColor: C.line } : undefined}
@@ -749,7 +749,7 @@ function UserManagementContent() {
               onClick={() => setRoleFilter("user")}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
                 roleFilter === "user"
-                  ? "bg-stone-800 text-white font-black border-stone-800 shadow-xs"
+                  ? "bg-[#FD775C] text-white font-black border-[#FD775C] shadow-xs"
                   : "bg-white text-[#8A7870] hover:bg-stone-50"
               }`}
               style={roleFilter !== "user" ? { borderColor: C.line } : undefined}
@@ -770,7 +770,7 @@ function UserManagementContent() {
               onClick={() => setStatusFilter("all")}
               className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer border ${
                 statusFilter === "all"
-                  ? "bg-[#231C18] text-white border-[#231C18]"
+                  ? "bg-[#FD775C] text-white border-[#FD775C]"
                   : "bg-white text-[#8A7870] hover:bg-stone-50"
               }`}
               style={statusFilter !== "all" ? { borderColor: C.line } : undefined}
@@ -816,7 +816,7 @@ function UserManagementContent() {
               onClick={() => setSortOrder("newest")}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border flex items-center gap-1.5 ${
                 sortOrder === "newest"
-                  ? "bg-[#231C18] text-white font-black border-[#231C18] shadow-xs"
+                  ? "bg-[#FD775C] text-white font-black border-[#FD775C] shadow-xs"
                   : "bg-white text-[#8A7870] hover:bg-stone-50"
               }`}
               style={sortOrder !== "newest" ? { borderColor: C.line } : undefined}
@@ -830,7 +830,7 @@ function UserManagementContent() {
               onClick={() => setSortOrder("oldest")}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border flex items-center gap-1.5 ${
                 sortOrder === "oldest"
-                  ? "bg-[#231C18] text-white font-black border-[#231C18] shadow-xs"
+                  ? "bg-[#FD775C] text-white font-black border-[#FD775C] shadow-xs"
                   : "bg-white text-[#8A7870] hover:bg-stone-50"
               }`}
               style={sortOrder !== "oldest" ? { borderColor: C.line } : undefined}
@@ -844,7 +844,7 @@ function UserManagementContent() {
               onClick={() => setSortOrder("name")}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border flex items-center gap-1.5 ${
                 sortOrder === "name"
-                  ? "bg-[#231C18] text-white font-black border-[#231C18] shadow-xs"
+                  ? "bg-[#FD775C] text-white font-black border-[#FD775C] shadow-xs"
                   : "bg-white text-[#8A7870] hover:bg-stone-50"
               }`}
               style={sortOrder !== "name" ? { borderColor: C.line } : undefined}
@@ -900,7 +900,7 @@ function UserManagementContent() {
           {isAnyFilterActive && (
             <button
               onClick={handleResetFilters}
-              className="mt-2 px-3.5 py-1.5 bg-[#231C18] text-white text-xs font-bold rounded-xl flex items-center gap-1.5"
+              className="mt-2 px-3.5 py-1.5 bg-[#FD775C] text-white text-xs font-bold rounded-xl flex items-center gap-1.5"
             >
               <RotateCcw size={13} />
               <span>ล้างการกรองทั้งหมด</span>
@@ -1093,7 +1093,7 @@ function UserManagementContent() {
                 onClick={() => setSelectedUserForAssign(null)}
                 className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-stone-100 transition cursor-pointer font-bold text-stone-500"
               >
-                ✕
+                
               </button>
             </div>
 
@@ -1141,7 +1141,7 @@ function UserManagementContent() {
                             }`}
                           >
                             <span>{s.shop_name}</span>
-                            {isSelected && <span className="text-amber-600 font-bold">✓ Selected</span>}
+                            {isSelected && <span className="text-amber-600 font-bold"> Selected</span>}
                           </div>
                         );
                       })}
@@ -1176,7 +1176,7 @@ function UserManagementContent() {
         </div>
       )}
 
-      {/* 🔍 User Activity Detail Modal (Check-ins & Reviews Inspector) */}
+      {/* User Activity Detail Modal (Check-ins & Reviews Inspector) */}
       {selectedUserForActivity && (
         <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
           <div
@@ -1210,7 +1210,7 @@ function UserManagementContent() {
                 onClick={() => setSelectedUserForActivity(null)}
                 className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-stone-200 transition cursor-pointer font-bold text-stone-600"
               >
-                ✕
+                
               </button>
             </div>
 
@@ -1338,7 +1338,7 @@ function UserManagementContent() {
                               </div>
                             </div>
                             <div className="flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200 text-amber-700 text-xs font-bold">
-                              <span>★ {rating}.0</span>
+ <span> {rating}.0</span>
                             </div>
                           </div>
 
@@ -1372,7 +1372,7 @@ function UserManagementContent() {
         </div>
       )}
 
-      {/* 📢 Admin Announcement Modal */}
+      {/* Admin Announcement Modal */}
       <AdminAnnouncementModal
         isOpen={isAnnouncementOpen}
         onClose={() => setIsAnnouncementOpen(false)}
