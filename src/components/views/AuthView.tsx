@@ -97,6 +97,7 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
   const [otpCode, setOtpCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
 
   const { t, lang } = useLang();
