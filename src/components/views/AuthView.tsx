@@ -947,7 +947,7 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
           <div className="mb-2">
  <ClippiMascot size="sm" speech="clip, collect, connect! " animate={true} />
           </div>
-          <img src="/clippi-logo.png" alt="Clippi Logo" className="h-12 object-contain mb-1" />
+          <img src="/clippi-logo-wide.png" alt="Clippi Logo" className="h-16 w-auto object-contain mb-1" />
           <p className="text-xs text-[#555555] font-semibold mt-1">
             {t("auth.sub")}
           </p>

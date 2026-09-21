@@ -306,6 +306,7 @@ const dict: Record<string, Record<Lang, string>> = {
   "notif.editResubmit": { en: "Edit & resubmit",        th: "แก้ไขข้อมูล & ยื่นคำขอใหม่", jp: "編集して再申請" },
   "notif.confirmCancel1": { en: "Cancel your shop application?\n(Your status will return to a regular user)", th: "คุณต้องการยกเลิกคำขอสมัครเปิดร้านค้า ใช่หรือไม่?\n(สถานะของคุณจะกลับมาเป็นผู้ใช้งานทั่วไป)", jp: "店舗申請をキャンセルしますか？\n（一般ユーザーに戻ります）" },
   "notif.confirmCancel2": { en: "Cancel your shop application?\n(This deletes the request and resets you to a regular user)", th: "คุณต้องการยกเลิกคำขอสมัครเปิดร้านค้า ใช่หรือไม่?\n(การยกเลิกจะลบคำขอนี้และรีเซ็ตสถานะของคุณเป็นผู้ใช้งานทั่วไป)", jp: "店舗申請をキャンセルしますか？\n（申請を削除し、一般ユーザーに戻ります）" },
+  "nav.manage":        { en: "Manage", th: "จัดการ", jp: "管理" },
 };
 
 interface LangCtxType {

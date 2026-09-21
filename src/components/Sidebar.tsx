@@ -39,7 +39,7 @@ export default function Sidebar({ activeTab, onTabChange, onAddPlaceClick, onOpe
       {/* Brand Header with Image 1 Logo */}
       <div className="flex items-center justify-between px-2 pt-1 select-none">
         <div className="flex items-center gap-2.5">
-          <img src="/clippi-logo.png" alt="Clippi Logo" className="h-10 object-contain max-w-[170px]" />
+          <img src="/clippi-logo-wide.png" alt="Clippi Logo" className="h-14 w-auto object-contain max-w-[190px]" />
         </div>
       </div>
 

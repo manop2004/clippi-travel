@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Compass, MapPin, BookOpen, User, Plus, Search, X, ShieldCheck, Store, Users, ScrollText, Trophy, Puzzle, QrCode, Image } from "lucide-react";
+import { Compass, MapPin, BookOpen, User, Plus, Search, X, ShieldCheck, Store, Users, ScrollText, Trophy, Puzzle, QrCode, Image, LayoutGrid } from "lucide-react";
 import { C } from "./constants/mockData";
 import { supabase } from "./supabaseClient";
 import { Session } from "@supabase/supabase-js";
@@ -131,6 +131,10 @@ export default function App() {
   ];
 
   const navTabs = allNavTabs.filter((item) => item.roles.includes(role));
+  // มือถือ: แถบล่างโชว์แค่แท็บผู้ใช้ทั่วไป ส่วนแท็บจัดการ (ร้านค้า/แอดมิน) ย้ายไปอยู่ใน sheet "จัดการ"
+  const mobileUserTabs = navTabs.filter((item) => item.roles.includes("user"));
+  const canManage = role === "admin" || role === "store";
+  const isManageTab = !mobileUserTabs.some((item) => item.id === tab);
 
   // State for header real-time profile display
   const [userProfile, setUserProfile] = useState<{ display_name: string | null; avatar_url: string | null }>({
@@ -431,7 +435,7 @@ export default function App() {
                     </span>
                   )}
                 </div>
-                <div className="leading-tight">
+                <div className="leading-tight hidden sm:block">
                   <p className="text-[9px] font-extrabold tracking-wider uppercase text-[#FD775C]">{t("greeting.morning")}</p>
                   <h2 className="text-xs font-black flex items-center gap-1 text-[#000000]">
                     {headerDisplayName}
@@ -509,17 +513,6 @@ export default function App() {
                   onOpenMerchantModal={() => setIsMerchantApplyOpen(true)}
                 />
 
-                {/* Mobile Admin Quick Access Button */}
-                {role === "admin" && (
-                  <button
-                    onClick={() => setIsAdminMenuOpen(true)}
-                    className="md:hidden px-2.5 py-1.5 rounded-xl bg-[#FD775C] text-white text-xs font-black flex items-center gap-1 shadow-xs cursor-pointer shrink-0"
-                    title="เมนูแอดมินสำหรับมือถือ"
-                  >
-                    <ShieldCheck size={14} className="text-rose-400" />
-                    <span className="text-[10px]">แอดมิน</span>
-                  </button>
-                )}
               </div>
             </header>
 
@@ -603,15 +596,21 @@ export default function App() {
 
           {/* Mobile Bottom Navigation Bar */}
           <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around py-2 bg-white border-t px-4 shrink-0" style={{ borderColor: C.line }}>
-            {navTabs.map((t) => {
+            {mobileUserTabs.map((t) => {
               const active = tab === t.id;
               return (
-                <button key={t.id} onClick={() => setTab(t.id)} className="flex flex-col items-center gap-0.5 py-1 flex-1">
+                <button key={t.id} onClick={() => setTab(t.id)} className="flex flex-col items-center gap-0.5 py-1 flex-1 min-w-0">
                   <t.icon size={18} color={active ? C.accent : C.inkSoft} strokeWidth={active ? 2.5 : 1.8} />
-                  <span className="text-[9px] font-bold tracking-tight" style={{ color: active ? C.accent : C.inkSoft }}>{t.label}</span>
+                  <span className="text-[9px] font-bold tracking-tight truncate max-w-full" style={{ color: active ? C.accent : C.inkSoft }}>{t.label}</span>
                 </button>
               );
             })}
+            {canManage && (
+              <button onClick={() => setIsAdminMenuOpen(true)} className="flex flex-col items-center gap-0.5 py-1 flex-1 min-w-0" aria-label={t("nav.manage")}>
+                <LayoutGrid size={18} color={isManageTab ? C.accent : C.inkSoft} strokeWidth={isManageTab ? 2.5 : 1.8} />
+                <span className="text-[9px] font-bold tracking-tight truncate max-w-full" style={{ color: isManageTab ? C.accent : C.inkSoft }}>{t("nav.manage")}</span>
+              </button>
+            )}
             <button
               onClick={() => setIsAddOpen(true)}
               className="w-8 h-8 rounded-full flex items-center justify-center text-white shadow-md ml-2 shrink-0"
@@ -680,7 +679,7 @@ export default function App() {
                 <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: C.line }}>
                   <div className="flex items-center gap-2">
                     <ShieldCheck size={20} className="text-rose-500" />
-                    <h3 className="text-sm font-black text-stone-900">เมนูแอดมินสำหรับมือถือ</h3>
+                    <h3 className="text-sm font-black text-stone-900">{t("nav.manage")}</h3>
                   </div>
                   <button
                     onClick={() => setIsAdminMenuOpen(false)}
@@ -691,6 +690,14 @@ export default function App() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    onClick={() => { setTab("store_manage"); setIsAdminMenuOpen(false); }}
+                    className={`p-3.5 rounded-2xl border text-left flex flex-col justify-between transition cursor-pointer ${tab === "store_manage" ? "bg-rose-50 border-rose-400 text-rose-950 font-black shadow-xs" : "bg-stone-50 hover:bg-stone-100 border-stone-200 text-stone-800 font-bold"}`}
+                  >
+                    <Store size={20} className="text-rose-500 mb-2" />
+                    <span className="text-xs">Manage My Shop</span>
+                  </button>
+                  {role === "admin" && (<>
                   <button
                     onClick={() => { setTab("banners_manage"); setIsAdminMenuOpen(false); }}
                     className={`p-3.5 rounded-2xl border text-left flex flex-col justify-between transition cursor-pointer ${tab === "banners_manage" ? "bg-rose-50 border-rose-400 text-rose-950 font-black shadow-xs" : "bg-stone-50 hover:bg-stone-100 border-stone-200 text-stone-800 font-bold"}`}
@@ -738,6 +745,7 @@ export default function App() {
                     <Puzzle size={20} className="text-emerald-500 mb-2" />
                     <span className="text-xs">จัดการจิ๊กซอว์</span>
                   </button>
+                  </>)}
                 </div>
               </div>
             </div>
