@@ -57,6 +57,8 @@ export interface UserStamp {
   shop_id: string | number;
   stamp_variant_id?: string;
   stamp_version_id?: string;
+  version_code?: string;
+  stamp_version_code?: string;
   stamp_version?: ShopStampVersion;
   seasonal_stamp?: any;
   collected_at: string;

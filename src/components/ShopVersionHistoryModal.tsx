@@ -4,8 +4,8 @@ import { X, Sparkles, Calendar, CheckCircle2, Lock, MapPin, Award, Clock, Tag } 
 import { useLang } from "../lib/i18n";
 import { C } from "../constants/mockData";
 import { Place, UserStamp, ShopStampVersion } from "../types/review-stamp";
-import { getShopStampVersions, getCurrentActiveStampVersion, formatExpiryLabel } from "../lib/stampHelpers";
-import { saveLocalStampVersion } from "../hooks/useReviewStamp";
+import { getShopStampVersions, getCurrentActiveStampVersion, formatExpiryLabel, getDefaultStampDesign } from "../lib/stampHelpers";
+import { saveLocalStampVersion, getPlaceById } from "../hooks/useReviewStamp";
 import StampSealRenderer from "./StampSealRenderer";
 
 interface ShopVersionHistoryModalProps {
@@ -24,27 +24,77 @@ export default function ShopVersionHistoryModal({
   openPlace,
 }: ShopVersionHistoryModalProps) {
   const { t } = useLang();
-  if (!isOpen || !shop) return null;
+  const [currentShop, setCurrentShop] = React.useState<Place | null>(shop);
 
-  const shopName = shop.shop_name || shop.name || "ร้านค้า";
-  const stampVersions = getShopStampVersions(shop);
+  React.useEffect(() => {
+    if (shop) setCurrentShop(shop);
+    if (isOpen && shop?.id) {
+      getPlaceById(shop.id).then((fresh) => {
+        if (fresh) setCurrentShop(fresh);
+      });
+    }
+  }, [isOpen, shop?.id]);
+
+  if (!isOpen || !currentShop) return null;
+
+  const activeShop = currentShop;
+  const shopName = activeShop.shop_name || activeShop.name || "ร้านค้า";
+  const stampVersions = getShopStampVersions(activeShop);
   const currentActiveVersion = getCurrentActiveStampVersion(stampVersions);
 
   // Find collected stamps for this shop
-  const collectedForShop = userStamps.filter((us) => String(us.shop_id) === String(shop.id));
+  const collectedForShop = userStamps.filter((us) => String(us.shop_id) === String(activeShop.id));
 
-  // Deduplicate versions by unique ID (falling back to version_code if id not set)
-  const uniqueVersionsMap = new Map<string, ShopStampVersion>();
+  // Deduplicate versions so official shop versions and user historical versions are properly merged without duplicates
+  const displayStampVersions: ShopStampVersion[] = [];
+
+  // 1. Official versions defined by the store in DB
   stampVersions.forEach((v) => {
-    const codeKey = (v.id || v.version_code || Math.random().toString()).trim().toLowerCase();
-    const existing = uniqueVersionsMap.get(codeKey);
-    if (!existing) {
-      uniqueVersionsMap.set(codeKey, v);
-    } else if (v.is_current && !existing.is_current) {
-      uniqueVersionsMap.set(codeKey, v);
+    const vId = (v.id || "").trim().toLowerCase();
+    const vCode = (v.version_code || "").trim().toLowerCase();
+
+    const existingIdx = displayStampVersions.findIndex((ex) => {
+      const exId = (ex.id || "").trim().toLowerCase();
+      const exCode = (ex.version_code || "").trim().toLowerCase();
+      return (vId && exId && vId === exId) || (vCode && exCode && vCode === exCode);
+    });
+
+    if (existingIdx === -1) {
+      displayStampVersions.push(v);
+    } else if (v.is_current && !displayStampVersions[existingIdx].is_current) {
+      displayStampVersions[existingIdx] = v;
     }
   });
-  const displayStampVersions = Array.from(uniqueVersionsMap.values());
+
+  // 2. Historical versions collected by user if no longer in official store active list
+  collectedForShop.forEach((st) => {
+    const vCode = (st.version_code || st.stamp_version_code || st.stamp_version?.version_code || "").trim().toLowerCase();
+    const vId = (st.stamp_version_id || st.stamp_variant_id || st.stamp_version?.id || "").trim().toLowerCase();
+
+    if (vCode || vId) {
+      const alreadyExists = displayStampVersions.some((ex) => {
+        const exId = (ex.id || "").trim().toLowerCase();
+        const exCode = (ex.version_code || "").trim().toLowerCase();
+        return (vId && exId && vId === exId) || (vCode && exCode && vCode === exCode);
+      });
+
+      if (!alreadyExists) {
+        const rawCode = st.version_code || st.stamp_version_code || st.stamp_version?.version_code || "v1.0";
+        const rawId = st.stamp_version_id || st.stamp_variant_id || st.stamp_version?.id || `version_${rawCode}`;
+        displayStampVersions.push({
+          id: rawId,
+          version_code: rawCode,
+          title: `เวอร์ชัน ${rawCode} (ประวัติเดิมที่คุณเคยสะสม)`,
+          valid_from: "",
+          valid_until: "",
+          is_current: false,
+          status: "archived",
+          note: "เวอร์ชันในอดีตที่คุณเคยสะสมไว้",
+          design: activeShop.stamp_design || getDefaultStampDesign(shopName),
+        });
+      }
+    }
+  });
 
   // Helper to match a stamp check-in to its corresponding version
   const getVersionForStamp = (st: any): ShopStampVersion => {
@@ -109,9 +159,9 @@ export default function ShopVersionHistoryModal({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-black tracking-tight">{shopName}</h3>
-                {shop.prefecture && (
-                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#FD775C] text-stone-300 border border-stone-700">
-                     {shop.prefecture}
+                {activeShop.prefecture && (
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-stone-800 text-stone-300 border border-stone-700">
+                    📍 {activeShop.prefecture}
                   </span>
                 )}
               </div>
@@ -137,7 +187,7 @@ export default function ShopVersionHistoryModal({
               <div className="space-y-0.5">
                 <div className="flex items-center gap-1.5 text-xs font-black text-amber-900">
                   <Sparkles size={14} className="text-amber-500" />
-                  <span>ตราแสตมป์ปัจจุบัน: {currentActiveVersion.version_code} ({currentActiveVersion.title})</span>
+                  <span>ตราแสตมป์ปัจจุบัน: {currentActiveVersion.version_code ? `${currentActiveVersion.version_code} - ` : ""}{currentActiveVersion.title}</span>
                 </div>
                 <p className="text-[11px] text-amber-800 flex items-center gap-1 font-semibold">
                   <Clock size={12} className="text-amber-600" />
@@ -171,12 +221,13 @@ export default function ShopVersionHistoryModal({
                     : "ม.ค.";
                   const roundNum = collectedForShop.length - idx;
                   const matchedVer = getVersionForStamp(st);
+                  const codeDisplay = (st.version_code || matchedVer?.version_code || "").trim();
 
                   return (
                     <div key={st.id || idx} className="px-2.5 py-1 rounded-xl bg-white border border-amber-200 text-[10px] font-bold text-stone-800 shadow-2xs flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                       <span>รอบที่ {roundNum}:</span>
-                      <span className="text-amber-800 font-extrabold">[{matchedVer?.version_code || "v1.0"}]</span>
+                      {codeDisplay && <span className="text-amber-800 font-extrabold">[{codeDisplay}]</span>}
                       <span className="text-stone-500">{dateStr}</span>
                     </div>
                   );
@@ -222,9 +273,11 @@ export default function ShopVersionHistoryModal({
                   </div>
 
                   {/* Version Code Tag */}
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase border bg-stone-100 text-stone-800 border-stone-300 mb-1">
-                    {ver.version_code || "v1.0"}
-                  </span>
+                  {ver.version_code && (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase border bg-stone-100 text-stone-800 border-stone-300 mb-1">
+                      {ver.version_code}
+                    </span>
+                  )}
 
                   <h4 className="text-xs font-black text-stone-900 mb-1">
                     {ver.title}

@@ -219,6 +219,9 @@ export async function collectStamp(
   if (stampVariantId || stampVersionId) {
     payload.stamp_variant_id = stampVariantId || stampVersionId;
   }
+  if (versionCode) {
+    payload.version_code = versionCode;
+  }
 
   let createdRecord: any = null;
 
@@ -229,8 +232,10 @@ export async function collectStamp(
     .single();
 
   if (error) {
-    delete payload.stamp_version_id;
+    // Retry without optional version columns if DB schema hasn't added them yet
+    delete payload.version_code;
     delete payload.stamp_variant_id;
+    delete payload.stamp_version_id;
     const { data: retryData, error: retryError } = await supabase
       .from("user_stamps")
       .insert(payload)

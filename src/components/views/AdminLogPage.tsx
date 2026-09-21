@@ -85,6 +85,16 @@ export default function AdminLogPage() {
   const [summaryUserObj, setSummaryUserObj] = useState<any | null>(null);
   const [loadingUserSummary, setLoadingUserSummary] = useState(false);
 
+  // Log Retention & Purge Modal State
+  const [showRetentionModal, setShowRetentionModal] = useState(false);
+  const [retentionDays, setRetentionDays] = useState<number>(() => {
+    const saved = localStorage.getItem("admin_log_retention_days");
+    return saved ? parseInt(saved, 10) : 30;
+  });
+  const [customDaysInput, setCustomDaysInput] = useState<string>("30");
+  const [purgingLogs, setPurgingLogs] = useState(false);
+  const [purgeSuccessMsg, setPurgeSuccessMsg] = useState<string | null>(null);
+
   const fetchUnifiedLogs = useCallback(async () => {
     setLoading(true);
     try {
@@ -601,6 +611,48 @@ export default function AdminLogPage() {
     }
   };
 
+  const handlePurgeLogs = async (daysToKeep: number) => {
+    if (!daysToKeep || daysToKeep <= 0) return;
+    const cutoffDateObj = new Date(Date.now() - daysToKeep * 86400000);
+    const confirmMsg = `คุณต้องการลบ Log ระบบที่เก่ากว่า ${daysToKeep} วัน ออกอย่างถาวรใช่หรือไม่?\n\n(Log ที่สร้างขึ้นก่อนวันที่ ${cutoffDateObj.toLocaleDateString("th-TH")} จะถูกลบทิ้งทั้งในตาราง admin_action_log และ activity_log)`;
+    if (!window.confirm(confirmMsg)) return;
+
+    setPurgingLogs(true);
+    setPurgeSuccessMsg(null);
+    try {
+      const cutoffIso = cutoffDateObj.toISOString();
+
+      await Promise.all([
+        supabase.from("admin_action_log").delete().lt("created_at", cutoffIso),
+        supabase.from("activity_log").delete().lt("created_at", cutoffIso),
+      ]);
+
+      const { data: { user: currentAdmin } } = await supabase.auth.getUser();
+      if (currentAdmin?.id) {
+        await supabase.from("admin_action_log").insert({
+          admin_id: currentAdmin.id,
+          action_type: "purge_old_logs",
+          target_table: "admin_action_log",
+          detail: {
+            retention_days: daysToKeep,
+            cutoff_date: cutoffIso,
+            note: `ลบ Log ระบบที่เก่ากว่า ${daysToKeep} วัน`,
+          },
+        });
+      }
+
+      localStorage.setItem("admin_log_retention_days", String(daysToKeep));
+      setRetentionDays(daysToKeep);
+      setPurgeSuccessMsg(`🎉 ลบ Log ที่เก่ากว่า ${daysToKeep} วันเรียบร้อยแล้ว!`);
+      await fetchUnifiedLogs();
+    } catch (err: any) {
+      console.error("Purge logs error:", err);
+      alert("เกิดข้อผิดพลาดในการลบ Log: " + (err.message || "Failed"));
+    } finally {
+      setPurgingLogs(false);
+    }
+  };
+
   // Filter logs by category and search query
   const filteredLogs = logs.filter((log) => {
     const matchesCategory =
@@ -681,15 +733,27 @@ export default function AdminLogPage() {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={fetchUnifiedLogs}
-          className="px-3.5 py-2 rounded-xl text-xs font-bold border bg-[#FAF6F0] hover:bg-stone-100 transition flex items-center gap-1.5 cursor-pointer self-start sm:self-center"
-          style={{ borderColor: C.line }}
-        >
-          <RotateCcw size={13} className="text-[#8A7870]" />
-          <span>รีเฟรช Log</span>
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-center">
+          <button
+            type="button"
+            onClick={() => setShowRetentionModal(true)}
+            className="px-3.5 py-2 rounded-xl text-xs font-bold border bg-amber-50 hover:bg-amber-100 text-amber-900 transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+            style={{ borderColor: "rgba(245, 158, 11, 0.3)" }}
+          >
+            <Clock size={13} className="text-amber-700" />
+            <span>ตั้งค่าการลบ Log</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={fetchUnifiedLogs}
+            className="px-3.5 py-2 rounded-xl text-xs font-bold border bg-[#FAF6F0] hover:bg-stone-100 transition flex items-center gap-1.5 cursor-pointer"
+            style={{ borderColor: C.line }}
+          >
+            <RotateCcw size={13} className="text-[#8A7870]" />
+            <span>รีเฟรช Log</span>
+          </button>
+        </div>
       </div>
 
       {/* Control Panel: Search & Category Filter Pills */}
@@ -1090,6 +1154,140 @@ export default function AdminLogPage() {
                 </div>
               </>
             ) : null}
+          </div>
+        </div>
+      )}
+
+      {/* Log Retention & Purge Settings Modal */}
+      {showRetentionModal && (
+        <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div
+            className="w-full max-w-md bg-white rounded-3xl p-6 border shadow-2xl space-y-5 relative select-none"
+            style={{ borderColor: C.line }}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-stone-200">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                  <Clock size={20} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-stone-900">⚙️ ตั้งค่าระยะเวลาลบ Log (Log Retention)</h3>
+                  <p className="text-[11px] text-stone-500 font-semibold">กำหนดและกำจัด Log เก่าในระบบตามระยะเวลา</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowRetentionModal(false);
+                  setPurgeSuccessMsg(null);
+                }}
+                className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 flex items-center justify-center transition cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {purgeSuccessMsg && (
+              <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold flex items-center gap-2 animate-fade-in">
+                <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                <span>{purgeSuccessMsg}</span>
+              </div>
+            )}
+
+            {/* Retention Presets */}
+            <div className="space-y-3">
+              <label className="text-xs font-black text-stone-700 block">
+                เลือกระยะเวลารักษา Log (จะทำการลบ Log ที่เก่ากว่าช่วงเวลานี้):
+              </label>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                {[
+                  { days: 7, label: "7 วัน (1 สัปดาห์)" },
+                  { days: 14, label: "14 วัน (2 สัปดาห์)" },
+                  { days: 30, label: "30 วัน (1 เดือน)" },
+                  { days: 90, label: "90 วัน (3 เดือน)" },
+                ].map((preset) => (
+                  <button
+                    key={preset.days}
+                    type="button"
+                    onClick={() => {
+                      setRetentionDays(preset.days);
+                      setCustomDaysInput(String(preset.days));
+                    }}
+                    className={`p-3 rounded-2xl border text-xs font-black transition flex items-center justify-between cursor-pointer ${
+                      retentionDays === preset.days
+                        ? "bg-amber-50 border-amber-500 text-amber-950 shadow-xs"
+                        : "bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100"
+                    }`}
+                  >
+                    <span>{preset.label}</span>
+                    {retentionDays === preset.days && <CheckCircle2 size={14} className="text-amber-600 shrink-0" />}
+                  </button>
+                ))}
+              </div>
+
+              {/* Custom Input */}
+              <div className="pt-2">
+                <label className="text-[11px] font-bold text-stone-600 block mb-1">
+                  หรือระบุจำนวนวันเอง (Custom Days):
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={1}
+                    max={365}
+                    value={customDaysInput}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setCustomDaysInput(val);
+                      const parsed = parseInt(val, 10);
+                      if (parsed > 0) setRetentionDays(parsed);
+                    }}
+                    placeholder="เช่น 15"
+                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs font-black outline-none bg-stone-50 focus:bg-white focus:border-amber-500 transition"
+                  />
+                  <span className="text-xs font-bold text-stone-600">วัน</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200 text-xs text-amber-900 leading-relaxed space-y-1">
+              <p className="font-black text-amber-950 flex items-center gap-1.5">
+                <Sparkles size={14} className="text-amber-600" />
+                <span>นโยบายการจัดเก็บ Log:</span>
+              </p>
+              <p className="text-[11px] font-medium text-amber-800">
+                Log ที่สร้างก่อนวันที่ <strong className="text-stone-900 underline">{new Date(Date.now() - retentionDays * 86400000).toLocaleDateString("th-TH")}</strong> (เก่ากว่า {retentionDays} วัน) จะถูกลบทิ้งถาวร
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2 pt-2 border-t border-stone-200">
+              <button
+                type="button"
+                disabled={purgingLogs}
+                onClick={() => handlePurgeLogs(retentionDays)}
+                className="flex-1 py-2.5 rounded-xl text-xs font-black text-white bg-rose-600 hover:bg-rose-700 transition shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {purgingLogs ? (
+                  <Loader2 size={15} className="animate-spin" />
+                ) : (
+                  <>
+                    <RotateCcw size={14} />
+                    <span>ลบ Log ที่เก่ากว่า {retentionDays} วันออกทันที</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowRetentionModal(false)}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold border border-stone-300 bg-stone-100 hover:bg-stone-200 text-stone-700 transition cursor-pointer"
+              >
+                ปิด
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -17,6 +17,11 @@ import {
   ShieldCheck,
   FileText,
   Upload,
+  KeyRound,
+  ArrowLeft,
+  RefreshCw,
+  MailCheck,
+  ShieldAlert,
   X
 } from "lucide-react";
 import { C } from "../../constants/mockData";
@@ -85,11 +90,33 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
   const [ownershipFile, setOwnershipFile] = useState<File | null>(null);
   const [ownershipFileName, setOwnershipFileName] = useState<string>("");
 
+  // OTP & Reset Password Sub-Flow States
+  const [otpSubFlow, setOtpSubFlow] = useState<
+    "none" | "verify_signup_otp" | "forgot_email" | "forgot_otp" | "new_password"
+  >("none");
+  const [otpCode, setOtpCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [resendTimer, setResendTimer] = useState(0);
+
   const { t, lang } = useLang();
+
+  // Resend timer countdown effect
+  useEffect(() => {
+    if (resendTimer > 0) {
+      const timer = setTimeout(() => setResendTimer((prev) => prev - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendTimer]);
 
   const passwordReqs = evaluatePassword(password);
   const passwordScore = getPasswordScore(passwordReqs);
   const strengthInfo = getPasswordStrengthLabel(passwordScore, lang as any);
+
+  const newPasswordReqs = evaluatePassword(newPassword);
+  const newPasswordScore = getPasswordScore(newPasswordReqs);
+  const newStrengthInfo = getPasswordStrengthLabel(newPasswordScore, lang as any);
 
   const passwordRules = [
     { label: t("auth.ruleMinLength"), passed: passwordReqs.minLength },
@@ -102,6 +129,8 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
   // Clear messages on mode switch
   const handleSwitchMode = (newMode: AuthMode) => {
     setMode(newMode);
+    setOtpSubFlow("none");
+    setOtpCode("");
     setErrorMsg(null);
     setSuccessMsg(null);
     // Update query param seamlessly without full page reload
@@ -124,24 +153,185 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
     }
   };
 
-  // ── Forgot Password ──
-  const handleForgotPassword = async () => {
+  // ── OTP Handler Functions ──
+  const handleResendOtp = async (targetType: "signup" | "recovery") => {
     if (!email.trim()) {
-      setErrorMsg("กรุณากรอกอีเมลในช่องอีเมลด้านบนก่อนกดลืมรหัสผ่าน");
+      setErrorMsg("กรุณากรอกอีเมลก่อนขอรหัส OTP ใหม่");
+      return;
+    }
+    if (resendTimer > 0) return;
+
+    setLoading(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    try {
+      if (targetType === "signup") {
+        const { error } = await supabase.auth.resend({
+          type: "signup",
+          email: email.trim(),
+        });
+        if (error) {
+          const { error: fallbackErr } = await supabase.auth.signInWithOtp({ email: email.trim() });
+          if (fallbackErr) throw fallbackErr;
+        }
+      } else {
+        const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+        if (error) throw error;
+      }
+      setResendTimer(60);
+      setSuccessMsg(`ส่งรหัส OTP 6 หลักชุดใหม่ไปยังอีเมล ${email.trim()} เรียบร้อยแล้ว`);
+    } catch (err: any) {
+      console.error("Resend OTP failed:", err);
+      setErrorMsg(err.message || "ไม่สามารถส่งรหัส OTP ใหม่ได้ กรุณาลองใหม่อีกครั้ง");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifySignupOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otpCode.trim() || otpCode.trim().length < 6) {
+      setErrorMsg("กรุณากรอกรหัส OTP 6 หลักให้ครบถ้วน");
       return;
     }
     setLoading(true);
     setErrorMsg(null);
     setSuccessMsg(null);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: `${window.location.origin}/reset-password`,
+      let { data, error } = await supabase.auth.verifyOtp({
+        email: email.trim(),
+        token: otpCode.trim(),
+        type: "signup",
+      });
+
+      if (error) {
+        const resFallback = await supabase.auth.verifyOtp({
+          email: email.trim(),
+          token: otpCode.trim(),
+          type: "email",
+        });
+        data = resFallback.data;
+        error = resFallback.error;
+      }
+
+      if (error) throw error;
+
+      if (!data?.session && password.trim()) {
+        try {
+          await supabase.auth.signInWithPassword({
+            email: email.trim(),
+            password: password.trim(),
+          });
+        } catch (e) {}
+      }
+
+      setSuccessMsg("🎉 ยืนยันอีเมลด้วยรหัส OTP สำเร็จแล้ว! กำลังนำคุณเข้าสู่ระบบ...");
+      setTimeout(() => {
+        setOtpSubFlow("none");
+      }, 1200);
+    } catch (err: any) {
+      console.error("Verify signup OTP error:", err);
+      setErrorMsg(
+        err.message?.includes("Token has expired") || err.message?.includes("invalid")
+          ? "รหัส OTP ไม่ถูกต้องหรือหมดอายุแล้ว กรุณากดขอรหัส OTP ใหม่อีกครั้ง"
+          : (err.message || "ยืนยันรหัส OTP ไม่สำเร็จ")
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRequestForgotOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!email.trim()) {
+      setErrorMsg("กรุณากรอกอีเมลในช่องอีเมลก่อนกดขอรหัส OTP");
+      return;
+    }
+    setLoading(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+      if (error) throw error;
+      setOtpSubFlow("forgot_otp");
+      setResendTimer(60);
+      setSuccessMsg(`ส่งรหัส OTP 6 หลักสำหรับตั้งรหัสผ่านใหม่ไปยังอีเมล ${email.trim()} เรียบร้อยแล้ว`);
+    } catch (err: any) {
+      console.error("Request forgot OTP failed:", err);
+      setErrorMsg(err.message || "ไม่สามารถส่งรหัส OTP ได้ กรุณาตรวจสอบอีเมลและลองใหม่อีกครั้ง");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyRecoveryOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otpCode.trim() || otpCode.trim().length < 6) {
+      setErrorMsg("กรุณากรอกรหัส OTP 6 หลักให้ครบถ้วน");
+      return;
+    }
+    setLoading(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    try {
+      let { data, error } = await supabase.auth.verifyOtp({
+        email: email.trim(),
+        token: otpCode.trim(),
+        type: "recovery",
+      });
+
+      if (error) {
+        const resFallback = await supabase.auth.verifyOtp({
+          email: email.trim(),
+          token: otpCode.trim(),
+          type: "email",
+        });
+        data = resFallback.data;
+        error = resFallback.error;
+      }
+
+      if (error) throw error;
+
+      setOtpSubFlow("new_password");
+      setSuccessMsg("✅ ยืนยันรหัส OTP สำเร็จ! กรุณากำหนดรหัสผ่านใหม่ด้านล่าง");
+    } catch (err: any) {
+      console.error("Verify recovery OTP error:", err);
+      setErrorMsg(
+        err.message?.includes("Token has expired") || err.message?.includes("invalid")
+          ? "รหัส OTP ไม่ถูกต้องหรือหมดอายุแล้ว กรุณากดขอรหัส OTP ใหม่อีกครั้ง"
+          : (err.message || "ยืนยันรหัส OTP ไม่สำเร็จ")
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveNewPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPassword.trim() || newPassword.length < 6) {
+      setErrorMsg("รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 6 ตัวอักษร");
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setErrorMsg("รหัสผ่านใหม่และยืนยันรหัสผ่านไม่ตรงกัน");
+      return;
+    }
+    setLoading(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword.trim(),
       });
       if (error) throw error;
-      setSuccessMsg(`ส่งลิงก์รีเซ็ตรหัสผ่านไปยังอีเมล ${email.trim()} เรียบร้อยแล้ว กรุณาตรวจสอบกล่องข้อความ (Inbox/Spam)`);
+      setSuccessMsg("🎉 ตั้งรหัสผ่านใหม่สำเร็จแล้ว! กำลังเข้าสู่ระบบ...");
+      setTimeout(() => {
+        setOtpSubFlow("none");
+        handleSwitchMode("login");
+      }, 1500);
     } catch (err: any) {
-      console.error("Reset password failed:", err);
-      setErrorMsg(err.message || "ไม่สามารถส่งอีเมลรีเซ็ตรหัสผ่านได้ กรุณาลองใหม่อีกครั้ง");
+      console.error("Update password failed:", err);
+      setErrorMsg(err.message || "ไม่สามารถเปลี่ยนรหัสผ่านใหม่ได้ กรุณาลองใหม่อีกครั้ง");
     } finally {
       setLoading(false);
     }
@@ -410,17 +600,9 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
             role: "user",
           }, { onConflict: "user_id" });
 
-          setSuccessMsg("สมัครสมาชิกสำเร็จ! กำลังนำคุณเข้าสู่ระบบ...");
-          if (!data?.session) {
-            const { error: loginErr } = await supabase.auth.signInWithPassword({
-              email: email.trim(),
-              password: password.trim(),
-            });
-            if (loginErr) {
-              setSuccessMsg("สมัครสมาชิกเรียบร้อยแล้ว กรุณาเข้าสู่ระบบด้วยบัญชีใหม่ของคุณ");
-              handleSwitchMode("login");
-            }
-          }
+          setOtpSubFlow("verify_signup_otp");
+          setResendTimer(60);
+          setSuccessMsg(`📩 สมัครสมาชิกสำเร็จ! ระบบได้ส่งรหัส OTP 6 หลักไปยังอีเมล ${email.trim()} แล้ว กรุณากรอกรหัส OTP เพื่อยืนยันตัวตน`);
         }
       } catch (err: any) {
         console.error("User signup failed:", err);
@@ -737,7 +919,9 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
             localStorage.setItem("merchant_pending_submissions", JSON.stringify(updatedLocals));
           } catch (e) {}
 
-          setSuccessMsg(" ลงทะเบียนเจ้าของร้านค้าและส่งเอกสารสำเร็จ! บัญชีของคุณอยู่ระหว่างการรออนุมัติจากแอดมิน (Pending Approval)");
+          setOtpSubFlow("verify_signup_otp");
+          setResendTimer(60);
+          setSuccessMsg(`🎉 ลงทะเบียนร้านค้าเรียบร้อยแล้ว! ระบบได้ส่งรหัส OTP 6 หลักไปยังอีเมล ${email.trim()} แล้ว กรุณากรอกรหัส OTP ด้านล่างเพื่อยืนยันตัวตน (บัญชีอยู่ระหว่างรอแอดมินอนุมัติ)`);
         }
       } catch (err: any) {
         console.error("Merchant signup failed:", err);
@@ -812,181 +996,475 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
           </div>
         )}
 
-        {/* Main Form */}
-        <form onSubmit={handleSubmit} className="space-y-3.5">
-          {/* USER SIGNUP ONLY: Display Name */}
-          {mode === "signup" && (
+        {/* Render Form or OTP Sub-Flow */}
+        {otpSubFlow !== "none" ? (
+          <div className="space-y-4 animate-in fade-in duration-200">
+            {/* 1. VERIFY SIGNUP OTP */}
+            {otpSubFlow === "verify_signup_otp" && (
+              <form onSubmit={handleVerifySignupOtp} className="space-y-4">
+                <div className="text-center space-y-1.5 p-4 rounded-2xl bg-amber-50/70 border border-amber-200">
+                  <div className="w-11 h-11 rounded-full bg-amber-500 text-white flex items-center justify-center mx-auto shadow-xs">
+                    <MailCheck size={22} />
+                  </div>
+                  <h3 className="text-sm font-black text-amber-950">
+                    ✉️ ยืนยันอีเมลด้วยรหัส OTP
+                  </h3>
+                  <p className="text-xs text-amber-800 leading-relaxed">
+                    ระบบได้ส่งรหัส OTP 6 หลักไปที่ <strong className="text-stone-900 underline">{email || "อีเมลของคุณ"}</strong> แล้ว
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-xs font-black text-stone-700 block mb-1.5 text-center">
+                    กรอกรหัส OTP 6 หลัก:
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={6}
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                    placeholder="• • • • • •"
+                    className="w-full text-center tracking-[0.4em] font-mono text-2xl font-black py-3 rounded-2xl border border-stone-300 focus:border-[#E0533C] focus:bg-white focus:outline-none bg-stone-50 transition"
+                    autoFocus
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading || otpCode.length < 6}
+                  className="w-full py-3 rounded-xl text-xs font-black text-white bg-[#E0533C] hover:bg-[#c94530] transition shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {loading ? <Loader2 size={16} className="animate-spin" /> : <span>ยืนยันรหัส OTP และเข้าสู่ระบบ</span>}
+                </button>
+
+                <div className="flex items-center justify-between text-xs pt-2 border-t border-stone-200">
+                  <button
+                    type="button"
+                    onClick={() => handleResendOtp("signup")}
+                    disabled={resendTimer > 0 || loading}
+                    className="font-bold text-amber-700 hover:underline flex items-center gap-1 cursor-pointer disabled:opacity-50 disabled:no-underline"
+                  >
+                    <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
+                    <span>{resendTimer > 0 ? `ขอรหัสใหม่ได้ใน (${resendTimer}s)` : "ขอส่งรหัส OTP ใหม่"}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setOtpSubFlow("none")}
+                    className="text-stone-500 hover:text-stone-900 font-semibold cursor-pointer"
+                  >
+                    ← ย้อนกลับ
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* 2. FORGOT PASSWORD - STEP 1: INPUT EMAIL */}
+            {otpSubFlow === "forgot_email" && (
+              <form onSubmit={handleRequestForgotOtp} className="space-y-4">
+                <div className="text-center space-y-1.5 p-4 rounded-2xl bg-amber-50/70 border border-amber-200">
+                  <div className="w-11 h-11 rounded-full bg-amber-500 text-white flex items-center justify-center mx-auto shadow-xs">
+                    <KeyRound size={22} />
+                  </div>
+                  <h3 className="text-sm font-black text-amber-950">
+                    🔐 ลืมรหัสผ่าน / รีเซ็ตรหัสผ่านด้วย OTP
+                  </h3>
+                  <p className="text-xs text-amber-800 leading-relaxed">
+                    กรอกอีเมลของคุณเพื่อรับรหัส OTP 6 หลักสำหรับตั้งรหัสผ่านใหม่
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-wider text-[#8A7870] block mb-1">
+                    อีเมลสำหรับรับรหัส OTP <span className="text-[#E0533C]">*</span>
+                  </label>
+                  <div className="relative">
+                    <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8A7870]" />
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="name@example.com"
+                      className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-stone-300 text-xs outline-none bg-stone-50/50 focus:bg-white focus:border-[#E0533C] transition"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading || !email.trim()}
+                  className="w-full py-3 rounded-xl text-xs font-black text-white bg-[#E0533C] hover:bg-[#c94530] transition shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {loading ? <Loader2 size={16} className="animate-spin" /> : <span>📩 ส่งรหัส OTP ไปยังอีเมล</span>}
+                </button>
+
+                <div className="flex items-center justify-between text-xs pt-2 border-t border-stone-200">
+                  <button
+                    type="button"
+                    onClick={() => setOtpSubFlow("forgot_otp")}
+                    className="font-bold text-amber-700 hover:underline cursor-pointer"
+                  >
+                    มีรหัส OTP แล้ว? กรอกรหัส
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setOtpSubFlow("none")}
+                    className="text-stone-500 hover:text-stone-900 font-semibold cursor-pointer"
+                  >
+                    ← กลับไปหน้าเข้าสู่ระบบ
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* 3. FORGOT PASSWORD - STEP 2: VERIFY RECOVERY OTP */}
+            {otpSubFlow === "forgot_otp" && (
+              <form onSubmit={handleVerifyRecoveryOtp} className="space-y-4">
+                <div className="text-center space-y-1.5 p-4 rounded-2xl bg-amber-50/70 border border-amber-200">
+                  <div className="w-11 h-11 rounded-full bg-amber-500 text-white flex items-center justify-center mx-auto shadow-xs">
+                    <KeyRound size={22} />
+                  </div>
+                  <h3 className="text-sm font-black text-amber-950">
+                    🔑 กรอกรหัส OTP เพื่อรีเซ็ตรหัสผ่าน
+                  </h3>
+                  <p className="text-xs text-amber-800 leading-relaxed">
+                    ระบบได้ส่งรหัส OTP 6 หลักไปที่ <strong className="text-stone-900 underline">{email}</strong> แล้ว
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-xs font-black text-stone-700 block mb-1.5 text-center">
+                    กรอกรหัส OTP 6 หลัก:
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={6}
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                    placeholder="• • • • • •"
+                    className="w-full text-center tracking-[0.4em] font-mono text-2xl font-black py-3 rounded-2xl border border-stone-300 focus:border-[#E0533C] focus:bg-white focus:outline-none bg-stone-50 transition"
+                    autoFocus
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading || otpCode.length < 6}
+                  className="w-full py-3 rounded-xl text-xs font-black text-white bg-[#E0533C] hover:bg-[#c94530] transition shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {loading ? <Loader2 size={16} className="animate-spin" /> : <span>ตรวจสอบรหัส OTP</span>}
+                </button>
+
+                <div className="flex items-center justify-between text-xs pt-2 border-t border-stone-200">
+                  <button
+                    type="button"
+                    onClick={() => handleResendOtp("recovery")}
+                    disabled={resendTimer > 0 || loading}
+                    className="font-bold text-amber-700 hover:underline flex items-center gap-1 cursor-pointer disabled:opacity-50 disabled:no-underline"
+                  >
+                    <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
+                    <span>{resendTimer > 0 ? `ขอรหัสใหม่ได้ใน (${resendTimer}s)` : "ขอส่งรหัส OTP ใหม่"}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setOtpSubFlow("forgot_email")}
+                    className="text-stone-500 hover:text-stone-900 font-semibold cursor-pointer"
+                  >
+                    ← ย้อนกลับไปกรอกอีเมล
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* 4. FORGOT PASSWORD - STEP 3: NEW PASSWORD SETUP */}
+            {otpSubFlow === "new_password" && (
+              <form onSubmit={handleSaveNewPassword} className="space-y-4">
+                <div className="text-center space-y-1.5 p-4 rounded-2xl bg-emerald-50 border border-emerald-200">
+                  <div className="w-11 h-11 rounded-full bg-emerald-600 text-white flex items-center justify-center mx-auto shadow-xs">
+                    <ShieldCheck size={22} />
+                  </div>
+                  <h3 className="text-sm font-black text-emerald-950">
+                    🔑 กำหนดรหัสผ่านใหม่ (Set New Password)
+                  </h3>
+                  <p className="text-xs text-emerald-800 leading-relaxed">
+                    กรุณากำหนดรหัสผ่านใหม่สำหรับบัญชี <strong className="text-stone-900">{email}</strong>
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-wider text-[#8A7870] block mb-1">
+                    รหัสผ่านใหม่ <span className="text-[#E0533C]">*</span>
+                  </label>
+                  <div className="relative">
+                    <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8A7870]" />
+                    <input
+                      type={showNewPassword ? "text" : "password"}
+                      required
+                      minLength={6}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-stone-300 text-xs outline-none bg-stone-50/50 focus:bg-white focus:border-[#E0533C] transition"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8A7870] hover:text-[#231C18]"
+                    >
+                      {showNewPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  </div>
+
+                  {newPassword.length > 0 && (
+                    <div className="mt-2 space-y-1.5 transition-all duration-200">
+                      <div className="flex items-center gap-2">
+                        <div className="grid grid-cols-5 gap-1 h-1 flex-1 overflow-hidden rounded-full bg-stone-200/60">
+                          {[1, 2, 3, 4, 5].map((step) => (
+                            <div
+                              key={step}
+                              className={`h-full transition-all duration-300 ${
+                                newPassword && step <= newPasswordScore
+                                  ? newStrengthInfo.bgColor
+                                  : "bg-stone-200/50"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        <span className={`text-[10px] font-bold shrink-0 ${newStrengthInfo.color}`}>
+                          {newStrengthInfo.label}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-wider text-[#8A7870] block mb-1">
+                    ยืนยันรหัสผ่านใหม่ <span className="text-[#E0533C]">*</span>
+                  </label>
+                  <div className="relative">
+                    <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8A7870]" />
+                    <input
+                      type={showNewPassword ? "text" : "password"}
+                      required
+                      minLength={6}
+                      value={confirmNewPassword}
+                      onChange={(e) => setConfirmNewPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-stone-300 text-xs outline-none bg-stone-50/50 focus:bg-white focus:border-[#E0533C] transition"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading || !newPassword.trim() || newPassword !== confirmNewPassword}
+                  className="w-full py-3 rounded-xl text-xs font-black text-white bg-[#E0533C] hover:bg-[#c94530] transition shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {loading ? <Loader2 size={16} className="animate-spin" /> : <span>บันทึกรหัสผ่านใหม่</span>}
+                </button>
+
+                <div className="text-center pt-2 border-t border-stone-200">
+                  <button
+                    type="button"
+                    onClick={() => setOtpSubFlow("none")}
+                    className="text-xs text-stone-500 hover:text-stone-900 font-semibold cursor-pointer"
+                  >
+                    ← ยกเลิก / กลับไปหน้าเข้าสู่ระบบ
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        ) : (
+          /* Main Login & Signup Form */
+          <form onSubmit={handleSubmit} className="space-y-3.5">
+            {/* USER SIGNUP ONLY: Display Name */}
+            {mode === "signup" && (
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-wider text-[#8A7870] block mb-1">
+                  {t("auth.displayName")} <span className="text-[#E0533C]">*</span>
+                </label>
+                <div className="relative">
+                  <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8A7870]" />
+                  <input
+                    type="text"
+                    required
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder="เช่น สมชาย สายเที่ยว (Somchai)"
+                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-xs outline-none bg-stone-50/50 focus:bg-white focus:border-[#E0533C] transition"
+                    style={{ borderColor: C.line }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Email Address */}
             <div>
               <label className="text-[10px] font-black uppercase tracking-wider text-[#8A7870] block mb-1">
-                {t("auth.displayName")} <span className="text-[#E0533C]">*</span>
+                {t("auth.email")} <span className="text-[#E0533C]">*</span>
               </label>
               <div className="relative">
-                <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8A7870]" />
+                <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8A7870]" />
                 <input
-                  type="text"
+                  type="email"
                   required
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="เช่น สมชาย สายเที่ยว (Somchai)"
-                  className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-xs outline-none bg-stone-50/50 focus:bg-white focus:border-[#E0533C] transition"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@example.com"
+                  className="w-full pl-10 pr-3 py-2.5 rounded-xl border text-xs outline-none bg-stone-50/50 focus:bg-white focus:border-[#E0533C] transition"
                   style={{ borderColor: C.line }}
                 />
               </div>
             </div>
-          )}
 
-          {/* Email Address */}
-          <div>
-            <label className="text-[10px] font-black uppercase tracking-wider text-[#8A7870] block mb-1">
-              {t("auth.email")} <span className="text-[#E0533C]">*</span>
-            </label>
-            <div className="relative">
-              <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8A7870]" />
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@example.com"
-                className="w-full pl-10 pr-3 py-2.5 rounded-xl border text-xs outline-none bg-stone-50/50 focus:bg-white focus:border-[#E0533C] transition"
-                style={{ borderColor: C.line }}
-              />
-            </div>
-          </div>
-
-          {/* Password */}
-          <div>
-            <label className="text-[10px] font-black uppercase tracking-wider text-[#8A7870] block mb-1">
-              {t("auth.password")} <span className="text-[#E0533C]">*</span>
-            </label>
-            <div className="relative">
-              <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8A7870]" />
-              <input
-                type={showPassword ? "text" : "password"}
-                required
-                minLength={mode !== "login" ? 6 : 1}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onFocus={() => setIsPasswordFocused(true)}
-                onBlur={() => setIsPasswordFocused(false)}
-                placeholder="••••••••"
-                className="w-full pl-10 pr-10 py-2.5 rounded-xl border text-xs outline-none bg-stone-50/50 focus:bg-white focus:border-[#E0533C] transition"
-                style={{ borderColor: C.line }}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8A7870] hover:text-[#231C18]"
-              >
-                {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
-              </button>
-            </div>
-
-            {mode === "login" && (
-              <div className="flex justify-end mt-1.5">
-                <button
-                  type="button"
-                  onClick={handleForgotPassword}
-                  className="text-[11px] font-bold text-[#FD775C] hover:text-[#E31E27] transition cursor-pointer"
-                >
-                  ลืมรหัสผ่าน? / ตั้งรหัสผ่านใหม่
-                </button>
-              </div>
-            )}
-
-            {/* Password security requirement indicators for Signup (Show ONLY on Focus or Typing) */}
-            {mode !== "login" && (isPasswordFocused || password.length > 0) && (
-              <div className="mt-2 space-y-1.5 transition-all duration-200 animate-in fade-in slide-in-from-top-1">
-                {/* Thin 5-step progress bar & label */}
-                <div className="flex items-center gap-2">
-                  <div className="grid grid-cols-5 gap-1 h-1 flex-1 overflow-hidden rounded-full bg-stone-200/60">
-                    {[1, 2, 3, 4, 5].map((step) => (
-                      <div
-                        key={step}
-                        className={`h-full transition-all duration-300 ${
-                          password && step <= passwordScore
-                            ? strengthInfo.bgColor
-                            : "bg-stone-200/50"
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  {password ? (
-                    <span className={`text-[10px] font-bold shrink-0 ${strengthInfo.color}`}>
-                      {strengthInfo.label}
-                    </span>
-                  ) : (
-                    <span className="text-[10px] text-stone-400 font-medium shrink-0">
-                      {t("auth.passwordStrength")}
-                    </span>
-                  )}
-                </div>
-
-                {/* Sleek inline requirement badges */}
-                <div className="flex flex-wrap gap-1 pt-0.5">
-                  {passwordRules.map((rule, idx) => (
-                    <span
-                      key={idx}
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold transition-all duration-150 border ${
-                        rule.passed
-                          ? "bg-emerald-50 text-emerald-700 border-emerald-200/80"
-                          : "bg-stone-50 text-stone-400 border-stone-200/60"
-                      }`}
-                    >
-                      {rule.passed ? (
-                        <CheckCircle2 size={10} className="text-emerald-600 shrink-0" />
-                      ) : (
-                        <span className="w-1 h-1 rounded-full bg-stone-300 inline-block shrink-0" />
-                      )}
-                      {rule.label}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Confirm Password (SIGNUP ONLY) */}
-          {mode !== "login" && (
+            {/* Password */}
             <div>
               <label className="text-[10px] font-black uppercase tracking-wider text-[#8A7870] block mb-1">
-                {t("auth.confirmPassword")} <span className="text-[#E0533C]">*</span>
+                {t("auth.password")} <span className="text-[#E0533C]">*</span>
               </label>
               <div className="relative">
                 <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8A7870]" />
                 <input
                   type={showPassword ? "text" : "password"}
                   required
-                  minLength={8}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  minLength={mode !== "login" ? 6 : 1}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onFocus={() => setIsPasswordFocused(true)}
+                  onBlur={() => setIsPasswordFocused(false)}
                   placeholder="••••••••"
-                  className="w-full pl-10 pr-3 py-2.5 rounded-xl border text-xs outline-none bg-stone-50/50 focus:bg-white focus:border-[#E0533C] transition"
+                  className="w-full pl-10 pr-10 py-2.5 rounded-xl border text-xs outline-none bg-stone-50/50 focus:bg-white focus:border-[#E0533C] transition"
                   style={{ borderColor: C.line }}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8A7870] hover:text-[#231C18]"
+                >
+                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
               </div>
-            </div>
-          )}
 
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 rounded-xl text-xs font-black text-white transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer mt-4 bg-[#E0533C] hover:bg-[#c94530] shadow-red-100 disabled:opacity-50"
-          >
-            {loading ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <>
-                <span>
-                  {mode === "login" && t("auth.submitLogin")}
-                  {mode === "signup" && t("auth.submitUserSignup")}
-                </span>
-                <ArrowRight size={15} />
-              </>
+              {mode === "login" && (
+                <div className="flex items-center justify-between mt-2 text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => setOtpSubFlow("verify_signup_otp")}
+                    className="font-extrabold text-amber-700 hover:text-amber-900 transition cursor-pointer flex items-center gap-1"
+                  >
+                    <MailCheck size={12} />
+                    <span>ยืนยันอีเมลด้วย OTP</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOtpSubFlow("forgot_email")}
+                    className="font-bold text-[#FD775C] hover:text-[#E31E27] transition cursor-pointer flex items-center gap-1"
+                  >
+                    <KeyRound size={12} />
+                    <span>ลืมรหัสผ่าน / ตั้งรหัสด้วย OTP</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Password security requirement indicators for Signup (Show ONLY on Focus or Typing) */}
+              {mode !== "login" && (isPasswordFocused || password.length > 0) && (
+                <div className="mt-2 space-y-1.5 transition-all duration-200 animate-in fade-in slide-in-from-top-1">
+                  <div className="flex items-center gap-2">
+                    <div className="grid grid-cols-5 gap-1 h-1 flex-1 overflow-hidden rounded-full bg-stone-200/60">
+                      {[1, 2, 3, 4, 5].map((step) => (
+                        <div
+                          key={step}
+                          className={`h-full transition-all duration-300 ${
+                            password && step <= passwordScore
+                              ? strengthInfo.bgColor
+                              : "bg-stone-200/50"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    {password ? (
+                      <span className={`text-[10px] font-bold shrink-0 ${strengthInfo.color}`}>
+                        {strengthInfo.label}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-stone-400 font-medium shrink-0">
+                        {t("auth.passwordStrength")}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap gap-1 pt-0.5">
+                    {passwordRules.map((rule, idx) => (
+                      <span
+                        key={idx}
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold transition-all duration-150 border ${
+                          rule.passed
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200/80"
+                            : "bg-stone-50 text-stone-400 border-stone-200/60"
+                        }`}
+                      >
+                        {rule.passed ? (
+                          <CheckCircle2 size={10} className="text-emerald-600 shrink-0" />
+                        ) : (
+                          <span className="w-1 h-1 rounded-full bg-stone-300 inline-block shrink-0" />
+                        )}
+                        {rule.label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Confirm Password (SIGNUP ONLY) */}
+            {mode !== "login" && (
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-wider text-[#8A7870] block mb-1">
+                  {t("auth.confirmPassword")} <span className="text-[#E0533C]">*</span>
+                </label>
+                <div className="relative">
+                  <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8A7870]" />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    minLength={8}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full pl-10 pr-3 py-2.5 rounded-xl border text-xs outline-none bg-stone-50/50 focus:bg-white focus:border-[#E0533C] transition"
+                    style={{ borderColor: C.line }}
+                  />
+                </div>
+              </div>
             )}
-          </button>
-        </form>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 rounded-xl text-xs font-black text-white transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer mt-4 bg-[#E0533C] hover:bg-[#c94530] shadow-red-100 disabled:opacity-50"
+            >
+              {loading ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <>
+                  <span>
+                    {mode === "login" && t("auth.submitLogin")}
+                    {mode === "signup" && t("auth.submitUserSignup")}
+                  </span>
+                  <ArrowRight size={15} />
+                </>
+              )}
+            </button>
+          </form>
+        )}
 
         {/* OAuth Section (LOGIN & SIGNUP) */}
         <div className="my-5 flex items-center gap-3">

@@ -5,8 +5,24 @@ export interface StampDesign {
   ink_color?: string;
   custom_text_color?: string;
   sub_text_color?: string;
-  shape?: "circle" | "double_circle" | "octagon" | "square" | "stamp_edge" | "hexagon" | "rounded_square" | "none";
+  shape?:
+    | "circle"
+    | "double_circle"
+    | "oval"
+    | "square"
+    | "rounded_square"
+    | "double_square"
+    | "hexagon"
+    | "octagon"
+    | "diamond"
+    | "flower"
+    | "shield"
+    | "star_badge"
+    | "ticket_cut"
+    | "stamp_edge"
+    | "none";
   preset_icon?: string;
+  custom_emoji?: string;
   custom_text?: string;
   sub_text?: string;
   show_border?: boolean;
@@ -20,6 +36,12 @@ export interface StampDesign {
   custom_text_font_style?: "sans" | "serif" | "traditional" | "vintage" | "rounded" | "mono" | "japanese";
   sub_text_font_style?: "sans" | "serif" | "traditional" | "vintage" | "rounded" | "mono" | "japanese";
 }
+
+export const STAMP_PRESET_EMOJIS = [
+  { category: "ญี่ปุ่น & ท่องเที่ยว", emojis: ["🌸", "⛩️", "🏯", "🗻", "🚄", "✈️", "♨️", "🏮", "🎌", "🎒", "🗼", "🗺️"] },
+  { category: "อาหาร & เครื่องดื่ม", emojis: ["☕", "🍜", "🍣", "🍡", "🍱", "🍵", "🍺", "🍰", "🍦", "🥐", "🧋", "🍕"] },
+  { category: "สัญลักษณ์ & กิจกรรม", emojis: ["⭐", "🌟", "👑", "🎯", "❤️", "🔥", "🎁", "🐾", "📷", "🎵", "🛍️", "📍"] },
+];
 
 export const STAMP_FONT_STYLES = [
   { id: "sans", name: "Prompt", label: "Prompt (โมเดิร์น สบายตา)", family: "'Prompt', sans-serif" },
@@ -64,11 +86,18 @@ export const STAMP_INK_COLORS = [
 export const STAMP_SHAPES = [
   { id: "circle", label: "วงกลม Hanko" },
   { id: "double_circle", label: "วงกลม 2 ชั้น" },
-  { id: "octagon", label: "แปดเหลี่ยม" },
+  { id: "oval", label: "วงรี Hanko" },
   { id: "square", label: "ตราสี่เหลี่ยม" },
   { id: "rounded_square", label: "สี่เหลี่ยมมุมมน" },
+  { id: "double_square", label: "สี่เหลี่ยม 2 ชั้น" },
   { id: "hexagon", label: "หกเหลี่ยม" },
-  { id: "stamp_edge", label: "ขอบหยักแสตมป์" },
+  { id: "octagon", label: "แปดเหลี่ยม" },
+  { id: "diamond", label: "ข้าวหลามตัด" },
+  { id: "flower", label: "ดอกซากุระ" },
+  { id: "shield", label: "โล่ประทับ" },
+  { id: "star_badge", label: "ดาว 8 แฉก" },
+  { id: "ticket_cut", label: "ตั๋วบากมุม" },
+  { id: "stamp_edge", label: "ขอบแสตมป์" },
 ];
 
 export const STAMP_PRESET_ICONS = [
@@ -82,9 +111,9 @@ export const STAMP_PRESET_ICONS = [
   { id: "sakura", label: "ซากุระ" },
   { id: "torii", label: "เสาโทริอิ" },
   { id: "waves", label: "คลื่นทะเล" },
-  { id: "hotel", label: "โรงแรม/ที่พัก" },
+  { id: "hotel", label: "โรงแรม" },
   { id: "shopping_bag", label: "ช้อปปิ้ง" },
-  { id: "ticket", label: "ตั๋ว/ตั๋วเดินทาง" },
+  { id: "ticket", label: "ตั๋วเดินทาง" },
   { id: "camera", label: "ถ่ายภาพ" },
   { id: "heart", label: "หัวใจ" },
   { id: "sparkles", label: "ประกายดาว" },
@@ -95,7 +124,7 @@ export const STAMP_PRESET_ICONS = [
   { id: "gift", label: "ของขวัญ" },
   { id: "paw", label: "สัตว์เลี้ยง" },
   { id: "music", label: "เสียงเพลง" },
-  { id: "scissors", label: "ตัดผม/ความงาม" },
+  { id: "scissors", label: "ความงาม" },
 ];
 
 export const STAMP_SHADOW_EFFECTS = [

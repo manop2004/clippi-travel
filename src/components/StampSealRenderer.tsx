@@ -71,23 +71,66 @@ export default function StampSealRenderer({
   const showCustomText = finalDesign.show_custom_text !== false && Boolean(mainText);
   const showSubText = finalDesign.show_sub_text !== false && Boolean(subText);
 
-  // Border thickness CSS
+  // Border thickness CSS & SVG stroke width
   let borderCss = "border-2";
-  if (!showBorder) borderCss = "border-0";
-  else if (borderWidth === "thin") borderCss = "border";
-  else if (borderWidth === "bold") {
+  let svgStrokeWidth = 3;
+  if (!showBorder) {
+    borderCss = "border-0";
+    svgStrokeWidth = 0;
+  } else if (borderWidth === "thin") {
+    borderCss = "border";
+    svgStrokeWidth = 1.5;
+  } else if (borderWidth === "bold") {
     borderCss = size === "xl" ? "border-6" : size === "lg" ? "border-4" : "border-3";
+    svgStrokeWidth = size === "xl" ? 6 : size === "lg" ? 4.5 : 3.5;
   }
 
-  // Shape classnames
+  // Shape classnames & CSS clipPath
   let shapeStyle = "rounded-full";
-  if (!showBorder || (shape as string) === "none") shapeStyle = "rounded-2xl";
-  else if (shape === "double_circle") shapeStyle = "rounded-full border-double";
-  else if (shape === "octagon") shapeStyle = "rounded-[28%]";
-  else if (shape === "square") shapeStyle = "rounded-xl";
-  else if (shape === "rounded_square") shapeStyle = "rounded-3xl";
-  else if (shape === "hexagon") shapeStyle = "rounded-[22%] rotate-45";
-  else if (shape === "stamp_edge") shapeStyle = "rounded-2xl border-dashed";
+  let clipPathStyle: string | undefined = undefined;
+  let isCustomPolygon = false;
+
+  if (!showBorder || (shape as string) === "none") {
+    shapeStyle = "rounded-2xl";
+  } else if (shape === "circle" || shape === "double_circle") {
+    shapeStyle = "rounded-full";
+  } else if (shape === "oval") {
+    shapeStyle = "rounded-[50%/36%]"; // Oval shape
+  } else if (shape === "square" || shape === "double_square") {
+    shapeStyle = "rounded-none"; // Sharp 90-degree square
+  } else if (shape === "rounded_square") {
+    shapeStyle = "rounded-2xl"; // Rounded square
+  } else if (shape === "octagon") {
+    shapeStyle = "rounded-none border-0"; // True 8-sided polygon
+    isCustomPolygon = true;
+    clipPathStyle = "polygon(29% 0%, 71% 0%, 100% 29%, 100% 71%, 71% 100%, 29% 100%, 0% 71%, 0% 29%)";
+  } else if (shape === "hexagon") {
+    shapeStyle = "rounded-none border-0"; // True 6-sided polygon
+    isCustomPolygon = true;
+    clipPathStyle = "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)";
+  } else if (shape === "diamond") {
+    shapeStyle = "rounded-none border-0"; // Diamond shape
+    isCustomPolygon = true;
+    clipPathStyle = "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)";
+  } else if (shape === "shield") {
+    shapeStyle = "rounded-none border-0"; // Royal shield shape
+    isCustomPolygon = true;
+    clipPathStyle = "polygon(50% 0%, 100% 15%, 100% 68%, 50% 100%, 0% 68%, 0% 15%)";
+  } else if (shape === "star_badge") {
+    shapeStyle = "rounded-none border-0"; // 8-point star badge
+    isCustomPolygon = true;
+    clipPathStyle = "polygon(50% 0%, 63% 18%, 85% 15%, 80% 37%, 100% 50%, 80% 63%, 85% 85%, 63% 82%, 50% 100%, 37% 82%, 15% 85%, 20% 63%, 0% 50%, 20% 37%, 15% 15%, 37% 18%)";
+  } else if (shape === "ticket_cut") {
+    shapeStyle = "rounded-none border-0"; // Ticket stub notch cut
+    isCustomPolygon = true;
+    clipPathStyle = "polygon(14% 0%, 86% 0%, 100% 14%, 100% 86%, 86% 100%, 14% 100%, 0% 86%, 0% 14%)";
+  } else if (shape === "flower") {
+    shapeStyle = "rounded-none border-0"; // 5-petal Sakura flower
+    isCustomPolygon = true;
+  } else if (shape === "stamp_edge") {
+    shapeStyle = "rounded-none border-0"; // Postage stamp edge
+    isCustomPolygon = true;
+  }
 
   // Shadow Effect CSS
   let shadowStyle: React.CSSProperties = {};
@@ -139,14 +182,30 @@ export default function StampSealRenderer({
       );
     }
 
-    const iconProps = { size: sz.iconSize, style: { color: inkColor } };
+    if (finalDesign.custom_emoji) {
+      const emojiSizeMap = {
+        sm: "text-sm",
+        md: "text-xl",
+        lg: "text-3xl",
+        xl: "text-5xl",
+      };
+      const emojiSizeClass = emojiSizeMap[size] || "text-xl";
+      return (
+        <span className={`select-none leading-none drop-shadow-2xs transition-all my-0.5 ${emojiSizeClass}`}>
+          {finalDesign.custom_emoji}
+        </span>
+      );
+    }
+
+    const iconProps = { size: sz.iconSize, color: inkColor, strokeWidth: 2 };
+
     switch (presetIcon) {
       case "store": return <Store {...iconProps} />;
+      case "train": return <Train {...iconProps} />;
+      case "fuji": return <Landmark {...iconProps} />;
       case "coffee": return <Coffee {...iconProps} />;
       case "utensils": return <Utensils {...iconProps} />;
       case "beer": return <Beer {...iconProps} />;
-      case "train": return <Train {...iconProps} />;
-      case "fuji": return <Landmark {...iconProps} />;
       case "sakura": return <Flower2 {...iconProps} />;
       case "torii": return <Building2 {...iconProps} />;
       case "waves": return <Waves {...iconProps} />;
@@ -177,14 +236,97 @@ export default function StampSealRenderer({
 
   return (
     <div
-      className={`relative shrink-0 flex flex-col items-center justify-center select-none transition-all ${sz.box} ${shapeStyle} ${borderCss} ${containerFilter} ${className}`}
+      className={`relative shrink-0 flex flex-col items-center justify-center select-none transition-all ${sz.box} ${shapeStyle} ${isCustomPolygon ? "" : borderCss} ${containerFilter} ${className}`}
       style={{
-        borderColor: showBorder ? inkColor : "transparent",
+        borderColor: showBorder && !isCustomPolygon ? inkColor : "transparent",
         backgroundColor: showBorder ? `${inkColor}0A` : "transparent",
         color: inkColor,
+        clipPath: clipPathStyle,
         ...shadowStyle,
       }}
     >
+      {/* SVG Border overlay for custom polygons */}
+      {showBorder && isCustomPolygon && (
+        <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
+          {shape === "octagon" && (
+            <polygon
+              points="29,2 71,2 98,29 98,71 71,98 29,98 2,71 2,29"
+              fill={`${inkColor}0A`}
+              stroke={inkColor}
+              strokeWidth={svgStrokeWidth}
+              strokeLinejoin="miter"
+            />
+          )}
+          {shape === "hexagon" && (
+            <polygon
+              points="50,2 97,25 97,75 50,98 3,75 3,25"
+              fill={`${inkColor}0A`}
+              stroke={inkColor}
+              strokeWidth={svgStrokeWidth}
+              strokeLinejoin="miter"
+            />
+          )}
+          {shape === "diamond" && (
+            <polygon
+              points="50,2 98,50 50,98 2,50"
+              fill={`${inkColor}0A`}
+              stroke={inkColor}
+              strokeWidth={svgStrokeWidth}
+              strokeLinejoin="miter"
+            />
+          )}
+          {shape === "shield" && (
+            <polygon
+              points="50,2 97,15 97,68 50,98 3,68 3,15"
+              fill={`${inkColor}0A`}
+              stroke={inkColor}
+              strokeWidth={svgStrokeWidth}
+              strokeLinejoin="round"
+            />
+          )}
+          {shape === "star_badge" && (
+            <polygon
+              points="50,2 63,18 85,15 80,37 98,50 80,63 85,85 63,82 50,98 37,82 15,85 20,63 2,50 20,37 15,15 37,18"
+              fill={`${inkColor}0A`}
+              stroke={inkColor}
+              strokeWidth={svgStrokeWidth}
+              strokeLinejoin="round"
+            />
+          )}
+          {shape === "ticket_cut" && (
+            <polygon
+              points="14,2 86,2 98,14 98,86 86,98 14,98 2,86 2,14"
+              fill={`${inkColor}0A`}
+              stroke={inkColor}
+              strokeWidth={svgStrokeWidth}
+              strokeLinejoin="miter"
+            />
+          )}
+          {shape === "flower" && (
+            <path
+              d="M 50 3 C 58 3 66 12 75 8 C 84 4 92 12 90 22 C 88 32 98 39 96 50 C 94 61 88 68 85 78 C 82 88 72 93 63 94 C 54 95 46 95 37 94 C 28 93 18 88 15 78 C 12 68 6 61 4 50 C 2 39 12 32 10 22 C 8 12 16 4 25 8 C 34 12 42 3 50 3 Z"
+              fill={`${inkColor}0A`}
+              stroke={inkColor}
+              strokeWidth={svgStrokeWidth}
+              strokeLinejoin="round"
+            />
+          )}
+          {shape === "stamp_edge" && (
+            <rect
+              x="2"
+              y="2"
+              width="96"
+              height="96"
+              rx="4"
+              fill={`${inkColor}0A`}
+              stroke={inkColor}
+              strokeWidth={svgStrokeWidth}
+              strokeDasharray="5 2.5"
+            />
+          )}
+        </svg>
+      )}
+
       {/* Inner Hanko Ring detail */}
       {showBorder && shape === "double_circle" && (
         <div
@@ -192,8 +334,15 @@ export default function StampSealRenderer({
         />
       )}
 
-      {/* Content Container (Counter-rotate if hexagon) */}
-      <div className={`flex flex-col items-center justify-center w-full h-full ${shape === "hexagon" ? "-rotate-45" : ""}`}>
+      {/* Inner Accent Line for Double Square */}
+      {showBorder && shape === "double_square" && (
+        <div
+          className="absolute inset-[3px] border border-current pointer-events-none opacity-60"
+        />
+      )}
+
+      {/* Content Container */}
+      <div className="flex flex-col items-center justify-center w-full h-full">
         {/* Top Main Text */}
         {showCustomText && (
           <span
