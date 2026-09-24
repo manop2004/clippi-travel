@@ -191,6 +191,44 @@ export async function collectStamp(
     throw new Error("User not authenticated");
   }
 
+  // 24-Hour Cooldown Check: Verify user hasn't collected a stamp for this shop within 24 hours
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { data: recentStamps } = await supabase
+    .from("user_stamps")
+    .select("collected_at")
+    .eq("user_id", user.id)
+    .eq("shop_id", shopId)
+    .gte("collected_at", twentyFourHoursAgo)
+    .order("collected_at", { ascending: false })
+    .limit(1);
+
+  if (recentStamps && recentStamps.length > 0) {
+    const lastTime = new Date(recentStamps[0].collected_at).getTime();
+    const remainingMs = (24 * 60 * 60 * 1000) - (Date.now() - lastTime);
+    const hours = Math.floor(remainingMs / (1000 * 60 * 60));
+    const minutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+    const timeStr = hours > 0 ? `${hours} ชั่วโมง ${minutes} นาที` : `${minutes} นาที`;
+    throw new Error(`คุณเช็คอินร้านนี้ไปแล้ว! ต้องรอคูลดาวน์อีก ${timeStr} ถึงจะเช็คอินสะสมแสตมป์รอบใหม่ได้ (จำกัด 24 ชม. ต่อ 1 ครั้ง)`);
+  }
+
+  // Store Operating Hours Check: Verify store is currently open
+  if (shopId) {
+    try {
+      const shopData = await getPlaceById(shopId);
+      if (shopData) {
+        const { getShopStatusToday } = await import("../lib/scheduleHelpers");
+        const statusInfo = getShopStatusToday(shopData);
+        if (statusInfo.isClosed) {
+          throw new Error(`🔴 ร้านค้านี้กำลังปิดอยู่! (${statusInfo.description}) สามารถเช็คอินได้เฉพาะช่วงเวลาเปิดทำการเท่านั้น (${statusInfo.openHoursStr})`);
+        }
+      }
+    } catch (e: any) {
+      if (e.message && e.message.includes("ร้านค้านี้กำลังปิดอยู่")) {
+        throw e;
+      }
+    }
+  }
+
   // Auto-fill active version details if not passed explicitly
   if ((!versionCode || !stampVersionId) && shopId) {
     try {

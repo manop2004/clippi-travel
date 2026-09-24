@@ -3,6 +3,7 @@ import {
   Share2, 
   HelpCircle, 
   ShieldCheck, 
+  ChevronLeft,
   ChevronRight, 
   LogOut,
   X,
@@ -78,6 +79,33 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage }: 
   const [avatarImgError,  setAvatarImgError]  = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const badgeScrollRef = useRef<HTMLDivElement | null>(null);
+  const [activeBadgeDot, setActiveBadgeDot] = useState(0);
+
+  const handleBadgeScroll = () => {
+    if (badgeScrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = badgeScrollRef.current;
+      const maxScroll = scrollWidth - clientWidth;
+      if (maxScroll > 0) {
+        const ratio = scrollLeft / maxScroll;
+        const totalDots = 3;
+        const index = Math.min(totalDots - 1, Math.floor(ratio * totalDots + 0.4));
+        setActiveBadgeDot(index);
+      } else {
+        setActiveBadgeDot(0);
+      }
+    }
+  };
+
+  const handleScrollBadges = (direction: "left" | "right") => {
+    if (badgeScrollRef.current) {
+      const scrollAmount = 280;
+      badgeScrollRef.current.scrollBy({
+        left: direction === "left" ? -scrollAmount : scrollAmount,
+        behavior: "smooth",
+      });
+    }
+  };
 
   // ─── Privacy settings toggle states ──────────────────────────────────────
   const [privacyPublic,    setPrivacyPublic]    = useState(true);
@@ -591,10 +619,10 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage }: 
       </div>
 
       {/* Level & Achievements Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
 
         {/* Left: Traveler Rank (Dynamic XP & Level) */}
-        <div className="md:col-span-1 bg-white rounded-3xl p-5 border flex flex-col justify-between min-h-[220px] shadow-xs" style={{ borderColor: C.line }}>
+        <div className="md:col-span-1 bg-white rounded-3xl p-5 border flex flex-col justify-between h-full min-h-[220px] shadow-xs" style={{ borderColor: C.line }}>
           <div>
             <div className="flex items-center justify-between mb-3 select-none">
               <h3 className="text-xs font-black uppercase tracking-wider text-[#8A7870]">{t("profile.travelerRank")}</h3>
@@ -637,53 +665,104 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage }: 
         </div>
 
         {/* Right: Unlocked Badges (Real data from user_badges table) */}
-        <div className="md:col-span-2 bg-white rounded-3xl p-5 border flex flex-col min-h-[220px] shadow-xs" style={{ borderColor: C.line }}>
-          <div className="flex items-center justify-between mb-4 select-none">
-            <h3 className="text-xs font-black uppercase tracking-wider text-[#8A7870]">{t("profile.unlockedBadges")}</h3>
-            <span className="text-[10px] font-bold text-[#E0533C]">
-              {unlockedBadgeCount} / {badgeList.length}
-            </span>
+        <div className="md:col-span-2 bg-white rounded-3xl p-5 border flex flex-col justify-between h-full min-h-[220px] shadow-xs relative" style={{ borderColor: C.line }}>
+          <div className="flex items-center justify-between mb-2 select-none shrink-0">
+            <div className="flex items-center gap-2">
+              <h3 className="text-xs font-black uppercase tracking-wider text-[#8A7870]">{t("profile.unlockedBadges")}</h3>
+              <span className="text-[10px] font-bold text-[#E0533C]">
+                ({unlockedBadgeCount} / {badgeList.length})
+              </span>
+            </div>
           </div>
 
           {loadingStats ? (
-            <div className="grid grid-cols-3 gap-3">
-              {[0, 1, 2].map((i) => (
+            <div className="flex gap-3 overflow-hidden my-auto">
+              {[0, 1, 2, 3].map((i) => (
                 <div
                   key={i}
-                  className="p-3.5 rounded-2xl border animate-pulse"
-                  style={{ borderColor: C.line, background: C.accentSoft, minHeight: "90px" }}
+                  className="p-3.5 rounded-2xl border animate-pulse w-[130px] shrink-0"
+                  style={{ borderColor: C.line, background: C.accentSoft, minHeight: "110px" }}
                 />
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-3">
-              {badgeList.map((b) => (
-                <div
-                  key={b.key}
-                  className={`p-3.5 rounded-2xl border text-center flex flex-col items-center justify-center transition-all ${
-                    b.locked ? "bg-stone-50/70 opacity-65" : "bg-[#FAF6F0]/60 hover:bg-[#FAF6F0]"
-                  }`}
-                  style={{ borderColor: C.line }}
-                >
+            <div className="relative group flex-1 flex flex-col justify-center my-1">
+              {/* Floating Left Arrow Button */}
+              <button
+                type="button"
+                onClick={() => handleScrollBadges("left")}
+                className="absolute -left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/95 hover:bg-white text-stone-700 shadow-md border border-stone-200/80 flex items-center justify-center z-20 cursor-pointer transition-all active:scale-90 hover:scale-105"
+                title="เลื่อนซ้าย"
+              >
+                <ChevronLeft size={16} strokeWidth={2.5} />
+              </button>
+
+              {/* Floating Right Arrow Button */}
+              <button
+                type="button"
+                onClick={() => handleScrollBadges("right")}
+                className="absolute -right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/95 hover:bg-white text-stone-700 shadow-md border border-stone-200/80 flex items-center justify-center z-20 cursor-pointer transition-all active:scale-90 hover:scale-105"
+                title="เลื่อนขวา"
+              >
+                <ChevronRight size={16} strokeWidth={2.5} />
+              </button>
+
+              {/* Horizontal Scrollable Badges List */}
+              <div
+                ref={badgeScrollRef}
+                onScroll={handleBadgeScroll}
+                className="flex overflow-x-auto flex-nowrap gap-3 py-1 px-1.5 scroll-smooth flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+              >
+                {badgeList.map((b) => (
                   <div
-                    className="w-11 h-11 rounded-full flex items-center justify-center mb-2 shadow-2xs select-none relative"
-                    style={{ background: b.locked ? "#EFE5DD" : C.accentSoft }}
+                    key={b.key}
+                    className={`w-[130px] sm:w-[140px] shrink-0 p-3.5 rounded-2xl border text-center flex flex-col items-center justify-center transition-all ${
+                      b.locked ? "bg-stone-50/70 opacity-60" : "bg-[#FAF6F0]/80 hover:bg-[#FAF6F0] border-amber-200/80 shadow-2xs"
+                    }`}
+                    style={{ borderColor: b.locked ? C.line : undefined }}
                   >
-                    <span className="text-xl" style={{ filter: b.locked ? "grayscale(1) opacity(0.5)" : "none" }}>{b.icon}</span>
-                    {!b.locked && (
-                      <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 text-white rounded-full flex items-center justify-center text-[8px]">
-                        <Check size={8} strokeWidth={3} />
-                      </span>
-                    )}
+                    <div
+                      className="w-10 h-10 rounded-full flex items-center justify-center mb-1.5 shadow-2xs select-none relative shrink-0"
+                      style={{ background: b.locked ? "#EFE5DD" : C.accentSoft }}
+                    >
+                      <span className="text-xl" style={{ filter: b.locked ? "grayscale(1) opacity(0.5)" : "none" }}>{b.icon}</span>
+                      {!b.locked && (
+                        <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 text-white rounded-full flex items-center justify-center text-[8px] shadow-xs">
+                          <Check size={8} strokeWidth={3} />
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] font-black leading-tight truncate w-full" style={{ color: b.locked ? C.inkSoft : C.ink }}>
+                      {b.name}
+                    </p>
+                    <p className="text-[9px] font-semibold text-[#8A7870] mt-0.5 truncate w-full">
+                      {b.desc}
+                    </p>
                   </div>
-                  <p className="text-[10px] font-black leading-tight truncate w-full" style={{ color: b.locked ? C.inkSoft : C.ink }}>
-                    {b.name}
-                  </p>
-                  <p className="text-[8px] font-semibold text-[#8A7870] mt-0.5 hidden sm:block truncate w-full">
-                    {b.desc}
-                  </p>
-                </div>
-              ))}
+                ))}
+              </div>
+
+              {/* Bottom Pagination Dots Indicator */}
+              <div className="flex justify-center items-center gap-1.5 mt-2 select-none">
+                {[0, 1, 2].map((idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      if (badgeScrollRef.current) {
+                        const maxScroll = badgeScrollRef.current.scrollWidth - badgeScrollRef.current.clientWidth;
+                        badgeScrollRef.current.scrollTo({
+                          left: (maxScroll / 2) * idx,
+                          behavior: "smooth",
+                        });
+                      }
+                    }}
+                    className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
+                      activeBadgeDot === idx ? "w-5 bg-[#FD775C]" : "w-1.5 bg-stone-300 hover:bg-stone-400"
+                    }`}
+                  />
+                ))}
+              </div>
             </div>
           )}
         </div>

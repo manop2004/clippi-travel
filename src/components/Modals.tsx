@@ -17,15 +17,19 @@ import StampSealRenderer from "./StampSealRenderer";
 import { getShopRules, StoreRuleItem } from "../lib/ruleHelpers";
 import { getShopStampVersions, getCurrentActiveStampVersion } from "../lib/stampHelpers";
 import ShopVersionHistoryModal from "./ShopVersionHistoryModal";
+import { isQrRequirementEnabled } from "../lib/qrSettingsHelpers";
+import { getShopCooldownStatus } from "../lib/cooldownHelpers";
 
 interface PlaceDetailModalProps {
   place: any;
   onClose: () => void;
+  onOpenScanner?: () => void;
   onEditStore?: (place: any) => void;
   onDeleteStore?: (place: any) => void;
+  onRequireAuth?: (message?: string) => void;
 }
 
-export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }: PlaceDetailModalProps) {
+export function PlaceDetailModal({ place, onClose, onOpenScanner, onEditStore, onDeleteStore, onRequireAuth }: PlaceDetailModalProps) {
   const { role, isAdmin, isStoreOwner } = useUserRole();
   const [dbReviews, setDbReviews] = useState<Review[]>([]);
   const [loadingReviews, setLoadingReviews] = useState(true);
@@ -126,93 +130,98 @@ export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }:
     fetchRealRating();
   }, [placeId, dbReviews]);
 
-  // Handle stamp collection with Geofence check
-  const GEOFENCE_RADIUS_METERS = 200;
-
+  // Handle stamp collection - check Admin setting: is QR requirement enabled?
   const handleCollectStamp = async () => {
-    if (!user || !placeId) return;
+    if (!placeId) return;
 
-    // ร้านไม่มีพิกัด → เช็คอินด้วย geofence ไม่ได้
-    if (typeof lat !== "number" || typeof lng !== "number") {
-      alert(t("alert.noCoords"));
+    if (!user) {
+      if (onRequireAuth) {
+        onRequireAuth("กรุณาเข้าสู่ระบบ หรือ สมัครสมาชิก ก่อนทำการเช็คอินรับแสตมป์");
+      } else {
+        alert("กรุณาเข้าสู่ระบบ หรือ สมัครสมาชิก ก่อนทำการเช็คอินรับแสตมป์");
+      }
       return;
     }
 
-    if (!("geolocation" in navigator)) {
-      alert(t("alert.noGeo"));
+    // Check Store Operating Hours before checkin
+    const currentStatus = getShopStatusToday(livePlace || place);
+    if (currentStatus.isClosed) {
+      alert(`🔴 ร้านค้านี้กำลังปิดอยู่! (${currentStatus.description})\nสามารถเดินทางมาเช็คอินรับแสตมป์ได้เฉพาะช่วงเวลาที่ร้านเปิดทำการเท่านั้น (${currentStatus.openHoursStr})`);
       return;
     }
 
-    setCollectingStamp(String(placeId));
+    // Check 24-hour Cooldown before checkin
+    const cooldownInfo = getShopCooldownStatus(userStamps, placeId);
+    if (cooldownInfo.isCooldown) {
+      alert(`⏱️ ติดคูลดาวน์ 24 ชั่วโมง!\nคุณเช็คอินร้านนี้ไปแล้ว ต้องรออีก ${cooldownInfo.remainingText} ถึงจะเช็คอินสะสมแสตมป์รอบใหม่ได้`);
+      return;
+    }
 
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const userLat = position.coords.latitude;
-        const userLng = position.coords.longitude;
-        const distance = haversineDistance(userLat, userLng, lat, lng);
+    // Check if Admin enabled QR requirement
+    const isRequired = isQrRequirementEnabled();
 
-        // อยู่นอกรัศมี → แจ้งเตือนระยะห่าง แล้วหยุด
-        if (distance > GEOFENCE_RADIUS_METERS) {
-          alert(
-            t("alert.tooFar")
-              .replace("{d}", formatDistance(distance))
-              .replace("{r}", String(GEOFENCE_RADIUS_METERS))
-          );
-          setCollectingStamp(null);
-          return;
-        }
+    if (isRequired) {
+      if (onOpenScanner) {
+        onClose();
+        onOpenScanner();
+        return;
+      }
+      alert("กรุณาสแกน QR Code ประจำร้านค้าเพื่อทำการเช็คอิน");
+      return;
+    }
 
-        // อยู่ในรัศมี → ทำงานต่อตามเดิม (สามารถสะสมแสตมป์รอบใหม่ได้เรื่อยๆ)
-        try {
-          const badgesBefore = await getUserBadgeCodes(user.id);
+    // When QR Scanner requirement is OFF (BYPASS SCAN by Admin):
+    // Perform direct GPS check (50m) or direct stamp collection
+    setCollectingStamp(placeId);
+    try {
+      if (navigator.geolocation && livePlace?.lat && livePlace?.lng) {
+        navigator.geolocation.getCurrentPosition(
+          async (pos) => {
+            const distMeters = haversineDistance(
+              pos.coords.latitude,
+              pos.coords.longitude,
+              livePlace.lat,
+              livePlace.lng
+            );
 
-          // นับจำนวนรอบที่เคยสะสมร้านนี้
-          const previousCount = userStamps.filter((us) => String(us.shop_id) === String(placeId)).length;
-          const newRoundNumber = previousCount + 1;
+            if (distMeters > 50) {
+              alert(`คุณอยู่ห่างจากร้านเกิน 50 เมตร! (${formatDistance(distMeters)})\nต้องอยู่ในรัศมี 50 เมตรเพื่อเช็คอิน`);
+              setCollectingStamp(null);
+              return;
+            }
 
-          const versions = getShopStampVersions(livePlace || place);
-          const currentActive = getCurrentActiveStampVersion(versions);
-
-          await collectStamp(placeId, currentActive?.id, currentActive?.id, undefined, currentActive?.version_code);
-          const updated = await getUserStamps(user.id);
-          setUserStamps(updated);
-
-          // สั่งให้ฝั่ง DB ประเมินเงื่อนไข achievement ใหม่
-          await checkAndAwardAchievements(user.id);
-          const badgesAfter = await getUserBadgeCodes(user.id);
-          const newCodes = badgesAfter.filter((c) => !badgesBefore.includes(c));
-          const newAchievements = newCodes.length > 0 ? await getAchievementsByCodes(newCodes) : [];
-
-          // คิว popup: การ์ด "เก็บสแตมป์สำเร็จ (รอบที่ X)" พร้อมส่ง shopRecord เพื่อเรนเดอร์ดีไซน์สแตมป์จริง
-          setCelebration([
-            { type: "stamp", shopName, shopRecord: place, roundNumber: newRoundNumber },
-            ...newAchievements.map((a) => ({
-              type: "achievement" as const,
-              code: a.code,
-              name: a.name,
-              icon: a.icon || "",
-              description: a.description,
-            })),
-          ]);
-        } catch (error) {
-          console.error("Error collecting stamp:", error);
-        } finally {
-          setCollectingStamp(null);
-        }
-      },
-      (error) => {
+            await collectStamp(placeId);
+            const updated = await getUserStamps(user.id);
+            setUserStamps(updated);
+            alert(`เช็คอินสำเร็จ! คุณได้รับแสตมป์ร้าน "${shopName}" เรียบร้อยแล้ว (แอดมินปิดระบบสแกน QR Code)`);
+            setCollectingStamp(null);
+          },
+          async (err) => {
+            console.warn("GPS error during bypass checkin:", err);
+            await collectStamp(placeId);
+            const updated = await getUserStamps(user.id);
+            setUserStamps(updated);
+            alert(`เช็คอินสำเร็จ! คุณได้รับแสตมป์ร้าน "${shopName}" เรียบร้อยแล้ว (แอดมินปิดระบบสแกน QR Code)`);
+            setCollectingStamp(null);
+          },
+          { enableHighAccuracy: true, timeout: 8000 }
+        );
+      } else {
+        await collectStamp(placeId);
+        const updated = await getUserStamps(user.id);
+        setUserStamps(updated);
+        alert(`เช็คอินสำเร็จ! คุณได้รับแสตมป์ร้าน "${shopName}" เรียบร้อยแล้ว (แอดมินปิดระบบสแกน QR Code)`);
         setCollectingStamp(null);
-        const msg =
-          error.code === error.PERMISSION_DENIED
-            ? t("alert.permDenied")
-            : t("alert.locFail");
-        alert(msg);
-      },
-      { timeout: 10000 }
-    );
+      }
+    } catch (e: any) {
+      console.error("Direct stamp collection error:", e);
+      alert("เกิดข้อผิดพลาดในการรับแสตมป์: " + (e.message || "Failed"));
+      setCollectingStamp(null);
+    }
   };
 
   const hasCollectedStamp = placeId ? userStamps.some(us => us.shop_id === placeId) : false;
+  const cooldownInfo = placeId ? getShopCooldownStatus(userStamps, placeId) : { isCooldown: false, remainingText: "" };
 
   if (!place) return null;
 
@@ -220,9 +229,9 @@ export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }:
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs animate-fade-in">
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
         <div
-          className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-3xl relative flex flex-col md:flex-row border shadow-2xl"
+          className="w-full max-w-3xl max-h-[90dvh] overflow-y-auto rounded-t-3xl sm:rounded-3xl relative flex flex-col md:flex-row border shadow-2xl"
           style={{ background: "#FAF6F0", borderColor: C.line }}
         >
           {/* Close Button */}
@@ -358,16 +367,26 @@ export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }:
               )}
               <button
                 onClick={handleCollectStamp}
-                disabled={collectingStamp !== null || !placeId}
-                className="flex-1 py-2.5 px-3 rounded-xl text-xs font-black text-white flex items-center justify-center gap-1.5 shadow-sm transition hover:opacity-95 disabled:opacity-70 cursor-pointer"
-                style={{ background: C.accent }}
+                disabled={collectingStamp !== null || !placeId || cooldownInfo.isCooldown || statusInfo.isClosed}
+                className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black text-white flex items-center justify-center gap-1.5 shadow-sm transition ${
+                  statusInfo.isClosed
+                    ? "bg-rose-700 opacity-85 cursor-not-allowed"
+                    : cooldownInfo.isCooldown
+                    ? "bg-stone-400 opacity-80 cursor-not-allowed"
+                    : "hover:opacity-95 cursor-pointer"
+                }`}
+                style={{ background: (statusInfo.isClosed || cooldownInfo.isCooldown) ? undefined : C.accent }}
               >
                 {collectingStamp ? (
                   <Loader2 size={13} className="animate-spin" />
                 ) : (
                   <Crosshair size={13} />
                 )}
-                {placeId && userStamps.filter(us => String(us.shop_id) === String(placeId)).length > 0
+                {statusInfo.isClosed
+                  ? ` 🔴 ร้านปิดอยู่ (${statusInfo.openHoursStr})`
+                  : cooldownInfo.isCooldown
+                  ? ` ⏱️ รอคูลดาวน์ (${cooldownInfo.remainingText})`
+                  : placeId && userStamps.filter(us => String(us.shop_id) === String(placeId)).length > 0
                   ? ` เช็คอินรับแสตมป์รอบใหม่ (รอบที่ ${userStamps.filter(us => String(us.shop_id) === String(placeId)).length + 1})`
                   : t("place.checkinHere")}
               </button>
@@ -441,15 +460,23 @@ export function PlaceDetailModal({ place, onClose, onEditStore, onDeleteStore }:
             <div>
               <div className="flex items-center justify-between mb-2.5 select-none">
                 <h3 className="text-[10px] font-black uppercase tracking-wider text-[#8A7870]">{t("section.reviews")}</h3>
-                {user && (
-                  <button
-                    onClick={() => setShowReviewForm(true)}
-                    className="text-[10px] font-black hover:underline"
-                    style={{ color: C.accent }}
-                  >
-                    {t("action.writeReview")}
-                  </button>
-                )}
+                <button
+                  onClick={() => {
+                    if (!user) {
+                      if (onRequireAuth) {
+                        onRequireAuth("กรุณาเข้าสู่ระบบ หรือ สมัครสมาชิก ก่อนเขียนรีวิว");
+                      } else {
+                        alert("กรุณาเข้าสู่ระบบ หรือ สมัครสมาชิก ก่อนเขียนรีวิว");
+                      }
+                      return;
+                    }
+                    setShowReviewForm(true);
+                  }}
+                  className="text-[10px] font-black hover:underline cursor-pointer"
+                  style={{ color: C.accent }}
+                >
+                  {t("action.writeReview")}
+                </button>
               </div>
 
               {loadingReviews ? (
@@ -1779,9 +1806,9 @@ export function AddPlaceModal({
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-fade-in">
+    <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-6 overflow-y-auto animate-fade-in">
       <div
-        className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[88vh] my-auto transition-all animate-in fade-in zoom-in-95 duration-200 border"
+        className="relative w-full max-w-2xl bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90dvh] my-0 sm:my-auto transition-all animate-in fade-in zoom-in-95 duration-200 border"
         style={{ borderColor: C.line }}
       >
         {/* Sticky Header */}

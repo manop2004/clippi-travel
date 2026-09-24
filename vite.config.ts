@@ -1,15 +1,17 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import basicSsl from '@vitejs/plugin-basic-ssl'
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     react(),
-    tailwindcss(), // 👈 เพิ่มบรรทัดนี้เข้ามา
+    tailwindcss(),
+    basicSsl(), // 👈 เพิ่ม HTTPS สำหรับทดสอบกล้อง/GPS บนมือถือในวง Wi-Fi
   ],
   server: {
-    host: true, // 👈 เพิ่มตรงนี้ครับ
+    host: true,
     port: 5173,
     allowedHosts: true,
   }

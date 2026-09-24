@@ -17,6 +17,10 @@ import { haversineDistance, formatDistance } from "../../lib/geoHelpers";
 import { JigsawPiece } from "../../constants/jigsawData";
 import { useJigsawQuests } from "../../hooks/useJigsawQuests";
 import { useLang } from "../../lib/i18n";
+import { supabase } from "../../supabaseClient";
+import jsQR from "jsqr";
+import { isQrRequirementEnabled } from "../../lib/qrSettingsHelpers";
+import { collectStamp } from "../../hooks/useReviewStamp";
 
 interface QRScannerModalProps {
   isOpen: boolean;
@@ -45,6 +49,7 @@ export default function QRScannerModal({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const scanIntervalRef = useRef<any>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
 
@@ -153,7 +158,32 @@ export default function QRScannerModal({
     setCameraActive(false);
   };
 
-  // 3. ตรวจจับ QR Code จากวิดีโอ (ใช้ Native BarcodeDetector หากเบราว์เซอร์รองรับ)
+  // 3. ตรวจจับ QR Code จากวิดีโอ (รองรับ Native BarcodeDetector + jsQR Fallback สำหรับ iOS/ทุกเบราว์เซอร์)
+  const scanFrameWithJsQR = () => {
+    if (!videoRef.current) return;
+    const video = videoRef.current;
+    if (video.videoWidth === 0 || video.videoHeight === 0) return;
+
+    if (!canvasRef.current) {
+      canvasRef.current = document.createElement("canvas");
+    }
+    const canvas = canvasRef.current;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = jsQR(imageData.data, imageData.width, imageData.height, {
+      inversionAttempts: "dontInvert",
+    });
+
+    if (code && code.data) {
+      handleScannedData(code.data);
+    }
+  };
+
   const startBarcodeScanning = () => {
     if (scanIntervalRef.current) clearInterval(scanIntervalRef.current);
 
@@ -170,16 +200,24 @@ export default function QRScannerModal({
               const barcodes = await detector.detect(videoRef.current);
               if (barcodes.length > 0 && barcodes[0].rawValue) {
                 handleScannedData(barcodes[0].rawValue);
+                return;
               }
-            } catch (e) {
-              // ignore detection loop frame errors
-            }
+            } catch (e) {}
+            scanFrameWithJsQR();
           }
-        }, 500);
+        }, 350);
+        return;
       } catch (e) {
-        console.warn("BarcodeDetector error:", e);
+        console.warn("BarcodeDetector error, fallback to jsQR:", e);
       }
     }
+
+    // Canvas Frame Decoder with jsQR for iOS Safari & browsers without BarcodeDetector
+    scanIntervalRef.current = setInterval(() => {
+      if (videoRef.current && videoRef.current.readyState >= 2 && !scanResult) {
+        scanFrameWithJsQR();
+      }
+    }, 350);
   };
 
   // Effect: จัดการเมื่อเปิด/ปิด Modal
@@ -204,8 +242,8 @@ export default function QRScannerModal({
     }
   }, [isOpen, gpsStatus, scanResult, activeTab]);
 
-  // 4. ตรวจสอบข้อมูล QR Code และคำนวณพิกัด GPS (Geofencing)
-  const handleScannedData = (scannedText: string) => {
+  // 4. ตรวจสอบข้อมูล QR Code และคำนวณพิกัด GPS (Geofencing 50 เมตร)
+  const handleScannedData = async (scannedText: string) => {
     const trimmed = scannedText.trim();
     if (!trimmed) return;
 
@@ -238,7 +276,6 @@ export default function QRScannerModal({
         );
 
         // ตรวจสอบว่าอยู่ในรัศมีที่กำหนดหรือไม่
-        // (สำหรับการทดสอบ หากห่างเกิน ให้แสดงเตือนและแจ้งระยะทางที่แท้จริง)
         const isNearby = distMeters <= piece.radiusMeters;
 
         if (!isNearby) {
@@ -269,13 +306,113 @@ export default function QRScannerModal({
       }
     }
 
-    // 4.2 ตรวจสอบแสตมป์ทั่วไป
-    if (onStampCollected) {
-      onStampCollected({ qr: trimmed, userCoords });
+    // 4.2 ตรวจสอบแสตมป์เช็คอินประจำร้าน (Merchant Stamp Check-in + 50m Geofence Radius Check)
+    let parsed: any = null;
+    try {
+      parsed = JSON.parse(trimmed);
+    } catch {
+      // Not JSON
+    }
+
+    const isStampCode = trimmed.startsWith("EKITAG-STAMP-") || (parsed && (parsed.shopId || parsed.code));
+    if (isStampCode || onStampCollected) {
+      let shopLat: number | null = parsed?.lat || parsed?.targetLat || parsed?.latitude || null;
+      let shopLng: number | null = parsed?.lng || parsed?.targetLng || parsed?.longitude || null;
+      let shopTitle = parsed?.shopName || "ร้านค้ามรดก";
+
+      const shopId = parsed?.shopId || (trimmed.startsWith("EKITAG-STAMP-") ? trimmed.replace("EKITAG-STAMP-", "") : null);
+
+      // ดึงพิกัดร้านค้าจาก Supabase หากยังไม่มีใน QR payload
+      if (shopId && (shopLat === null || shopLng === null)) {
+        try {
+          const { data: shopData } = await supabase
+            .from("century_shops")
+            .select("lat, lng, shop_name, address")
+            .eq("id", shopId)
+            .maybeSingle();
+
+          if (shopData) {
+            shopLat = shopData.lat !== undefined && shopData.lat !== null ? Number(shopData.lat) : null;
+            shopLng = shopData.lng !== undefined && shopData.lng !== null ? Number(shopData.lng) : null;
+            shopTitle = shopData.shop_name || shopTitle;
+          }
+        } catch (e) {
+          console.warn("Fetch shop coords exception:", e);
+        }
+      }
+
+      // เช็คระยะห่างด้วย Haversine: บังคับให้อยู่ในรัศมีไม่เกิน 50 เมตร (50m Radius)
+      if (typeof shopLat === "number" && typeof shopLng === "number" && !isNaN(shopLat) && !isNaN(shopLng)) {
+        const distMeters = haversineDistance(userCoords.lat, userCoords.lng, shopLat, shopLng);
+
+        if (distMeters > 50) {
+          setScanResult({
+            success: false,
+            title: "❌ คุณอยู่ห่างจากร้านเกิน 50 เมตร!",
+            message: `สแกน QR Code สำเร็จสำหรับร้าน "${shopTitle}" แต่พิกัด GPS ปัจจุบันของคุณอยู่ห่างจากร้านออกไป ${formatDistance(distMeters)} (ต้องสแกนภายในระยะรัศมีไม่เกิน 50 เมตรจากร้านเท่านั้นจึงจะเช็คอินได้)`,
+            distance: distMeters,
+          });
+          return;
+        }
+
+        // อยู่ในรัศมี 50 เมตร เช็คอินสำเร็จ!
+        if (shopId) {
+          try {
+            await collectStamp(shopId);
+          } catch (e: any) {
+            const errText = e.message || String(e);
+            if (errText.includes("ปิดอยู่") || errText.includes("ปิดบริการ")) {
+              setScanResult({
+                success: false,
+                title: "🔴 ร้านค้านี้กำลังปิดให้บริการอยู่!",
+                message: errText,
+                distance: distMeters,
+              });
+              return;
+            }
+            if (errText.includes("คูลดาวน์") || errText.includes("24")) {
+              setScanResult({
+                success: false,
+                title: "⏱️ ติดคูลดาวน์ 24 ชั่วโมง!",
+                message: errText,
+                distance: distMeters,
+              });
+              return;
+            }
+            console.warn("Auto collect stamp error:", e);
+          }
+        }
+
+        if (onStampCollected) {
+          onStampCollected({ qr: trimmed, userCoords, shopId, shopTitle, distance: distMeters });
+        }
+
+        setScanResult({
+          success: true,
+          title: "🎉 สแกนและเช็คอินสำเร็จ!",
+          message: `เช็คอินร้าน "${shopTitle}" สำเร็จ! (ตำแหน่งพิกัด GPS ถูกต้อง อยู่ในระยะห่างเพียง ${formatDistance(distMeters)})`,
+          distance: distMeters,
+        });
+        return;
+      }
+
+      // กรณีไม่พบพิกัดร้านค้าในระบบ -> ให้สิทธิ์สะสมแสตมป์
+      if (shopId) {
+        try {
+          await collectStamp(shopId);
+        } catch (e) {
+          console.warn("Auto collect stamp error (no coords):", e);
+        }
+      }
+
+      if (onStampCollected) {
+        onStampCollected({ qr: trimmed, userCoords, shopId, shopTitle });
+      }
+
       setScanResult({
         success: true,
         title: "สแกนแสตมป์สำเร็จ!",
-        message: `ได้รับแสตมป์จากรหัส: ${trimmed}`,
+        message: `ได้รับแสตมป์จากรหัส: ${shopTitle || trimmed}`,
       });
       return;
     }

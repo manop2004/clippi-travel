@@ -20,6 +20,7 @@ import {
   Share2,
   ExternalLink,
   Settings,
+  X,
 } from "lucide-react";
 import ClippiMascot from "../ClippiMascot";
 import { useLang } from "../../lib/i18n";
@@ -45,6 +46,13 @@ export default function JigsawBoardView({
   const [selectedPieceForDetail, setSelectedPieceForDetail] = useState<JigsawPiece | null>(null);
   const [copiedReward, setCopiedReward] = useState(false);
   const [showPuzzleLines, setShowPuzzleLines] = useState(false);
+
+  // Sync selectedQuestId if quests update
+  React.useEffect(() => {
+    if (quests.length > 0 && (!selectedQuestId || !quests.some((q) => q.id === selectedQuestId))) {
+      setSelectedQuestId(quests[0].id);
+    }
+  }, [quests, selectedQuestId]);
 
   // If selectedQuestId not found, fallback to first quest
   const safeQuest = selectedQuest || {
@@ -353,6 +361,7 @@ export default function JigsawBoardView({
               })}
             </div>
 
+
             {/* Completion Sparkle Banner Overlay */}
             {isComplete && (
               <div className="absolute top-3 inset-x-0 flex justify-center pointer-events-none z-30 animate-fade-in">
@@ -487,17 +496,25 @@ export default function JigsawBoardView({
 
       {/* Detail Modal for Selected Piece */}
       {selectedPieceForDetail && (
-        <div className="fixed inset-0 z-50 bg-stone-950/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-sm rounded-3xl p-6 border border-stone-200 shadow-2xl space-y-4 animate-fade-in">
+        <div
+          onClick={() => setSelectedPieceForDetail(null)}
+          className="fixed inset-0 z-50 bg-stone-950/70 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white w-full max-w-sm rounded-3xl p-6 border border-stone-200 shadow-2xl space-y-4 animate-fade-in cursor-default"
+          >
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-black uppercase text-orange-600 bg-orange-100 px-2.5 py-0.5 rounded-full">
                 ชิ้นส่วนที่ {selectedPieceForDetail.pieceIndex + 1}
               </span>
               <button
+                type="button"
                 onClick={() => setSelectedPieceForDetail(null)}
-                className="text-stone-400 hover:text-stone-700"
+                className="p-1 rounded-xl hover:bg-stone-100 text-stone-400 hover:text-stone-700 transition cursor-pointer"
+                title="ปิด"
               >
-                
+                <X size={20} />
               </button>
             </div>
 
@@ -522,8 +539,16 @@ export default function JigsawBoardView({
               </p>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2 pt-1">
               <button
+                type="button"
+                onClick={() => setSelectedPieceForDetail(null)}
+                className="px-4 py-3 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-xl text-xs transition cursor-pointer"
+              >
+                ปิด / ออก
+              </button>
+              <button
+                type="button"
                 onClick={() => {
                   setSelectedPieceForDetail(null);
                   onOpenScanner();

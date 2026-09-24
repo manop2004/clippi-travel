@@ -28,63 +28,27 @@ export const PRESET_GRADIENTS = [
   { name: "Midnight Charcoal (เข้มเรียบหรู)", value: "linear-gradient(135deg, #374151 0%, #111827 100%)" },
 ];
 
-const DEFAULT_BANNERS: AppBanner[] = [
-  {
-    id: "ban_default_1",
-    title: "ภารกิจล่าแสตมป์สะสมลุ้นรางวัลพิเศษ!",
-    subtitle: "สะสมแสตมป์ครบ 5 ดวงในเดือนนี้ รับเหรียญรางวัลพิเศษ + ของขวัญจากร้านค้าพันธมิตร",
-    tag: " ภารกิจประจำเดือน",
-    cta_text: "เริ่มสะสมเลย",
-    cta_link: "/stamp-rally",
-    bg_gradient: "linear-gradient(135deg, #FD775C 0%, #E31E27 100%)",
-    is_active: true,
-    start_date: null,
-    end_date: null,
-    display_order: 1,
-    created_at: new Date(Date.now() - 86400000 * 3).toISOString(),
-  },
-  {
-    id: "ban_default_2",
-    title: "ประกวดรีวิวสุดปัง ลุ้นรับคูปองส่วนลด!",
-    subtitle: "เขียนรีวิวพร้อมรูปถ่ายสวยๆ ลุ้นรับส่วนลดร้านค้าและบัตรของขวัญประจำสัปดาห์",
-    tag: " ประกวดรีวิว",
-    cta_text: "เขียนรีวิวเลย",
-    cta_link: "/review",
-    bg_gradient: "linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)",
-    is_active: true,
-    start_date: null,
-    end_date: null,
-    display_order: 2,
-    created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
-  },
-  {
-    id: "ban_default_3",
-    title: "ชวนเพื่อนแจก XP โบนัสทั้งคู่!",
-    subtitle: "แชร์ลิงก์ให้เพื่อนเพื่อมาเป็นสมาชิก รับ XP โบนัสทั้งคนชวนและคนสมัคร",
-    tag: " ชวนเพื่อน",
-    cta_text: "ชวนเพื่อนเลย",
-    cta_link: "/referral",
-    bg_gradient: "linear-gradient(135deg, #10B981 0%, #047857 100%)",
-    is_active: true,
-    start_date: null,
-    end_date: null,
-    display_order: 3,
-    created_at: new Date(Date.now() - 86400000).toISOString(),
-  },
-];
+const MOCK_BANNER_IDS = new Set(["ban_default_1", "ban_default_2", "ban_default_3"]);
+const DEFAULT_BANNERS: AppBanner[] = [];
 
 // Get cached local banners fallback
 export function getLocalBanners(): AppBanner[] {
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (!raw) {
-      saveLocalBanners(DEFAULT_BANNERS);
-      return DEFAULT_BANNERS;
+      return [];
     }
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_BANNERS;
+    if (Array.isArray(parsed)) {
+      const filtered = parsed.filter((b: any) => b && b.id && !MOCK_BANNER_IDS.has(b.id));
+      if (filtered.length !== parsed.length) {
+        saveLocalBanners(filtered);
+      }
+      return filtered;
+    }
+    return [];
   } catch {
-    return DEFAULT_BANNERS;
+    return [];
   }
 }
 

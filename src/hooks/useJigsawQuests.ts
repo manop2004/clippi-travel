@@ -6,36 +6,43 @@ import { MOCK_JIGSAW_QUESTS, JigsawQuest, JigsawPiece } from "../constants/jigsa
 const STORAGE_KEY_CUSTOM_QUESTS = "clippi_custom_jigsaw_quests";
 const EVENT_NAME = "jigsawQuestsUpdated";
 
+const KNOWN_MOCK_QUEST_IDS = new Set([
+  "old-town-quest",
+  "kanto-sweets-quest",
+  "kyoto-heritage-quest",
+]);
+
 // Helper: Synchronous fallback to retrieve merged quests (Default + LocalStorage)
 export function getMergedJigsawQuests(): JigsawQuest[] {
   let customQuests: JigsawQuest[] = [];
   try {
     const raw = localStorage.getItem(STORAGE_KEY_CUSTOM_QUESTS);
     if (raw) {
-      customQuests = JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        // Filter out known mock quest IDs
+        customQuests = parsed.filter(
+          (q: any) => q && q.id && !KNOWN_MOCK_QUEST_IDS.has(q.id)
+        );
+        // If we cleaned out mock quests, update localStorage cache
+        if (customQuests.length !== parsed.length) {
+          localStorage.setItem(STORAGE_KEY_CUSTOM_QUESTS, JSON.stringify(customQuests));
+        }
+      }
     }
   } catch (e) {
     console.warn("Failed to parse custom quests from localStorage:", e);
   }
 
-  // Merge default quests and custom quests
   const questMap = new Map<string, JigsawQuest>();
   for (const q of MOCK_JIGSAW_QUESTS) {
-    questMap.set(q.id, { ...q, pieces: [...q.pieces] });
+    if (!KNOWN_MOCK_QUEST_IDS.has(q.id)) {
+      questMap.set(q.id, { ...q, pieces: [...q.pieces] });
+    }
   }
 
   for (const cq of customQuests) {
-    if (questMap.has(cq.id)) {
-      // If custom version exists (e.g. updated pieces), merge pieces
-      const existing = questMap.get(cq.id)!;
-      questMap.set(cq.id, {
-        ...existing,
-        ...cq,
-        pieces: cq.pieces && cq.pieces.length > 0 ? cq.pieces : existing.pieces,
-      });
-    } else {
-      questMap.set(cq.id, cq);
-    }
+    questMap.set(cq.id, cq);
   }
 
   return Array.from(questMap.values());
@@ -55,7 +62,7 @@ export function useJigsawQuests() {
   const [quests, setQuests] = useState<JigsawQuest[]>(() => getMergedJigsawQuests());
   const [loading, setLoading] = useState(false);
 
-  // Load from Supabase (with fallback to localStorage)
+  // Load from Supabase (with fallback & merging with localStorage)
   const fetchQuests = useCallback(async () => {
     setLoading(true);
     try {
@@ -70,10 +77,13 @@ export function useJigsawQuests() {
         .select("*")
         .order("piece_index", { ascending: true });
 
-      if (!qErr && dbQuests && dbQuests.length > 0) {
+      const localQuests = getMergedJigsawQuests();
+      const localQuestMap = new Map(localQuests.map((q) => [q.id, q]));
+
+      if (!qErr && dbQuests) {
         // Map pieces to quests
         const parsedDbQuests: JigsawQuest[] = dbQuests.map((dq: any) => {
-          const questPieces: JigsawPiece[] = (dbPieces || [])
+          let questPieces: JigsawPiece[] = (dbPieces || [])
             .filter((dp: any) => dp.quest_id === dq.id)
             .map((dp: any) => ({
               id: dp.id,
@@ -86,7 +96,15 @@ export function useJigsawQuests() {
               targetLng: Number(dp.target_lng),
               radiusMeters: Number(dp.radius_meters) || 500,
               hint: dp.hint || "",
+              shopId: dp.shop_id || dp.shop_id === 0 ? dp.shop_id : null,
+              shopName: dp.shop_name || null,
             }));
+
+          // If DB returned 0 pieces for this quest, fallback to local pieces if available
+          const localMatch = localQuestMap.get(dq.id);
+          if (questPieces.length === 0 && localMatch?.pieces && localMatch.pieces.length > 0) {
+            questPieces = localMatch.pieces;
+          }
 
           return {
             id: dq.id,
@@ -104,20 +122,17 @@ export function useJigsawQuests() {
           };
         });
 
-        // Merge default quests with DB quests
-        const questMap = new Map<string, JigsawQuest>();
-        for (const q of MOCK_JIGSAW_QUESTS) {
-          questMap.set(q.id, { ...q, pieces: [...q.pieces] });
-        }
-        for (const cq of parsedDbQuests) {
-          questMap.set(cq.id, cq);
+        // Merge any local-only quests that aren't in DB yet
+        for (const lq of localQuests) {
+          if (!parsedDbQuests.some((dq) => dq.id === lq.id)) {
+            parsedDbQuests.push(lq);
+          }
         }
 
-        const merged = Array.from(questMap.values());
-        setQuests(merged);
+        setQuests(parsedDbQuests);
         saveCustomQuestsLocally(parsedDbQuests);
       } else {
-        // Table may not exist yet or empty -> use localStorage + defaults
+        // Table error or offline -> use localStorage
         setQuests(getMergedJigsawQuests());
       }
     } catch (err) {
@@ -150,7 +165,7 @@ export function useJigsawQuests() {
       gridCols: newQuest.gridCols || 2,
     };
 
-    // 1. Save to Supabase
+    // 1. Save to Supabase (only standard DB columns for pieces)
     try {
       const { data: authData } = await supabase.auth.getUser();
       await supabase.from("jigsaw_quests").insert({
@@ -168,20 +183,21 @@ export function useJigsawQuests() {
         created_by: authData?.user?.id || null,
       });
 
-      // Insert any initial pieces
       if (fullQuest.pieces.length > 0) {
-        const rows = fullQuest.pieces.map((p) => ({
-          id: p.id,
+        const rows = fullQuest.pieces.map((p, idx) => ({
+          id: p.id || `piece-${idx}-${Date.now()}`,
           quest_id: questId,
           piece_index: p.pieceIndex,
           checkpoint_name: p.checkpointName,
-          location_area: p.locationArea,
-          description: p.description,
-          qr_code_value: p.qrCodeValue,
-          target_lat: p.targetLat,
-          target_lng: p.targetLng,
-          radius_meters: p.radiusMeters,
-          hint: p.hint,
+          location_area: p.locationArea || "",
+          description: p.description || "",
+          qr_code_value: p.qrCodeValue || `CLIPPI-JIGSAW-${idx + 1}-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
+          target_lat: p.targetLat || 13.7563,
+          target_lng: p.targetLng || 100.5018,
+          radius_meters: p.radiusMeters || 500,
+          hint: p.hint || "",
+          shop_id: p.shopId || null,
+          shop_name: p.shopName || null,
         }));
         await supabase.from("jigsaw_pieces").insert(rows);
       }
@@ -189,7 +205,7 @@ export function useJigsawQuests() {
       console.warn("Supabase insert quest error (falling back to local):", e);
     }
 
-    // 2. Update LocalStorage
+    // 2. Update LocalStorage & React state
     let customList: JigsawQuest[] = [];
     try {
       const raw = localStorage.getItem(STORAGE_KEY_CUSTOM_QUESTS);
@@ -198,6 +214,7 @@ export function useJigsawQuests() {
 
     const updatedList = [...customList.filter((q) => q.id !== questId), fullQuest];
     saveCustomQuestsLocally(updatedList);
+    setQuests(updatedList);
     return fullQuest;
   };
 
@@ -214,13 +231,35 @@ export function useJigsawQuests() {
         ...(updates.rewardDescription && { reward_description: updates.rewardDescription }),
         ...(updates.rewardCode && { reward_code: updates.rewardCode }),
         ...(updates.fullImageUrl && { full_image_url: updates.fullImageUrl }),
+        ...(updates.gridRows && { grid_rows: updates.gridRows }),
+        ...(updates.gridCols && { grid_cols: updates.gridCols }),
         updated_at: new Date().toISOString(),
       }).eq("id", questId);
+
+      if (updates.pieces && updates.pieces.length > 0) {
+        await supabase.from("jigsaw_pieces").delete().eq("quest_id", questId);
+        const rows = updates.pieces.map((p, idx) => ({
+          id: p.id || `piece-${p.pieceIndex}-${Date.now()}`,
+          quest_id: questId,
+          piece_index: p.pieceIndex,
+          checkpoint_name: p.checkpointName,
+          location_area: p.locationArea || "",
+          description: p.description || "",
+          qr_code_value: p.qrCodeValue || `CLIPPI-JIGSAW-${idx + 1}-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
+          target_lat: p.targetLat || 13.7563,
+          target_lng: p.targetLng || 100.5018,
+          radius_meters: p.radiusMeters || 500,
+          hint: p.hint || "",
+          shop_id: p.shopId || null,
+          shop_name: p.shopName || null,
+        }));
+        await supabase.from("jigsaw_pieces").insert(rows);
+      }
     } catch (e) {
       console.warn("Supabase update quest error:", e);
     }
 
-    // 2. Local update
+    // 2. Local update & React state update
     let customList: JigsawQuest[] = [];
     try {
       const raw = localStorage.getItem(STORAGE_KEY_CUSTOM_QUESTS);
@@ -231,13 +270,13 @@ export function useJigsawQuests() {
     if (existingIdx >= 0) {
       customList[existingIdx] = { ...customList[existingIdx], ...updates };
     } else {
-      // Find in defaults
       const def = MOCK_JIGSAW_QUESTS.find((q) => q.id === questId);
       if (def) {
         customList.push({ ...def, ...updates });
       }
     }
     saveCustomQuestsLocally(customList);
+    setQuests(customList);
   };
 
   // DELETE Quest
@@ -256,6 +295,7 @@ export function useJigsawQuests() {
 
     const filtered = customList.filter((q) => q.id !== questId);
     saveCustomQuestsLocally(filtered);
+    setQuests(filtered);
   };
 
   // ADD Piece / Checkpoint to Quest
@@ -281,12 +321,14 @@ export function useJigsawQuests() {
         target_lng: fullPiece.targetLng,
         radius_meters: fullPiece.radiusMeters,
         hint: fullPiece.hint,
+        shop_id: fullPiece.shopId || null,
+        shop_name: fullPiece.shopName || null,
       });
     } catch (e) {
       console.warn("Supabase insert piece error:", e);
     }
 
-    // 2. Local update
+    // 2. Local update & React state
     let customList: JigsawQuest[] = [];
     try {
       const raw = localStorage.getItem(STORAGE_KEY_CUSTOM_QUESTS);
@@ -309,6 +351,7 @@ export function useJigsawQuests() {
     }
 
     saveCustomQuestsLocally(customList);
+    setQuests(customList);
     return fullPiece;
   };
 
@@ -353,6 +396,7 @@ export function useJigsawQuests() {
     }
 
     saveCustomQuestsLocally(customList);
+    setQuests(customList);
   };
 
   // DELETE Piece
@@ -383,6 +427,23 @@ export function useJigsawQuests() {
     }
 
     saveCustomQuestsLocally(customList);
+    setQuests(customList);
+  };
+
+  // DELETE All Quests
+  const deleteAllQuests = async () => {
+    try {
+      const ids = quests.map((q) => q.id);
+      if (ids.length > 0) {
+        await supabase.from("jigsaw_pieces").delete().in("quest_id", ids);
+        await supabase.from("jigsaw_quests").delete().in("id", ids);
+      }
+    } catch (e) {
+      console.warn("Error deleting all quests from Supabase:", e);
+    }
+    localStorage.removeItem(STORAGE_KEY_CUSTOM_QUESTS);
+    setQuests([]);
+    window.dispatchEvent(new CustomEvent(EVENT_NAME));
   };
 
   return {
@@ -392,6 +453,7 @@ export function useJigsawQuests() {
     createQuest,
     updateQuest,
     deleteQuest,
+    deleteAllQuests,
     addPiece,
     updatePiece,
     deletePiece,

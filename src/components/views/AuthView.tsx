@@ -40,6 +40,8 @@ export type AuthMode = "login" | "signup";
 
 interface AuthViewProps {
   initialMode?: AuthMode;
+  initialSubFlow?: "none" | "verify_signup_otp" | "forgot_email" | "forgot_otp" | "new_password";
+  onClose?: () => void;
 }
 
 const PREFECTURES = [
@@ -56,7 +58,7 @@ const SHOP_CATEGORIES = [
   { id: "other", label: "อื่นๆ (Other)" },
 ];
 
-export default function AuthView({ initialMode = "login" }: AuthViewProps) {
+export default function AuthView({ initialMode = "login", initialSubFlow, onClose }: AuthViewProps) {
   // Read mode from URL query string if present (e.g. ?mode=signup)
   const getInitialMode = (): AuthMode => {
     const params = new URLSearchParams(window.location.search);
@@ -93,7 +95,13 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
   // OTP & Reset Password Sub-Flow States
   const [otpSubFlow, setOtpSubFlow] = useState<
     "none" | "verify_signup_otp" | "forgot_email" | "forgot_otp" | "new_password"
-  >("none");
+  >(() => {
+    if (initialSubFlow) return initialSubFlow;
+    if (typeof window !== "undefined" && sessionStorage.getItem("clippi_resetting_password") === "true") {
+      return "new_password";
+    }
+    return "none";
+  });
   const [otpCode, setOtpCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
@@ -292,6 +300,8 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
 
       if (error) throw error;
 
+      sessionStorage.setItem("clippi_resetting_password", "true");
+      window.dispatchEvent(new Event("reset_password_state_changed"));
       setOtpSubFlow("new_password");
       setSuccessMsg("✅ ยืนยันรหัส OTP สำเร็จ! กรุณากำหนดรหัสผ่านใหม่ด้านล่าง");
     } catch (err: any) {
@@ -324,6 +334,9 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
         password: newPassword.trim(),
       });
       if (error) throw error;
+
+      sessionStorage.removeItem("clippi_resetting_password");
+      window.dispatchEvent(new Event("reset_password_state_changed"));
       setSuccessMsg("🎉 ตั้งรหัสผ่านใหม่สำเร็จแล้ว! กำลังเข้าสู่ระบบ...");
       setTimeout(() => {
         setOtpSubFlow("none");
@@ -942,6 +955,16 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
         className="w-full max-w-lg bg-white rounded-3xl p-6 sm:p-8 border shadow-xl relative overflow-hidden transition-all duration-300"
         style={{ borderColor: C.line }}
       >
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 flex items-center justify-center transition cursor-pointer z-30 border border-stone-200"
+            title="ปิดหน้านี้เพื่อกลับไปดูต่อ"
+          >
+            <X size={18} />
+          </button>
+        )}
         {/* Brand Header with Clippi Logo & Mascot */}
         <div className="flex flex-col items-center text-center mb-6 select-none relative">
           <div className="mb-2">
@@ -1353,15 +1376,7 @@ export default function AuthView({ initialMode = "login" }: AuthViewProps) {
               </div>
 
               {mode === "login" && (
-                <div className="flex items-center justify-between mt-2 text-[11px]">
-                  <button
-                    type="button"
-                    onClick={() => setOtpSubFlow("verify_signup_otp")}
-                    className="font-extrabold text-amber-700 hover:text-amber-900 transition cursor-pointer flex items-center gap-1"
-                  >
-                    <MailCheck size={12} />
-                    <span>ยืนยันอีเมลด้วย OTP</span>
-                  </button>
+                <div className="flex items-center justify-end mt-2 text-[11px]">
                   <button
                     type="button"
                     onClick={() => setOtpSubFlow("forgot_email")}
