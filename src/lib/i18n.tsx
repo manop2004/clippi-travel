@@ -306,7 +306,14 @@ const dict: Record<string, Record<Lang, string>> = {
   "notif.editResubmit": { en: "Edit & resubmit",        th: "แก้ไขข้อมูล & ยื่นคำขอใหม่", jp: "編集して再申請" },
   "notif.confirmCancel1": { en: "Cancel your shop application?\n(Your status will return to a regular user)", th: "คุณต้องการยกเลิกคำขอสมัครเปิดร้านค้า ใช่หรือไม่?\n(สถานะของคุณจะกลับมาเป็นผู้ใช้งานทั่วไป)", jp: "店舗申請をキャンセルしますか？\n（一般ユーザーに戻ります）" },
   "notif.confirmCancel2": { en: "Cancel your shop application?\n(This deletes the request and resets you to a regular user)", th: "คุณต้องการยกเลิกคำขอสมัครเปิดร้านค้า ใช่หรือไม่?\n(การยกเลิกจะลบคำขอนี้และรีเซ็ตสถานะของคุณเป็นผู้ใช้งานทั่วไป)", jp: "店舗申請をキャンセルしますか？\n（申請を削除し、一般ユーザーに戻ります）" },
-  "nav.manage":        { en: "Manage", th: "จัดการ", jp: "管理" },
+  "jig.showSeams":       { en: "Show puzzle seams", th: "แสดงรอยต่อจิ๊กซอว์", jp: "パズルの継ぎ目を表示" },
+  "jig.seamless":        { en: "Seamless image", th: "ภาพต่อไร้รอยต่อ", jp: "継ぎ目なしの画像" },
+  "jig.progress":        { en: "Puzzle completion", th: "ความสมบูรณ์ของภาพจิ๊กซอว์", jp: "パズルの完成度" },
+  "jig.heroDone":        { en: "All pieces assembled. Brilliant!", th: "ประกอบครบแล้ว ยอดเยี่ยมมาก!", jp: "すべてのピースが揃いました！" },
+  "jig.heroProgress":    { en: "{n} pieces so far — keep going!", th: "ได้แล้ว {n} ชิ้น สู้ต่อ!", jp: "現在 {n} ピース、その調子！" },
+  "jig.heroStart":       { en: "Let's go hunt for jigsaw pieces!", th: "ออกไปตามล่าหาจิ๊กซอว์กัน!", jp: "ジグソーのピースを探しに行こう！" },
+  "jig.completeBanner":  { en: "Excellent! You completed the puzzle", th: "ยอดเยี่ยม! ต่อชิ้นส่วนครบสมบูรณ์แล้ว", jp: "お見事！パズルが完成しました" },
+  "jig.tapHint":         { en: "Tap for a hint", th: "แตะดูคำใบ้", jp: "タップしてヒントを見る" },
 };
 
 interface LangCtxType {

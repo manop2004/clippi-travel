@@ -44,6 +44,7 @@ export default function JigsawBoardView({
   const selectedQuest = quests.find((q) => q.id === selectedQuestId) || quests[0];
   const [selectedPieceForDetail, setSelectedPieceForDetail] = useState<JigsawPiece | null>(null);
   const [copiedReward, setCopiedReward] = useState(false);
+  const [showPuzzleLines, setShowPuzzleLines] = useState(false);
 
   // If selectedQuestId not found, fallback to first quest
   const safeQuest = selectedQuest || {
@@ -115,7 +116,7 @@ export default function JigsawBoardView({
             title={t("jig.manageTitle")}
           >
             <Settings size={13} />
- <span>{t("jig.manageQuests")}</span>
+            <span>{t("jig.manageQuests")}</span>
           </button>
         )}
       </div>
@@ -161,10 +162,10 @@ export default function JigsawBoardView({
             size="md"
             speech={
               isComplete
-                ? "ประกอบครบแล้ว ยอดเยี่ยมมาก! "
+                ? t("jig.heroDone")
                 : userPiecesCount > 0
-                ? `ได้แล้ว ${userPiecesCount} ชิ้น สู้ต่อ! `
-                : "ออกไปตามล่าหาจิ๊กซอว์กัน! "
+                ? t("jig.heroProgress").replace("{n}", String(userPiecesCount))
+                : t("jig.heroStart")
             }
             animate={true}
           />
@@ -176,7 +177,7 @@ export default function JigsawBoardView({
       <div className="bg-white p-4 rounded-2xl border border-stone-200 shadow-xs flex flex-col gap-2">
         <div className="flex items-center justify-between text-xs font-black">
           <span className="text-stone-800 flex items-center gap-1.5">
-             ความสมบูรณ์ของภาพจิ๊กซอว์
+            {t("jig.progress")}
           </span>
           <span className="text-[#FD775C]">{progressPercent}%</span>
         </div>
@@ -193,88 +194,179 @@ export default function JigsawBoardView({
         
         {/* Left / Top: Puzzle Assembly Board */}
         <div className="lg:col-span-6 bg-white p-5 sm:p-6 rounded-3xl border border-stone-200 shadow-sm flex flex-col items-center">
-          <div className="w-full flex items-center justify-between mb-4">
-            <h3 className="font-black text-sm text-stone-900 flex items-center gap-2">
- <span>{t("jig.board")}</span>
-              <span className="text-[10px] text-stone-400 font-bold">({safeQuest.gridRows}x{safeQuest.gridCols} ชิ้นส่วน)</span>
-            </h3>
+          <div className="w-full flex items-center justify-between mb-4 flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <h3 className="font-black text-sm text-stone-900 flex items-center gap-2">
+                <span>{t("jig.board")}</span>
+                <span className="text-[10px] text-stone-400 font-bold">({safeQuest.gridRows}x{safeQuest.gridCols} ชิ้นส่วน)</span>
+              </h3>
+            </div>
 
-            {onResetProgress && userPiecesCount > 0 && (
+            <div className="flex items-center gap-2">
+              {/* Toggle Seamless vs Jigsaw Cutlines */}
               <button
-                onClick={onResetProgress}
-                title={t("jig.reset")}
-                className="text-[10px] font-bold text-stone-400 hover:text-stone-700 flex items-center gap-1 cursor-pointer"
+                onClick={() => setShowPuzzleLines((prev) => !prev)}
+                className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition flex items-center gap-1.5 cursor-pointer border ${
+                  showPuzzleLines
+                    ? "bg-orange-500 text-white border-orange-500 shadow-xs"
+                    : "bg-stone-100 text-stone-600 border-stone-200 hover:bg-stone-200"
+                }`}
+                title="คลิกเพื่อสลับระหว่างภาพต่อเนียนสนิท หรือแสดงเส้นรอยต่อจิ๊กซอว์"
               >
-                <RotateCcw size={11} /> รีเซ็ต
+                <span>{showPuzzleLines ? t("jig.showSeams") : t("jig.seamless")}</span>
               </button>
-            )}
+
+              {onResetProgress && userPiecesCount > 0 && (
+                <button
+                  onClick={onResetProgress}
+                  title={t("jig.reset")}
+                  className="text-[10px] font-bold text-stone-400 hover:text-stone-700 flex items-center gap-1 cursor-pointer"
+                >
+                  <RotateCcw size={11} /> รีเซ็ต
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* Jigsaw Frame Container */}
-          <div className="relative w-full max-w-[340px] sm:max-w-[360px] aspect-square rounded-3xl overflow-hidden border-4 border-[#FD775C] bg-[#FD775C] shadow-2xl p-1.5 grid grid-cols-2 grid-rows-2 gap-1.5">
-            {safeQuest.pieces.map((piece, idx) => {
-              const isCollected = collectedPieceIds.includes(piece.id);
+          {/* Jigsaw Frame Container: Seamless Continuous Picture Frame */}
+          <div className="relative w-full max-w-[340px] sm:max-w-[370px] aspect-square rounded-3xl overflow-hidden border-4 border-stone-900 bg-stone-950 shadow-2xl select-none group/board">
+            {/* 1. Underlying High-Res Full Image Layer */}
+            {safeQuest.fullImageUrl ? (
+              <img
+                src={safeQuest.fullImageUrl}
+                alt={safeQuest.title}
+                className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none transition-transform duration-700 group-hover/board:scale-[1.01]"
+              />
+            ) : (
+              <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-stone-800 to-stone-900 flex items-center justify-center text-stone-500 font-bold text-xs">
+                ไม่มีรูปภาพเควสต์
+              </div>
+            )}
 
-              // คำนวณพิกัด Background Position สำหรับตัดชิ้น 2x2
-              // 0: top-left (0% 0%)
-              // 1: top-right (100% 0%)
-              // 2: bottom-left (0% 100%)
-              // 3: bottom-right (100% 100%)
-              const posX = (idx % 2) * 100;
-              const posY = Math.floor(idx / 2) * 100;
+            {/* 2. Optional Authentic Jigsaw Cutline SVG Overlay */}
+            {showPuzzleLines && (
+              <svg
+                className="absolute inset-0 w-full h-full pointer-events-none z-20"
+                viewBox="0 0 100 100"
+                preserveAspectRatio="none"
+              >
+                {/* Horizontal jigsaw divider at y = 50 */}
+                <path
+                  d="M 0,50 L 38,50 C 38,42 42,38 46,38 C 43,30 57,30 54,38 C 58,38 62,42 62,50 L 100,50"
+                  fill="none"
+                  stroke="rgba(255, 255, 255, 0.55)"
+                  strokeWidth="1.2"
+                  filter="drop-shadow(0px 1px 1px rgba(0,0,0,0.6))"
+                />
+                {/* Vertical jigsaw divider at x = 50 */}
+                <path
+                  d="M 50,0 L 50,38 C 42,38 38,42 38,46 C 30,43 30,57 38,54 C 38,58 42,62 50,62 L 50,100"
+                  fill="none"
+                  stroke="rgba(255, 255, 255, 0.55)"
+                  strokeWidth="1.2"
+                  filter="drop-shadow(0px 1px 1px rgba(0,0,0,0.6))"
+                />
+              </svg>
+            )}
 
-              return (
-                <div
-                  key={piece.id}
-                  onClick={() => setSelectedPieceForDetail(piece)}
-                  className={`relative w-full h-full rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 group flex items-center justify-center ${
-                    isCollected
-                      ? "ring-2 ring-orange-400 shadow-lg hover:scale-[1.02]"
-                      : "bg-stone-900/90 border-2 border-dashed border-stone-700 hover:border-orange-400/60"
-                  }`}
-                  style={
-                    isCollected
-                      ? {
-                          backgroundImage: `url(${safeQuest.fullImageUrl})`,
-                          backgroundSize: "200% 200%",
-                          backgroundPosition: `${posX}% ${posY}%`,
-                        }
-                      : {}
-                  }
-                >
-                  {isCollected ? (
-                    <>
-                      {/* Collected Badge Overlay */}
-                      <div className="absolute top-2 right-2 bg-emerald-500 text-white rounded-full p-1 shadow-md animate-scale-in">
-                        <CheckCircle2 size={13} />
+            {/* 3. Interactive Quadrants Grid: Unlocked are transparent, Locked have dark mask */}
+            <div
+              className="absolute inset-0 w-full h-full grid"
+              style={{
+                gridTemplateColumns: `repeat(${safeQuest.gridCols || 2}, minmax(0, 1fr))`,
+                gridTemplateRows: `repeat(${safeQuest.gridRows || 2}, minmax(0, 1fr))`,
+              }}
+            >
+              {safeQuest.pieces.map((piece, idx) => {
+                const isCollected = collectedPieceIds.includes(piece.id);
+                const cols = safeQuest.gridCols || 2;
+                const rows = safeQuest.gridRows || 2;
+                const col = idx % cols;
+                const row = Math.floor(idx / cols);
+
+                // Corner badge positioning (only on outer edges so they never sit on the middle seam)
+                let cornerBadgePos = "top-3 right-3";
+                if (col === 0 && row === 0) cornerBadgePos = "top-3 left-3";
+                else if (col === cols - 1 && row === 0) cornerBadgePos = "top-3 right-3";
+                else if (col === 0 && row === rows - 1) cornerBadgePos = "bottom-3 left-3";
+                else if (col === cols - 1 && row === rows - 1) cornerBadgePos = "bottom-3 right-3";
+
+                // Subtitle dashed border for locked pieces to define slots cleanly
+                const lockedBorders = [];
+                if (row > 0) lockedBorders.push("border-t border-dashed border-stone-800/90");
+                if (col > 0) lockedBorders.push("border-l border-dashed border-stone-800/90");
+                if (row < rows - 1) lockedBorders.push("border-b border-dashed border-stone-800/90");
+                if (col < cols - 1) lockedBorders.push("border-r border-dashed border-stone-800/90");
+
+                return (
+                  <div
+                    key={piece.id}
+                    onClick={() => setSelectedPieceForDetail(piece)}
+                    className={`relative w-full h-full cursor-pointer transition-all duration-300 group flex items-center justify-center ${
+                      isCollected
+                        ? "z-10 hover:bg-white/10"
+                        : `bg-stone-950/93 backdrop-blur-xs hover:bg-stone-950/95 z-10 ${lockedBorders.join(" ")} hover:border-orange-500/80`
+                    }`}
+                    title={
+                      isCollected
+                        ? `ชิ้นส่วนที่ ${idx + 1}: ${piece.checkpointName} (ปลดล็อกแล้ว - แตะเพื่อดูรายละเอียด)`
+                        : `ชิ้นส่วนที่ ${idx + 1}: ${piece.checkpointName} (ยังไม่ได้สะสม - แตะเพื่อดูคำใบ้)`
+                    }
+                  >
+                    {isCollected ? (
+                      <>
+                        {/* Collected Badge in Outer Corner (Never obstructs the seam) */}
+                        <div
+                          className={`absolute ${cornerBadgePos} bg-emerald-500/90 backdrop-blur-xs text-white rounded-full p-1 shadow-md transition-all duration-200 group-hover:scale-110 ${
+                            isComplete ? "opacity-70 group-hover:opacity-100" : "opacity-90"
+                          }`}
+                        >
+                          <CheckCircle2 size={13} />
+                        </div>
+
+                        {/* Hover Tooltip Pill */}
+                        <div className="absolute bottom-2 inset-x-2 flex justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-20">
+                          <span className="bg-black/80 backdrop-blur-md text-white text-[9px] font-bold px-2.5 py-1 rounded-full shadow-lg border border-white/15 truncate max-w-[90%] text-center">
+                            ชิ้นที่ {idx + 1}: {piece.checkpointName}
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      /* Locked Silhouette View */
+                      <div className="flex flex-col items-center justify-center p-3 text-center select-none">
+                        <div className="w-9 h-9 rounded-full bg-stone-800/90 flex items-center justify-center text-stone-400 mb-1.5 group-hover:text-orange-400 group-hover:scale-110 group-hover:bg-stone-800 transition shadow-inner">
+                          <Lock size={15} />
+                        </div>
+                        <span className="text-[10px] font-black text-stone-300 group-hover:text-stone-100 transition">
+                          ชิ้นส่วนที่ {idx + 1}
+                        </span>
+                        <span className="text-[8px] font-bold text-stone-400 mt-0.5 line-clamp-1 max-w-[110px]">
+                          {piece.checkpointName}
+                        </span>
+                        <span className="text-[7.5px] font-semibold text-orange-400/90 mt-1 opacity-0 group-hover:opacity-100 transition">
+                          {t("jig.tapHint")}
+                        </span>
                       </div>
-                      <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-xs text-white text-[8.5px] font-black px-2 py-0.5 rounded-lg opacity-0 group-hover:opacity-100 transition">
-                        ชิ้นที่ {idx + 1}
-                      </div>
-                    </>
-                  ) : (
-                    /* Locked Silhouette View */
-                    <div className="flex flex-col items-center justify-center p-3 text-center select-none">
-                      <div className="w-9 h-9 rounded-full bg-[#FD775C] flex items-center justify-center text-stone-500 mb-1.5 group-hover:text-orange-400 transition">
-                        <Lock size={16} />
-                      </div>
-                      <span className="text-[10px] font-black text-stone-400 group-hover:text-stone-200 transition">
-                        ชิ้นส่วนที่ {idx + 1}
-                      </span>
-                      <span className="text-[8px] font-bold text-stone-600 mt-0.5 line-clamp-1 max-w-[110px]">
-                        {piece.checkpointName}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Completion Sparkle Banner Overlay */}
+            {isComplete && (
+              <div className="absolute top-3 inset-x-0 flex justify-center pointer-events-none z-30 animate-fade-in">
+                <span className="bg-emerald-600/95 backdrop-blur-md text-white text-[10px] font-black px-3.5 py-1 rounded-full shadow-xl border border-emerald-300/40 flex items-center gap-1.5">
+                  <Sparkles size={12} /> ปลดล็อกภาพสมบูรณ์ 100%!
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Prompt below puzzle */}
           <p className="text-[11px] text-stone-500 mt-3 text-center">
             {isComplete
-              ? " ยอดเยี่ยม! ต่อชิ้นส่วนครบสมบูรณ์แล้ว"
+              ? t("jig.completeBanner")
               : "แตะที่ช่องเพื่อดูคำใบ้สถานที่ และนำกล้องไปสแกนพร้อมเปิด GPS"}
           </p>
 
@@ -423,7 +515,7 @@ export default function JigsawBoardView({
                 {selectedPieceForDetail.description}
               </p>
               <div className="p-2.5 bg-white rounded-xl border border-orange-200 text-amber-900 text-[11px]">
- <strong>{t("jig.hint")}</strong> {selectedPieceForDetail.hint}
+                <strong>{t("jig.hint")}</strong> {selectedPieceForDetail.hint}
               </div>
               <p className="text-[10px] text-stone-500">
                 พิกัดเป้าหมาย: {selectedPieceForDetail.targetLat}, {selectedPieceForDetail.targetLng} (รัศมี {selectedPieceForDetail.radiusMeters} ม.)
