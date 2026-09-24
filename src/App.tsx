@@ -92,6 +92,14 @@ export default function App() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<"login" | "signup">("login");
   const [authNotice, setAuthNotice] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<{ title: string; message: string } | null>(null);
+
+  useEffect(() => {
+    if (toastMessage) {
+      const timer = setTimeout(() => setToastMessage(null), 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [toastMessage]);
 
   useEffect(() => {
     if (isAuthModalOpen) {
@@ -350,6 +358,18 @@ export default function App() {
           supabase.from("profiles").update({ email: currentSession.user.email }).eq("id", currentSession.user.id).then(() => {});
         }
         fetchHeaderProfile(currentSession.user.id);
+
+        if (event === "SIGNED_IN") {
+          setIsAuthModalOpen(false);
+          setAuthNotice(null);
+          const name = currentSession.user.user_metadata?.display_name ||
+                       currentSession.user.user_metadata?.full_name ||
+                       (currentSession.user.email ? currentSession.user.email.split("@")[0] : "ผู้ใช้งาน");
+          setToastMessage({
+            title: "🎉 เข้าสู่ระบบสำเร็จ!",
+            message: `ยินดีต้อนรับกลับมาคุณ ${name}`,
+          });
+        }
 
         if (event === "SIGNED_IN" || event === "INITIAL_SESSION") {
           recordLoginLog(currentSession);
@@ -794,6 +814,26 @@ export default function App() {
               handleTabChange("jigsaw");
             }}
           />
+
+          {/* Toast Success Notification Banner */}
+          {toastMessage && (
+            <div className="fixed top-16 left-1/2 -translate-x-1/2 z-[10000] max-w-sm w-[90%] bg-emerald-600 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-emerald-500 animate-in fade-in slide-in-from-top-4 duration-300">
+              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                <ShieldCheck size={20} className="text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="text-xs font-black">{toastMessage.title}</h4>
+                <p className="text-[11px] font-semibold text-emerald-100 truncate">{toastMessage.message}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setToastMessage(null)}
+                className="text-emerald-200 hover:text-white p-1 cursor-pointer transition"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          )}
 
           {/* Unauthenticated Guest Auth Modal Prompt (Clean Overlay Without Scrollbar) */}
           {isAuthModalOpen && (

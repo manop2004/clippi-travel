@@ -526,7 +526,13 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
           // Do NOT sign out if pending merchant - allow App.tsx to display full Pending Admin Approval screen
           if (uRole !== "admin" && uRole !== "store" && mStatus === "pending") {
             setSuccessMsg("⏳ บัญชีของคุณอยู่ระหว่างการรออนุมัติจากแอดมิน (Pending Admin Approval) กำลังเข้าสู่หน้ารออนุมัติ...");
+          } else {
+            setSuccessMsg("🎉 เข้าสู่ระบบสำเร็จแล้ว! กำลังพับหน้าต่างลง...");
           }
+
+          setTimeout(() => {
+            onClose?.();
+          }, 600);
         }
       } catch (err: any) {
         console.error("Login failed:", err);
