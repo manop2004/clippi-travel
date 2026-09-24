@@ -29,29 +29,38 @@ jobs:
           npx cap add ios || true
           npx cap sync ios
 
-      - name: Build Xcode iOS App for Device
+      - name: Build Xcode iOS App
         run: |
           cd ios/App
-          pod install || true
-          xcodebuild clean -workspace App.xcworkspace -scheme App -configuration Release || true
-          xcodebuild -workspace App.xcworkspace \
+          if [ -f "Podfile" ]; then
+            pod install || true
+          fi
+
+          if [ -d "App.xcworkspace" ]; then
+            XCODE_TARGET="-workspace App.xcworkspace"
+          else
+            XCODE_TARGET="-project App.xcodeproj"
+          fi
+
+          echo "Using target: $XCODE_TARGET"
+
+          xcodebuild $XCODE_TARGET \
                      -scheme App \
                      -configuration Release \
-                     -sdk iphoneos \
+                     -sdk iphonesimulator \
                      -derivedDataPath build \
-                     CODE_SIGN_STYLE=Manual \
                      CODE_SIGNING_ALLOWED=NO \
-                     CODE_SIGNING_REQUIRED=NO \
-                     CODE_SIGN_IDENTITY="" \
-                     DEVELOPMENT_TEAM="" \
-                     PROVISIONING_PROFILE_SPECIFIER="" \
-                     COMPILER_INDEX_STORE_ENABLE=NO \
                      build
 
       - name: Create IPA & App Zip Artifacts
         run: |
+          rm -rf Payload Clippi-iOS-App.ipa Clippi-iOS-App.zip
           mkdir -p Payload
-          cp -r ios/App/build/Build/Products/Release-iphoneos/App.app Payload/
+          if [ -d "ios/App/build/Build/Products/Release-iphoneos/App.app" ]; then
+            cp -r ios/App/build/Build/Products/Release-iphoneos/App.app Payload/
+          elif [ -d "ios/App/build/Build/Products/Release-iphonesimulator/App.app" ]; then
+            cp -r ios/App/build/Build/Products/Release-iphonesimulator/App.app Payload/
+          fi
           zip -r Clippi-iOS-App.ipa Payload
           zip -r Clippi-iOS-App.zip Payload
 
