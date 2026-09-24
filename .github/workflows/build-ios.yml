@@ -41,28 +41,28 @@ jobs:
             XCODE_TARGET="-project App.xcodeproj"
           fi
 
-          echo "=== Attempting Unsigned iPhoneOS Build ==="
+          echo "=== Building Unsigned iPhoneOS Build for IPA ==="
           xcodebuild $XCODE_TARGET \
                      -scheme App \
                      -configuration Release \
                      -sdk iphoneos \
                      -derivedDataPath build \
+                     CODE_SIGN_STYLE=Manual \
                      CODE_SIGNING_ALLOWED=NO \
-                     CODE_SIGN_IDENTITY="" \
                      CODE_SIGNING_REQUIRED=NO \
+                     CODE_SIGN_IDENTITY="" \
                      AD_HOC_CODE_SIGNING_ALLOWED=YES \
+                     DEVELOPMENT_TEAM="" \
                      PROVISIONING_PROFILE_SPECIFIER="" \
-                     build || echo "iPhoneOS build requires signing profile, falling back to Simulator build..."
-
-          if [ ! -d "build/Build/Products/Release-iphoneos/App.app" ]; then
-            echo "=== Attempting iOS Simulator Build ==="
-            xcodebuild $XCODE_TARGET \
-                       -scheme App \
-                       -configuration Release \
-                       -sdk iphonesimulator \
-                       -derivedDataPath build \
-                       build
-          fi
+                     build || {
+                       echo "=== Fallback: Building with iphonesimulator ==="
+                       xcodebuild $XCODE_TARGET \
+                                  -scheme App \
+                                  -configuration Release \
+                                  -sdk iphonesimulator \
+                                  -derivedDataPath build \
+                                  build
+                     }
 
       - name: Create IPA & App Zip Artifacts
         run: |
