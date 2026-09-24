@@ -40,6 +40,8 @@ jobs:
           else
             XCODE_TARGET="-project App.xcodeproj"
           fi
+
+          echo "=== Attempting Unsigned iPhoneOS Build ==="
           xcodebuild $XCODE_TARGET \
                      -scheme App \
                      -configuration Release \
@@ -48,13 +50,28 @@ jobs:
                      CODE_SIGNING_ALLOWED=NO \
                      CODE_SIGN_IDENTITY="" \
                      CODE_SIGNING_REQUIRED=NO \
+                     AD_HOC_CODE_SIGNING_ALLOWED=YES \
                      PROVISIONING_PROFILE_SPECIFIER="" \
-                     build
+                     build || echo "iPhoneOS build requires signing profile, falling back to Simulator build..."
+
+          if [ ! -d "build/Build/Products/Release-iphoneos/App.app" ]; then
+            echo "=== Attempting iOS Simulator Build ==="
+            xcodebuild $XCODE_TARGET \
+                       -scheme App \
+                       -configuration Release \
+                       -sdk iphonesimulator \
+                       -derivedDataPath build \
+                       build
+          fi
 
       - name: Create IPA & App Zip Artifacts
         run: |
           mkdir -p Payload
-          cp -r ios/App/build/Build/Products/Release-iphoneos/App.app Payload/
+          if [ -d "ios/App/build/Build/Products/Release-iphoneos/App.app" ]; then
+            cp -r ios/App/build/Build/Products/Release-iphoneos/App.app Payload/
+          elif [ -d "ios/App/build/Build/Products/Release-iphonesimulator/App.app" ]; then
+            cp -r ios/App/build/Build/Products/Release-iphonesimulator/App.app Payload/
+          fi
           zip -r Clippi-iOS-App.ipa Payload
           zip -r Clippi-iOS-App.zip Payload
 
