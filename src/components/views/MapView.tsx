@@ -233,7 +233,13 @@ export default function MapView({
     return () => {
       resizeObserver.disconnect();
       if (mapRef.current) {
-        mapRef.current.remove();
+        try {
+          mapRef.current.stop();
+          mapRef.current.off();
+          mapRef.current.remove();
+        } catch (e) {
+          // ignore unmount cleanup exception
+        }
         mapRef.current = null;
       }
     };

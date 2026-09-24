@@ -950,9 +950,9 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-[#FAF9F8] text-[#000000] font-sans">
+    <div className="w-full flex items-center justify-center text-[#000000] font-sans">
       <div 
-        className="w-full max-w-lg bg-white rounded-3xl p-6 sm:p-8 border shadow-xl relative overflow-hidden transition-all duration-300"
+        className="w-full max-w-lg bg-white rounded-3xl p-5 sm:p-7 border shadow-2xl relative overflow-hidden transition-all duration-300 flex flex-col justify-center my-auto"
         style={{ borderColor: C.line }}
       >
         {onClose && (

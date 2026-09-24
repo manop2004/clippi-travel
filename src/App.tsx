@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Compass, MapPin, BookOpen, User, Plus, Search, X, ShieldCheck, Store, Users, ScrollText, Trophy, Puzzle, QrCode, Image, LayoutGrid } from "lucide-react";
+import { Compass, MapPin, BookOpen, User, Plus, Search, X, ShieldCheck, Store, Users, ScrollText, Trophy, Puzzle, QrCode, Image, LayoutGrid, ChevronDown, Home, Flag } from "lucide-react";
 import { C } from "./constants/mockData";
 import { supabase } from "./supabaseClient";
 import { Session } from "@supabase/supabase-js";
@@ -92,6 +92,17 @@ export default function App() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<"login" | "signup">("login");
   const [authNotice, setAuthNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isAuthModalOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isAuthModalOpen]);
 
   const requireAuth = (actionName?: string, mode: "login" | "signup" = "login") => {
     if (!session?.user) {
@@ -326,8 +337,11 @@ export default function App() {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
-      if (event === "SIGNED_OUT" && session?.user?.id) {
-        recordLogoutLog(session);
+      if (event === "SIGNED_OUT") {
+        if (session?.user?.id) {
+          recordLogoutLog(session);
+        }
+        setTab("explore");
       }
       setSession(currentSession);
       if (currentSession?.user?.id) {
@@ -448,7 +462,7 @@ export default function App() {
   return (
     <PasswordGate>
       <ReviewStampProvider>
-        <div className="min-h-screen flex w-full bg-[#FAF9F8] text-[#000000] font-sans overflow-x-hidden">
+        <div className="min-h-screen flex w-full bg-[#FAF9F8] text-[#000000] font-sans">
           {/* Desktop Sidebar Navigation */}
           <Sidebar
             activeTab={tab}
@@ -466,57 +480,33 @@ export default function App() {
           {/* Main Content Wrapper */}
           <div className="flex-1 flex flex-col min-w-0 md:ml-64">
 
-            {/* Top Header Bar */}
-            <header className="flex items-center justify-between py-3.5 px-4 md:px-8 border-b bg-white shadow-xs" style={{ borderColor: C.line }}>
-              {/* Left Greeting & Mobile Logo */}
-              <div className={`items-center gap-3 select-none ${showMobileSearch ? "hidden sm:flex" : "flex"}`}>
-                <img src="/clippi-logo.png" alt="Clippi Logo" className="md:hidden h-8 object-contain mr-1" />
+            {/* Top Header Bar (Fixed Lock at Top) */}
+            <header className="fixed top-0 left-0 right-0 md:left-64 z-30 flex items-center justify-between py-3.5 px-4 md:px-8 border-b bg-white/95 backdrop-blur-md shadow-xs" style={{ borderColor: C.line }}>
+              {/* Left Greeting & Logo */}
+              <div className={`items-center gap-2 select-none ${showMobileSearch ? "hidden sm:flex" : "flex"}`}>
+                <img src="/clippi-logo-wide.png" alt="Clippi Logo" className="h-8 md:h-9 object-contain mr-1 max-w-[140px] md:max-w-[160px] shrink-0" />
                 
                 {session?.user ? (
-                  <>
-                    <div className="relative shrink-0">
-                      {headerAvatarUrl && !headerImgError ? (
-                        <img
-                          src={headerAvatarUrl}
-                          alt={headerDisplayName}
-                          referrerPolicy="no-referrer"
-                          onError={() => setHeaderImgError(true)}
-                          className="w-9 h-9 rounded-full object-cover border shadow-xs"
-                          style={{ borderColor: C.accent }}
-                        />
-                      ) : (
-                        <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-white bg-gradient-to-br from-[#FD775C] to-[#E31E27] text-xs shadow-xs">
-                          {headerUserInitial}
-                        </div>
-                      )}
-
-                      {/* ROLE BADGE: Display ADMIN badge ONLY if role === 'admin' */}
-                      {role === "admin" && (
-                        <span className="absolute -bottom-0.5 -right-0.5 bg-[#E31E27] text-white text-[6px] font-black px-1 py-0.2 rounded-full border border-white uppercase tracking-wider">
-                          ADMIN
-                        </span>
-                      )}
-                    </div>
-                    <div className="leading-tight hidden sm:block">
-                      <p className="text-[9px] font-extrabold tracking-wider uppercase text-[#FD775C]">{t("greeting.morning")}</p>
-                      <h2 className="text-xs font-black flex items-center gap-1 text-[#000000]">
-                        {headerDisplayName}
-                      </h2>
-                    </div>
-                  </>
+                  <div className="leading-tight hidden sm:block">
+                    <p className="text-[9px] font-extrabold tracking-wider uppercase text-[#FD775C]">{t("greeting.morning")}</p>
+                    <h2 className="text-xs font-black flex items-center gap-1 text-[#000000]">
+                      {headerDisplayName}
+                    </h2>
+                  </div>
                 ) : (
                   <button
                     onClick={() => requireAuth("ใช้งานระบบ")}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#FD775C] to-[#E31E27] hover:from-[#E31E27] hover:to-[#FD775C] text-white text-xs font-black shadow-xs transition cursor-pointer active:scale-95"
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-[#FD775C] to-[#E31E27] hover:from-[#E31E27] hover:to-[#FD775C] text-white text-xs font-black shadow-xs transition cursor-pointer active:scale-95 whitespace-nowrap shrink-0"
                   >
-                    <User size={15} />
-                    <span>เข้าสู่ระบบ / สมัครสมาชิก</span>
+                    <User size={14} className="shrink-0" />
+                    <span className="hidden sm:inline">เข้าสู่ระบบ / สมัครสมาชิก</span>
+                    <span className="sm:hidden">เข้าสู่ระบบ</span>
                   </button>
                 )}
               </div>
 
               {/* Right Search & Alerts */}
-              <div className={`flex items-center gap-3 ${showMobileSearch ? "flex-1 sm:flex-none" : ""}`}>
+              <div className={`flex items-center gap-1.5 sm:gap-3 ${showMobileSearch ? "flex-1 sm:flex-none" : ""}`}>
                 {/* Desktop search box */}
                 <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl border w-60 bg-[#FAF6F0]" style={{ borderColor: C.line }}>
                   <Search size={14} color={C.inkSoft} />
@@ -562,19 +552,7 @@ export default function App() {
                   </button>
                 )}
 
-                {/* QR Scanner Trigger Button */}
-                <button
-                  onClick={() => {
-                    if (requireAuth("สแกน QR Code เช็คอิน")) setIsScannerOpen(true);
-                  }}
-                  className={`items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#FD775C] to-rose-600 hover:from-rose-600 hover:to-[#FD775C] text-white text-xs font-bold shadow-xs transition cursor-pointer active:scale-95 ${
-                    showMobileSearch ? "hidden sm:flex" : "flex"
-                  }`}
-                  title="เปิดกล้องสแกน QR Code / AR"
-                >
-                  <QrCode size={15} />
-                  <span className="hidden sm:inline">สแกน QR</span>
-                </button>
+
 
                 {/* Language Switcher */}
                 <span className={showMobileSearch ? "hidden sm:block" : "block"}>
@@ -593,7 +571,7 @@ export default function App() {
             </header>
 
             {/* Main Workspace Pages */}
-            <main className="flex-1 p-3 sm:p-4 md:p-8 max-w-5xl mx-auto w-full pb-24 md:pb-8 min-w-0">
+            <main className="flex-1 pt-20 p-3 sm:p-4 md:p-8 max-w-5xl mx-auto w-full pb-24 md:pb-8 min-w-0">
               {tab === "explore" && (
                 showAllTrending ? (
                   <TrendingAllView
@@ -642,6 +620,7 @@ export default function App() {
                     if (requireAuth("สมัครสมาชิกร้านค้า")) setIsMerchantApplyOpen(true);
                   }}
                   onGoToStoreManage={() => handleTabChange("store_manage")}
+                  onNavigateTab={handleTabChange}
                 />
               )}
               {(tab === "admin" || tab === "admin_review") && (
@@ -678,31 +657,82 @@ export default function App() {
             </main>
           </div>
 
-          {/* Mobile Bottom Navigation Bar */}
-          <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around py-1.5 px-3 bg-white/95 backdrop-blur-md border-t shrink-0 pb-[calc(0.4rem+env(safe-area-inset-bottom,0px))]" style={{ borderColor: C.line }}>
-            {mobileUserTabs.map((t) => {
-              const active = tab === t.id;
-              return (
-                <button key={t.id} onClick={() => handleTabChange(t.id)} className="flex flex-col items-center gap-0.5 py-1 flex-1 min-w-0 active:scale-95 transition">
-                  <t.icon size={18} color={active ? C.accent : C.inkSoft} strokeWidth={active ? 2.5 : 1.8} />
-                  <span className="text-[9px] font-bold tracking-tight truncate max-w-full" style={{ color: active ? C.accent : C.inkSoft }}>{t.label}</span>
-                </button>
-              );
-            })}
-            {canManage && (
-              <button onClick={() => setIsAdminMenuOpen(true)} className="flex flex-col items-center gap-0.5 py-1 flex-1 min-w-0 active:scale-95 transition" aria-label={t("nav.manage")}>
-                <LayoutGrid size={18} color={isManageTab ? C.accent : C.inkSoft} strokeWidth={isManageTab ? 2.5 : 1.8} />
-                <span className="text-[9px] font-bold tracking-tight truncate max-w-full" style={{ color: isManageTab ? C.accent : C.inkSoft }}>{t("nav.manage")}</span>
-              </button>
-            )}
+          {/* Floating Action Button for Admin/Store Manage Menu */}
+          {canManage && (
             <button
-              onClick={() => {
-                if (requireAuth("เพิ่มสถานที่ท่องเที่ยว")) setIsAddOpen(true);
-              }}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-white shadow-md ml-1 shrink-0 active:scale-90 transition cursor-pointer"
-              style={{ background: C.accent }}
+              onClick={() => setIsAdminMenuOpen(true)}
+              className="md:hidden fixed bottom-26 right-4 z-40 w-12 h-12 rounded-full bg-gradient-to-tr from-[#FD775C] via-[#FD775C] to-[#E31E27] border-2 border-white text-white flex items-center justify-center shadow-xl shadow-[#FD775C]/40 active:scale-90 transition-all cursor-pointer group"
+              aria-label={t("nav.manage")}
+              title={t("nav.manage")}
             >
-              <Plus size={16} strokeWidth={3} />
+              <LayoutGrid size={22} strokeWidth={2.2} className="group-hover:rotate-12 transition-transform" />
+            </button>
+          )}
+
+          {/* Mobile Bottom Navigation Bar (White Light Theme with Ekitag Capsule Shape) */}
+          <nav className="md:hidden fixed bottom-3 left-3 right-3 z-40 flex items-center justify-between px-3 py-2 bg-white/95 backdrop-blur-xl rounded-[28px] border border-stone-200/80 shadow-xl text-stone-800 max-w-md mx-auto">
+            {/* TOP (Home/Explore) */}
+            <button
+              onClick={() => handleTabChange("explore")}
+              className={`flex flex-col items-center gap-0.5 py-1 flex-1 min-w-0 active:scale-95 transition cursor-pointer ${
+                tab === "explore" ? "text-[#FD775C] font-black" : "text-[#555555] font-extrabold hover:text-[#000000]"
+              }`}
+            >
+              <Home size={20} strokeWidth={tab === "explore" ? 2.5 : 1.8} />
+              <span className="text-[10px] tracking-wider font-black">TOP</span>
+            </button>
+
+            {/* MAP */}
+            <button
+              onClick={() => handleTabChange("map")}
+              className={`flex flex-col items-center gap-0.5 py-1 flex-1 min-w-0 active:scale-95 transition cursor-pointer ${
+                tab === "map" ? "text-[#FD775C] font-black" : "text-[#555555] font-extrabold hover:text-[#000000]"
+              }`}
+            >
+              <MapPin size={20} strokeWidth={tab === "map" ? 2.5 : 1.8} />
+              <span className="text-[10px] tracking-wider font-black">MAP</span>
+            </button>
+
+            {/* CENTER ELEVATED TOUCH STAMP BUTTON */}
+            <div className="relative flex flex-col items-center flex-1 shrink-0 -mt-7">
+              <button
+                onClick={() => {
+                  if (requireAuth("สแกน QR Code เช็คอิน")) setIsScannerOpen(true);
+                }}
+                className="relative flex flex-col items-center group cursor-pointer active:scale-90 transition"
+              >
+                <span className="text-[11px] font-black italic text-[#FD775C] drop-shadow-xs tracking-tight -mb-0.5">
+                  Touch!
+                </span>
+                <div className="w-13.5 h-13.5 rounded-full bg-gradient-to-tr from-[#FD775C] via-[#FD775C] to-[#E31E27] p-[2.5px] shadow-lg shadow-[#FD775C]/30 flex items-center justify-center">
+                  <div className="w-full h-full rounded-full bg-gradient-to-br from-[#FD775C] to-[#E31E27] flex items-center justify-center text-white shadow-inner border border-white/30">
+                    <QrCode size={24} strokeWidth={2.3} />
+                  </div>
+                </div>
+                <span className="text-[10px] font-black text-[#FD775C] tracking-widest mt-0.5">TOUCH</span>
+              </button>
+            </div>
+
+            {/* EVENTS / JIGSAW */}
+            <button
+              onClick={() => handleTabChange("jigsaw")}
+              className={`flex flex-col items-center gap-0.5 py-1 flex-1 min-w-0 active:scale-95 transition cursor-pointer ${
+                tab === "jigsaw" ? "text-[#FD775C] font-black" : "text-[#555555] font-extrabold hover:text-[#000000]"
+              }`}
+            >
+              <Flag size={20} strokeWidth={tab === "jigsaw" ? 2.5 : 1.8} />
+              <span className="text-[10px] tracking-wider font-black">EVENTS</span>
+            </button>
+
+            {/* PROFILE */}
+            <button
+              onClick={() => handleTabChange("profile")}
+              className={`flex flex-col items-center gap-0.5 py-1 flex-1 min-w-0 active:scale-95 transition cursor-pointer ${
+                tab === "profile" ? "text-[#FD775C] font-black" : "text-[#555555] font-extrabold hover:text-[#000000]"
+              }`}
+            >
+              <User size={20} strokeWidth={tab === "profile" ? 2.5 : 1.8} />
+              <span className="text-[10px] tracking-wider font-black">PROFILE</span>
             </button>
           </nav>
 
@@ -765,15 +795,10 @@ export default function App() {
             }}
           />
 
-          {/* Unauthenticated Guest Auth Modal Prompt */}
+          {/* Unauthenticated Guest Auth Modal Prompt (Clean Overlay Without Scrollbar) */}
           {isAuthModalOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
-              <div className="relative w-full max-w-md my-auto">
-                {authNotice && (
-                  <div className="mb-2 p-3 bg-amber-500 text-white text-xs font-bold rounded-2xl shadow-md text-center animate-bounce">
-                    {authNotice}
-                  </div>
-                )}
+            <div className="fixed inset-0 z-[9999] bg-stone-900/60 backdrop-blur-sm flex flex-col items-center justify-center p-3 sm:p-4 overflow-y-auto sm:overflow-hidden animate-fade-in [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+              <div className="w-full max-w-lg flex flex-col justify-center my-auto">
                 <AuthView
                   initialMode={authModalMode}
                   onClose={() => {

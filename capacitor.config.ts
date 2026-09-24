@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.ekitag.app',
-  appName: 'Ekitag',
+  appId: 'com.clippi.app',
+  appName: 'Clippi',
   webDir: 'dist'
 };
 
