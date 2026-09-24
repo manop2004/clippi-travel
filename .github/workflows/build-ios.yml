@@ -24,11 +24,14 @@ jobs:
       - name: Build Web Production Assets
         run: npm run build
 
-      - name: Add & Sync Capacitor iOS (Fresh)
+      - name: Sync Capacitor iOS
         run: |
-          rm -rf ios
-          npx cap add ios
           npx cap sync ios
+
+      - name: Patch AppDelegate Swift Signature
+        run: |
+          sed -i '' 's/, restorationHandler: restorationHandler//g' ios/App/App/AppDelegate.swift || true
+          sed -i '' 's/restorationHandler: restorationHandler//g' ios/App/App/AppDelegate.swift || true
 
       - name: Build Xcode iOS App
         run: |
