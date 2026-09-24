@@ -42,8 +42,9 @@ jobs:
           xcodebuild $XCODE_TARGET \
                      -scheme App \
                      -configuration Release \
-                     -sdk iphonesimulator \
+                     -destination 'platform=iOS Simulator,name=iPhone 15' \
                      -derivedDataPath build \
+                     -skipPackagePluginValidation \
                      CODE_SIGNING_ALLOWED=NO \
                      CODE_SIGNING_REQUIRED=NO \
                      CODE_SIGN_IDENTITY="" \
