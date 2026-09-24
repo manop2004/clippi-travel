@@ -10,9 +10,11 @@ interface SidebarProps {
   onTabChange: (tab: string) => void;
   onAddPlaceClick: () => void;
   onOpenMerchantModal?: () => void;
+  isLoggedIn?: boolean;
+  onOpenAuthModal?: () => void;
 }
 
-export default function Sidebar({ activeTab, onTabChange, onAddPlaceClick, onOpenMerchantModal }: SidebarProps) {
+export default function Sidebar({ activeTab, onTabChange, onAddPlaceClick, onOpenMerchantModal, isLoggedIn = true, onOpenAuthModal }: SidebarProps) {
   const { t } = useLang();
   const { role, isPendingMerchant, isRejectedMerchant } = useUserRole();
 
@@ -77,7 +79,17 @@ export default function Sidebar({ activeTab, onTabChange, onAddPlaceClick, onOpe
 
       {/* Action Buttons */}
       <div className="pt-2 border-t space-y-2" style={{ borderColor: C.line }}>
-        {(role === "user" || role === "pending_store") && onOpenMerchantModal && (
+        {!isLoggedIn && onOpenAuthModal && (
+          <button
+            onClick={onOpenAuthModal}
+            className="w-full py-3 px-4 rounded-2xl text-xs font-black text-white bg-gradient-to-r from-[#FD775C] to-[#E31E27] hover:from-[#E31E27] hover:to-[#FD775C] transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+          >
+            <User size={16} strokeWidth={2.5} />
+            <span>เข้าสู่ระบบ / สมัครสมาชิก</span>
+          </button>
+        )}
+
+        {isLoggedIn && (role === "user" || role === "pending_store") && onOpenMerchantModal && (
           <button
             onClick={onOpenMerchantModal}
             className={`w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-2xl text-xs font-black shadow-xs transition cursor-pointer active:scale-98 text-white ${
@@ -101,7 +113,7 @@ export default function Sidebar({ activeTab, onTabChange, onAddPlaceClick, onOpe
 
         <button
           onClick={onAddPlaceClick}
-          className="w-full py-3 px-4 rounded-2xl text-xs font-black text-white bg-[#FD775C] hover:bg-[#E31E27] transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+          className="w-full py-3 px-4 rounded-2xl text-xs font-black text-white bg-stone-800 hover:bg-stone-900 transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-98"
         >
           <Plus size={16} strokeWidth={2.5} />
           <span>{t("action.submitSpot")}</span>

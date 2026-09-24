@@ -13,6 +13,7 @@ import {
   Star,
   ShieldCheck,
   QrCode,
+  Calendar,
   X,
   Save,
   CheckCircle2,
@@ -38,7 +39,6 @@ import {
   SlidersHorizontal,
   Trophy,
   MessageSquare,
-  Calendar,
   Power,
   Sun,
   Moon,
@@ -3085,22 +3085,65 @@ interface MerchantQrModalProps {
   onClose: () => void;
 }
 
+const formatEventDisplayDate = (dtString: string) => {
+  if (!dtString) return "";
+  const d = new Date(dtString);
+  if (isNaN(d.getTime())) return dtString;
+  const day = d.getDate();
+  const months = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+  const month = months[d.getMonth()];
+  const year = d.getFullYear() + 543;
+  const hours = String(d.getHours()).padStart(2, "0");
+  const mins = String(d.getMinutes()).padStart(2, "0");
+  return `${day} ${month} ${year} ${hours}:${mins}`;
+};
+
 function MerchantQrModal({ isOpen, shop, onClose }: MerchantQrModalProps) {
   const [copied, setCopied] = useState(false);
+  const [mode, setMode] = useState<"static" | "event">("static");
+
+  // Event Mode States
+  const [eventName, setEventName] = useState<string>(`งานเทศกาล ${shop.shop_name}`);
+  const [eventStartDate, setEventStartDate] = useState<string>("2026-09-22T09:00");
+  const [eventEndDate, setEventEndDate] = useState<string>("2026-09-25T18:00");
+  const [eventScanMode, setEventScanMode] = useState<string>("100");
+  const [customEventScans, setCustomEventScans] = useState<number>(100);
 
   if (!isOpen) return null;
 
+  // Compute Event Mode values
+  const effectiveEventMaxScans: number | "unlimited" = eventScanMode === "unlimited"
+    ? "unlimited"
+    : eventScanMode === "custom"
+      ? Math.max(1, customEventScans)
+      : Number(eventScanMode);
+
   const stampCode = `EKITAG-STAMP-${shop.id}`;
+
+  const eventStartTimestamp = mode === "event" && eventStartDate ? new Date(eventStartDate).getTime() : null;
+  const eventEndTimestamp = mode === "event" && eventEndDate ? new Date(eventEndDate).getTime() : null;
+
+  const qrPayload = {
+    shopId: shop.id,
+    shopName: shop.shop_name,
+    code: stampCode,
+    type: mode,
+    ...(mode === "event" ? {
+      eventName,
+      startAt: eventStartDate,
+      endAt: eventEndDate,
+      startTimestamp: eventStartTimestamp,
+      endTimestamp: eventEndTimestamp,
+      maxScans: effectiveEventMaxScans,
+    } : {}),
+  };
+
   const qrDataUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
-    JSON.stringify({
-      shopId: shop.id,
-      shopName: shop.shop_name,
-      code: stampCode,
-    })
+    JSON.stringify(qrPayload)
   )}`;
 
   const handleCopyCode = () => {
-    navigator.clipboard.writeText(stampCode);
+    navigator.clipboard.writeText(JSON.stringify(qrPayload, null, 2));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -3112,7 +3155,7 @@ function MerchantQrModal({ isOpen, shop, onClose }: MerchantQrModalProps) {
   return (
     <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
       <div
-        className="bg-white rounded-3xl w-full max-w-md border shadow-2xl overflow-hidden flex flex-col items-center p-6 text-center space-y-5"
+        className="bg-white rounded-3xl w-full max-w-md border shadow-2xl overflow-hidden flex flex-col items-center p-6 text-center space-y-4"
         style={{ borderColor: C.line }}
       >
         <div className="w-full flex items-center justify-between border-b pb-3" style={{ borderColor: C.line }}>
@@ -3121,8 +3164,8 @@ function MerchantQrModal({ isOpen, shop, onClose }: MerchantQrModalProps) {
               <QrCode size={16} />
             </div>
             <div>
-              <h3 className="text-xs font-black text-[#231C18]">Stamp Check-in QR</h3>
-              <p className="text-[10px] text-[#8A7870]">สำหรับการตั้งโชว์ให้ลูกค้าสแกนรับแสตมป์</p>
+              <h3 className="text-xs font-black text-[#231C18]">Stamp Check-in QR (ฝั่งร้านค้า)</h3>
+              <p className="text-[10px] text-[#8A7870]">สร้างและพิมพ์ QR Code ประจำร้านหรือตารางจัดงาน</p>
             </div>
           </div>
 
@@ -3134,34 +3177,152 @@ function MerchantQrModal({ isOpen, shop, onClose }: MerchantQrModalProps) {
           </button>
         </div>
 
-        <div className="w-full bg-[#FAF6F0] p-6 rounded-3xl border space-y-4 shadow-inner" style={{ borderColor: C.line }}>
+        {/* 2 Mode Selector Tabs */}
+        <div className="w-full grid grid-cols-2 gap-1.5 p-1 bg-stone-100 rounded-2xl text-xs font-bold">
+          <button
+            onClick={() => setMode("static")}
+            className={`py-2 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 ${
+              mode === "static"
+                ? "bg-white text-[#231C18] shadow-xs font-black"
+                : "text-stone-500 hover:text-stone-800"
+            }`}
+          >
+            <QrCode size={13} />
+            <span>QR ถาวรประจำร้าน</span>
+          </button>
+          <button
+            onClick={() => setMode("event")}
+            className={`py-2 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 ${
+              mode === "event"
+                ? "bg-amber-600 text-white shadow-xs font-black"
+                : "text-stone-500 hover:text-stone-800"
+            }`}
+          >
+            <Calendar size={13} />
+            <span>จัดงานอีเวนต์ (Schedule)</span>
+          </button>
+        </div>
+
+        {/* Event Mode Controls */}
+        {mode === "event" && (
+          <div className="w-full bg-amber-50/90 p-3.5 rounded-2xl border border-amber-200 text-left space-y-2.5 animate-in fade-in duration-150">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-black text-amber-900 flex items-center gap-1">
+                <Calendar size={13} className="text-amber-600" />
+                ตั้งค่าตารางจัดงานอีเวนต์ (Event Schedule)
+              </p>
+              <span className="text-[9px] font-bold bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full">
+                Date Range
+              </span>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-stone-700 mb-1">ชื่อกิจกรรม / อีเวนต์</label>
+              <input
+                type="text"
+                value={eventName}
+                onChange={(e) => setEventName(e.target.value)}
+                placeholder="เช่น เทศกาลอาหาร 22-25 ก.ย."
+                className="w-full bg-white border border-stone-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-stone-900 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-[10px]">
+              <div>
+                <label className="block font-bold text-stone-700 mb-1">วัน/เวลา เริ่มต้น</label>
+                <input
+                  type="datetime-local"
+                  value={eventStartDate}
+                  onChange={(e) => setEventStartDate(e.target.value)}
+                  className="w-full bg-white border border-stone-200 rounded-xl px-2 py-1 font-bold text-stone-900 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-stone-700 mb-1">วัน/เวลา สิ้นสุด</label>
+                <input
+                  type="datetime-local"
+                  value={eventEndDate}
+                  onChange={(e) => setEventEndDate(e.target.value)}
+                  className="w-full bg-white border border-stone-200 rounded-xl px-2 py-1 font-bold text-stone-900 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="text-[10px]">
+              <label className="block font-bold text-stone-700 mb-1">โควต้าจำนวนครั้งที่สแกนได้ตลอดงาน</label>
+              <select
+                value={eventScanMode}
+                onChange={(e) => setEventScanMode(e.target.value)}
+                className="w-full bg-white border border-stone-200 rounded-xl px-2.5 py-1.5 font-bold text-stone-800 focus:outline-none focus:ring-1 focus:ring-amber-500"
+              >
+                <option value="unlimited">ไม่จำกัดจำนวนครั้ง (สแกนได้ตลอดงาน)</option>
+                <option value="50">50 ครั้งแรกตลอดงาน</option>
+                <option value="100">100 ครั้งแรกตลอดงาน</option>
+                <option value="500">500 ครั้งแรกตลอดงาน</option>
+                <option value="custom">⚙️ กำหนดจำนวนครั้งเอง...</option>
+              </select>
+
+              {eventScanMode === "custom" && (
+                <div className="mt-1.5 flex items-center gap-1 animate-in fade-in duration-150">
+                  <input
+                    type="number"
+                    min={1}
+                    max={1000000}
+                    value={customEventScans}
+                    onChange={(e) => setCustomEventScans(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-full bg-white border border-amber-300 rounded-lg px-2 py-1 font-bold text-stone-900 text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                    placeholder="เช่น 200"
+                  />
+                  <span className="text-[10px] font-bold text-stone-600 shrink-0">ครั้ง</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* QR Display Card */}
+        <div className="w-full bg-[#FAF6F0] p-5 rounded-3xl border space-y-3 shadow-inner" style={{ borderColor: C.line }}>
           <div className="flex items-center justify-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#E0533C] animate-ping" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-[#E0533C]">
-              OFFICIAL STAMP TRIGGER
+            <span className={`w-2 h-2 rounded-full ${mode === "event" ? "bg-amber-600" : "bg-emerald-500"} animate-ping`} />
+            <span className={`text-[10px] font-black uppercase tracking-widest ${mode === "event" ? "text-amber-800" : "text-emerald-700"}`}>
+              {mode === "event"
+                ? `EVENT: ${eventName || 'จัดงานอีเวนต์'}`
+                : "OFFICIAL STAMP TRIGGER"}
             </span>
           </div>
 
-          <div className="space-y-1">
-            <h4 className="text-lg font-black text-[#231C18] leading-tight">{shop.shop_name}</h4>
-            {shop.shop_name_jp && (
-              <p className="text-xs font-bold text-[#8A7870]">{shop.shop_name_jp}</p>
-            )}
+          <div className="space-y-0.5">
+            <h4 className="text-base font-black text-[#231C18] leading-tight">{shop.shop_name}</h4>
             <p className="text-[10px] font-semibold text-[#8A7870]">{shop.prefecture || "Japan"}</p>
           </div>
 
-          <div className="bg-white p-4 rounded-2xl border inline-block shadow-md" style={{ borderColor: C.line }}>
+          {mode === "event" && (
+            <div className="bg-amber-100/80 p-2.5 rounded-xl border border-amber-200 text-[10px] font-bold text-amber-950 space-y-0.5">
+              <p className="flex items-center justify-center gap-1 text-[#231C18]">
+                <Calendar size={11} className="text-amber-700" />
+                <span>ช่วงเวลา: {formatEventDisplayDate(eventStartDate)} - {formatEventDisplayDate(eventEndDate)}</span>
+              </p>
+              <p className="text-amber-800">
+                โควต้า: {effectiveEventMaxScans === "unlimited" ? "ไม่จำกัดจำนวนครั้ง" : `${effectiveEventMaxScans} ครั้งตลอดกิจกรรม`}
+              </p>
+            </div>
+          )}
+
+          <div className="bg-white p-3.5 rounded-2xl border inline-block shadow-md" style={{ borderColor: C.line }}>
             <img
               src={qrDataUrl}
               alt={`QR Code for ${shop.shop_name}`}
-              className="w-48 h-48 object-contain mx-auto"
+              className="w-44 h-44 object-contain mx-auto"
             />
           </div>
 
-          <div className="bg-white px-4 py-2.5 rounded-xl border flex items-center justify-between gap-2" style={{ borderColor: C.line }}>
+          <div className="bg-white px-3.5 py-2 rounded-xl border flex items-center justify-between gap-2" style={{ borderColor: C.line }}>
             <div className="text-left">
-              <p className="text-[9px] font-black uppercase text-[#8A7870]">Merchant Stamp Code</p>
-              <p className="text-xs font-mono font-black text-[#231C18]">{stampCode}</p>
+              <p className="text-[9px] font-black uppercase text-[#8A7870]">
+                {mode === "event" ? "Event QR Code Payload" : "Merchant Stamp Code"}
+              </p>
+              <p className="text-[11px] font-mono font-black text-[#231C18] truncate max-w-[200px]">{stampCode}</p>
             </div>
             <button
               onClick={handleCopyCode}
@@ -3173,7 +3334,7 @@ function MerchantQrModal({ isOpen, shop, onClose }: MerchantQrModalProps) {
           </div>
         </div>
 
-        <div className="w-full flex items-center justify-between gap-3">
+        <div className="w-full flex items-center justify-between gap-3 pt-1">
           <button
             onClick={handlePrint}
             className="flex-1 py-2.5 rounded-xl border border-stone-200 hover:bg-stone-50 text-xs font-black text-[#231C18] flex items-center justify-center gap-2 transition cursor-pointer"

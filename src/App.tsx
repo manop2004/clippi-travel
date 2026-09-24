@@ -31,8 +31,12 @@ import NotificationBell from "./components/NotificationBell";
 import AchievementManagePage from "./components/views/AchievementManagePage";
 import AdminJigsawManagePage from "./components/views/AdminJigsawManagePage";
 import AdminBannerManagePage from "./components/views/AdminBannerManagePage";
+import { initQrSettingRealtimeSync } from "./lib/qrSettingsHelpers";
 
 export default function App() {
+  useEffect(() => {
+    initQrSettingRealtimeSync();
+  }, []);
   const [tab, setTab] = useState("explore");
   const [selectedPlace, setSelectedPlace] = useState<any>(null);
   const [editingShop, setEditingShop] = useState<any | null>(null);
@@ -45,6 +49,9 @@ export default function App() {
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [showAllTrending, setShowAllTrending] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(() => {
+    return typeof window !== "undefined" && sessionStorage.getItem("clippi_resetting_password") === "true";
+  });
   const [collectedPieceIds, setCollectedPieceIds] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem("collected_jigsaw_pieces");
@@ -81,6 +88,45 @@ export default function App() {
   useEffect(() => {
     if (tab !== "explore") setShowAllTrending(false);
   }, [tab]);
+
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<"login" | "signup">("login");
+  const [authNotice, setAuthNotice] = useState<string | null>(null);
+
+  const requireAuth = (actionName?: string, mode: "login" | "signup" = "login") => {
+    if (!session?.user) {
+      if (actionName) {
+        setAuthNotice(`กรุณาเข้าสู่ระบบหรือสมัครสมาชิกก่อนเพื่อ${actionName}`);
+      } else {
+        setAuthNotice(null);
+      }
+      setAuthModalMode(mode);
+      setIsAuthModalOpen(true);
+      return false;
+    }
+    return true;
+  };
+
+  const handleTabChange = (newTab: string) => {
+    const protectedTabs = [
+      "collection",
+      "jigsaw",
+      "profile",
+      "store_manage",
+      "admin",
+      "admin_review",
+      "banners_manage",
+      "users_manage",
+      "admin_log",
+      "achievements",
+      "jigsaw_manage",
+    ];
+    if (!session?.user && protectedTabs.includes(newTab)) {
+      requireAuth("เข้าถึงหน้านี้");
+      return;
+    }
+    setTab(newTab);
+  };
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -321,6 +367,14 @@ export default function App() {
     return () => window.removeEventListener("profileUpdated", handleProfileUpdated);
   }, [session]);
 
+  useEffect(() => {
+    const handleResetState = () => {
+      setIsResettingPassword(sessionStorage.getItem("clippi_resetting_password") === "true");
+    };
+    window.addEventListener("reset_password_state_changed", handleResetState);
+    return () => window.removeEventListener("reset_password_state_changed", handleResetState);
+  }, []);
+
   // Show a clean loading state to prevent flash of login screen or overlays
   if (authLoading || (session && roleLoading && !roleUser)) {
     return (
@@ -362,33 +416,33 @@ export default function App() {
     );
   }
 
-
-
-
-
   // Auth gate
-  if (!session) {
+  if (isResettingPassword) {
     return (
       <PasswordGate>
-        <AuthView />
+        <AuthView initialSubFlow="new_password" />
       </PasswordGate>
     );
   }
 
-  const userEmail = session.user.email || "Traveler";
-  const headerDisplayName = resolveUserDisplayName(
-    session.user.user_metadata?.display_name,
-    session.user.user_metadata?.full_name,
-    session.user.user_metadata?.username,
-    session.user.email,
-    session.user.user_metadata?.display_name
-  );
-  const headerAvatarUrl = resolveUserAvatarUrl(
-    session.user.user_metadata?.custom_avatar_url,
-    null,
-    session.user.user_metadata?.custom_avatar_url,
-    session.user.user_metadata?.avatar_url
-  ) || "";
+  const userEmail = session?.user?.email || "Guest";
+  const headerDisplayName = session?.user
+    ? resolveUserDisplayName(
+        session.user.user_metadata?.display_name,
+        session.user.user_metadata?.full_name,
+        session.user.user_metadata?.username,
+        session.user.email,
+        session.user.user_metadata?.display_name
+      )
+    : "ผู้เยี่ยมชม";
+  const headerAvatarUrl = session?.user
+    ? resolveUserAvatarUrl(
+        session.user.user_metadata?.custom_avatar_url,
+        null,
+        session.user.user_metadata?.custom_avatar_url,
+        session.user.user_metadata?.avatar_url
+      ) || ""
+    : "";
   const headerUserInitial = (headerDisplayName || userEmail)[0].toUpperCase();
 
   return (
@@ -398,9 +452,15 @@ export default function App() {
           {/* Desktop Sidebar Navigation */}
           <Sidebar
             activeTab={tab}
-            onTabChange={setTab}
-            onAddPlaceClick={() => setIsAddOpen(true)}
-            onOpenMerchantModal={() => setIsMerchantApplyOpen(true)}
+            onTabChange={handleTabChange}
+            onAddPlaceClick={() => {
+              if (requireAuth("เพิ่มสถานที่ท่องเที่ยว")) setIsAddOpen(true);
+            }}
+            onOpenMerchantModal={() => {
+              if (requireAuth("สมัครสมาชิกร้านค้า")) setIsMerchantApplyOpen(true);
+            }}
+            isLoggedIn={!!session?.user}
+            onOpenAuthModal={() => requireAuth("เข้าสู่ระบบ")}
           />
 
           {/* Main Content Wrapper */}
@@ -412,35 +472,47 @@ export default function App() {
               <div className={`items-center gap-3 select-none ${showMobileSearch ? "hidden sm:flex" : "flex"}`}>
                 <img src="/clippi-logo.png" alt="Clippi Logo" className="md:hidden h-8 object-contain mr-1" />
                 
-                <div className="relative shrink-0">
-                  {headerAvatarUrl && !headerImgError ? (
-                    <img
-                      src={headerAvatarUrl}
-                      alt={headerDisplayName}
-                      referrerPolicy="no-referrer"
-                      onError={() => setHeaderImgError(true)}
-                      className="w-9 h-9 rounded-full object-cover border shadow-xs"
-                      style={{ borderColor: C.accent }}
-                    />
-                  ) : (
-                    <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-white bg-gradient-to-br from-[#FD775C] to-[#E31E27] text-xs shadow-xs">
-                      {headerUserInitial}
-                    </div>
-                  )}
+                {session?.user ? (
+                  <>
+                    <div className="relative shrink-0">
+                      {headerAvatarUrl && !headerImgError ? (
+                        <img
+                          src={headerAvatarUrl}
+                          alt={headerDisplayName}
+                          referrerPolicy="no-referrer"
+                          onError={() => setHeaderImgError(true)}
+                          className="w-9 h-9 rounded-full object-cover border shadow-xs"
+                          style={{ borderColor: C.accent }}
+                        />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-white bg-gradient-to-br from-[#FD775C] to-[#E31E27] text-xs shadow-xs">
+                          {headerUserInitial}
+                        </div>
+                      )}
 
-                  {/* ROLE BADGE: Display ADMIN badge ONLY if role === 'admin' */}
-                  {role === "admin" && (
-                    <span className="absolute -bottom-0.5 -right-0.5 bg-[#E31E27] text-white text-[6px] font-black px-1 py-0.2 rounded-full border border-white uppercase tracking-wider">
-                      ADMIN
-                    </span>
-                  )}
-                </div>
-                <div className="leading-tight hidden sm:block">
-                  <p className="text-[9px] font-extrabold tracking-wider uppercase text-[#FD775C]">{t("greeting.morning")}</p>
-                  <h2 className="text-xs font-black flex items-center gap-1 text-[#000000]">
-                    {headerDisplayName}
-                  </h2>
-                </div>
+                      {/* ROLE BADGE: Display ADMIN badge ONLY if role === 'admin' */}
+                      {role === "admin" && (
+                        <span className="absolute -bottom-0.5 -right-0.5 bg-[#E31E27] text-white text-[6px] font-black px-1 py-0.2 rounded-full border border-white uppercase tracking-wider">
+                          ADMIN
+                        </span>
+                      )}
+                    </div>
+                    <div className="leading-tight hidden sm:block">
+                      <p className="text-[9px] font-extrabold tracking-wider uppercase text-[#FD775C]">{t("greeting.morning")}</p>
+                      <h2 className="text-xs font-black flex items-center gap-1 text-[#000000]">
+                        {headerDisplayName}
+                      </h2>
+                    </div>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => requireAuth("ใช้งานระบบ")}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#FD775C] to-[#E31E27] hover:from-[#E31E27] hover:to-[#FD775C] text-white text-xs font-black shadow-xs transition cursor-pointer active:scale-95"
+                  >
+                    <User size={15} />
+                    <span>เข้าสู่ระบบ / สมัครสมาชิก</span>
+                  </button>
+                )}
               </div>
 
               {/* Right Search & Alerts */}
@@ -492,7 +564,9 @@ export default function App() {
 
                 {/* QR Scanner Trigger Button */}
                 <button
-                  onClick={() => setIsScannerOpen(true)}
+                  onClick={() => {
+                    if (requireAuth("สแกน QR Code เช็คอิน")) setIsScannerOpen(true);
+                  }}
                   className={`items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#FD775C] to-rose-600 hover:from-rose-600 hover:to-[#FD775C] text-white text-xs font-bold shadow-xs transition cursor-pointer active:scale-95 ${
                     showMobileSearch ? "hidden sm:flex" : "flex"
                   }`}
@@ -510,14 +584,16 @@ export default function App() {
                 {/* Bell Alert (Notifications & Shop status tracking for all users) */}
                 <NotificationBell
                   hideOnMobileSearch={showMobileSearch}
-                  onOpenMerchantModal={() => setIsMerchantApplyOpen(true)}
+                  onOpenMerchantModal={() => {
+                    if (requireAuth("สมัครสมาชิกร้านค้า")) setIsMerchantApplyOpen(true);
+                  }}
                 />
 
               </div>
             </header>
 
             {/* Main Workspace Pages */}
-            <main className="flex-1 p-4 md:p-8 max-w-5xl mx-auto w-full pb-24 md:pb-8">
+            <main className="flex-1 p-3 sm:p-4 md:p-8 max-w-5xl mx-auto w-full pb-24 md:pb-8 min-w-0">
               {tab === "explore" && (
                 showAllTrending ? (
                   <TrendingAllView
@@ -537,9 +613,11 @@ export default function App() {
                 <MapView
                   openPlace={(p: any) => setSelectedPlace(p)}
                   searchQuery={searchQuery}
-                  onOpenScanner={() => setIsScannerOpen(true)}
+                  onOpenScanner={() => {
+                    if (requireAuth("สแกน QR Code เช็คอิน")) setIsScannerOpen(true);
+                  }}
                   collectedJigsawPieces={collectedPieceIds}
-                  onNavigateTab={(t) => setTab(t)}
+                  onNavigateTab={handleTabChange}
                 />
               )}
               {tab === "collection" && (
@@ -551,43 +629,49 @@ export default function App() {
               {tab === "jigsaw" && (
                 <JigsawBoardView
                   collectedPieceIds={collectedPieceIds}
-                  onOpenScanner={() => setIsScannerOpen(true)}
+                  onOpenScanner={() => {
+                    if (requireAuth("สแกน QR Code เช็คอิน")) setIsScannerOpen(true);
+                  }}
                   onResetProgress={() => setCollectedPieceIds([])}
-                  onNavigateTab={(t) => setTab(t)}
+                  onNavigateTab={handleTabChange}
                 />
               )}
               {tab === "profile" && (
                 <ProfileView
-                  onOpenMerchantModal={() => setIsMerchantApplyOpen(true)}
-                  onGoToStoreManage={() => setTab("store_manage")}
+                  onOpenMerchantModal={() => {
+                    if (requireAuth("สมัครสมาชิกร้านค้า")) setIsMerchantApplyOpen(true);
+                  }}
+                  onGoToStoreManage={() => handleTabChange("store_manage")}
                 />
               )}
               {(tab === "admin" || tab === "admin_review") && (
-                <ProtectedRoute allowedRoles={["admin"]} onGoHome={() => setTab("explore")}>
+                <ProtectedRoute allowedRoles={["admin"]} onGoHome={() => handleTabChange("explore")}>
                   <AdminReviewView />
                 </ProtectedRoute>
               )}
               {tab === "achievements" && (
-                <ProtectedRoute allowedRoles={["admin"]} onGoHome={() => setTab("explore")}>
+                <ProtectedRoute allowedRoles={["admin"]} onGoHome={() => handleTabChange("explore")}>
                   <AchievementManagePage />
                 </ProtectedRoute>
               )}
               {tab === "store_manage" && (
-                <StoreManagementPage onOpenAddPlace={() => setIsAddOpen(true)} />
+                <StoreManagementPage onOpenAddPlace={() => {
+                  if (requireAuth("เพิ่มสถานที่ท่องเที่ยว")) setIsAddOpen(true);
+                }} />
               )}
               {tab === "users_manage" && <UserManagementPage />}
               {tab === "admin_log" && (
-                <ProtectedRoute allowedRoles={["admin"]} onGoHome={() => setTab("explore")}>
+                <ProtectedRoute allowedRoles={["admin"]} onGoHome={() => handleTabChange("explore")}>
                   <AdminLogPage />
                 </ProtectedRoute>
               )}
               {tab === "jigsaw_manage" && (
-                <ProtectedRoute allowedRoles={["admin"]} onGoHome={() => setTab("explore")}>
+                <ProtectedRoute allowedRoles={["admin"]} onGoHome={() => handleTabChange("explore")}>
                   <AdminJigsawManagePage />
                 </ProtectedRoute>
               )}
               {tab === "banners_manage" && (
-                <ProtectedRoute allowedRoles={["admin"]} onGoHome={() => setTab("explore")}>
+                <ProtectedRoute allowedRoles={["admin"]} onGoHome={() => handleTabChange("explore")}>
                   <AdminBannerManagePage />
                 </ProtectedRoute>
               )}
@@ -595,25 +679,27 @@ export default function App() {
           </div>
 
           {/* Mobile Bottom Navigation Bar */}
-          <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around py-2 bg-white border-t px-4 shrink-0" style={{ borderColor: C.line }}>
+          <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around py-1.5 px-3 bg-white/95 backdrop-blur-md border-t shrink-0 pb-[calc(0.4rem+env(safe-area-inset-bottom,0px))]" style={{ borderColor: C.line }}>
             {mobileUserTabs.map((t) => {
               const active = tab === t.id;
               return (
-                <button key={t.id} onClick={() => setTab(t.id)} className="flex flex-col items-center gap-0.5 py-1 flex-1 min-w-0">
+                <button key={t.id} onClick={() => handleTabChange(t.id)} className="flex flex-col items-center gap-0.5 py-1 flex-1 min-w-0 active:scale-95 transition">
                   <t.icon size={18} color={active ? C.accent : C.inkSoft} strokeWidth={active ? 2.5 : 1.8} />
                   <span className="text-[9px] font-bold tracking-tight truncate max-w-full" style={{ color: active ? C.accent : C.inkSoft }}>{t.label}</span>
                 </button>
               );
             })}
             {canManage && (
-              <button onClick={() => setIsAdminMenuOpen(true)} className="flex flex-col items-center gap-0.5 py-1 flex-1 min-w-0" aria-label={t("nav.manage")}>
+              <button onClick={() => setIsAdminMenuOpen(true)} className="flex flex-col items-center gap-0.5 py-1 flex-1 min-w-0 active:scale-95 transition" aria-label={t("nav.manage")}>
                 <LayoutGrid size={18} color={isManageTab ? C.accent : C.inkSoft} strokeWidth={isManageTab ? 2.5 : 1.8} />
                 <span className="text-[9px] font-bold tracking-tight truncate max-w-full" style={{ color: isManageTab ? C.accent : C.inkSoft }}>{t("nav.manage")}</span>
               </button>
             )}
             <button
-              onClick={() => setIsAddOpen(true)}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-white shadow-md ml-2 shrink-0"
+              onClick={() => {
+                if (requireAuth("เพิ่มสถานที่ท่องเที่ยว")) setIsAddOpen(true);
+              }}
+              className="w-8 h-8 rounded-full flex items-center justify-center text-white shadow-md ml-1 shrink-0 active:scale-90 transition cursor-pointer"
               style={{ background: C.accent }}
             >
               <Plus size={16} strokeWidth={3} />
@@ -624,6 +710,10 @@ export default function App() {
           <PlaceDetailModal
             place={selectedPlace}
             onClose={() => setSelectedPlace(null)}
+            onOpenScanner={() => {
+              if (requireAuth("สแกน QR Code เช็คอิน")) setIsScannerOpen(true);
+            }}
+            onRequireAuth={(msg) => requireAuth(msg)}
             onEditStore={(p) => {
               setSelectedPlace(null);
               setEditingShop(p);
@@ -666,11 +756,34 @@ export default function App() {
             isOpen={isScannerOpen}
             onClose={() => setIsScannerOpen(false)}
             onPieceCollected={handlePieceCollected}
+            onStampCollected={(stampData) => {
+              console.log("Stamp collected via QR scanner:", stampData);
+            }}
             onViewBoard={() => {
               setIsScannerOpen(false);
-              setTab("jigsaw");
+              handleTabChange("jigsaw");
             }}
           />
+
+          {/* Unauthenticated Guest Auth Modal Prompt */}
+          {isAuthModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
+              <div className="relative w-full max-w-md my-auto">
+                {authNotice && (
+                  <div className="mb-2 p-3 bg-amber-500 text-white text-xs font-bold rounded-2xl shadow-md text-center animate-bounce">
+                    {authNotice}
+                  </div>
+                )}
+                <AuthView
+                  initialMode={authModalMode}
+                  onClose={() => {
+                    setIsAuthModalOpen(false);
+                    setAuthNotice(null);
+                  }}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Mobile Admin Drawer Modal */}
           {isAdminMenuOpen && (
@@ -691,7 +804,7 @@ export default function App() {
 
                 <div className="grid grid-cols-2 gap-2.5">
                   <button
-                    onClick={() => { setTab("store_manage"); setIsAdminMenuOpen(false); }}
+                    onClick={() => { handleTabChange("store_manage"); setIsAdminMenuOpen(false); }}
                     className={`p-3.5 rounded-2xl border text-left flex flex-col justify-between transition cursor-pointer ${tab === "store_manage" ? "bg-rose-50 border-rose-400 text-rose-950 font-black shadow-xs" : "bg-stone-50 hover:bg-stone-100 border-stone-200 text-stone-800 font-bold"}`}
                   >
                     <Store size={20} className="text-rose-500 mb-2" />
@@ -699,7 +812,7 @@ export default function App() {
                   </button>
                   {role === "admin" && (<>
                   <button
-                    onClick={() => { setTab("banners_manage"); setIsAdminMenuOpen(false); }}
+                    onClick={() => { handleTabChange("banners_manage"); setIsAdminMenuOpen(false); }}
                     className={`p-3.5 rounded-2xl border text-left flex flex-col justify-between transition cursor-pointer ${tab === "banners_manage" ? "bg-rose-50 border-rose-400 text-rose-950 font-black shadow-xs" : "bg-stone-50 hover:bg-stone-100 border-stone-200 text-stone-800 font-bold"}`}
                   >
                     <Image size={20} className="text-rose-500 mb-2" />
@@ -707,7 +820,7 @@ export default function App() {
                   </button>
 
                   <button
-                    onClick={() => { setTab("admin"); setIsAdminMenuOpen(false); }}
+                    onClick={() => { handleTabChange("admin"); setIsAdminMenuOpen(false); }}
                     className={`p-3.5 rounded-2xl border text-left flex flex-col justify-between transition cursor-pointer ${tab === "admin" ? "bg-rose-50 border-rose-400 text-rose-950 font-black shadow-xs" : "bg-stone-50 hover:bg-stone-100 border-stone-200 text-stone-800 font-bold"}`}
                   >
                     <ShieldCheck size={20} className="text-amber-500 mb-2" />
@@ -715,7 +828,7 @@ export default function App() {
                   </button>
 
                   <button
-                    onClick={() => { setTab("users_manage"); setIsAdminMenuOpen(false); }}
+                    onClick={() => { handleTabChange("users_manage"); setIsAdminMenuOpen(false); }}
                     className={`p-3.5 rounded-2xl border text-left flex flex-col justify-between transition cursor-pointer ${tab === "users_manage" ? "bg-rose-50 border-rose-400 text-rose-950 font-black shadow-xs" : "bg-stone-50 hover:bg-stone-100 border-stone-200 text-stone-800 font-bold"}`}
                   >
                     <Users size={20} className="text-blue-500 mb-2" />
@@ -723,7 +836,7 @@ export default function App() {
                   </button>
 
                   <button
-                    onClick={() => { setTab("admin_log"); setIsAdminMenuOpen(false); }}
+                    onClick={() => { handleTabChange("admin_log"); setIsAdminMenuOpen(false); }}
                     className={`p-3.5 rounded-2xl border text-left flex flex-col justify-between transition cursor-pointer ${tab === "admin_log" ? "bg-rose-50 border-rose-400 text-rose-950 font-black shadow-xs" : "bg-stone-50 hover:bg-stone-100 border-stone-200 text-stone-800 font-bold"}`}
                   >
                     <ScrollText size={20} className="text-purple-500 mb-2" />
@@ -731,7 +844,7 @@ export default function App() {
                   </button>
 
                   <button
-                    onClick={() => { setTab("achievements"); setIsAdminMenuOpen(false); }}
+                    onClick={() => { handleTabChange("achievements"); setIsAdminMenuOpen(false); }}
                     className={`p-3.5 rounded-2xl border text-left flex flex-col justify-between transition cursor-pointer ${tab === "achievements" ? "bg-rose-50 border-rose-400 text-rose-950 font-black shadow-xs" : "bg-stone-50 hover:bg-stone-100 border-stone-200 text-stone-800 font-bold"}`}
                   >
                     <Trophy size={20} className="text-amber-500 mb-2" />
@@ -739,7 +852,7 @@ export default function App() {
                   </button>
 
                   <button
-                    onClick={() => { setTab("jigsaw_manage"); setIsAdminMenuOpen(false); }}
+                    onClick={() => { handleTabChange("jigsaw_manage"); setIsAdminMenuOpen(false); }}
                     className={`p-3.5 rounded-2xl border text-left flex flex-col justify-between transition cursor-pointer ${tab === "jigsaw_manage" ? "bg-rose-50 border-rose-400 text-rose-950 font-black shadow-xs" : "bg-stone-50 hover:bg-stone-100 border-stone-200 text-stone-800 font-bold"}`}
                   >
                     <Puzzle size={20} className="text-emerald-500 mb-2" />

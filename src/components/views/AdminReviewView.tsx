@@ -14,10 +14,13 @@ import {
   Mail, 
   Phone, 
   ExternalLink,
-  Building
+  Building,
+  QrCode,
+  Power
 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 import { C } from "../../constants/mockData";
+import { isQrRequirementEnabled, setQrRequirementEnabled } from "../../lib/qrSettingsHelpers";
 
 export default function AdminReviewView() {
   const [submissions, setSubmissions] = useState<any[]>([]);
@@ -26,6 +29,14 @@ export default function AdminReviewView() {
   const [rejectionReason, setRejectionReason] = useState<string>("");
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+
+  // Admin System Settings: QR Requirement State
+  const [qrEnabled, setQrEnabled] = useState<boolean>(isQrRequirementEnabled());
+
+  const handleToggleQrRequirement = (enabled: boolean) => {
+    setQrRequirementEnabled(enabled);
+    setQrEnabled(enabled);
+  };
 
   // Main Category Tab ("merchants" = อนุมัติสิทธิ์เจ้าของร้าน, "places" = อนุมัติสถานที่ใหม่)
   const [mainCategory, setMainCategory] = useState<"merchants" | "places">("merchants");
@@ -1018,6 +1029,49 @@ export default function AdminReviewView() {
           {loading ? <Loader2 size={14} className="animate-spin text-amber-600" /> : <Clock size={14} />}
           <span>รีเฟรชข้อมูล</span>
         </button>
+      </div>
+
+      {/* Admin System Settings Card: QR Code + GPS vs GPS Only Mode Toggle */}
+      <div className="bg-white p-5 rounded-3xl border shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4" style={{ borderColor: C.line }}>
+        <div className="flex items-center gap-3.5">
+          <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 transition-colors ${
+            qrEnabled ? "bg-amber-100 text-amber-800 border border-amber-300" : "bg-blue-100 text-blue-800 border border-blue-300"
+          }`}>
+            <QrCode size={22} />
+          </div>
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-sm font-black text-[#231C18]">โหมดการเช็คอินของนักท่องเที่ยว (Check-in Mode)</h3>
+              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black border ${
+                qrEnabled
+                  ? "bg-amber-50 text-amber-800 border-amber-300"
+                  : "bg-blue-50 text-blue-800 border-blue-300"
+              }`}>
+                {qrEnabled ? "📷 สแกน QR + เช็ค GPS 50m" : "📍 เช็คพิกัด GPS 50m อย่างเดียว (ไม่ต้องสแกน QR)"}
+              </span>
+            </div>
+            <p className="text-xs text-[#8A7870] font-semibold mt-1">
+              {qrEnabled
+                ? "โหมดปัจจุบัน: นักท่องเที่ยวต้องเปิดกล้องสแกน QR Code ประจำร้านค้า และต้องอยู่ในระยะพิกัด GPS ไม่เกิน 50 เมตร"
+                : "โหมดปัจจุบัน: นักท่องเที่ยวสามารถกดปุ่มเช็คอินรับแสตมป์จากหน้าจอได้ทันทีเมื่ออยู่ในระยะ GPS 50 เมตร (ไม่ต้องเปิดกล้องสแกน QR Code)"}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 self-end sm:self-center shrink-0">
+          <button
+            type="button"
+            onClick={() => handleToggleQrRequirement(!qrEnabled)}
+            className={`px-4 py-2.5 rounded-2xl font-black text-xs flex items-center gap-2 transition cursor-pointer shadow-xs ${
+              qrEnabled
+                ? "bg-amber-600 hover:bg-amber-700 text-white"
+                : "bg-blue-600 hover:bg-blue-700 text-white"
+            }`}
+          >
+            <Power size={15} />
+            <span>{qrEnabled ? "สลับเป็น: เช็ค GPS อย่างเดียว" : "สลับเป็น: บังคับสแกน QR + GPS"}</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Category Selector Tabs */}

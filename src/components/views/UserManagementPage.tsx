@@ -587,91 +587,87 @@ function UserManagementContent() {
   };
 
   return (
-    <div className="space-y-6 w-full min-w-0 text-[#231C18]">
+    <div className="space-y-4 w-full min-w-0 text-[#231C18]">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border shadow-xs" style={{ borderColor: C.line }}>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-5 rounded-3xl border shadow-xs" style={{ borderColor: C.line }}>
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-stone-100 border flex items-center justify-center text-[#231C18] shrink-0" style={{ borderColor: C.line }}>
-            <Users size={22} />
+          <div className="w-10 h-10 rounded-2xl bg-stone-100 border flex items-center justify-center text-[#FD775C] shrink-0" style={{ borderColor: C.line }}>
+            <Users size={20} />
           </div>
           <div>
-            <h2 className="text-lg font-black text-[#231C18]">User Management</h2>
+            <h2 className="text-base font-black text-[#231C18]">จัดการผู้ใช้งาน (User Management)</h2>
             <p className="text-xs text-[#8A7870] font-semibold mt-0.5">
-              จัดการสิทธิ์ผู้ใช้งาน บทบาทในระบบ และส่งประกาศแจ้งเตือนกระดิ่ง
+              จัดการสิทธิ์ผู้ใช้งาน บทบาทในระบบ และส่งประกาศแจ้งเตือน
             </p>
           </div>
         </div>
 
         <button
           onClick={() => setIsAnnouncementOpen(true)}
-          className="px-4 py-2.5 rounded-2xl bg-[#FD775C] hover:bg-[#E31E27] text-white text-xs font-black shadow-md flex items-center gap-2 transition cursor-pointer active:scale-98"
+          className="px-4 py-2 rounded-2xl bg-gradient-to-r from-[#FD775C] to-[#E31E27] hover:from-[#E31E27] hover:to-[#FD775C] text-white text-xs font-black shadow-xs flex items-center justify-center gap-2 transition cursor-pointer active:scale-95 shrink-0"
         >
-          <Megaphone size={16} />
+          <Megaphone size={15} />
           <span>ส่งประกาศระบบ (Broadcast)</span>
         </button>
       </div>
 
       {/* Summary KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-3xl border shadow-2xs flex items-center gap-3.5" style={{ borderColor: C.line }}>
-          <div className="w-11 h-11 rounded-2xl bg-stone-100 flex items-center justify-center text-[#231C18] shrink-0 border" style={{ borderColor: C.line }}>
-            <Users size={20} />
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="bg-white p-3.5 rounded-2xl border shadow-2xs flex items-center gap-3" style={{ borderColor: C.line }}>
+          <div className="w-9 h-9 rounded-xl bg-stone-100 flex items-center justify-center text-stone-700 shrink-0 border" style={{ borderColor: C.line }}>
+            <Users size={18} />
           </div>
-          <div>
-            <p className="text-[9px] font-black uppercase text-[#8A7870] tracking-wider">Total Members</p>
-            <h3 className="text-lg font-black text-[#231C18]">{users.length} คน</h3>
-            <p className="text-[10px] text-[#8A7870] font-semibold">สมาชิกทั้งหมดในระบบ</p>
-          </div>
-        </div>
-
-        <div className="bg-white p-4 rounded-3xl border shadow-2xs flex items-center gap-3.5" style={{ borderColor: C.line }}>
-          <div className="w-11 h-11 rounded-2xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center shrink-0">
-            <Crown size={20} />
-          </div>
-          <div>
-            <p className="text-[9px] font-black uppercase text-[#8A7870] tracking-wider">Administrators</p>
-            <h3 className="text-lg font-black text-amber-700">{adminCount} คน</h3>
-            <p className="text-[10px] text-[#8A7870] font-semibold">ผู้ดูแลระบบและจัดการสิทธิ์</p>
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase text-[#8A7870] tracking-wider truncate">สมาชิกทั้งหมด</p>
+            <h3 className="text-sm font-black text-[#231C18]">{users.length} คน</h3>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-3xl border shadow-2xs flex items-center gap-3.5" style={{ borderColor: C.line }}>
-          <div className="w-11 h-11 rounded-2xl bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center justify-center shrink-0">
-            <Store size={20} />
+        <div className="bg-white p-3.5 rounded-2xl border shadow-2xs flex items-center gap-3" style={{ borderColor: C.line }}>
+          <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center shrink-0">
+            <Crown size={18} />
           </div>
-          <div>
-            <p className="text-[9px] font-black uppercase text-[#8A7870] tracking-wider">Store Merchants</p>
-            <h3 className="text-lg font-black text-indigo-700">{storeOwnerCount} คน</h3>
-            <p className="text-[10px] text-[#8A7870] font-semibold">เจ้าของร้านค้าธุรกิจ</p>
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase text-[#8A7870] tracking-wider truncate">แอดมิน</p>
+            <h3 className="text-sm font-black text-amber-700">{adminCount} คน</h3>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-3xl border shadow-2xs flex items-center gap-3.5" style={{ borderColor: C.line }}>
-          <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center shrink-0">
-            <UserCheck size={20} />
+        <div className="bg-white p-3.5 rounded-2xl border shadow-2xs flex items-center gap-3" style={{ borderColor: C.line }}>
+          <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center justify-center shrink-0">
+            <Store size={18} />
           </div>
-          <div>
-            <p className="text-[9px] font-black uppercase text-[#8A7870] tracking-wider">Active Users</p>
-            <h3 className="text-lg font-black text-emerald-700">{activeCount} คน</h3>
-            <p className="text-[10px] text-[#8A7870] font-semibold">
-              {bannedCount > 0 ? `ปกติ ${activeCount} / แบน ${bannedCount}` : "บัญชีปกติพร้อมใช้งาน"}
-            </p>
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase text-[#8A7870] tracking-wider truncate">เจ้าของร้าน</p>
+            <h3 className="text-sm font-black text-indigo-700">{storeOwnerCount} คน</h3>
+          </div>
+        </div>
+
+        <div className="bg-white p-3.5 rounded-2xl border shadow-2xs flex items-center gap-3" style={{ borderColor: C.line }}>
+          <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center shrink-0">
+            <UserCheck size={18} />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase text-[#8A7870] tracking-wider truncate">ปกติ / ถูกแบน</p>
+            <h3 className="text-sm font-black text-emerald-700">
+              {activeCount} <span className="text-xs text-rose-600 font-bold">/ {bannedCount}</span>
+            </h3>
           </div>
         </div>
       </div>
 
-      {/* Control Bar: Multi-Filter, Sorting & Search */}
-      <div className="bg-white p-4 rounded-3xl border shadow-2xs space-y-3.5" style={{ borderColor: C.line }}>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          {/* Search Box */}
-          <div className="flex items-center gap-2 px-3.5 py-2 rounded-2xl border bg-stone-50/70 max-w-md w-full" style={{ borderColor: C.line }}>
-            <Search size={16} color={C.inkSoft} />
+      {/* Control Bar: Compact Integrated Filters */}
+      <div className="bg-white p-4 rounded-3xl border shadow-2xs space-y-3" style={{ borderColor: C.line }}>
+        {/* Search Input & Reset Filter */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2 px-3.5 py-2 rounded-2xl border bg-stone-50/80 flex-1 max-w-xl" style={{ borderColor: C.line }}>
+            <Search size={15} color={C.inkSoft} />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="ค้นหาชื่อที่แสดง (Display Name), username, อีเมล..."
-              className="w-full text-xs outline-none bg-transparent font-medium"
+              placeholder="ค้นหาตามชื่อ, username หรือ อีเมล..."
+              className="w-full text-xs outline-none bg-transparent font-medium text-stone-900 placeholder-stone-400"
             />
             {searchQuery && (
               <button onClick={() => setSearchQuery("")} className="text-[#8A7870] hover:text-[#231C18]">
@@ -680,242 +676,99 @@ function UserManagementContent() {
             )}
           </div>
 
-          {/* Reset Filters */}
           {isAnyFilterActive && (
             <button
               onClick={handleResetFilters}
-              className="px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer self-start sm:self-auto"
+              className="px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer shrink-0"
             >
               <RotateCcw size={13} />
-              <span>ล้างการกรองทั้งหมด</span>
+              <span>ล้างตัวกรอง</span>
             </button>
           )}
         </div>
 
-        {/* Filter Controls: Role Filter & Status Filter */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t" style={{ borderColor: C.line }}>
-          {/* Role Filter Tabs */}
-          <div className="flex flex-wrap items-center gap-1.5 select-none">
-            <span className="text-[11px] font-black uppercase text-[#8A7870] tracking-wider mr-1 flex items-center gap-1">
-              <Filter size={13} className="text-amber-600" /> แยกตามบทบาท:
-            </span>
-
-            <button
-              type="button"
-              onClick={() => setRoleFilter("all")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
-                roleFilter === "all"
-                  ? "bg-[#FD775C] text-white font-black border-[#FD775C] shadow-xs"
-                  : "bg-white text-[#8A7870] hover:bg-stone-50"
-              }`}
-              style={roleFilter !== "all" ? { borderColor: C.line } : undefined}
+        {/* Clean Dropdown Filter Selectors */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2 border-t" style={{ borderColor: C.line }}>
+          {/* Role Select Dropdown */}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border bg-white text-xs font-bold" style={{ borderColor: C.line }}>
+            <Filter size={13} className="text-[#FD775C] shrink-0" />
+            <span className="text-[11px] text-stone-500 font-medium shrink-0">บทบาท:</span>
+            <select
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value as any)}
+              className="w-full bg-transparent outline-none font-bold text-stone-800 cursor-pointer"
             >
-              <span>ทั้งหมด</span>
-              <span className="px-1.5 py-0.2 text-[10px] rounded-full bg-white/20">{users.length}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setRoleFilter("admin")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
-                roleFilter === "admin"
-                  ? "bg-amber-400 text-stone-950 font-black border-amber-400 shadow-xs"
-                  : "bg-white text-stone-700 hover:bg-amber-50"
-              }`}
-              style={roleFilter !== "admin" ? { borderColor: C.line } : undefined}
-            >
-              <Crown size={12} className={roleFilter === "admin" ? "text-stone-950" : "text-amber-600"} />
-              <span>Admin</span>
-              <span className="px-1.5 py-0.2 text-[10px] rounded-full bg-amber-100 text-amber-900 font-bold">{adminCount}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setRoleFilter("store")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
-                roleFilter === "store"
-                  ? "bg-indigo-600 text-white font-black border-indigo-600 shadow-xs"
-                  : "bg-white text-indigo-800 hover:bg-indigo-50"
-              }`}
-              style={roleFilter !== "store" ? { borderColor: C.line } : undefined}
-            >
-              <Store size={12} className={roleFilter === "store" ? "text-white" : "text-indigo-600"} />
-              <span>เจ้าของร้าน</span>
-              <span className="px-1.5 py-0.2 text-[10px] rounded-full bg-indigo-100 text-indigo-900 font-bold">{storeOwnerCount}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setRoleFilter("user")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
-                roleFilter === "user"
-                  ? "bg-[#FD775C] text-white font-black border-[#FD775C] shadow-xs"
-                  : "bg-white text-[#8A7870] hover:bg-stone-50"
-              }`}
-              style={roleFilter !== "user" ? { borderColor: C.line } : undefined}
-            >
-              <User size={12} />
-              <span>ผู้ใช้ทั่วไป</span>
-              <span className="px-1.5 py-0.2 text-[10px] rounded-full bg-stone-100 text-stone-800 font-bold">{generalUserCount}</span>
-            </button>
+              <option value="all">ทั้งหมด ({users.length})</option>
+              <option value="admin">Admin ({adminCount})</option>
+              <option value="store">เจ้าของร้าน ({storeOwnerCount})</option>
+              <option value="user">ผู้ใช้ทั่วไป ({generalUserCount})</option>
+            </select>
           </div>
 
-          {/* Status Filter Buttons */}
-          <div className="flex items-center gap-1.5 select-none">
-            <span className="text-[11px] font-black uppercase text-[#8A7870] tracking-wider mr-1">
-              สถานะ:
-            </span>
-            <button
-              type="button"
-              onClick={() => setStatusFilter("all")}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer border ${
-                statusFilter === "all"
-                  ? "bg-[#FD775C] text-white border-[#FD775C]"
-                  : "bg-white text-[#8A7870] hover:bg-stone-50"
-              }`}
-              style={statusFilter !== "all" ? { borderColor: C.line } : undefined}
+          {/* Status Select Dropdown */}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border bg-white text-xs font-bold" style={{ borderColor: C.line }}>
+            <Shield size={13} className="text-emerald-600 shrink-0" />
+            <span className="text-[11px] text-stone-500 font-medium shrink-0">สถานะ:</span>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as any)}
+              className="w-full bg-transparent outline-none font-bold text-stone-800 cursor-pointer"
             >
-              ทั้งหมด
-            </button>
-            <button
-              type="button"
-              onClick={() => setStatusFilter("active")}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer border ${
-                statusFilter === "active"
-                  ? "bg-emerald-600 text-white border-emerald-600"
-                  : "bg-white text-emerald-700 hover:bg-emerald-50"
-              }`}
-              style={statusFilter !== "active" ? { borderColor: C.line } : undefined}
-            >
-              ปกติ ({activeCount})
-            </button>
-            <button
-              type="button"
-              onClick={() => setStatusFilter("banned")}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer border ${
-                statusFilter === "banned"
-                  ? "bg-rose-600 text-white border-rose-600"
-                  : "bg-white text-rose-700 hover:bg-rose-50"
-              }`}
-              style={statusFilter !== "banned" ? { borderColor: C.line } : undefined}
-            >
-              ถูกแบน ({bannedCount})
-            </button>
-          </div>
-        </div>
-
-        {/* Registration Order Sorting Controls */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-2.5 border-t select-none" style={{ borderColor: C.line }}>
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-black uppercase text-[#8A7870] tracking-wider mr-1 flex items-center gap-1">
-              <ArrowUpDown size={13} className="text-amber-600" /> จัดเรียงการสมัคร:
-            </span>
-
-            <button
-              type="button"
-              onClick={() => setSortOrder("newest")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border flex items-center gap-1.5 ${
-                sortOrder === "newest"
-                  ? "bg-[#FD775C] text-white font-black border-[#FD775C] shadow-xs"
-                  : "bg-white text-[#8A7870] hover:bg-stone-50"
-              }`}
-              style={sortOrder !== "newest" ? { borderColor: C.line } : undefined}
-            >
-              <Calendar size={13} className={sortOrder === "newest" ? "text-amber-400" : "text-amber-600"} />
-              <span>สมัครล่าสุด (Newest First)</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setSortOrder("oldest")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border flex items-center gap-1.5 ${
-                sortOrder === "oldest"
-                  ? "bg-[#FD775C] text-white font-black border-[#FD775C] shadow-xs"
-                  : "bg-white text-[#8A7870] hover:bg-stone-50"
-              }`}
-              style={sortOrder !== "oldest" ? { borderColor: C.line } : undefined}
-            >
-              <Clock size={13} />
-              <span>สมัครก่อนหน้า (Oldest First)</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setSortOrder("name")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border flex items-center gap-1.5 ${
-                sortOrder === "name"
-                  ? "bg-[#FD775C] text-white font-black border-[#FD775C] shadow-xs"
-                  : "bg-white text-[#8A7870] hover:bg-stone-50"
-              }`}
-              style={sortOrder !== "name" ? { borderColor: C.line } : undefined}
-            >
-              <ArrowUpDown size={13} />
-              <span>ตามชื่อ (A-Z)</span>
-            </button>
-
-            {/* Sort by Most Stamps (Check-ins) */}
-            <button
-              type="button"
-              onClick={() => setSortOrder("most_stamps")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border flex items-center gap-1.5 ${
-                sortOrder === "most_stamps"
-                  ? "bg-amber-500 text-stone-950 font-black border-amber-500 shadow-xs"
-                  : "bg-white text-amber-900 hover:bg-amber-50 border-amber-300"
-              }`}
-            >
-              <MapPin size={13} className={sortOrder === "most_stamps" ? "text-stone-950" : "text-amber-600"} />
-              <span>เช็คอินเยอะสุด</span>
-            </button>
-
-            {/* Sort by Most Reviews */}
-            <button
-              type="button"
-              onClick={() => setSortOrder("most_reviews")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border flex items-center gap-1.5 ${
-                sortOrder === "most_reviews"
-                  ? "bg-blue-600 text-white font-black border-blue-600 shadow-xs"
-                  : "bg-white text-blue-900 hover:bg-blue-50 border-blue-300"
-              }`}
-            >
-              <MessageSquare size={13} className={sortOrder === "most_reviews" ? "text-white" : "text-blue-600"} />
-              <span>รีวิวเยอะสุด</span>
-            </button>
+              <option value="all">ทุกสถานะ ({users.length})</option>
+              <option value="active">ใช้งานปกติ ({activeCount})</option>
+              <option value="banned">ถูกแบน ({bannedCount})</option>
+            </select>
           </div>
 
-          <div className="text-[11px] font-semibold text-[#8A7870]">
-            แสดงผล {filteredUsers.length} จาก {users.length} บัญชี
+          {/* Sort Select Dropdown */}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border bg-white text-xs font-bold" style={{ borderColor: C.line }}>
+            <ArrowUpDown size={13} className="text-amber-600 shrink-0" />
+            <span className="text-[11px] text-stone-500 font-medium shrink-0">จัดเรียง:</span>
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as any)}
+              className="w-full bg-transparent outline-none font-bold text-stone-800 cursor-pointer"
+            >
+              <option value="newest">สมัครล่าสุด (Newest)</option>
+              <option value="oldest">สมัครก่อนหน้า (Oldest)</option>
+              <option value="name">ตามชื่อ (A-Z)</option>
+              <option value="most_stamps">เช็คอินเยอะที่สุด</option>
+              <option value="most_reviews">รีวิวเยอะที่สุด</option>
+            </select>
           </div>
         </div>
       </div>
 
+      {/* User Count Bar */}
+      <div className="flex items-center justify-between text-[11px] font-bold text-stone-500 px-1 select-none">
+        <span>แสดงผล {filteredUsers.length} จาก {users.length} สมาชิก</span>
+      </div>
+
+      {/* User List Content */}
       {loading ? (
         <div className="p-12 text-center bg-white rounded-3xl border flex flex-col items-center justify-center gap-3" style={{ borderColor: C.line }}>
-          <Loader2 size={24} className="animate-spin text-[#E0533C]" />
-          <span className="text-xs font-bold text-[#8A7870]">กำลังโหลดรายชื่อผู้ใช้...</span>
+          <Loader2 size={24} className="animate-spin text-[#FD775C]" />
+          <span className="text-xs font-bold text-stone-500">กำลังโหลดรายชื่อสมาชิก...</span>
         </div>
       ) : filteredUsers.length === 0 ? (
         <div className="p-12 text-center bg-white rounded-3xl border flex flex-col items-center justify-center gap-2" style={{ borderColor: C.line }}>
           <Users size={32} className="text-stone-300" />
-          <p className="text-xs font-bold text-[#8A7870]">ไม่พบผู้ใช้งานตามเงื่อนไขที่ระบุ</p>
+          <p className="text-xs font-bold text-stone-500">ไม่พบข้อมูลผู้ใช้งานตามเงื่อนไข</p>
           {isAnyFilterActive && (
             <button
               onClick={handleResetFilters}
-              className="mt-2 px-3.5 py-1.5 bg-[#FD775C] text-white text-xs font-bold rounded-xl flex items-center gap-1.5"
+              className="mt-2 px-3.5 py-1.5 bg-[#FD775C] text-white text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer"
             >
               <RotateCcw size={13} />
-              <span>ล้างการกรองทั้งหมด</span>
+              <span>ล้างตัวกรอง</span>
             </button>
           )}
         </div>
       ) : (
-        <div className="bg-white rounded-3xl border divide-y overflow-hidden shadow-xs" style={{ borderColor: C.line }}>
+        <div className="space-y-3">
           {filteredUsers.map((u) => {
             const isSelf = currentAdmin && u.id === currentAdmin.id;
-            
-            // Priority: Display Name -> Full Name -> Username -> User ID
             const mainDisplayName = u.display_name || u.full_name || u.username || "User " + u.id.slice(0, 8);
-            const usernameTag = u.username && u.username !== mainDisplayName ? u.username : null;
-
             const regDateFormatted = u.created_at
               ? new Date(u.created_at).toLocaleDateString("th-TH", {
                   year: "numeric",
@@ -925,109 +778,113 @@ function UserManagementContent() {
               : "ไม่ระบุ";
 
             return (
-              <div key={u.id} className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-stone-50/70 transition">
-                {/* Left: User Avatar & Essential Info */}
-                <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                  <UserAvatar
-                    src={u.avatar_url}
-                    name={mainDisplayName}
-                    sizeClassName="w-11 h-11"
-                    style={{ borderColor: C.line }}
-                  />
-
-                  <div className="min-w-0 space-y-0.5">
-                    {/* Primary Name & Badges Row */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h4 className="text-sm font-black text-[#231C18] truncate">{mainDisplayName}</h4>
-
-                      {/* Role Badge */}
-                      {u.role === "admin" && (
-                        <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-400 text-stone-950 flex items-center gap-1 shadow-2xs">
-                          <Crown size={10} /> Admin
-                        </span>
-                      )}
-                      {u.role === "store" && (
-                        <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-indigo-100 text-indigo-800 border border-indigo-200 flex items-center gap-1">
-                          <Store size={10} /> Store Owner
-                        </span>
-                      )}
-                      {u.role === "user" && (
-                        <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-stone-100 text-stone-700 border border-stone-200">
-                          User
-                        </span>
-                      )}
-
-                      {/* Status Badge */}
-                      {u.is_banned ? (
-                        <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-100 text-rose-700 border border-rose-200">
-                          ถูกแบน
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200">
-                          ใช้งานปกติ
-                        </span>
-                      )}
-
-                      {isSelf && (
-                        <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                          (คุณ)
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Subtitle Line 1: Clean Registration Email */}
-                    {u.email && (
-                      <p className="text-xs text-stone-600 font-medium flex items-center gap-1 truncate">
-                        <Mail size={12} className="text-stone-400 shrink-0" />
-                        <span className="truncate">{u.email}</span>
-                      </p>
-                    )}
-
-                    {/* Subtitle Line 2: Activity Stats & Registration Date */}
-                    <div className="text-[11px] text-[#8A7870] font-medium flex items-center gap-2.5 flex-wrap pt-0.5">
-                      <button
-                        type="button"
-                        onClick={() => handleInspectUserActivity(u, "stamps")}
-                        className="hover:text-amber-700 hover:underline transition cursor-pointer flex items-center gap-1 font-semibold"
-                        title="คลิกเพื่อดูประวัติการเช็คอิน"
-                      >
-                        <MapPin size={11} className="text-amber-600" />
-                        <span>เช็คอิน: <strong className="text-amber-800">{u.stamps_count}</strong></span>
-                      </button>
-
-                      <span className="text-stone-300">•</span>
-
-                      <button
-                        type="button"
-                        onClick={() => handleInspectUserActivity(u, "reviews")}
-                        className="hover:text-blue-700 hover:underline transition cursor-pointer flex items-center gap-1 font-semibold"
-                        title="คลิกเพื่อดูประวัติการเขียนรีวิว"
-                      >
-                        <MessageSquare size={11} className="text-blue-600" />
-                        <span>รีวิว: <strong className="text-blue-800">{u.reviews_count}</strong></span>
-                      </button>
-
-                      <span className="text-stone-300">•</span>
-
-                      <span>สมัครเมื่อ: {regDateFormatted}</span>
-
-                      {u.is_banned && (
-                        <span className="text-rose-600 font-bold ml-1">
-                          ({u.ban_reason || "ละเมิดเงื่อนไข"})
-                        </span>
+              <div
+                key={u.id}
+                className="bg-white rounded-2xl p-4 border shadow-2xs hover:border-stone-300 transition space-y-3"
+                style={{ borderColor: C.line }}
+              >
+                {/* Header Line: Avatar, Name, Email & Badges */}
+                <div className="flex items-start justify-between gap-3 min-w-0">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <UserAvatar
+                      src={u.avatar_url}
+                      name={mainDisplayName}
+                      sizeClassName="w-10 h-10"
+                      style={{ borderColor: C.line }}
+                    />
+                    <div className="min-w-0 leading-tight">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="text-xs sm:text-sm font-black text-stone-900 truncate">{mainDisplayName}</h4>
+                        {isSelf && (
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                            (คุณ)
+                          </span>
+                        )}
+                      </div>
+                      {u.email && (
+                        <p className="text-[11px] text-stone-500 font-medium flex items-center gap-1 mt-0.5 truncate">
+                          <Mail size={11} className="text-stone-400 shrink-0" />
+                          <span className="truncate">{u.email}</span>
+                        </p>
                       )}
                     </div>
                   </div>
+
+                  {/* Role & Status Pills */}
+                  <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+                    {/* Role Badge */}
+                    {u.role === "admin" && (
+                      <span className="px-2 py-0.5 rounded-lg text-[10px] font-black bg-amber-400 text-stone-950 flex items-center gap-1">
+                        <Crown size={10} /> Admin
+                      </span>
+                    )}
+                    {u.role === "store" && (
+                      <span className="px-2 py-0.5 rounded-lg text-[10px] font-black bg-indigo-100 text-indigo-800 border border-indigo-200 flex items-center gap-1">
+                        <Store size={10} /> Store
+                      </span>
+                    )}
+                    {u.role === "user" && (
+                      <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-stone-100 text-stone-600 border border-stone-200">
+                        User
+                      </span>
+                    )}
+
+                    {/* Status Badge */}
+                    {u.is_banned ? (
+                      <span className="px-2 py-0.5 rounded-lg text-[10px] font-black bg-rose-100 text-rose-700 border border-rose-200">
+                        ถูกแบน
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200">
+                        ปกติ
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                {/* Right: Actions Column */}
-                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                  {/* Assign Shop Button (only for user / store) */}
+                {/* Sub Metadata Row: Check-ins, Reviews, Reg Date */}
+                <div className="flex items-center justify-between gap-2 pt-2 border-t text-[11px] text-stone-500 font-medium flex-wrap" style={{ borderColor: C.line }}>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => handleInspectUserActivity(u, "stamps")}
+                      className="hover:text-amber-700 transition cursor-pointer flex items-center gap-1 font-bold"
+                      title="ดูประวัติการเช็คอิน"
+                    >
+                      <MapPin size={11} className="text-amber-600" />
+                      <span>เช็คอิน: <strong className="text-stone-900">{u.stamps_count}</strong></span>
+                    </button>
+
+                    <span className="text-stone-300">•</span>
+
+                    <button
+                      type="button"
+                      onClick={() => handleInspectUserActivity(u, "reviews")}
+                      className="hover:text-blue-700 transition cursor-pointer flex items-center gap-1 font-bold"
+                      title="ดูประวัติการเขียนรีวิว"
+                    >
+                      <MessageSquare size={11} className="text-blue-600" />
+                      <span>รีวิว: <strong className="text-stone-900">{u.reviews_count}</strong></span>
+                    </button>
+                  </div>
+
+                  <div className="text-[10px] text-stone-400 font-semibold">
+                    สมัครเมื่อ: {regDateFormatted}
+                    {u.is_banned && (
+                      <span className="text-rose-600 font-bold ml-1.5">
+                        ({u.ban_reason || "ละเมิดเงื่อนไข"})
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Bottom Action Controls */}
+                <div className="flex items-center justify-end gap-2 pt-2 border-t flex-wrap sm:flex-nowrap" style={{ borderColor: C.line }}>
                   {(u.role === "store" || u.role === "user") && (
                     <button
                       type="button"
                       onClick={() => setSelectedUserForAssign(u)}
-                      className="px-3 py-1.5 rounded-xl text-xs font-black bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 transition cursor-pointer"
+                      className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition cursor-pointer"
                     >
                       มอบสิทธิ์ร้าน
                     </button>
@@ -1037,20 +894,18 @@ function UserManagementContent() {
                     value={u.role}
                     disabled={updatingId === u.id}
                     onChange={(e) => handleRoleChange(u.id, e.target.value as UserRole)}
-                    className="px-3 py-1.5 rounded-xl border text-xs font-bold bg-[#FAF6F0] outline-none cursor-pointer disabled:opacity-50"
+                    className="px-2.5 py-1.5 rounded-xl border text-xs font-bold bg-stone-50 outline-none cursor-pointer disabled:opacity-50 text-stone-800"
                     style={{ borderColor: C.line }}
                   >
-                    <option value="user">User (ผู้ใช้ทั่วไป)</option>
-                    <option value="store">Store Owner (เจ้าของร้าน)</option>
-                    <option value="admin">Admin (แอดมิน)</option>
+                    <option value="user">User</option>
+                    <option value="store">Store Owner</option>
+                    <option value="admin">Admin</option>
                   </select>
 
-                  {/* Ban / Unban Button with Self-Ban Guard */}
                   {isSelf ? (
                     <button
                       disabled
-                      title="ไม่สามารถแบนบัญชีตัวเองได้"
-                      className="px-3 py-1.5 rounded-xl text-xs font-bold text-gray-400 bg-gray-100 cursor-not-allowed border border-gray-200"
+                      className="px-2.5 py-1.5 rounded-xl text-xs font-bold text-stone-400 bg-stone-100 cursor-not-allowed border border-stone-200"
                     >
                       แบนสมาชิก
                     </button>
@@ -1061,8 +916,8 @@ function UserManagementContent() {
                       disabled={banningId === u.id}
                       className={
                         u.is_banned
-                          ? "px-3 py-1.5 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition disabled:opacity-60 cursor-pointer"
-                          : "px-3 py-1.5 rounded-xl text-xs font-black bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition disabled:opacity-60 cursor-pointer"
+                          ? "px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition disabled:opacity-60 cursor-pointer"
+                          : "px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition disabled:opacity-60 cursor-pointer"
                       }
                     >
                       {banningId === u.id ? (

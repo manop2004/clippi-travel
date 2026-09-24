@@ -399,8 +399,8 @@ export default function StampDesignerModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/65 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-3xl rounded-3xl shadow-2xl overflow-hidden border my-auto" style={{ borderColor: C.line }}>
+    <div className="fixed inset-0 z-50 bg-black/65 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
+      <div className="bg-white w-full max-w-3xl rounded-t-3xl sm:rounded-3xl max-h-[90dvh] overflow-y-auto shadow-2xl border my-0 sm:my-auto" style={{ borderColor: C.line }}>
         
         {/* Header */}
         <div className="p-4 sm:p-5 border-b flex items-center justify-between bg-[#FD775C] text-white">

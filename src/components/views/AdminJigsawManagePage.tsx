@@ -21,10 +21,14 @@ import {
   Check,
   Eye,
   Info,
+  Store,
+  Upload,
+  Grid,
 } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { C } from "../../constants/mockData";
+import { supabase } from "../../supabaseClient";
 import { ProtectedRoute } from "../auth/ProtectedRoute";
 import { useJigsawQuests } from "../../hooks/useJigsawQuests";
 import { JigsawQuest, JigsawPiece } from "../../constants/jigsawData";
@@ -55,6 +59,7 @@ function AdminJigsawManageContent() {
     createQuest,
     updateQuest,
     deleteQuest,
+    deleteAllQuests,
     addPiece,
     updatePiece,
     deletePiece,
@@ -68,7 +73,7 @@ function AdminJigsawManageContent() {
   const [editingQuest, setEditingQuest] = useState<JigsawQuest | null>(null);
 
   const [isPieceModalOpen, setIsPieceModalOpen] = useState(false);
-  const [editingPiece, setEditingPiece] = useState<{ questId: string; piece?: JigsawPiece } | null>(null);
+  const [editingPiece, setEditingPiece] = useState<{ questId: string; piece?: JigsawPiece; initialIndex?: number } | null>(null);
 
   const [printPiece, setPrintPiece] = useState<{ piece: JigsawPiece; quest: JigsawQuest } | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
@@ -115,6 +120,19 @@ function AdminJigsawManageContent() {
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+          {quests.length > 0 && (
+            <button
+              onClick={() => {
+                if (window.confirm("คุณต้องการลบเควสต์และข้อมูลจำลองทั้งหมดใช่หรือไม่?")) {
+                  deleteAllQuests();
+                }
+              }}
+              className="px-3 py-2.5 rounded-xl text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 transition flex items-center gap-1.5 cursor-pointer border border-red-200"
+            >
+              <Trash2 size={15} strokeWidth={2} /> ลบเควสต์ทั้งหมด
+            </button>
+          )}
+
           <button
             onClick={() => {
               setEditingQuest(null);
@@ -237,13 +255,107 @@ function AdminJigsawManageContent() {
             </div>
           </div>
 
+          {/* Interactive Jigsaw Board & Click-to-Assign Store Grid */}
+          <div className="bg-stone-50/80 border border-stone-200 p-4 rounded-3xl space-y-3 shadow-2xs">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <Grid size={16} className="text-orange-500" />
+                <h4 className="text-xs font-black text-stone-900">
+                  กระดานผูกร้านค้าประจำชิ้นส่วน ({activeQuest.gridRows || 2}x{activeQuest.gridCols || 2} = {(activeQuest.gridRows || 2) * (activeQuest.gridCols || 2)} ชิ้น)
+                </h4>
+              </div>
+              <span className="text-[10.5px] font-bold text-stone-500 bg-stone-100 px-2.5 py-0.5 rounded-full border border-stone-200">
+                💡 คลิกที่ช่องชิ้นส่วนเพื่อเลือกผูกร้านค้าหรือแก้ไขข้อมูล
+              </span>
+            </div>
+
+            <div className="flex justify-center pt-1">
+              <div
+                className="relative w-full max-w-[340px] rounded-2xl overflow-hidden border-4 border-[#FD775C] bg-stone-900 shadow-xl"
+                style={{
+                  aspectRatio: `${activeQuest.gridCols || 2} / ${activeQuest.gridRows || 2}`,
+                }}
+              >
+                {activeQuest.fullImageUrl && (
+                  <img
+                    src={activeQuest.fullImageUrl}
+                    alt={activeQuest.title}
+                    className="absolute inset-0 w-full h-full object-cover opacity-60"
+                  />
+                )}
+
+                <div
+                  className="absolute inset-0 grid gap-1 p-1 bg-black/40 backdrop-blur-[1px]"
+                  style={{
+                    gridTemplateColumns: `repeat(${activeQuest.gridCols || 2}, minmax(0, 1fr))`,
+                    gridTemplateRows: `repeat(${activeQuest.gridRows || 2}, minmax(0, 1fr))`,
+                  }}
+                >
+                  {Array.from({ length: (activeQuest.gridRows || 2) * (activeQuest.gridCols || 2) }).map((_, idx) => {
+                    const piece = activeQuest.pieces.find((p) => p.pieceIndex === idx) || activeQuest.pieces[idx];
+                    return (
+                      <div
+                        key={idx}
+                        onClick={() => {
+                          setEditingPiece({
+                            questId: activeQuest.id,
+                            piece: piece || undefined,
+                            initialIndex: idx,
+                          });
+                          setIsPieceModalOpen(true);
+                        }}
+                        className={`p-2 rounded-xl border transition-all cursor-pointer flex flex-col justify-between group text-left ${
+                          piece
+                            ? "bg-emerald-950/85 hover:bg-emerald-900/90 border-emerald-400/70 text-white shadow-md"
+                            : "bg-stone-900/80 hover:bg-orange-600/80 border-dashed border-stone-400/80 text-white"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="text-[9.5px] font-black px-1.5 py-0.5 rounded bg-white/20 text-white">
+                            ชิ้น {idx + 1}
+                          </span>
+                          {piece ? (
+                            <CheckCircle2 size={13} className="text-emerald-400 shrink-0" />
+                          ) : (
+                            <Plus size={13} className="text-orange-300 group-hover:scale-125 transition shrink-0" />
+                          )}
+                        </div>
+
+                        {piece ? (
+                          <div className="space-y-0.5 min-w-0">
+                            <p className="text-[10px] font-black truncate text-white leading-tight">
+                              {piece.checkpointName}
+                            </p>
+                            <p className="text-[8.5px] font-bold text-emerald-300 truncate flex items-center gap-0.5">
+                              <Store size={9} className="shrink-0" />
+                              <span>{piece.shopName || "ผูกร้านค้าแล้ว"}</span>
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="text-center py-1">
+                            <p className="text-[9px] font-bold text-orange-200 group-hover:text-white leading-tight">
+                              + กดเพื่อผูกร้านค้า
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Checkpoints & Map Pins List */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="text-sm font-black text-stone-900 flex items-center gap-2">
+                <h4 className="text-sm font-black text-stone-900 flex items-center gap-2 flex-wrap">
                   <MapPin size={16} className="text-orange-500" />
-                  จุดเช็คพอยต์และหมุดบนแผนที่ ({activeQuest.pieces.length} / 4 ชิ้นส่วน)
+                  <span>จุดเช็คพอยต์และหมุดบนแผนที่ ({activeQuest.pieces.length} / {(activeQuest.gridRows || 2) * (activeQuest.gridCols || 2)} ชิ้นส่วน)</span>
+                  <span className="text-[10px] font-bold text-stone-500 bg-stone-100 px-2 py-0.5 rounded-full border border-stone-200">
+                    รูปแบบ {activeQuest.gridRows || 2}x{activeQuest.gridCols || 2}
+                  </span>
                 </h4>
                 <p className="text-[11px] text-stone-500">
                   ผู้เล่นจะต้องเดินทางไปยังพิกัดจริง และเปิดกล้องสแกน QR Code เพื่อเก็บแต่ละชิ้นส่วน
@@ -290,9 +402,16 @@ function AdminJigsawManageContent() {
                               <h5 className="text-xs font-black text-stone-900 leading-snug">
                                 {piece.checkpointName}
                               </h5>
-                              <span className="text-[9.5px] font-bold text-orange-600">
-                                ตำแหน่งจิ๊กซอว์: {positionLabel}
-                              </span>
+                              <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                                <span className="text-[9.5px] font-bold text-orange-600">
+                                  ตำแหน่งจิ๊กซอว์: {positionLabel}
+                                </span>
+                                {(piece.shopName || piece.shopId) && (
+                                  <span className="text-[9.5px] font-black text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.2 rounded-md flex items-center gap-1">
+                                    <Store size={10} /> {piece.shopName || `ID: ${piece.shopId}`}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
 
@@ -364,7 +483,15 @@ function AdminJigsawManageContent() {
             )}
           </div>
         </div>
-      ) : null}
+      ) : (
+        <div className="p-12 text-center bg-white rounded-3xl border space-y-3" style={{ borderColor: C.line }}>
+          <Puzzle size={40} className="mx-auto text-stone-300" strokeWidth={1.5} />
+          <h3 className="text-base font-bold text-stone-700">ยังไม่มีเควสต์จิ๊กซอว์ในระบบ</h3>
+          <p className="text-xs text-stone-500 max-w-md mx-auto">
+            คุณได้ลบข้อมูลจำลองทั้งหมดออกเรียบร้อยแล้ว สามารถกดปุ่ม "สร้างเควสต์ใหม่" ด้านบนเพื่อสร้างเควสต์และจุดสแกนจริงในระบบได้เลย
+          </p>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* MODAL 1: CREATE / EDIT QUEST */}
@@ -398,6 +525,7 @@ function AdminJigsawManageContent() {
           isOpen={isPieceModalOpen}
           questId={editingPiece.questId}
           initialPiece={editingPiece.piece}
+          initialIndex={editingPiece.initialIndex}
           quests={quests}
           onClose={() => {
             setIsPieceModalOpen(false);
@@ -431,8 +559,21 @@ function AdminJigsawManageContent() {
 }
 
 // =============================================================================
-// SUB-COMPONENT: Quest Form Modal
+// SUB-COMPONENT: Quest Form Modal with Interactive Cell Shop Selector
 // =============================================================================
+interface CellShopAssignment {
+  shopId?: string;
+  shopName?: string;
+  checkpointName?: string;
+  locationArea?: string;
+  description?: string;
+  hint?: string;
+  qrCodeValue?: string;
+  lat?: number;
+  lng?: number;
+  radiusMeters?: number;
+}
+
 function QuestFormModal({
   isOpen,
   initialQuest,
@@ -448,13 +589,134 @@ function QuestFormModal({
   const [badge, setBadge] = useState(initialQuest?.badge || "Special Quest");
   const [category, setCategory] = useState(initialQuest?.category || "Culture & Heritage");
   const [description, setDescription] = useState(initialQuest?.description || "");
-  const [rewardTitle, setRewardTitle] = useState(initialQuest?.rewardTitle || " ตราประทับเกียรติยศ + ส่วนลด 20%");
-  const [rewardDescription, setRewardDescription] = useState(initialQuest?.rewardDescription || "ยินดีด้วย! คุณสะสมจิ๊กซอว์ครบทั้ง 4 ชิ้น ปลดล็อกภาพสมบูรณ์และรับส่วนลดพิเศษ");
+  const [rewardTitle, setRewardTitle] = useState(initialQuest?.rewardTitle || "🏆 ตราประทับเกียรติยศ + ส่วนลด 20%");
+  const [rewardDescription, setRewardDescription] = useState(initialQuest?.rewardDescription || "ยินดีด้วย! คุณสะสมจิ๊กซอว์ครบทุกชิ้น ปลดล็อกภาพสมบูรณ์และรับส่วนลดพิเศษ");
   const [rewardCode, setRewardCode] = useState(initialQuest?.rewardCode || `CLIPPI-${Date.now().toString().slice(-6)}`);
   const [fullImageUrl, setFullImageUrl] = useState(initialQuest?.fullImageUrl || PRESET_REWARD_IMAGES[0].url);
+  const [gridRows, setGridRows] = useState<number>(initialQuest?.gridRows || 2);
+  const [gridCols, setGridCols] = useState<number>(initialQuest?.gridCols || 2);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Store Assignments per Grid Cell
+  const [cellShops, setCellShops] = useState<Record<number, CellShopAssignment>>(() => {
+    const initialMap: Record<number, CellShopAssignment> = {};
+    if (initialQuest?.pieces) {
+      initialQuest.pieces.forEach((p) => {
+        initialMap[p.pieceIndex] = {
+          shopId: p.shopId ? String(p.shopId) : undefined,
+          shopName: p.shopName || undefined,
+          checkpointName: p.checkpointName,
+          locationArea: p.locationArea,
+          description: p.description,
+          hint: p.hint,
+          qrCodeValue: p.qrCodeValue,
+          lat: p.targetLat,
+          lng: p.targetLng,
+          radiusMeters: p.radiusMeters,
+        };
+      });
+    }
+    return initialMap;
+  });
+
+  // Shops Database list & Store Picker Modal State
+  const [shops, setShops] = useState<any[]>([]);
+  const [loadingShops, setLoadingShops] = useState(false);
+  const [activeCellForPicker, setActiveCellForPicker] = useState<number | null>(null);
+  const [shopSearchQuery, setShopSearchQuery] = useState("");
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Fetch shops from century_shops
+  useEffect(() => {
+    async function loadShops() {
+      setLoadingShops(true);
+      try {
+        const { data, error } = await supabase
+          .from("century_shops")
+          .select("id, shop_name, shop_name_jp, category, address, lat, lng, image_url")
+          .order("shop_name", { ascending: true });
+        if (!error && data) setShops(data);
+      } catch (e) {
+        console.warn("Failed to load shops for quest modal:", e);
+      } finally {
+        setLoadingShops(false);
+      }
+    }
+    loadShops();
+  }, []);
+
   if (!isOpen) return null;
+
+  const handleSelectShopForCell = (cellIdx: number, shop: any | null) => {
+    if (!shop) {
+      setCellShops((prev) => {
+        const copy = { ...prev };
+        delete copy[cellIdx];
+        return copy;
+      });
+    } else {
+      const shopName = shop.shop_name || shop.shop_name_jp || "ร้านค้า";
+      setCellShops((prev) => ({
+        ...prev,
+        [cellIdx]: {
+          shopId: String(shop.id),
+          shopName: shopName,
+          checkpointName: shopName,
+          locationArea: shop.address || shop.category || "",
+          description: `สแกน QR Code เพื่อรับชิ้นส่วนจิ๊กซอว์ที่ร้าน ${shopName}`,
+          hint: `สังเกตป้ายร้าน ${shopName}`,
+          qrCodeValue: prev[cellIdx]?.qrCodeValue || `CLIPPI-JIGSAW-${cellIdx + 1}-${Date.now().toString().slice(-4)}`,
+          lat: shop.lat ? Number(shop.lat) : 13.7563,
+          lng: shop.lng ? Number(shop.lng) : 100.5018,
+          radiusMeters: 500,
+        },
+      }));
+    }
+    setActiveCellForPicker(null);
+  };
+
+  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const dataUrl = reader.result as string;
+        setFullImageUrl(dataUrl);
+
+        try {
+          const fileExt = file.name.split(".").pop() || "jpg";
+          const fileName = `jigsaw_${Date.now()}_${Math.random().toString(36).substring(2, 6)}.${fileExt}`;
+          const filePath = `jigsaw_quests/${fileName}`;
+
+          const { error: uploadErr } = await supabase.storage
+            .from("place-photos")
+            .upload(filePath, file, { cacheControl: "3600", upsert: true });
+
+          if (!uploadErr) {
+            const { data: publicUrlData } = supabase.storage
+              .from("place-photos")
+              .getPublicUrl(filePath);
+            if (publicUrlData?.publicUrl) {
+              setFullImageUrl(publicUrlData.publicUrl);
+            }
+          }
+        } catch (err) {
+          console.warn("Supabase storage upload notice:", err);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.error("Image upload failed:", err);
+      alert("ไม่สามารถอัปโหลดรูปภาพได้ กรุณาลองใหม่อีกครั้ง");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -464,6 +726,27 @@ function QuestFormModal({
     }
     setSaving(true);
     try {
+      // Build pieces list from cellShops map
+      const pieces: JigsawPiece[] = [];
+      const totalPieces = gridRows * gridCols;
+      for (let i = 0; i < totalPieces; i++) {
+        const assigned = cellShops[i];
+        pieces.push({
+          id: `piece-${i}-${Date.now()}`,
+          pieceIndex: i,
+          checkpointName: assigned?.checkpointName || `จุดสแกนชิ้นที่ ${i + 1}`,
+          locationArea: assigned?.locationArea || "",
+          description: assigned?.description || "สแกน QR Code เพื่อเก็บชิ้นส่วนนี้",
+          hint: assigned?.hint || "",
+          qrCodeValue: assigned?.qrCodeValue || `CLIPPI-JIGSAW-${i + 1}-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
+          targetLat: assigned?.lat ?? (13.7563 + i * 0.001),
+          targetLng: assigned?.lng ?? (100.5018 + i * 0.001),
+          radiusMeters: assigned?.radiusMeters || 500,
+          shopId: assigned?.shopId || null,
+          shopName: assigned?.shopName || null,
+        });
+      }
+
       await onSave({
         title,
         badge,
@@ -473,8 +756,9 @@ function QuestFormModal({
         rewardDescription,
         rewardCode,
         fullImageUrl,
-        gridRows: 2,
-        gridCols: 2,
+        gridRows,
+        gridCols,
+        pieces,
       });
     } finally {
       setSaving(false);
@@ -482,8 +766,8 @@ function QuestFormModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-stone-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-stone-200 animate-fade-in space-y-4 my-8">
+    <div className="fixed inset-0 z-[9999] bg-stone-950/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto">
+      <div className="bg-white rounded-t-3xl sm:rounded-3xl max-w-xl w-full max-h-[90dvh] overflow-y-auto p-5 sm:p-6 shadow-2xl border border-stone-200 animate-fade-in space-y-4 my-0 sm:my-8 relative">
         <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: C.line }}>
           <div className="flex items-center gap-2">
             <h3 className="text-base font-black text-stone-900">
@@ -533,6 +817,110 @@ function QuestFormModal({
             </div>
           </div>
 
+          {/* Grid Layout Selector (2x2, 3x3, etc.) */}
+          <div>
+            <label className="block font-black text-stone-800 mb-1 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <Grid size={14} className="text-orange-500" />
+                รูปแบบตารางจิ๊กซอว์ (Grid Layout) *
+              </span>
+              <span className="text-[10px] text-orange-600 font-bold bg-orange-50 px-2.5 py-0.5 rounded-full border border-orange-200">
+                รวม {gridRows * gridCols} ชิ้นส่วน
+              </span>
+            </label>
+
+            <div className="flex gap-1.5 flex-wrap mb-2">
+              {[
+                { label: "2x2 (4 ชิ้น)", r: 2, c: 2 },
+                { label: "3x3 (9 ชิ้น)", r: 3, c: 3 },
+                { label: "2x3 (6 ชิ้น)", r: 2, c: 3 },
+                { label: "3x4 (12 ชิ้น)", r: 3, c: 4 },
+                { label: "4x4 (16 ชิ้น)", r: 4, c: 4 },
+              ].map((preset) => {
+                const isSelected = gridRows === preset.r && gridCols === preset.c;
+                return (
+                  <button
+                    type="button"
+                    key={preset.label}
+                    onClick={() => {
+                      setGridRows(preset.r);
+                      setGridCols(preset.c);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer flex items-center gap-1 ${
+                      isSelected
+                        ? "bg-[#FD775C] text-white border-[#FD775C] shadow-xs"
+                        : "bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100"
+                    }`}
+                  >
+                    {preset.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Custom Rows/Cols Inputs */}
+            <div className="grid grid-cols-2 gap-2 bg-stone-50 p-2.5 rounded-xl border border-stone-200/70 mb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-stone-600 font-bold shrink-0">จำนวนแถว (Rows):</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={6}
+                  value={gridRows}
+                  onChange={(e) => setGridRows(Math.max(1, Math.min(6, parseInt(e.target.value) || 1)))}
+                  className="w-full bg-white border border-stone-200 rounded-lg px-2 py-1 text-xs text-center font-bold outline-none focus:border-orange-500"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-stone-600 font-bold shrink-0">จำนวนคอลัมน์ (Cols):</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={6}
+                  value={gridCols}
+                  onChange={(e) => setGridCols(Math.max(1, Math.min(6, parseInt(e.target.value) || 1)))}
+                  className="w-full bg-white border border-stone-200 rounded-lg px-2 py-1 text-xs text-center font-bold outline-none focus:border-orange-500"
+                />
+              </div>
+            </div>
+
+            {/* Recommended Image Resolution & Aspect Ratio Box */}
+            <div className="bg-amber-50/90 border border-amber-200/90 p-3 rounded-2xl text-amber-950 text-[11px] space-y-1 shadow-xs">
+              <div className="flex items-center gap-1.5 font-black text-amber-900">
+                <Info size={14} className="text-amber-600 shrink-0" />
+                <span>คำแนะนำขนาดรูปภาพสำหรับตาราง {gridRows}x{gridCols} ({gridRows * gridCols} ชิ้นส่วน):</span>
+              </div>
+              <div className="pl-5 space-y-0.5 text-stone-700 leading-relaxed">
+                <p>
+                  • <strong>ขนาดความละเอียดภาพแนะนำ:</strong>{" "}
+                  <span className="font-mono font-bold text-amber-900 bg-amber-100/90 px-1.5 py-0.5 rounded border border-amber-200">
+                    {gridCols === 2 && gridRows === 2
+                      ? "1000 x 1000 px"
+                      : gridCols === 3 && gridRows === 3
+                      ? "1200 x 1200 px"
+                      : gridCols === 4 && gridRows === 4
+                      ? "1600 x 1600 px"
+                      : `${gridCols * 400} x ${gridRows * 400} px`}
+                  </span>{" "}
+                  <span className="text-[10px] text-stone-500">(ขั้นต่ำ {gridCols * 300} x {gridRows * 300} px)</span>
+                </p>
+                <p>
+                  • <strong>อัตราส่วนภาพ (Aspect Ratio):</strong>{" "}
+                  <span className="font-mono font-bold text-amber-900 bg-amber-100/90 px-1.5 py-0.5 rounded border border-amber-200">
+                    {gridCols} : {gridRows}
+                  </span>{" "}
+                  <span className="text-[10.5px] font-bold text-amber-900">
+                    {gridCols === gridRows
+                      ? "(สี่เหลี่ยมจัตุรัส 1:1)"
+                      : gridCols > gridRows
+                      ? "(สี่เหลี่ยมแนวนอน / Landscape)"
+                      : "(สี่เหลี่ยมแนวตั้ง / Portrait)"}
+                  </span>
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Description */}
           <div>
             <label className="block font-black text-stone-800 mb-1">คำอธิบายภารกิจ</label>
@@ -540,20 +928,43 @@ function QuestFormModal({
               rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="เดินทางไปยัง 4 จุดสำคัญ สแกน QR Code พร้อมเปิด GPS เพื่อรวบรวมชิ้นส่วนจิ๊กซอว์ให้ครบ!"
+              placeholder={`เดินทางไปยัง ${gridRows * gridCols} จุดสำคัญ สแกน QR Code พร้อมเปิด GPS เพื่อรวบรวมชิ้นส่วนจิ๊กซอว์ให้ครบ!`}
               className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-orange-500 font-medium leading-relaxed"
             />
           </div>
 
-          {/* Full Image URL & Presets */}
+          {/* Full Image URL & Presets & Device Upload */}
           <div>
-            <label className="block font-black text-stone-800 mb-1">รูปภาพรางวัลสมบูรณ์ (เมื่อต่อครบ 4 ชิ้น) *</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="font-black text-stone-800 text-xs">
+                รูปภาพรางวัลสมบูรณ์ (เมื่อต่อครบ {gridRows * gridCols} ชิ้น) *
+              </label>
+
+              {/* Hidden File Input & Upload Button */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/*"
+                onChange={handleImageFileChange}
+                className="hidden"
+              />
+              <button
+                type="button"
+                disabled={uploadingImage}
+                onClick={() => fileInputRef.current?.click()}
+                className="px-3 py-1 rounded-xl bg-stone-900 hover:bg-black text-white text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                {uploadingImage ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+                <span>อัปโหลดรูปจากเครื่อง</span>
+              </button>
+            </div>
+
             <input
               type="url"
               required
               value={fullImageUrl}
               onChange={(e) => setFullImageUrl(e.target.value)}
-              placeholder="https://..."
+              placeholder="หรือระบุ URL รูปภาพ (https://...)"
               className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-orange-500 font-medium font-mono mb-2"
             />
 
@@ -573,16 +984,80 @@ function QuestFormModal({
               ))}
             </div>
 
-            {/* Preview image */}
+            {/* Interactive Preview image with click-to-pick store for each grid cell */}
             {fullImageUrl && (
-              <div className="mt-2 relative w-full h-28 rounded-xl overflow-hidden border border-stone-200 bg-stone-100">
-                <img src={fullImageUrl} alt="Reward Preview" className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-stone-900/30 flex items-center justify-center pointer-events-none">
-                  <div className="grid grid-cols-2 grid-rows-2 w-28 h-28 border-2 border-white/80 rounded-lg shadow-lg">
-                    <div className="border-r border-b border-white/60 flex items-center justify-center text-white text-[9px] font-black">ชิ้น 1</div>
-                    <div className="border-b border-white/60 flex items-center justify-center text-white text-[9px] font-black">ชิ้น 2</div>
-                    <div className="border-r border-white/60 flex items-center justify-center text-white text-[9px] font-black">ชิ้น 3</div>
-                    <div className="flex items-center justify-center text-white text-[9px] font-black">ชิ้น 4</div>
+              <div className="mt-3 relative w-full bg-stone-950 border border-stone-200 rounded-2xl overflow-hidden flex flex-col items-center justify-center p-3 shadow-inner space-y-2">
+                <div className="w-full flex items-center justify-between text-[11px] font-bold text-orange-300 px-1">
+                  <span className="flex items-center gap-1">
+                    <Store size={13} className="text-orange-400" />
+                    <span>กดที่ช่องเพื่อผูกร้านค้าในระบบ ({gridRows * gridCols} ช่อง):</span>
+                  </span>
+                  <span className="text-[10px] text-stone-400 font-mono">
+                    ผูกแล้ว {Object.keys(cellShops).length} / {gridRows * gridCols} ร้าน
+                  </span>
+                </div>
+
+                <div
+                  className="relative w-full max-w-[340px] rounded-xl overflow-hidden border-2 border-white/90 shadow-2xl transition-all duration-300"
+                  style={{
+                    aspectRatio: `${gridCols} / ${gridRows}`,
+                  }}
+                >
+                  <img src={fullImageUrl} alt="Reward Preview" className="w-full h-full object-cover" />
+                  <div
+                    className="absolute inset-0 bg-black/50 backdrop-blur-[1px] grid gap-1 p-1"
+                    style={{
+                      gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))`,
+                      gridTemplateRows: `repeat(${gridRows}, minmax(0, 1fr))`,
+                    }}
+                  >
+                    {Array.from({ length: gridRows * gridCols }).map((_, idx) => {
+                      const assigned = cellShops[idx];
+                      return (
+                        <button
+                          type="button"
+                          key={idx}
+                          onClick={() => {
+                            setShopSearchQuery("");
+                            setActiveCellForPicker(idx);
+                          }}
+                          className={`p-1.5 rounded-xl border transition-all flex flex-col items-center justify-between text-center cursor-pointer group select-none relative overflow-hidden ${
+                            assigned
+                              ? "bg-emerald-950/90 hover:bg-emerald-900 border-emerald-400 text-white shadow-md"
+                              : "bg-stone-900/75 hover:bg-orange-600/90 border-dashed border-white/80 text-white"
+                          }`}
+                        >
+                          <div className="w-full flex items-center justify-between">
+                            <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-white/20 text-white">
+                              ชิ้น {idx + 1}
+                            </span>
+                            {assigned ? (
+                              <CheckCircle2 size={11} className="text-emerald-400 shrink-0" />
+                            ) : (
+                              <Plus size={11} className="text-orange-300 group-hover:scale-125 transition shrink-0" />
+                            )}
+                          </div>
+
+                          {assigned ? (
+                            <div className="w-full px-0.5 py-0.5 my-auto">
+                              <p className="text-[9.5px] font-black truncate text-emerald-300 leading-tight flex items-center justify-center gap-0.5">
+                                <Store size={9} className="shrink-0 text-emerald-400" />
+                                <span className="truncate">{assigned.shopName}</span>
+                              </p>
+                              <span className="text-[8px] font-bold text-emerald-200/80 block mt-0.5">
+                                ✓ ผูกร้านแล้ว
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="my-auto py-0.5">
+                              <span className="text-[9px] font-bold text-orange-200 group-hover:text-white leading-tight block">
+                                + เลือกร้านในระบบ
+                              </span>
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -591,7 +1066,8 @@ function QuestFormModal({
 
           {/* Reward Details */}
           <div className="p-3.5 bg-orange-50/60 rounded-2xl border border-orange-200/70 space-y-2.5">
-            <h4 className="font-black text-orange-950 text-xs flex items-center gap-1.5"> ข้อมูลของรางวัลเมื่อประกอบครบ 4 ชิ้น
+            <h4 className="font-black text-orange-950 text-xs flex items-center gap-1.5">
+              🏆 ข้อมูลของรางวัลเมื่อประกอบครบ {gridRows * gridCols} ชิ้น
             </h4>
 
             <div>
@@ -600,7 +1076,7 @@ function QuestFormModal({
                 type="text"
                 value={rewardTitle}
                 onChange={(e) => setRewardTitle(e.target.value)}
-                placeholder="เช่น  ตราประทับผู้พิชิต + รับสิทธิ์เครื่องดื่มฟรี"
+                placeholder="เช่น 🏆 ตราประทับผู้พิชิต + รับสิทธิ์เครื่องดื่มฟรี"
                 className="w-full bg-white border border-orange-200 rounded-xl px-3 py-1.5 text-xs outline-none focus:border-orange-500 font-medium"
               />
             </div>
@@ -629,8 +1105,8 @@ function QuestFormModal({
             </div>
           </div>
 
-          {/* Submit */}
-          <div className="pt-2 flex justify-end gap-2 border-t" style={{ borderColor: C.line }}>
+          {/* Submit Actions */}
+          <div className="flex items-center justify-end gap-3 pt-3 border-t" style={{ borderColor: C.line }}>
             <button
               type="button"
               onClick={onClose}
@@ -648,6 +1124,168 @@ function QuestFormModal({
             </button>
           </div>
         </form>
+
+        {/* ========================================================================= */}
+        {/* SUB-MODAL: Store Picker Modal for a Grid Cell */}
+        {/* ========================================================================= */}
+        {activeCellForPicker !== null && (
+          <div className="fixed inset-0 z-[10000] bg-stone-950/80 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl max-w-lg w-full max-h-[85vh] flex flex-col p-5 shadow-2xl border border-stone-200 animate-fade-in space-y-3">
+              {/* Header */}
+              <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: C.line }}>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center font-bold shrink-0">
+                    <Store size={20} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-stone-900">
+                      เลือกร้านค้าในระบบ สำหรับชิ้นส่วนที่ {activeCellForPicker + 1}
+                    </h4>
+                    <p className="text-[10.5px] text-stone-400">
+                      ดึงข้อมูลพิกัด GPS, ชื่อร้าน และสถานที่จากฐานข้อมูล century_shops
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveCellForPicker(null)}
+                  className="p-1.5 rounded-xl hover:bg-stone-100 text-stone-500 cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Search input */}
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-2.5 text-stone-400" />
+                <input
+                  type="text"
+                  value={shopSearchQuery}
+                  onChange={(e) => setShopSearchQuery(e.target.value)}
+                  placeholder="ค้นหาร้านค้าด้วยชื่อ, หมวดหมู่ หรือที่อยู่..."
+                  className="w-full bg-stone-50 border border-stone-200 rounded-xl pl-9 pr-3 py-2 text-xs font-bold outline-none focus:border-orange-500"
+                />
+              </div>
+
+              {/* Current assignment badge & clear action */}
+              {cellShops[activeCellForPicker] && (
+                <div className="flex items-center justify-between bg-amber-50 p-2.5 rounded-xl border border-amber-200 text-xs">
+                  <span className="font-bold text-amber-900 flex items-center gap-1.5 truncate">
+                    <Store size={14} className="text-amber-600 shrink-0" />
+                    <span>ผูกอยู่กับ: <strong>{cellShops[activeCellForPicker].shopName}</strong></span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectShopForCell(activeCellForPicker, null)}
+                    className="px-2.5 py-1 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-700 text-[10.5px] font-bold transition cursor-pointer shrink-0"
+                  >
+                    ยกเลิกการผูกร้าน
+                  </button>
+                </div>
+              )}
+
+              {/* Shop List container */}
+              <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[220px]">
+                {loadingShops ? (
+                  <div className="py-12 text-center space-y-2 text-stone-400">
+                    <Loader2 size={24} className="animate-spin mx-auto text-orange-500" />
+                    <p className="text-xs font-bold">กำลังโหลดรายชื่อร้านค้าในระบบ...</p>
+                  </div>
+                ) : shops.filter((s) => {
+                    const q = shopSearchQuery.toLowerCase();
+                    return (
+                      !q ||
+                      (s.shop_name && s.shop_name.toLowerCase().includes(q)) ||
+                      (s.shop_name_jp && s.shop_name_jp.toLowerCase().includes(q)) ||
+                      (s.category && s.category.toLowerCase().includes(q)) ||
+                      (s.address && s.address.toLowerCase().includes(q))
+                    );
+                  }).length === 0 ? (
+                  <div className="py-10 text-center space-y-2 text-stone-400 bg-stone-50 rounded-2xl border border-dashed border-stone-200">
+                    <Store size={28} className="mx-auto text-stone-300" />
+                    <p className="text-xs font-bold text-stone-600">ไม่พบร้านค้าตรงตามคำค้นหา</p>
+                  </div>
+                ) : (
+                  shops
+                    .filter((s) => {
+                      const q = shopSearchQuery.toLowerCase();
+                      return (
+                        !q ||
+                        (s.shop_name && s.shop_name.toLowerCase().includes(q)) ||
+                        (s.shop_name_jp && s.shop_name_jp.toLowerCase().includes(q)) ||
+                        (s.category && s.category.toLowerCase().includes(q)) ||
+                        (s.address && s.address.toLowerCase().includes(q))
+                      );
+                    })
+                    .map((shop) => {
+                      const isCurrentSelected = cellShops[activeCellForPicker]?.shopId === String(shop.id);
+                      return (
+                        <div
+                          key={shop.id}
+                          onClick={() => handleSelectShopForCell(activeCellForPicker, shop)}
+                          className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                            isCurrentSelected
+                              ? "bg-orange-50 border-orange-400 shadow-xs"
+                              : "bg-white hover:bg-stone-50 border-stone-200 hover:border-orange-300"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            {shop.image_url ? (
+                              <img
+                                src={shop.image_url}
+                                alt={shop.shop_name}
+                                className="w-10 h-10 rounded-xl object-cover border shrink-0"
+                              />
+                            ) : (
+                              <div className="w-10 h-10 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center shrink-0 font-bold text-xs">
+                                <Store size={18} />
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <h5 className="text-xs font-black text-stone-900 truncate">
+                                {shop.shop_name}
+                              </h5>
+                              <p className="text-[10px] text-stone-500 truncate">
+                                {shop.category || shop.address || "ร้านค้าพันธมิตร"}
+                              </p>
+                              {shop.lat && shop.lng && (
+                                <p className="text-[9px] font-mono text-stone-400 flex items-center gap-1 mt-0.5">
+                                  <MapPin size={9} className="text-orange-500" />
+                                  <span>{Number(shop.lat).toFixed(4)}, {Number(shop.lng).toFixed(4)}</span>
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 cursor-pointer transition ${
+                              isCurrentSelected
+                                ? "bg-emerald-600 text-white"
+                                : "bg-stone-100 hover:bg-orange-600 hover:text-white text-stone-700"
+                            }`}
+                          >
+                            {isCurrentSelected ? "✓ เลือกอยู่" : "เลือก"}
+                          </button>
+                        </div>
+                      );
+                    })
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="pt-2 flex justify-end border-t" style={{ borderColor: C.line }}>
+                <button
+                  type="button"
+                  onClick={() => setActiveCellForPicker(null)}
+                  className="px-4 py-1.5 rounded-xl text-xs font-bold text-stone-600 hover:bg-stone-100 cursor-pointer"
+                >
+                  ปิด
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -660,6 +1298,7 @@ function PieceFormModal({
   isOpen,
   questId,
   initialPiece,
+  initialIndex,
   quests,
   onClose,
   onSave,
@@ -667,12 +1306,13 @@ function PieceFormModal({
   isOpen: boolean;
   questId: string;
   initialPiece?: JigsawPiece;
+  initialIndex?: number;
   quests: JigsawQuest[];
   onClose: () => void;
   onSave: (pieceData: any) => Promise<void>;
 }) {
   const [selectedQuestId, setSelectedQuestId] = useState(questId);
-  const [pieceIndex, setPieceIndex] = useState<number>(initialPiece?.pieceIndex ?? 0);
+  const [pieceIndex, setPieceIndex] = useState<number>(initialPiece?.pieceIndex ?? initialIndex ?? 0);
   const [checkpointName, setCheckpointName] = useState(initialPiece?.checkpointName || "");
   const [locationArea, setLocationArea] = useState(initialPiece?.locationArea || "");
   const [description, setDescription] = useState(initialPiece?.description || "");
@@ -684,8 +1324,58 @@ function PieceFormModal({
   const [lng, setLng] = useState<number>(initialPiece?.targetLng ?? 100.5018);
   const [radiusMeters, setRadiusMeters] = useState<number>(initialPiece?.radiusMeters ?? 500);
 
+  // Shop selection states
+  const [shops, setShops] = useState<any[]>([]);
+  const [loadingShops, setLoadingShops] = useState(false);
+  const [selectedShopId, setSelectedShopId] = useState<string>(initialPiece?.shopId ? String(initialPiece.shopId) : "");
+  const [selectedShopName, setSelectedShopName] = useState<string>(initialPiece?.shopName || "");
+
   const [saving, setSaving] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
+
+  useEffect(() => {
+    async function loadShops() {
+      setLoadingShops(true);
+      try {
+        const { data, error } = await supabase
+          .from("century_shops")
+          .select("id, shop_name, shop_name_jp, category, address, lat, lng, image_url")
+          .order("shop_name", { ascending: true });
+        if (!error && data) setShops(data);
+      } catch (e) {
+        console.warn("Failed to load shops for jigsaw piece:", e);
+      } finally {
+        setLoadingShops(false);
+      }
+    }
+    loadShops();
+  }, []);
+
+  const handleShopSelect = (shopIdStr: string) => {
+    setSelectedShopId(shopIdStr);
+    if (!shopIdStr) {
+      setSelectedShopName("");
+      return;
+    }
+    const found = shops.find((s) => String(s.id) === shopIdStr);
+    if (found) {
+      const name = found.shop_name || found.shop_name_jp || "ร้านค้า";
+      setSelectedShopName(name);
+      setCheckpointName(name);
+      if (found.address || found.category) {
+        setLocationArea(found.address || found.category);
+      }
+      if (found.lat && found.lng) {
+        const shopLat = Number(found.lat);
+        const shopLng = Number(found.lng);
+        setLat(shopLat);
+        setLng(shopLng);
+        if (mapRef.current) {
+          mapRef.current.setView([shopLat, shopLng], 16, { animate: true });
+        }
+      }
+    }
+  };
 
   // Mini-map refs
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
@@ -829,6 +1519,8 @@ function PieceFormModal({
         targetLat: Number(lat),
         targetLng: Number(lng),
         radiusMeters: Number(radiusMeters),
+        shopId: selectedShopId || null,
+        shopName: selectedShopName || null,
       });
     } finally {
       setSaving(false);
@@ -836,8 +1528,8 @@ function PieceFormModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-stone-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-stone-200 animate-fade-in space-y-4 my-8">
+    <div className="fixed inset-0 z-[9999] bg-stone-950/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto">
+      <div className="bg-white rounded-t-3xl sm:rounded-3xl max-w-2xl w-full max-h-[90dvh] overflow-y-auto p-5 sm:p-6 shadow-2xl border border-stone-200 animate-fade-in space-y-4 my-0 sm:my-8">
         <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: C.line }}>
           <div className="flex items-center gap-2">
             <div>
@@ -886,6 +1578,43 @@ function PieceFormModal({
                 <option value={3}>ชิ้นที่ 4: มุมล่างขวา (Bottom-Right)</option>
               </select>
             </div>
+          </div>
+
+          {/* Store Partner Selection Field */}
+          <div className="p-3 bg-[#FAF6F0] rounded-2xl border border-amber-200/80 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="font-black text-[#231C18] text-xs flex items-center gap-1.5">
+                <Store size={14} className="text-amber-600" />
+                <span>เลือกร้านค้าพันธมิตรสำหรับชิ้นส่วนนี้ (Link Shop to Jigsaw Piece)</span>
+              </label>
+              {selectedShopId && (
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
+                  ✓ ผูกกับร้านแล้ว
+                </span>
+              )}
+            </div>
+
+            {loadingShops ? (
+              <div className="text-xs text-amber-800 font-semibold animate-pulse py-1">
+                กำลังโหลดรายชื่อร้านค้า...
+              </div>
+            ) : (
+              <select
+                value={selectedShopId}
+                onChange={(e) => handleShopSelect(e.target.value)}
+                className="w-full bg-white border border-amber-300 rounded-xl px-3 py-2 text-xs outline-none focus:border-amber-600 font-bold text-stone-900 cursor-pointer shadow-2xs"
+              >
+                <option value="">-- ไม่ระบุร้านค้า (กำหนดพิกัดเอง) --</option>
+                {shops.map((s) => (
+                  <option key={s.id} value={String(s.id)}>
+                    🏪 {s.shop_name} {s.category ? `(${s.category})` : ""}
+                  </option>
+                ))}
+              </select>
+            )}
+            <p className="text-[10px] text-amber-900/80 font-semibold">
+              💡 เมื่อเลือกร้านค้า ระบบจะดึงพิกัด GPS และชื่อร้านมาเติมให้โดยอัตโนมัติ!
+            </p>
           </div>
 
           {/* Checkpoint Name & Location Area */}
