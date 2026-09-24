@@ -24,25 +24,20 @@ jobs:
       - name: Build Web Production Assets
         run: npm run build
 
-      - name: Add & Sync Capacitor iOS
+      - name: Add & Sync Capacitor iOS (Fresh)
         run: |
-          npx cap add ios || true
+          rm -rf ios
+          npx cap add ios
           npx cap sync ios
 
       - name: Build Xcode iOS App
         run: |
           cd ios/App
-          if [ -f "Podfile" ]; then
-            pod install || true
-          fi
-
           if [ -d "App.xcworkspace" ]; then
             XCODE_TARGET="-workspace App.xcworkspace"
           else
             XCODE_TARGET="-project App.xcodeproj"
           fi
-
-          echo "Using target: $XCODE_TARGET"
 
           xcodebuild $XCODE_TARGET \
                      -scheme App \
@@ -50,6 +45,8 @@ jobs:
                      -sdk iphonesimulator \
                      -derivedDataPath build \
                      CODE_SIGNING_ALLOWED=NO \
+                     CODE_SIGNING_REQUIRED=NO \
+                     CODE_SIGN_IDENTITY="" \
                      build
 
       - name: Create IPA & App Zip Artifacts
