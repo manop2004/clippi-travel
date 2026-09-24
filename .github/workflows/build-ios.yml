@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-ios:
-    runs-on: macos-latest
+    runs-on: macos-14
 
     steps:
       - name: Checkout Code
@@ -17,10 +17,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
 
       - name: Install Dependencies
-        run: npm ci
+        run: npm install --legacy-peer-deps
 
       - name: Build Web Production Assets
         run: npm run build
@@ -31,10 +30,22 @@ jobs:
       - name: Build iOS Project with Xcode CLI
         run: |
           cd ios/App
-          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -derivedDataPath build CODE_SIGNING_ALLOWED=NO
+          xcodebuild -workspace App.xcworkspace \
+                     -scheme App \
+                     -configuration Release \
+                     -sdk iphonesimulator \
+                     -derivedDataPath build \
+                     CODE_SIGN_IDENTITY="" \
+                     CODE_SIGNING_REQUIRED=NO \
+                     CODE_SIGNING_ALLOWED=NO
+
+      - name: Zip iOS App Build
+        run: |
+          cd ios/App/build/Build/Products/Release-iphonesimulator
+          zip -r ../../../../../Clippi-iOS-App.zip App.app
 
       - name: Upload iOS Build Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ios-build-app
-          path: ios/App/build/Build/Products/Release-iphoneos/
+          name: clippi-ios-app
+          path: Clippi-iOS-App.zip
