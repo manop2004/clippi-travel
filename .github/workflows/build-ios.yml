@@ -29,53 +29,29 @@ jobs:
           npx cap add ios || true
           npx cap sync ios
 
-      - name: Build Xcode iOS App & Archive
+      - name: Build Xcode iOS App for Device
         run: |
           cd ios/App
-          if [ -f "Podfile" ]; then
-            pod install || true
-          fi
-          if [ -d "App.xcworkspace" ]; then
-            XCODE_TARGET="-workspace App.xcworkspace"
-          else
-            XCODE_TARGET="-project App.xcodeproj"
-          fi
-
-          echo "=== Archiving iOS Device App ==="
-          xcodebuild $XCODE_TARGET \
+          pod install || true
+          xcodebuild clean -workspace App.xcworkspace -scheme App -configuration Release || true
+          xcodebuild -workspace App.xcworkspace \
                      -scheme App \
                      -configuration Release \
-                     -destination 'generic/platform=iOS' \
-                     -archivePath App.xcarchive \
+                     -sdk iphoneos \
+                     -derivedDataPath build \
                      CODE_SIGN_STYLE=Manual \
                      CODE_SIGNING_ALLOWED=NO \
                      CODE_SIGNING_REQUIRED=NO \
                      CODE_SIGN_IDENTITY="" \
                      DEVELOPMENT_TEAM="" \
                      PROVISIONING_PROFILE_SPECIFIER="" \
-                     archive || echo "Archive failed, trying fallback build..."
-
-          if [ ! -d "App.xcarchive" ]; then
-            echo "=== Fallback: Building Simulator App ==="
-            rm -rf build
-            xcodebuild $XCODE_TARGET \
-                       -scheme App \
-                       -configuration Release \
-                       -sdk iphonesimulator \
-                       -derivedDataPath build \
-                       build
-          fi
+                     COMPILER_INDEX_STORE_ENABLE=NO \
+                     build
 
       - name: Create IPA & App Zip Artifacts
         run: |
           mkdir -p Payload
-          if [ -d "ios/App/App.xcarchive/Products/Applications/App.app" ]; then
-            cp -r ios/App/App.xcarchive/Products/Applications/App.app Payload/
-          elif [ -d "ios/App/build/Build/Products/Release-iphonesimulator/App.app" ]; then
-            cp -r ios/App/build/Build/Products/Release-iphonesimulator/App.app Payload/
-          elif [ -d "ios/App/build/Build/Products/Release-iphoneos/App.app" ]; then
-            cp -r ios/App/build/Build/Products/Release-iphoneos/App.app Payload/
-          fi
+          cp -r ios/App/build/Build/Products/Release-iphoneos/App.app Payload/
           zip -r Clippi-iOS-App.ipa Payload
           zip -r Clippi-iOS-App.zip Payload
 
