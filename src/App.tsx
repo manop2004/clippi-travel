@@ -55,9 +55,9 @@ export default function App() {
   const [collectedPieceIds, setCollectedPieceIds] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem("collected_jigsaw_pieces");
-      return saved ? JSON.parse(saved) : ["p1", "p2"];
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return ["p1", "p2"];
+      return [];
     }
   });
 

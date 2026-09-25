@@ -285,7 +285,11 @@ export default function MapView({
         const pinSvg = getPinTypeSvg(shop.pin_type);
         const isSelected = selectedShop?.id === shop.id && !selectedJigsawPiece;
         const shopPieceIndex = (index % 4) + 1;
-        const isCollected = collectedJigsawPieces.includes(`p${shopPieceIndex}`) || collectedJigsawPieces.includes(`shop-${shop.id}`);
+        const isCollected = collectedJigsawPieces.length > 0 && (
+          collectedJigsawPieces.includes(`p${shopPieceIndex}`) || 
+          collectedJigsawPieces.includes(`shop-${shop.id}`)
+        );
+        const showBadge = isCollected || pinTypeFilter === "jigsaw";
 
         const markerHtml = `
           <div class="relative flex items-center justify-center cursor-pointer">
@@ -294,12 +298,14 @@ export default function MapView({
             } text-white flex items-center justify-center shadow-md hover:scale-110 transition-transform duration-150 text-sm">
               ${pinSvg}
             </div>
-            <!-- Small Jigsaw Badge on top of shop pin -->
-            <div style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:9999px;background:${
-              isCollected ? '#059669' : '#EA580C'
-            };color:white;font-size:8px;font-weight:900;display:flex;align-items:center;justify-content:center;border:1.5px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.3);">
-              
-            </div>
+            ${
+              showBadge
+                ? `<div style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:9999px;background:${
+                    isCollected ? '#059669' : '#EA580C'
+                  };color:white;font-size:8px;font-weight:900;display:flex;align-items:center;justify-content:center;border:1.5px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.3);">
+                  </div>`
+                : ''
+            }
           </div>
         `;
         const customIcon = L.divIcon({ html: markerHtml, className: "custom-marker-wrapper", iconSize: [32, 32], iconAnchor: [16, 16] });
