@@ -328,7 +328,7 @@ const LangCtx = createContext<LangCtxType>({
 });
 
 export function LangProvider({ children }: { children: ReactNode }) {
-  const [lang, setLang] = useState<Lang>("th"); // ค่าเริ่มต้น: ไทย (เปลี่ยนได้)
+  const [lang, setLang] = useState<Lang>("en"); // ค่าเริ่มต้น: ไทย (เปลี่ยนได้)
   const t = (key: string) => dict[key]?.[lang] ?? dict[key]?.en ?? key; // ไม่มี key -> คืน en หรือ key เดิม ไม่พังจอ
   return <LangCtx.Provider value={{ lang, setLang, t }}>{children}</LangCtx.Provider>;
 }
