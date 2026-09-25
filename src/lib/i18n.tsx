@@ -15,6 +15,7 @@ const dict: Record<string, Record<Lang, string>> = {
   "nav.map":               { en: "Interactive Map",    th: "แผนที่",              jp: "マップ" },
   "nav.collection":        { en: "Stamp Book",         th: "สมุดแสตมป์",          jp: "スタンプ帳" },
   "nav.profile":           { en: "Profile",            th: "โปรไฟล์",             jp: "プロフィール" },
+  "nav.manage":            { en: "Manage",             th: "จัดการ",              jp: "管理" },
   // sections
   "section.trending":      { en: "Trending Spots",     th: "ร้านมาแรง",           jp: "人気のスポット" },
   "section.recentActivity":{ en: "Recent Activity",    th: "กิจกรรมล่าสุด",       jp: "最近のアクティビティ" },

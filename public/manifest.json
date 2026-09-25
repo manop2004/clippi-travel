@@ -1,0 +1,16 @@
+{
+  "short_name": "Clippi",
+  "name": "Clippi — Digital Stamp Rally",
+  "icons": [
+    {
+      "src": "/clippi-logo.png",
+      "type": "image/png",
+      "sizes": "192x192 512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#FAF9F8",
+  "theme_color": "#FD775C",
+  "display": "standalone",
+  "orientation": "portrait"
+}

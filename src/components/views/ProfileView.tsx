@@ -48,9 +48,10 @@ const getLevelTitleKey = (level: number) =>
 interface ProfileViewProps {
   onOpenMerchantModal?: () => void;
   onGoToStoreManage?: () => void;
+  onNavigateTab?: (tab: string) => void;
 }
 
-export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage }: ProfileViewProps) {
+export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage, onNavigateTab }: ProfileViewProps) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const { role, isAdmin, isPendingMerchant, isRejectedMerchant, merchantRejectionReason, cancelMerchantApp } = useUserRole();
   const { t } = useLang();
@@ -491,6 +492,9 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage }: 
       showToast(`Sign out error: ${error.message}`, "error");
     } else {
       showToast("ออกจากระบบเรียบร้อยแล้ว", "info");
+      if (onNavigateTab) {
+        onNavigateTab("explore");
+      }
     }
   };
 

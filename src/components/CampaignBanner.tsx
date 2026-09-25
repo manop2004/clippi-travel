@@ -96,7 +96,7 @@ export default function CampaignBanner({ onCtaClick }: CampaignBannerProps) {
           items={dynamicBanners}
           keyExtractor={(b) => b.id}
           desktopClassName=""
-          itemClassName="w-[85vw] sm:w-[340px] md:w-[360px] shrink-0 snap-start"
+          itemClassName="w-[82vw] sm:w-[320px] md:w-[350px] shrink-0 snap-start"
           renderItem={(banner) => {
             return (
               <div
@@ -109,33 +109,31 @@ export default function CampaignBanner({ onCtaClick }: CampaignBannerProps) {
                     }
                   }
                 }}
-                className="w-full rounded-2xl overflow-hidden relative flex flex-col justify-between p-5 text-white min-h-[172px] cursor-pointer hover:shadow-lg transition bg-cover bg-center"
-                style={{
-                  background: banner.image_url
-                    ? `linear-gradient(180deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.75) 100%), url("${banner.image_url}") center/cover no-repeat`
-                    : banner.bg_gradient || "linear-gradient(135deg, #FD775C 0%, #E31E27 100%)",
-                }}
+                className="w-full rounded-2xl overflow-hidden shadow-md cursor-pointer hover:shadow-xl transition flex flex-col bg-white border border-stone-200"
               >
-                <div className="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white/10 blur-xl pointer-events-none" />
-
-                <div className="z-10">
-                  <span className="inline-flex items-center gap-1 text-[9px] font-black px-2.5 py-1 rounded-full bg-white/25 backdrop-blur-md uppercase tracking-wider mb-2">
- <Tag size={10} /> {banner.tag || " PROMOTION"}
-                  </span>
-                  <h3 className="text-sm font-black leading-snug drop-shadow-xs">{banner.title}</h3>
-                  {banner.subtitle && (
-                    <p className="text-[11px] font-medium text-white/90 mt-1.5 leading-relaxed line-clamp-2">
-                      {banner.subtitle}
-                    </p>
-                  )}
+                <div className="relative h-44 w-full bg-cover bg-center" style={{ backgroundImage: `url("${banner.image_url || 'https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?w=800'}")` }}>
+                  <div className="absolute top-3 left-3">
+                    <span className="inline-flex items-center gap-1 text-[9px] font-black px-2.5 py-1 rounded-full bg-stone-900/70 text-white backdrop-blur-md uppercase tracking-wider">
+                      <Tag size={10} /> {banner.tag || " EVENT"}
+                    </span>
+                  </div>
                 </div>
 
-                <span
-                  className="z-10 mt-3 inline-flex w-fit items-center gap-1 text-[10px] font-black px-3 py-1.5 rounded-full bg-white/95"
-                  style={{ color: C.accentDeep }}
-                >
-                  {banner.cta_text || "ดูรายละเอียด"} →
-                </span>
+                <div className="p-4 bg-white text-stone-900 flex flex-col justify-between flex-1 min-h-[120px]">
+                  <div>
+                    <h3 className="text-sm font-black text-stone-900 leading-snug line-clamp-1">
+                      {banner.title}
+                    </h3>
+                    <p className="text-[11px] font-medium text-stone-500 mt-1 line-clamp-2 leading-relaxed">
+                      {banner.subtitle || "สะสมแสตมป์ในพื้นที่ รับของรางวัลและตราประทับดีไซน์พิเศษ!"}
+                    </p>
+                  </div>
+                  {banner.cta_text && (
+                    <div className="mt-3 pt-2 border-t border-stone-100 flex items-center justify-end text-xs font-black text-[#FD775C]">
+                      <span>{banner.cta_text} →</span>
+                    </div>
+                  )}
+                </div>
               </div>
             );
           }}
@@ -145,33 +143,35 @@ export default function CampaignBanner({ onCtaClick }: CampaignBannerProps) {
           items={SLIDES}
           keyExtractor={(s) => s.key}
           desktopClassName=""
-          itemClassName="w-[85vw] sm:w-[340px] md:w-[360px] shrink-0 snap-start"
+          itemClassName="w-[82vw] sm:w-[320px] md:w-[350px] shrink-0 snap-start"
           renderItem={(slide) => {
             const Icon = slide.icon;
             return (
               <div
                 onClick={() => onCtaClick?.(slide.key)}
-                className="w-full rounded-2xl overflow-hidden relative flex flex-col justify-between p-5 text-white min-h-[172px] cursor-pointer hover:shadow-lg transition"
-                style={{ background: slide.gradient }}
+                className="w-full rounded-2xl overflow-hidden shadow-md cursor-pointer hover:shadow-xl transition flex flex-col bg-white border border-stone-200"
               >
-                <div className="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white/10 blur-xl pointer-events-none" />
-
-                <div className="z-10">
-                  <span className="inline-flex items-center gap-1 text-[9px] font-black px-2.5 py-1 rounded-full bg-white/25 backdrop-blur-md uppercase tracking-wider mb-2">
-                    <Icon size={11} /> {t(slide.tagKey)}
-                  </span>
-                  <h3 className="text-sm font-black leading-snug drop-shadow-xs">{t(slide.titleKey)}</h3>
-                  <p className="text-[11px] font-medium text-white/90 mt-1.5 leading-relaxed">
-                    {t(slide.descKey)}
-                  </p>
+                <div className="relative h-44 w-full bg-cover bg-center flex flex-col justify-between p-4 text-white" style={{ background: slide.gradient }}>
+                  <div className="flex items-center justify-between z-10">
+                    <span className="inline-flex items-center gap-1 text-[9px] font-black px-2.5 py-1 rounded-full bg-black/30 text-white backdrop-blur-md uppercase tracking-wider">
+                      <Icon size={11} /> {t(slide.tagKey)}
+                    </span>
+                  </div>
+                  <div className="z-10">
+                    <h3 className="text-base font-black text-white leading-tight drop-shadow-md">{t(slide.titleKey)}</h3>
+                  </div>
                 </div>
 
-                <span
-                  className="z-10 mt-3 inline-flex w-fit items-center gap-1 text-[10px] font-black px-3 py-1.5 rounded-full bg-white/95"
-                  style={{ color: C.accentDeep }}
-                >
-                  {t(slide.ctaKey)} →
-                </span>
+                <div className="p-4 bg-white text-stone-900 flex flex-col justify-between flex-1 min-h-[120px]">
+                  <div>
+                    <p className="text-[11px] font-medium text-stone-500 leading-relaxed line-clamp-2">
+                      {t(slide.descKey)}
+                    </p>
+                  </div>
+                  <div className="mt-3 pt-2 border-t border-stone-100 flex items-center justify-end text-xs font-black text-[#FD775C]">
+                    <span>{t(slide.ctaKey)} →</span>
+                  </div>
+                </div>
               </div>
             );
           }}
