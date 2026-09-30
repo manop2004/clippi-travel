@@ -51,7 +51,9 @@ export async function cancelMerchantApplication(userId?: string, email?: string)
       // 2. Upsert user_roles table
       await supabase
         .from("user_roles")
-        .upsert({ user_id: uid, role: "user" }, { onConflict: "user_id" });
+        .upsert({ user_id: uid, role: "user" }, { onConflict: "user_id" })
+        .then(() => {})
+        .catch(() => {});
 
       // 3. Update Supabase auth user metadata
       try {
@@ -175,7 +177,7 @@ export function useUserRole(): UserRoleState {
         try {
           const { data: dbSubs } = await supabase
             .from("place_submissions")
-            .select("id, status, rejection_reason, created_at, updated_at")
+            .select("id, status, rejection_reason, created_at, reviewed_at")
             .eq("user_id", session.user.id)
             .neq("status", "cancelled");
           if (dbSubs) subList = dbSubs;
@@ -183,7 +185,7 @@ export function useUserRole(): UserRoleState {
 
         const getEffectiveTime = (item: any) => {
           const tCreated = item.created_at ? new Date(item.created_at).getTime() : 0;
-          const tUpdated = item.updated_at ? new Date(item.updated_at).getTime() : 0;
+          const tUpdated = item.updated_at ? new Date(item.updated_at).getTime() : (item.reviewed_at ? new Date(item.reviewed_at).getTime() : 0);
           return Math.max(tCreated, tUpdated);
         };
         subList.sort((a, b) => getEffectiveTime(b) - getEffectiveTime(a));
@@ -280,14 +282,14 @@ export function useUserRole(): UserRoleState {
 
         if (isPending && !isExplicitStoreOwner && profileData?.merchant_status !== "pending") {
           try {
-            supabase.from("profiles").update({ role: "pending_store", merchant_status: "pending", ban_reason: null }).eq("id", session.user.id).then(() => {});
-            supabase.from("user_roles").upsert({ user_id: session.user.id, role: "pending_store" }, { onConflict: "user_id" }).then(() => {});
+            supabase.from("profiles").update({ role: "pending_store", merchant_status: "pending", ban_reason: null }).eq("id", session.user.id).then(() => {}).catch(() => {});
+            supabase.from("user_roles").upsert({ user_id: session.user.id, role: "pending_store" }, { onConflict: "user_id" }).then(() => {}).catch(() => {});
           } catch (e) {}
         }
 
         if (isRejected && (session.user.user_metadata?.role === "pending_store" || session.user.user_metadata?.merchant_status === "pending")) {
           try {
-            supabase.auth.updateUser({ data: { role: "user", merchant_status: "rejected" } }).then(() => {});
+            supabase.auth.updateUser({ data: { role: "user", merchant_status: "rejected" } }).then(() => {}).catch(() => {});
           } catch (e) {}
         }
 
@@ -295,6 +297,12 @@ export function useUserRole(): UserRoleState {
           mStatus = "approved";
           detectedRole = "store";
           mRejection = null;
+          if (profileData?.role !== "store" || profileData?.merchant_status !== "approved" || roleData?.role !== "store") {
+            try {
+              supabase.from("profiles").update({ role: "store", merchant_status: "approved", ban_reason: null }).eq("id", session.user.id).then(() => {}).catch(() => {});
+              supabase.from("user_roles").upsert({ user_id: session.user.id, role: "store" }, { onConflict: "user_id" }).then(() => {}).catch(() => {});
+            } catch (e) {}
+          }
         } else if (isPending) {
           mStatus = "pending";
           detectedRole = "pending_store";

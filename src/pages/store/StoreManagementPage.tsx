@@ -808,7 +808,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
             const shopNameExists = subName ? currentShopNames.has(subName) : false;
 
             if (!shopIdExists && !shopNameExists && (sub.shop_id || subName)) {
-              supabase.from("place_submissions").update({ status: "deleted" }).eq("id", sub.id).then(() => {});
+              supabase.from("place_submissions").update({ status: "deleted" }).eq("id", sub.id).then(() => {}).catch(() => {});
               return { ...sub, status: "deleted" as const };
             }
           }
@@ -2023,7 +2023,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                   supabase.from("century_shops").update({
                     is_closed_today: updatedSched.is_closed_today,
                     description_jp: encodedDescription,
-                  }).eq("id", shop.id).then(() => {});
+                  }).eq("id", shop.id).then(() => {}).catch(() => {});
                   shop.description_jp = encodedDescription;
                   shop.is_closed_today = updatedSched.is_closed_today;
                 } catch (err) {}

@@ -348,13 +348,14 @@ function UserManagementContent() {
         const reviewCountVal = (reviewCountsMap.get(pIdStr) || 0) + (pUserIdStr && pUserIdStr !== pIdStr ? (reviewCountsMap.get(pUserIdStr) || 0) : 0);
         const ownedShopVal = (ownedShopsMap.get(pIdStr) || 0) + (pUserIdStr && pUserIdStr !== pIdStr ? (ownedShopsMap.get(pUserIdStr) || 0) : 0);
 
+        const mappedRole = (rolesMap.get(p.id) || (p.user_id && rolesMap.get(p.user_id)) || p.role || (p.merchant_status === "approved" ? "store" : null) || "user") as UserRole;
         return {
           ...p,
           email: resolvedEmail,
           display_name: resolvedDisplayName,
           avatar_url: resolvedAvatar,
           is_banned: Boolean(p.is_banned),
-          role: (rolesMap.get(p.id) || (p.user_id && rolesMap.get(p.user_id)) || p.role || "user") as UserRole,
+          role: mappedRole,
           stamps_count: stampCountVal,
           reviews_count: reviewCountVal,
           owned_shops_count: ownedShopVal,
@@ -376,11 +377,14 @@ function UserManagementContent() {
   const handleRoleChange = async (userId: string, newRole: UserRole) => {
     setUpdatingId(userId);
     try {
-      // 1. Update profiles table (sync role and is_admin boolean)
+      const targetMerchantStatus = newRole === "store" || newRole === "admin" ? "approved" : null;
+
+      // 1. Update profiles table (sync role, merchant_status, and is_admin boolean)
       const { error: profileErr } = await supabase
         .from("profiles")
         .update({ 
           role: newRole,
+          merchant_status: targetMerchantStatus,
           is_admin: newRole === "admin"
         })
         .eq("id", userId);
@@ -408,7 +412,7 @@ function UserManagementContent() {
       setUsers((prev) =>
         prev.map((u) => 
           u.id === userId 
-            ? { ...u, role: newRole, is_admin: newRole === "admin" } 
+            ? { ...u, role: newRole, merchant_status: targetMerchantStatus, is_admin: newRole === "admin" } 
             : u
         )
       );

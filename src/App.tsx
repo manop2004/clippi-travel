@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Compass, MapPin, BookOpen, User, Plus, Search, X, ShieldCheck, Store, Users, ScrollText, Trophy, Puzzle, QrCode, Image, LayoutGrid, ChevronDown, Home, Flag } from "lucide-react";
 import { C } from "./constants/mockData";
 import { supabase } from "./supabaseClient";
@@ -49,6 +49,7 @@ export default function App() {
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [showAllTrending, setShowAllTrending] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isFabOpen, setIsFabOpen] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(() => {
     return typeof window !== "undefined" && sessionStorage.getItem("clippi_resetting_password") === "true";
   });
@@ -93,6 +94,7 @@ export default function App() {
   const [authModalMode, setAuthModalMode] = useState<"login" | "signup">("login");
   const [authNotice, setAuthNotice] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<{ title: string; message: string } | null>(null);
+  const hadSessionOnLoadRef = useRef<boolean | null>(null);
 
   useEffect(() => {
     if (toastMessage) {
@@ -121,6 +123,7 @@ export default function App() {
       }
       setAuthModalMode(mode);
       setIsAuthModalOpen(true);
+      try { sessionStorage.setItem("clippi_expecting_login", "1"); } catch {}
       return false;
     }
     return true;
@@ -334,10 +337,14 @@ export default function App() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setAuthLoading(false);
+      // Track whether user was already logged in on page load
+      if (hadSessionOnLoadRef.current === null) {
+        hadSessionOnLoadRef.current = !!session;
+      }
       if (session?.user?.id) {
         if (session.user.email) {
           localStorage.setItem(`user_email_${session.user.id}`, session.user.email);
-          supabase.from("profiles").update({ email: session.user.email }).eq("id", session.user.id).then(() => {});
+          supabase.from("profiles").update({ email: session.user.email }).eq("id", session.user.id).then(() => {}).catch(() => {});
         }
         fetchHeaderProfile(session.user.id);
         recordLoginLog(session);
@@ -355,20 +362,30 @@ export default function App() {
       if (currentSession?.user?.id) {
         if (currentSession.user.email) {
           localStorage.setItem(`user_email_${currentSession.user.id}`, currentSession.user.email);
-          supabase.from("profiles").update({ email: currentSession.user.email }).eq("id", currentSession.user.id).then(() => {});
+          supabase.from("profiles").update({ email: currentSession.user.email }).eq("id", currentSession.user.id).then(() => {}).catch(() => {});
         }
         fetchHeaderProfile(currentSession.user.id);
 
         if (event === "SIGNED_IN") {
-          setIsAuthModalOpen(false);
-          setAuthNotice(null);
-          const name = currentSession.user.user_metadata?.display_name ||
-                       currentSession.user.user_metadata?.full_name ||
-                       (currentSession.user.email ? currentSession.user.email.split("@")[0] : "ผู้ใช้งาน");
-          setToastMessage({
-            title: "🎉 เข้าสู่ระบบสำเร็จ!",
-            message: `ยินดีต้อนรับกลับมาคุณ ${name}`,
-          });
+          // Show toast only for explicit login, not for session restore (page refresh / fold screen)
+          const isExplicitLogin = (() => {
+            try { return sessionStorage.getItem("clippi_expecting_login") === "1"; } catch { return false; }
+          })();
+          const isSessionRestore = hadSessionOnLoadRef.current === true;
+
+          if (isExplicitLogin || !isSessionRestore) {
+            try { sessionStorage.removeItem("clippi_expecting_login"); } catch {}
+            hadSessionOnLoadRef.current = true; // prevent showing again on token refresh
+            setIsAuthModalOpen(false);
+            setAuthNotice(null);
+            const name = currentSession.user.user_metadata?.display_name ||
+                         currentSession.user.user_metadata?.full_name ||
+                         (currentSession.user.email ? currentSession.user.email.split("@")[0] : "ผู้ใช้งาน");
+            setToastMessage({
+              title: "🎉 เข้าสู่ระบบสำเร็จ!",
+              message: `ยินดีต้อนรับกลับมาคุณ ${name}`,
+            });
+          }
         }
 
         if (event === "SIGNED_IN" || event === "INITIAL_SESSION") {
@@ -677,17 +694,79 @@ export default function App() {
             </main>
           </div>
 
-          {/* Floating Action Button for Admin/Store Manage Menu */}
-          {canManage && (
-            <button
-              onClick={() => setIsAdminMenuOpen(true)}
-              className="md:hidden fixed bottom-26 right-4 z-40 w-12 h-12 rounded-full bg-gradient-to-tr from-[#FD775C] via-[#FD775C] to-[#E31E27] border-2 border-white text-white flex items-center justify-center shadow-xl shadow-[#FD775C]/40 active:scale-90 transition-all cursor-pointer group"
-              aria-label={t("nav.manage")}
-              title={t("nav.manage")}
-            >
-              <LayoutGrid size={22} strokeWidth={2.2} className="group-hover:rotate-12 transition-transform" />
-            </button>
+          {/* Mobile Speed Dial FAB */}
+          {isFabOpen && (
+            <div
+              className="md:hidden fixed inset-0 z-40 bg-stone-950/40 backdrop-blur-[2px] animate-[fadeIn_150ms_ease-out]"
+              onClick={() => setIsFabOpen(false)}
+            />
           )}
+
+          {/* Speed Dial Sub-Actions */}
+          <div className="md:hidden fixed right-4 bottom-26 z-50 flex flex-col-reverse items-end gap-3">
+            {/* Main Toggle Button */}
+            <button
+              onClick={() => setIsFabOpen((prev) => !prev)}
+              className={`w-13 h-13 rounded-full border-2 border-white text-white flex items-center justify-center shadow-xl active:scale-90 cursor-pointer transition-all duration-300 ${
+                isFabOpen
+                  ? "bg-stone-700 shadow-stone-700/40 rotate-45"
+                  : "bg-gradient-to-tr from-[#FD775C] to-[#E31E27] shadow-[#FD775C]/40"
+              }`}
+              aria-label="เมนูเพิ่มเติม"
+            >
+              <Plus size={24} strokeWidth={2.5} />
+            </button>
+
+            {/* Sub-action: Add New Place */}
+            <div
+              className={`flex items-center gap-2.5 transition-all duration-200 origin-bottom ${
+                isFabOpen
+                  ? "opacity-100 translate-y-0 scale-100"
+                  : "opacity-0 translate-y-4 scale-75 pointer-events-none"
+              }`}
+              style={{ transitionDelay: isFabOpen ? "50ms" : "0ms" }}
+            >
+              <span className="px-3 py-1.5 rounded-xl bg-stone-800 text-white text-[11px] font-black shadow-lg whitespace-nowrap">
+                เพิ่มสถานที่ใหม่
+              </span>
+              <button
+                onClick={() => {
+                  setIsFabOpen(false);
+                  if (requireAuth("เพิ่มสถานที่ท่องเที่ยว")) setIsAddOpen(true);
+                }}
+                className="w-11 h-11 rounded-full bg-gradient-to-tr from-stone-800 to-stone-900 border-2 border-white text-white flex items-center justify-center shadow-lg shadow-stone-800/30 active:scale-90 transition cursor-pointer"
+                aria-label={t("action.submitSpot")}
+              >
+                <MapPin size={20} strokeWidth={2.3} />
+              </button>
+            </div>
+
+            {/* Sub-action: Admin/Store Manage Menu */}
+            {canManage && (
+              <div
+                className={`flex items-center gap-2.5 transition-all duration-200 origin-bottom ${
+                  isFabOpen
+                    ? "opacity-100 translate-y-0 scale-100"
+                    : "opacity-0 translate-y-4 scale-75 pointer-events-none"
+                }`}
+                style={{ transitionDelay: isFabOpen ? "120ms" : "0ms" }}
+              >
+                <span className="px-3 py-1.5 rounded-xl bg-[#FD775C] text-white text-[11px] font-black shadow-lg whitespace-nowrap">
+                  {t("nav.manage")}
+                </span>
+                <button
+                  onClick={() => {
+                    setIsFabOpen(false);
+                    setIsAdminMenuOpen(true);
+                  }}
+                  className="w-11 h-11 rounded-full bg-gradient-to-tr from-[#FD775C] via-[#FD775C] to-[#E31E27] border-2 border-white text-white flex items-center justify-center shadow-lg shadow-[#FD775C]/30 active:scale-90 transition cursor-pointer"
+                  aria-label={t("nav.manage")}
+                >
+                  <LayoutGrid size={20} strokeWidth={2.2} />
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* Mobile Bottom Navigation Bar (White Light Theme with Ekitag Capsule Shape) */}
           <nav className="md:hidden fixed bottom-3 left-3 right-3 z-40 flex items-center justify-between px-3 py-2 bg-white/95 backdrop-blur-xl rounded-[28px] border border-stone-200/80 shadow-xl text-stone-800 max-w-md mx-auto">
@@ -844,6 +923,7 @@ export default function App() {
                   onClose={() => {
                     setIsAuthModalOpen(false);
                     setAuthNotice(null);
+                    try { sessionStorage.removeItem("clippi_expecting_login"); } catch {}
                   }}
                 />
               </div>

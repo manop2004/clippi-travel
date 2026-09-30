@@ -45,7 +45,7 @@ export function setQrRequirementEnabled(enabled: boolean): void {
         target_table: "system_settings",
         target_id: "qr_requirement",
         detail: { enabled },
-      }).then(() => {});
+      }).then(() => {}).catch(() => {});
     }
   });
 }

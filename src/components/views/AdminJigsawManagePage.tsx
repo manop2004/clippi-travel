@@ -959,30 +959,7 @@ function QuestFormModal({
               </button>
             </div>
 
-            <input
-              type="url"
-              required
-              value={fullImageUrl}
-              onChange={(e) => setFullImageUrl(e.target.value)}
-              placeholder="หรือระบุ URL รูปภาพ (https://...)"
-              className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-orange-500 font-medium font-mono mb-2"
-            />
 
-            {/* Quick Presets */}
-            <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-              {PRESET_REWARD_IMAGES.map((preset, i) => (
-                <button
-                  type="button"
-                  key={i}
-                  onClick={() => setFullImageUrl(preset.url)}
-                  className={`px-2 py-1 rounded-lg text-[10px] shrink-0 border cursor-pointer transition ${
-                    fullImageUrl === preset.url ? "bg-orange-600 text-white border-orange-600 font-black" : "bg-stone-100 text-stone-600 hover:bg-stone-200"
-                  }`}
-                >
-                  {preset.label.split(" (")[0]}
-                </button>
-              ))}
-            </div>
 
             {/* Interactive Preview image with click-to-pick store for each grid cell */}
             {fullImageUrl && (
