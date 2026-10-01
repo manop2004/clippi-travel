@@ -40,7 +40,7 @@ const PIN_TYPE_FILTERS = [
   { id: "All", labelKey: "filter.all" },
   { id: "food", labelKey: "cat.restaurantCafe" },
   { id: "shop", labelKey: "cat.serviceShop" },
-  { id: "jigsaw", labelKey: "เควสต์จิ๊กซอว์ " },
+  { id: "jigsaw", labelKey: "mv.jigsawQuest" },
 ];
 
 const REGIONS = ["Kanto", "Kansai", "Hokkaido", "Tohoku", "Chubu", "Chugoku", "Kyushu & Okinawa", "Shikoku"];
@@ -259,7 +259,7 @@ export default function MapView({
       iconAnchor: [10, 10],
     });
 
-    const popupContent = "<div style='font-size:11px;font-weight:bold;color:#231C18;padding:2px;'>ตำแหน่งปัจจุบันของคุณ</div>";
+    const popupContent = "<div style='font-size:11px;font-weight:bold;color:#231C18;padding:2px;'>" + t("md.yourPick") + "</div>";
 
     if (userMarkerRef.current) {
       userMarkerRef.current.setLatLng([lat, lng]);
@@ -363,11 +363,11 @@ export default function MapView({
 
         const popupHtml = `
           <div style="font-family:sans-serif;padding:3px;text-align:center;min-width:140px;">
- <div style="font-size:9px;font-weight:900;color:#FD775C;text-transform:uppercase;"> ${piece.questTitle.split(":")[0]} • ชิ้นที่ ${piece.pieceIndex + 1}</div>
+ <div style="font-size:9px;font-weight:900;color:#FD775C;text-transform:uppercase;">${piece.questTitle.split(":")[0]} • ${t("jg.piece")} ${piece.pieceIndex + 1}</div>
             <div style="font-size:12px;font-weight:bold;color:#111;margin:2px 0;">${piece.checkpointName}</div>
             <div style="font-size:10px;color:#666;">${piece.locationArea}</div>
             <div style="margin-top:4px;font-size:10px;font-weight:bold;color:${isCollected ? '#059669' : '#D97706'};">
-              ${isCollected ? " เก็บชิ้นส่วนแล้ว" : " ต้องไปสแกนที่จุดนี้"}
+              ${isCollected ? t("collection.collectedTag") : t("mv.needScanHere")}
             </div>
           </div>
         `;
@@ -410,7 +410,7 @@ export default function MapView({
   // 6. Geolocation: "Near Me" floating button handler (matching AddPlaceModal 1:1)
   const handleNearMeClick = () => {
     if (!navigator.geolocation) {
-      alert("ไม่สามารถดึงตำแหน่งปัจจุบันได้ โปรดเปิดสิทธิ์ Location บนเบราว์เซอร์");
+      alert(t("md.gpsFail"));
       return;
     }
 
@@ -431,7 +431,7 @@ export default function MapView({
       (error) => {
         setNearMeLoading(false);
         setLocatingUser(false);
-        alert("ไม่สามารถดึงตำแหน่งปัจจุบันได้ โปรดเปิดสิทธิ์ Location บนเบราว์เซอร์");
+        alert(t("md.gpsFail"));
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
@@ -481,7 +481,7 @@ export default function MapView({
               ) : (
                 <Navigation size={12} className="text-[#2563EB]" />
               )}
-              <span>Near Me / ใกล้ฉัน</span>
+              <span>{t("place.nearMe")}</span>
             </button>
 
             {REGION_FILTERS.map((r) => (
@@ -528,7 +528,7 @@ export default function MapView({
                     : { background: f.id === "jigsaw" ? "#FFF7ED" : "#FFFFFF", color: f.id === "jigsaw" ? "#C2410C" : C.inkSoft, borderColor: f.id === "jigsaw" ? "#FFEDD5" : C.line }
                 }
               >
-                {f.id === "jigsaw" ? f.labelKey : t(f.labelKey)}
+                {t(f.labelKey)}
               </button>
             ))}
           </div>
@@ -553,7 +553,7 @@ export default function MapView({
                   : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
               }`}
             >
-               ทั้งหมด ({quests.length} เควสต์)
+               {t("filter.all")} ({quests.length})
             </button>
             {quests.map((q) => {
               const isCur = selectedQuestFilter === q.id;
@@ -598,10 +598,10 @@ export default function MapView({
               <button
                 onClick={() => onNavigateTab?.("jigsaw_manage")}
                 className="ml-auto px-3 py-1 rounded-full text-[10.5px] font-black shrink-0 transition cursor-pointer border border-orange-300 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-xs flex items-center gap-1.5"
-                title="ไปยังหน้าแดชบอร์ดจัดการและสร้างจุดสแกนจิ๊กซอว์"
+                title={t("mv.toJigsawAdmin")}
               >
                 <Puzzle size={12} strokeWidth={2.5} />
-                <span>+ จัดการ/สร้างจุดจิ๊กซอว์ (Admin)</span>
+                <span>+ {t("jg.manageQuests")}</span>
               </button>
             )}
           </div>
@@ -628,7 +628,7 @@ export default function MapView({
             ) : (
               <Crosshair size={13} className="text-[#2563EB]" />
             )}
-            <span>Near Me</span>
+            <span>{t("place.nearMe")}</span>
           </button>
 
           {/* Active Near Me Radius Badge */}
@@ -660,10 +660,10 @@ export default function MapView({
                       <div className="leading-tight min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
                           <span className="text-[9px] font-black uppercase tracking-wider text-orange-600 bg-orange-50 px-2 py-0.5 rounded-md border border-orange-200 truncate">
-                            {parentQuest?.title.split(":")[0] || "เควสต์จิ๊กซอว์"}
+                            {parentQuest?.title.split(":")[0] || t("mv.jigsawQuest")}
                           </span>
                           <span className="text-[9px] font-black text-stone-500 shrink-0">
-                            ชิ้นที่ {selectedJigsawPiece.pieceIndex + 1} / {parentQuest?.pieces.length || 4}
+                            {t("jg.piece")} {selectedJigsawPiece.pieceIndex + 1} / {parentQuest?.pieces.length || 4}
                           </span>
                         </div>
                         <h3 className="text-sm font-black mt-1 leading-snug truncate" style={{ color: C.ink }}>
@@ -681,25 +681,25 @@ export default function MapView({
                 {collectedJigsawPieces.includes(selectedJigsawPiece.id) ? (
                   <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-800 text-xs font-black flex items-center gap-2">
                     <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
- <span>คุณสะสมชิ้นส่วนนี้เรียบร้อยแล้ว </span>
+ <span>{t("mv.pieceCollected")}</span>
                   </div>
                 ) : (
                   <div className="p-2.5 bg-orange-50 border border-orange-200 rounded-2xl text-orange-900 text-xs font-black flex items-center gap-2">
                     <Lock size={15} className="text-orange-600 shrink-0" />
-                    <span>ยังไม่ได้เก็บ (เดินทางไปสแกน ณ จุดจริง)</span>
+                    <span>{t("mv.pieceNotYet")}</span>
                   </div>
                 )}
 
                 <div className="pt-2 border-t space-y-2" style={{ borderColor: C.line }}>
-                  <h4 className="text-[9px] font-black uppercase tracking-wider text-[#8A7870]">คำแนะนำการค้นหา</h4>
+                  <h4 className="text-[9px] font-black uppercase tracking-wider text-[#8A7870]">{t("jg.f.findHint")}</h4>
                   <p className="text-xs text-[#8A7870] leading-relaxed">
                     {selectedJigsawPiece.description}
                   </p>
                   <div className="p-2.5 bg-amber-50/80 border border-amber-200/80 rounded-xl text-[10.5px] text-amber-900 font-semibold leading-snug">
-                     คำใบ้: {selectedJigsawPiece.hint}
+                     {t("jig.hint")} {selectedJigsawPiece.hint}
                   </div>
                   <p className="text-[10px] text-stone-400 font-medium">
-                    พิกัด GPS: {selectedJigsawPiece.targetLat.toFixed(4)}, {selectedJigsawPiece.targetLng.toFixed(4)} (รัศมี {selectedJigsawPiece.radiusMeters} ม.)
+                    GPS: {selectedJigsawPiece.targetLat.toFixed(4)}, {selectedJigsawPiece.targetLng.toFixed(4)} ({t("jg.radiusShort")} {selectedJigsawPiece.radiusMeters} m)
                   </p>
                 </div>
               </div>
@@ -711,7 +711,7 @@ export default function MapView({
                     className="w-full py-2.5 rounded-xl text-xs font-black text-white flex items-center justify-center gap-1.5 shadow-md transition hover:bg-orange-700 bg-orange-600 cursor-pointer active:scale-98"
                   >
                     <Camera size={14} strokeWidth={2.5} />
-                    <span>สแกน QR Code + GPS จุดนี้</span>
+                    <span>{t("mv.scanThisPoint")}</span>
                   </button>
                 )}
 
@@ -724,7 +724,7 @@ export default function MapView({
                   className="w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border bg-[#FAF6F0] hover:bg-stone-50 transition cursor-pointer"
                   style={{ borderColor: C.line, color: C.ink }}
                 >
-                  <Navigation size={13} color={C.accent} /> ซูมไปที่จุดนี้
+                  <Navigation size={13} color={C.accent} /> {t("map.zoomTo")}
                 </button>
               </div>
             </div>
@@ -792,22 +792,22 @@ export default function MapView({
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5">
                               <span className="text-[9px] font-black uppercase tracking-wider text-orange-600">
-                                ชิ้นส่วนจิ๊กซอว์ที่ {selectedShopPieceIndex}
+                                {t("jg.piece")} {selectedShopPieceIndex}
                               </span>
                               {isSelectedShopPieceCollected ? (
                                 <span className="text-[8.5px] font-extrabold text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded-full flex items-center gap-0.5">
-                                  <CheckCircle2 size={10} /> เก็บแล้ว
+                                  <CheckCircle2 size={10} /> {t("collection.collectedTag")}
                                 </span>
                               ) : (
                                 <span className="text-[8.5px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.2 rounded-full flex items-center gap-0.5">
-                                  <Lock size={9} /> ซ่อนอยู่ที่นี่
+                                  <Lock size={9} /> {t("mv.hiddenHere")}
                                 </span>
                               )}
                             </div>
                             <p className="text-[11px] font-extrabold text-stone-900 truncate mt-0.5">
                               {isSelectedShopPieceCollected
-                                ? "คุณสะสมชิ้นส่วนของร้านนี้แล้ว "
-                                : `มีชิ้นส่วนจิ๊กซอว์ซ่อนอยู่ที่ ${selectedName}!`}
+                                ? t("mv.shopPieceCollected")
+                                : t("mv.pieceHiddenAt").replace("{n}", selectedName)}
                             </p>
                           </div>
                         </div>
@@ -819,7 +819,7 @@ export default function MapView({
                           className="mt-2.5 w-full py-2 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-xl text-xs font-black flex items-center justify-center gap-1.5 shadow-xs transition cursor-pointer active:scale-98"
                         >
                           <Camera size={13} strokeWidth={2.5} />
-                          <span>สแกน QR + GPS รับจิ๊กซอว์ร้านนี้</span>
+                          <span>{t("mv.scanShopPiece")}</span>
                         </button>
                       )}
                     </div>

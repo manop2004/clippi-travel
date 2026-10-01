@@ -38,7 +38,7 @@ export default function ShopVersionHistoryModal({
   if (!isOpen || !currentShop) return null;
 
   const activeShop = currentShop;
-  const shopName = activeShop.shop_name || activeShop.name || "ร้านค้า";
+  const shopName = activeShop.shop_name || activeShop.name || t("log.d.shop");
   const stampVersions = getShopStampVersions(activeShop);
   const currentActiveVersion = getCurrentActiveStampVersion(stampVersions);
 
@@ -84,12 +84,12 @@ export default function ShopVersionHistoryModal({
         displayStampVersions.push({
           id: rawId,
           version_code: rawCode,
-          title: `เวอร์ชัน ${rawCode} (ประวัติเดิมที่คุณเคยสะสม)`,
+          title: `${t("sd.verTitle")} ${rawCode}`,
           valid_from: "",
           valid_until: "",
           is_current: false,
           status: "archived",
-          note: "เวอร์ชันในอดีตที่คุณเคยสะสมไว้",
+          note: t("vh.pastVersion"),
           design: activeShop.stamp_design || getDefaultStampDesign(shopName),
         });
       }
@@ -166,8 +166,7 @@ export default function ShopVersionHistoryModal({
                 )}
               </div>
               <p className="text-xs text-stone-300">
-                ประวัติเวอร์ชันตราแสตมป์ • สะสมแล้ว {collectedVersionsCount} / {totalVersions} เวอร์ชัน (รวม {collectedForShop.length} รอบ)
-              </p>
+                {t("sd.verHistory")} • {collectedVersionsCount} / {totalVersions}</p>
             </div>
           </div>
           <button
@@ -187,7 +186,7 @@ export default function ShopVersionHistoryModal({
               <div className="space-y-0.5">
                 <div className="flex items-center gap-1.5 text-xs font-black text-amber-900">
                   <Sparkles size={14} className="text-amber-500" />
-                  <span>ตราแสตมป์ปัจจุบัน: {currentActiveVersion.version_code ? `${currentActiveVersion.version_code} - ` : ""}{currentActiveVersion.title}</span>
+                  <span>{t("sd.active")}: {currentActiveVersion.version_code ? `${currentActiveVersion.version_code} - ` : ""}{currentActiveVersion.title}</span>
                 </div>
                 <p className="text-[11px] text-amber-800 flex items-center gap-1 font-semibold">
                   <Clock size={12} className="text-amber-600" />
@@ -196,7 +195,7 @@ export default function ShopVersionHistoryModal({
               </div>
 
               <span className="px-3 py-1 rounded-full text-xs font-black bg-amber-500 text-stone-950 shrink-0 self-start sm:self-auto">
-                 active ปัจจุบัน 
+                 active 
               </span>
             </div>
           )}
@@ -206,10 +205,10 @@ export default function ShopVersionHistoryModal({
             <div className="flex items-center justify-between">
               <span className="text-xs font-black text-stone-900 flex items-center gap-1.5">
                 <Award size={15} className="text-amber-500" />
-                <span>ประวัติการสะสมแสตมป์ร้านนี้ ({collectedForShop.length} รอบ)</span>
+                <span>{t("vh.collectHistory")} ({collectedForShop.length})</span>
               </span>
               <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-200">
-                สะสมได้เรื่อยๆ 
+                {t("vh.keepCollecting")} 
               </span>
             </div>
 
@@ -218,7 +217,7 @@ export default function ShopVersionHistoryModal({
                 {collectedForShop.map((st, idx) => {
                   const dateStr = st.collected_at
                     ? new Date(st.collected_at).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" })
-                    : "ม.ค.";
+                    : "";
                   const roundNum = collectedForShop.length - idx;
                   const matchedVer = getVersionForStamp(st);
                   const codeDisplay = (st.version_code || matchedVer?.version_code || "").trim();
@@ -226,7 +225,7 @@ export default function ShopVersionHistoryModal({
                   return (
                     <div key={st.id || idx} className="px-2.5 py-1 rounded-xl bg-white border border-amber-200 text-[10px] font-bold text-stone-800 shadow-2xs flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                      <span>รอบที่ {roundNum}:</span>
+                      <span>#{roundNum}</span>
                       {codeDisplay && <span className="text-amber-800 font-extrabold">[{codeDisplay}]</span>}
                       <span className="text-stone-500">{dateStr}</span>
                     </div>
@@ -297,13 +296,13 @@ export default function ShopVersionHistoryModal({
                           <span>{t("ver.collected")}</span>
                         </span>
                         <span className="text-[9.5px] font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full inline-block border border-amber-200">
-                          สะสมเวอร์ชันนี้ไปแล้ว {versionTimesCollected} ครั้ง 
+                          {t("vh.timesCollected").replace("{n}", String(versionTimesCollected))} 
                         </span>
                       </div>
                     ) : (
                       <span className="text-[11px] font-bold text-stone-400 flex items-center justify-center gap-1">
                         <Lock size={12} />
-                        <span>{isCurrent ? "เดินทางไปเช็คอินรับเวอร์ชันปัจจุบัน" : "เวอร์ชันในอดีต / ไม่ได้เปิดสะสม"}</span>
+                        <span>{isCurrent ? t("vh.goCollectCurrent") : t("vh.pastClosed")}</span>
                       </span>
                     )}
                   </div>
@@ -330,7 +329,7 @@ export default function ShopVersionHistoryModal({
             onClick={onClose}
             className="px-4 py-2 rounded-xl text-xs font-bold text-stone-600 hover:bg-stone-200 transition cursor-pointer"
           >
-            ปิดหน้าต่าง
+            {t("common.close")}
           </button>
         </div>
 

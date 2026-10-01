@@ -95,7 +95,7 @@ export default function CampaignBanner({ onCtaClick }: CampaignBannerProps) {
         <Carousel
           items={dynamicBanners}
           keyExtractor={(b) => b.id}
-          desktopClassName=""
+          desktopClassName="md:grid md:grid-cols-3"
           itemClassName="w-[82vw] sm:w-[320px] md:w-[350px] shrink-0 snap-start"
           renderItem={(banner) => {
             return (
@@ -125,7 +125,7 @@ export default function CampaignBanner({ onCtaClick }: CampaignBannerProps) {
                       {banner.title}
                     </h3>
                     <p className="text-[11px] font-medium text-stone-500 mt-1 line-clamp-2 leading-relaxed">
-                      {banner.subtitle || "สะสมแสตมป์ในพื้นที่ รับของรางวัลและตราประทับดีไซน์พิเศษ!"}
+                      {banner.subtitle || t("campaign.sectionSub")}
                     </p>
                   </div>
                   {banner.cta_text && (
@@ -142,7 +142,7 @@ export default function CampaignBanner({ onCtaClick }: CampaignBannerProps) {
         <Carousel
           items={SLIDES}
           keyExtractor={(s) => s.key}
-          desktopClassName=""
+          desktopClassName="md:grid md:grid-cols-3"
           itemClassName="w-[82vw] sm:w-[320px] md:w-[350px] shrink-0 snap-start"
           renderItem={(slide) => {
             const Icon = slide.icon;

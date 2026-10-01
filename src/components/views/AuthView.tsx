@@ -51,11 +51,11 @@ const PREFECTURES = [
 ];
 
 const SHOP_CATEGORIES = [
-  { id: "food", label: "ร้านอาหาร / คาเฟ่ (Food & Cafe)" },
-  { id: "shop", label: "ร้านค้า / ของฝาก (Shopping & Souvenirs)" },
-  { id: "sightseeing", label: "สถานที่ท่องเที่ยว / วัดเซน (Sightseeing & Shrine)" },
-  { id: "service", label: "บริการ / โรงแรม (Service & Hotel)" },
-  { id: "other", label: "อื่นๆ (Other)" },
+  { id: "food", label: "rv.cat.food" },
+  { id: "shop", label: "rv.cat.shop" },
+  { id: "sightseeing", label: "rv.cat.sightseeing" },
+  { id: "service", label: "rv.cat.service" },
+  { id: "other", label: "rv.cat.other" },
 ];
 
 export default function AuthView({ initialMode = "login", initialSubFlow, onClose }: AuthViewProps) {
@@ -152,7 +152,7 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       if (file.size > 10 * 1024 * 1024) {
-        setErrorMsg("ขนาดไฟล์เอกสารต้องไม่เกิน 10MB");
+        setErrorMsg(t("au.fileMax10"));
         return;
       }
       setOwnershipFile(file);
@@ -164,7 +164,7 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
   // ── OTP Handler Functions ──
   const handleResendOtp = async (targetType: "signup" | "recovery") => {
     if (!email.trim()) {
-      setErrorMsg("กรุณากรอกอีเมลก่อนขอรหัส OTP ใหม่");
+      setErrorMsg(t("au.needEmailFirst"));
       return;
     }
     if (resendTimer > 0) return;
@@ -187,10 +187,10 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
         if (error) throw error;
       }
       setResendTimer(60);
-      setSuccessMsg(`ส่งรหัส OTP 6 หลักชุดใหม่ไปยังอีเมล ${email.trim()} เรียบร้อยแล้ว`);
+      setSuccessMsg(t("au.otpResent").replace("{e}", email.trim()));
     } catch (err: any) {
       console.error("Resend OTP failed:", err);
-      setErrorMsg(err.message || "ไม่สามารถส่งรหัส OTP ใหม่ได้ กรุณาลองใหม่อีกครั้ง");
+      setErrorMsg(err.message || t("au.otpResendFail"));
     } finally {
       setLoading(false);
     }
@@ -199,7 +199,7 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
   const handleVerifySignupOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!otpCode.trim() || otpCode.trim().length < 6) {
-      setErrorMsg("กรุณากรอกรหัส OTP 6 หลักให้ครบถ้วน");
+      setErrorMsg(t("au.otpIncomplete"));
       return;
     }
     setLoading(true);
@@ -233,7 +233,7 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
         } catch (e) {}
       }
 
-      setSuccessMsg("🎉 ยืนยันอีเมลด้วยรหัส OTP สำเร็จแล้ว! กำลังนำคุณเข้าสู่ระบบ...");
+      setSuccessMsg(t("au.otpVerifyOk"));
       setTimeout(() => {
         setOtpSubFlow("none");
       }, 1200);
@@ -241,8 +241,8 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
       console.error("Verify signup OTP error:", err);
       setErrorMsg(
         err.message?.includes("Token has expired") || err.message?.includes("invalid")
-          ? "รหัส OTP ไม่ถูกต้องหรือหมดอายุแล้ว กรุณากดขอรหัส OTP ใหม่อีกครั้ง"
-          : (err.message || "ยืนยันรหัส OTP ไม่สำเร็จ")
+          ? t("au.otpInvalid")
+          : (err.message || t("au.otpVerifyFail"))
       );
     } finally {
       setLoading(false);
@@ -252,7 +252,7 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
   const handleRequestForgotOtp = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!email.trim()) {
-      setErrorMsg("กรุณากรอกอีเมลในช่องอีเมลก่อนกดขอรหัส OTP");
+      setErrorMsg(t("au.needEmailField"));
       return;
     }
     setLoading(true);
@@ -263,10 +263,10 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
       if (error) throw error;
       setOtpSubFlow("forgot_otp");
       setResendTimer(60);
-      setSuccessMsg(`ส่งรหัส OTP 6 หลักสำหรับตั้งรหัสผ่านใหม่ไปยังอีเมล ${email.trim()} เรียบร้อยแล้ว`);
+      setSuccessMsg(t("au.otpResetSent").replace("{e}", email.trim()));
     } catch (err: any) {
       console.error("Request forgot OTP failed:", err);
-      setErrorMsg(err.message || "ไม่สามารถส่งรหัส OTP ได้ กรุณาตรวจสอบอีเมลและลองใหม่อีกครั้ง");
+      setErrorMsg(err.message || t("au.otpSendFail"));
     } finally {
       setLoading(false);
     }
@@ -275,7 +275,7 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
   const handleVerifyRecoveryOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!otpCode.trim() || otpCode.trim().length < 6) {
-      setErrorMsg("กรุณากรอกรหัส OTP 6 หลักให้ครบถ้วน");
+      setErrorMsg(t("au.otpIncomplete"));
       return;
     }
     setLoading(true);
@@ -303,13 +303,13 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
       sessionStorage.setItem("clippi_resetting_password", "true");
       window.dispatchEvent(new Event("reset_password_state_changed"));
       setOtpSubFlow("new_password");
-      setSuccessMsg("✅ ยืนยันรหัส OTP สำเร็จ! กรุณากำหนดรหัสผ่านใหม่ด้านล่าง");
+      setSuccessMsg(t("au.otpOkSetPass"));
     } catch (err: any) {
       console.error("Verify recovery OTP error:", err);
       setErrorMsg(
         err.message?.includes("Token has expired") || err.message?.includes("invalid")
-          ? "รหัส OTP ไม่ถูกต้องหรือหมดอายุแล้ว กรุณากดขอรหัส OTP ใหม่อีกครั้ง"
-          : (err.message || "ยืนยันรหัส OTP ไม่สำเร็จ")
+          ? t("au.otpInvalid")
+          : (err.message || t("au.otpVerifyFail"))
       );
     } finally {
       setLoading(false);
@@ -319,11 +319,11 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
   const handleSaveNewPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPassword.trim() || newPassword.length < 6) {
-      setErrorMsg("รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 6 ตัวอักษร");
+      setErrorMsg(t("au.passMin6"));
       return;
     }
     if (newPassword !== confirmNewPassword) {
-      setErrorMsg("รหัสผ่านใหม่และยืนยันรหัสผ่านไม่ตรงกัน");
+      setErrorMsg(t("au.passMismatch"));
       return;
     }
     setLoading(true);
@@ -337,14 +337,14 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
 
       sessionStorage.removeItem("clippi_resetting_password");
       window.dispatchEvent(new Event("reset_password_state_changed"));
-      setSuccessMsg("🎉 ตั้งรหัสผ่านใหม่สำเร็จแล้ว! กำลังเข้าสู่ระบบ...");
+      setSuccessMsg(t("au.passSetOk"));
       setTimeout(() => {
         setOtpSubFlow("none");
         handleSwitchMode("login");
       }, 1500);
     } catch (err: any) {
       console.error("Update password failed:", err);
-      setErrorMsg(err.message || "ไม่สามารถเปลี่ยนรหัสผ่านใหม่ได้ กรุณาลองใหม่อีกครั้ง");
+      setErrorMsg(err.message || t("au.passSetFail"));
     } finally {
       setLoading(false);
     }
@@ -377,7 +377,7 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
 
     // Validation
     if (!email.trim() || !password.trim()) {
-      setErrorMsg("กรุณากรอกอีเมลและรหัสผ่านให้ครบถ้วน");
+      setErrorMsg(t("au.needEmailPass"));
       return;
     }
 
@@ -449,17 +449,17 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
         if (error) {
           const errMsg = error.message || "";
           if (errMsg.includes("Email not confirmed")) {
-            setErrorMsg(" บัญชีนี้ยังไม่ได้ยืนยันอีเมล กรุณาตรวจสอบกล่องจดหมาย (Inbox / Spam) ของอีเมล " + email.trim() + " แล้วกดลิงก์ยืนยันตัวตนก่อนเข้าสู่ระบบ");
+            setErrorMsg(t("au.emailNotVerified") + email.trim());
           } else if (isPendingMerchant) {
             setErrorMsg(
-              "⏳ บัญชีเจ้าของร้านของคุณ (" + email.trim() + ") ลงทะเบียนเรียบร้อยแล้วและอยู่ระหว่างรอแอดมินอนุมัติสิทธิ์ (Pending Approval)\n\n" +
-              " หากเคยเข้าใช้งานผ่าน Google ไม่จำเป็นต้องยืนยันอีเมล สามารถกดปุ่ม 'Google Workspace' ด้านล่างเพื่อเข้าสู่ระบบได้ทันที!\n" +
-              "(หากต้องการเข้าด้วยรหัสผ่าน สามารถกด 'ลืมรหัสผ่าน? / ตั้งรหัสผ่านใหม่' ด้านล่างเพื่อตั้งรหัสผ่านได้)"
+              t("au.merchantPending").replace("{e}", email.trim()) +
+              t("au.googleHint") +
+              t("au.passwordHint")
             );
           } else if (emailExists) {
-            setErrorMsg("รหัสผ่านไม่ถูกต้อง หรือบัญชีนี้ยังไม่ได้ตั้งรหัสผ่าน (หากเคยเข้าด้วย Google กรุณากดปุ่ม 'Google Workspace' ด้านล่างเพื่อเข้าสู่ระบบ หรือกด 'ลืมรหัสผ่าน?')");
+            setErrorMsg(t("au.wrongPassword"));
           } else {
-            setErrorMsg("ยังไม่มีบัญชีที่ใช้อีเมลนี้ในระบบ กรุณาสมัครสมาชิกก่อน");
+            setErrorMsg(t("au.noAccount"));
           }
           setLoading(false);
           return;
@@ -525,9 +525,9 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
 
           // Do NOT sign out if pending merchant - allow App.tsx to display full Pending Admin Approval screen
           if (uRole !== "admin" && uRole !== "store" && mStatus === "pending") {
-            setSuccessMsg("⏳ บัญชีของคุณอยู่ระหว่างการรออนุมัติจากแอดมิน (Pending Admin Approval) กำลังเข้าสู่หน้ารออนุมัติ...");
+            setSuccessMsg(t("au.pendingApproval"));
           } else {
-            setSuccessMsg("🎉 เข้าสู่ระบบสำเร็จแล้ว! กำลังพับหน้าต่างลง...");
+            setSuccessMsg(t("au.loginOk"));
           }
 
           setTimeout(() => {
@@ -537,9 +537,9 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
       } catch (err: any) {
         console.error("Login failed:", err);
         if (err.message?.includes("Invalid login credentials")) {
-          setErrorMsg("อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง (หากเคยสมัครผ่าน Google หรือต้องการตั้งรหัสผ่าน สามารถกด 'ลืมรหัสผ่าน? / ตั้งรหัสผ่านใหม่' ได้)");
+          setErrorMsg(t("au.badCredentials"));
         } else {
-          setErrorMsg(err.message || "เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+          setErrorMsg(err.message || t("au.loginFail"));
         }
       } finally {
         setLoading(false);
@@ -547,15 +547,15 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
     } else if (mode === "signup") {
       // ── GENERAL USER SIGNUP ──
       if (!displayName.trim()) {
-        setErrorMsg("กรุณากรอกชื่อแสดงผล / ชื่อ-นามสกุล");
+        setErrorMsg(t("au.needName"));
         return;
       }
       if (password.length < 6) {
-        setErrorMsg("รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร");
+        setErrorMsg(t("au.passMin6"));
         return;
       }
       if (password !== confirmPassword) {
-        setErrorMsg("รหัสผ่านและยืนยันรหัสผ่านไม่ตรงกัน");
+        setErrorMsg(t("au.passMismatch"));
         return;
       }
 
@@ -621,14 +621,14 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
 
           setOtpSubFlow("verify_signup_otp");
           setResendTimer(60);
-          setSuccessMsg(`📩 สมัครสมาชิกสำเร็จ! ระบบได้ส่งรหัส OTP 6 หลักไปยังอีเมล ${email.trim()} แล้ว กรุณากรอกรหัส OTP เพื่อยืนยันตัวตน`);
+          setSuccessMsg(t("au.signupOtpSent").replace("{e}", email.trim()));
         }
       } catch (err: any) {
         console.error("User signup failed:", err);
         if (err.message?.includes("User already registered")) {
-          setErrorMsg("อีเมลนี้ถูกลงทะเบียนไว้ในระบบแล้ว กรุณาใช้บัญชีนี้เข้าสู่ระบบ");
+          setErrorMsg(t("au.emailTaken"));
         } else {
-          setErrorMsg(err.message || "สมัครสมาชิกไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+          setErrorMsg(err.message || t("au.signupFail"));
         }
       } finally {
         setLoading(false);
@@ -636,23 +636,23 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
     } else if (mode === "merchant") {
       // ── MERCHANT / STORE OWNER SIGNUP ──
       if (!shopName.trim()) {
-        setErrorMsg("กรุณากรอกชื่อร้านค้า / สถานประกอบการ");
+        setErrorMsg(t("au.needShopName"));
         return;
       }
       if (!contactName.trim()) {
-        setErrorMsg("กรุณากรอกชื่อผู้ติดต่องาน / เจ้าของร้าน");
+        setErrorMsg(t("au.needContact"));
         return;
       }
       if (!phone.trim()) {
-        setErrorMsg("กรุณากรอกเบอร์โทรศัพท์ติดต่อ");
+        setErrorMsg(t("au.needPhone"));
         return;
       }
       if (password.length < 6) {
-        setErrorMsg("รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร");
+        setErrorMsg(t("au.passMin6"));
         return;
       }
       if (password !== confirmPassword) {
-        setErrorMsg("รหัสผ่านและยืนยันรหัสผ่านไม่ตรงกัน");
+        setErrorMsg(t("au.passMismatch"));
         return;
       }
 
@@ -670,13 +670,13 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
 
         if (existingProf && !existingProf.is_deleted) {
           if (existingProf.role === "store" || existingProf.merchant_status === "approved") {
-            setErrorMsg(` อีเมล ${cleanEmail} ได้รับอนุมัติสิทธิ์เป็นเจ้าของร้านค้าเรียบร้อยแล้ว กรุณาเข้าสู่ระบบด้วยบัญชีนี้`);
+            setErrorMsg(t("au.alreadyApproved").replace("{e}", cleanEmail));
             setLoading(false);
             handleSwitchMode("login");
             return;
           }
           if (existingProf.role === "pending_store" || existingProf.merchant_status === "pending") {
-            setErrorMsg(`⏳ อีเมล ${cleanEmail} ได้ลงทะเบียนสมัครเจ้าของร้านค้าไว้เรียบร้อยแล้ว (อยู่ระหว่างรอแอดมินอนุมัติ) กรุณาเข้าสู่ระบบเพื่อติดตามสถานะ`);
+            setErrorMsg(t("au.alreadyPending").replace("{e}", cleanEmail));
             setLoading(false);
             handleSwitchMode("login");
             return;
@@ -839,7 +839,7 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
               } catch (e) {}
             }
 
-            setSuccessMsg(` ยื่นคำขอลงทะเบียนเจ้าของร้านค้าสำหรับ ${cleanEmail} เรียบร้อยแล้ว! (เนื่องจากบัญชีนี้สมัครไว้ผ่าน Google กรุณากดปุ่ม 'Google Workspace' ด้านล่างเพื่อเข้าสู่ระบบ)`);
+            setSuccessMsg(t("au.merchantReqSent").replace("{e}", cleanEmail));
             setLoading(false);
             handleSwitchMode("login");
             return;
@@ -940,14 +940,14 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
 
           setOtpSubFlow("verify_signup_otp");
           setResendTimer(60);
-          setSuccessMsg(`🎉 ลงทะเบียนร้านค้าเรียบร้อยแล้ว! ระบบได้ส่งรหัส OTP 6 หลักไปยังอีเมล ${email.trim()} แล้ว กรุณากรอกรหัส OTP ด้านล่างเพื่อยืนยันตัวตน (บัญชีอยู่ระหว่างรอแอดมินอนุมัติ)`);
+          setSuccessMsg(t("au.merchantSignupOk").replace("{e}", email.trim()));
         }
       } catch (err: any) {
         console.error("Merchant signup failed:", err);
         if (err.message?.includes("User already registered")) {
-          setErrorMsg("อีเมลนี้ถูกลงทะเบียนไว้ในระบบแล้ว หากเคยเข้าด้วย Google กรุณาเข้าสู่ระบบด้วย Google หรือกด 'ลืมรหัสผ่าน?' เพื่อตั้งรหัสผ่านสำหรับอีเมลนี้");
+          setErrorMsg(t("au.emailTakenGoogle"));
         } else {
-          setErrorMsg(err.message || "ลงทะเบียนร้านค้าไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+          setErrorMsg(err.message || t("au.merchantSignupFail"));
         }
       } finally {
         setLoading(false);
@@ -966,7 +966,7 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
             type="button"
             onClick={onClose}
             className="absolute top-4 right-4 w-9 h-9 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 flex items-center justify-center transition cursor-pointer z-30 border border-stone-200"
-            title="ปิดหน้านี้เพื่อกลับไปดูต่อ"
+            title={t("au.closeAndBack")}
           >
             <X size={18} />
           </button>
@@ -1036,16 +1036,16 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
                     <MailCheck size={22} />
                   </div>
                   <h3 className="text-sm font-black text-amber-950">
-                    ✉️ ยืนยันอีเมลด้วยรหัส OTP
+                    {t("au.verifyEmailTitle")}
                   </h3>
                   <p className="text-xs text-amber-800 leading-relaxed">
-                    ระบบได้ส่งรหัส OTP 6 หลักไปที่ <strong className="text-stone-900 underline">{email || "อีเมลของคุณ"}</strong> แล้ว
+                    {t("au.otpSentTo")} <strong className="text-stone-900 underline">{email || t("au.yourEmail")}</strong>
                   </p>
                 </div>
 
                 <div>
                   <label className="text-xs font-black text-stone-700 block mb-1.5 text-center">
-                    กรอกรหัส OTP 6 หลัก:
+                    {t("au.enterOtp")}
                   </label>
                   <input
                     type="text"
@@ -1064,7 +1064,7 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
                   disabled={loading || otpCode.length < 6}
                   className="w-full py-3 rounded-xl text-xs font-black text-white bg-[#E0533C] hover:bg-[#c94530] transition shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
-                  {loading ? <Loader2 size={16} className="animate-spin" /> : <span>ยืนยันรหัส OTP และเข้าสู่ระบบ</span>}
+                  {loading ? <Loader2 size={16} className="animate-spin" /> : <span>{t("au.verifyAndLogin")}</span>}
                 </button>
 
                 <div className="flex items-center justify-between text-xs pt-2 border-t border-stone-200">
@@ -1075,7 +1075,7 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
                     className="font-bold text-amber-700 hover:underline flex items-center gap-1 cursor-pointer disabled:opacity-50 disabled:no-underline"
                   >
                     <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
-                    <span>{resendTimer > 0 ? `ขอรหัสใหม่ได้ใน (${resendTimer}s)` : "ขอส่งรหัส OTP ใหม่"}</span>
+                    <span>{resendTimer > 0 ? `${t("au.resendIn")} (${resendTimer}s)` : t("au.resendOtp")}</span>
                   </button>
 
                   <button
@@ -1083,7 +1083,7 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
                     onClick={() => setOtpSubFlow("none")}
                     className="text-stone-500 hover:text-stone-900 font-semibold cursor-pointer"
                   >
-                    ← ย้อนกลับ
+                    ← {t("sm.prev")}
                   </button>
                 </div>
               </form>
@@ -1097,16 +1097,16 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
                     <KeyRound size={22} />
                   </div>
                   <h3 className="text-sm font-black text-amber-950">
-                    🔐 ลืมรหัสผ่าน / รีเซ็ตรหัสผ่านด้วย OTP
+                    {t("au.forgotTitle")}
                   </h3>
                   <p className="text-xs text-amber-800 leading-relaxed">
-                    กรอกอีเมลของคุณเพื่อรับรหัส OTP 6 หลักสำหรับตั้งรหัสผ่านใหม่
+                    {t("au.forgotDesc")}
                   </p>
                 </div>
 
                 <div>
                   <label className="text-[10px] font-black uppercase tracking-wider text-[#8A7870] block mb-1">
-                    อีเมลสำหรับรับรหัส OTP <span className="text-[#E0533C]">*</span>
+                    {t("au.emailForOtp")} <span className="text-[#E0533C]">*</span>
                   </label>
                   <div className="relative">
                     <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8A7870]" />
@@ -1126,7 +1126,7 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
                   disabled={loading || !email.trim()}
                   className="w-full py-3 rounded-xl text-xs font-black text-white bg-[#E0533C] hover:bg-[#c94530] transition shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
-                  {loading ? <Loader2 size={16} className="animate-spin" /> : <span>📩 ส่งรหัส OTP ไปยังอีเมล</span>}
+                  {loading ? <Loader2 size={16} className="animate-spin" /> : <span>{t("au.sendOtp")}</span>}
                 </button>
 
                 <div className="flex items-center justify-between text-xs pt-2 border-t border-stone-200">
@@ -1135,7 +1135,7 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
                     onClick={() => setOtpSubFlow("forgot_otp")}
                     className="font-bold text-amber-700 hover:underline cursor-pointer"
                   >
-                    มีรหัส OTP แล้ว? กรอกรหัส
+                    {t("au.haveOtp")}
                   </button>
 
                   <button
@@ -1143,7 +1143,7 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
                     onClick={() => setOtpSubFlow("none")}
                     className="text-stone-500 hover:text-stone-900 font-semibold cursor-pointer"
                   >
-                    ← กลับไปหน้าเข้าสู่ระบบ
+                    ← {t("au.backToLogin")}
                   </button>
                 </div>
               </form>
@@ -1157,16 +1157,16 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
                     <KeyRound size={22} />
                   </div>
                   <h3 className="text-sm font-black text-amber-950">
-                    🔑 กรอกรหัส OTP เพื่อรีเซ็ตรหัสผ่าน
+                    {t("au.otpResetTitle")}
                   </h3>
                   <p className="text-xs text-amber-800 leading-relaxed">
-                    ระบบได้ส่งรหัส OTP 6 หลักไปที่ <strong className="text-stone-900 underline">{email}</strong> แล้ว
+                    {t("au.otpSentTo")} <strong className="text-stone-900 underline">{email}</strong>
                   </p>
                 </div>
 
                 <div>
                   <label className="text-xs font-black text-stone-700 block mb-1.5 text-center">
-                    กรอกรหัส OTP 6 หลัก:
+                    {t("au.enterOtp")}
                   </label>
                   <input
                     type="text"
@@ -1185,7 +1185,7 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
                   disabled={loading || otpCode.length < 6}
                   className="w-full py-3 rounded-xl text-xs font-black text-white bg-[#E0533C] hover:bg-[#c94530] transition shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
-                  {loading ? <Loader2 size={16} className="animate-spin" /> : <span>ตรวจสอบรหัส OTP</span>}
+                  {loading ? <Loader2 size={16} className="animate-spin" /> : <span>{t("au.checkOtp")}</span>}
                 </button>
 
                 <div className="flex items-center justify-between text-xs pt-2 border-t border-stone-200">
@@ -1196,7 +1196,7 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
                     className="font-bold text-amber-700 hover:underline flex items-center gap-1 cursor-pointer disabled:opacity-50 disabled:no-underline"
                   >
                     <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
-                    <span>{resendTimer > 0 ? `ขอรหัสใหม่ได้ใน (${resendTimer}s)` : "ขอส่งรหัส OTP ใหม่"}</span>
+                    <span>{resendTimer > 0 ? `${t("au.resendIn")} (${resendTimer}s)` : t("au.resendOtp")}</span>
                   </button>
 
                   <button
@@ -1204,7 +1204,7 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
                     onClick={() => setOtpSubFlow("forgot_email")}
                     className="text-stone-500 hover:text-stone-900 font-semibold cursor-pointer"
                   >
-                    ← ย้อนกลับไปกรอกอีเมล
+                    ← {t("au.backToEmail")}
                   </button>
                 </div>
               </form>
@@ -1218,16 +1218,16 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
                     <ShieldCheck size={22} />
                   </div>
                   <h3 className="text-sm font-black text-emerald-950">
-                    🔑 กำหนดรหัสผ่านใหม่ (Set New Password)
+                    {t("au.setNewPassTitle")}
                   </h3>
                   <p className="text-xs text-emerald-800 leading-relaxed">
-                    กรุณากำหนดรหัสผ่านใหม่สำหรับบัญชี <strong className="text-stone-900">{email}</strong>
+                    {t("au.setPassFor")} <strong className="text-stone-900">{email}</strong>
                   </p>
                 </div>
 
                 <div>
                   <label className="text-[10px] font-black uppercase tracking-wider text-[#8A7870] block mb-1">
-                    รหัสผ่านใหม่ <span className="text-[#E0533C]">*</span>
+                    {t("au.newPass")} <span className="text-[#E0533C]">*</span>
                   </label>
                   <div className="relative">
                     <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8A7870]" />
@@ -1265,7 +1265,7 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
                           ))}
                         </div>
                         <span className={`text-[10px] font-bold shrink-0 ${newStrengthInfo.color}`}>
-                          {newStrengthInfo.label}
+                          {t(newStrengthInfo.label)}
                         </span>
                       </div>
                     </div>
@@ -1274,7 +1274,7 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
 
                 <div>
                   <label className="text-[10px] font-black uppercase tracking-wider text-[#8A7870] block mb-1">
-                    ยืนยันรหัสผ่านใหม่ <span className="text-[#E0533C]">*</span>
+                    {t("au.confirmNewPass")} <span className="text-[#E0533C]">*</span>
                   </label>
                   <div className="relative">
                     <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8A7870]" />
@@ -1295,7 +1295,7 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
                   disabled={loading || !newPassword.trim() || newPassword !== confirmNewPassword}
                   className="w-full py-3 rounded-xl text-xs font-black text-white bg-[#E0533C] hover:bg-[#c94530] transition shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
-                  {loading ? <Loader2 size={16} className="animate-spin" /> : <span>บันทึกรหัสผ่านใหม่</span>}
+                  {loading ? <Loader2 size={16} className="animate-spin" /> : <span>{t("au.saveNewPass")}</span>}
                 </button>
 
                 <div className="text-center pt-2 border-t border-stone-200">
@@ -1304,7 +1304,7 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
                     onClick={() => setOtpSubFlow("none")}
                     className="text-xs text-stone-500 hover:text-stone-900 font-semibold cursor-pointer"
                   >
-                    ← ยกเลิก / กลับไปหน้าเข้าสู่ระบบ
+                    ← {t("au.backToLogin")}
                   </button>
                 </div>
               </form>
@@ -1326,7 +1326,7 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
                     required
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
-                    placeholder="เช่น สมชาย สายเที่ยว (Somchai)"
+                    placeholder={t("au.namePlaceholder")}
                     className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-xs outline-none bg-stone-50/50 focus:bg-white focus:border-[#E0533C] transition"
                     style={{ borderColor: C.line }}
                   />
@@ -1389,7 +1389,7 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
                     className="font-bold text-[#FD775C] hover:text-[#E31E27] transition cursor-pointer flex items-center gap-1"
                   >
                     <KeyRound size={12} />
-                    <span>ลืมรหัสผ่าน / ตั้งรหัสด้วย OTP</span>
+                    <span>{t("au.forgotShort")}</span>
                   </button>
                 </div>
               )}
@@ -1412,7 +1412,7 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
                     </div>
                     {password ? (
                       <span className={`text-[10px] font-bold shrink-0 ${strengthInfo.color}`}>
-                        {strengthInfo.label}
+                        {t(strengthInfo.label)}
                       </span>
                     ) : (
                       <span className="text-[10px] text-stone-400 font-medium shrink-0">
@@ -1436,7 +1436,7 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
                         ) : (
                           <span className="w-1 h-1 rounded-full bg-stone-300 inline-block shrink-0" />
                         )}
-                        {rule.label}
+                        {t(rule.label)}
                       </span>
                     ))}
                   </div>
@@ -1490,7 +1490,7 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
         {/* OAuth Section (LOGIN & SIGNUP) */}
         <div className="my-5 flex items-center gap-3">
           <div className="flex-1 h-px bg-stone-200" />
-          <span className="text-[10px] font-bold text-[#8A7870]">หรือเข้าสู่ระบบด้วย</span>
+          <span className="text-[10px] font-bold text-[#8A7870]">{t("au.orLoginWith")}</span>
           <div className="flex-1 h-px bg-stone-200" />
         </div>
 
@@ -1536,7 +1536,7 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
                 onClick={() => handleSwitchMode("signup")}
                 className="font-bold text-[#E0533C] hover:underline cursor-pointer"
               >
-                สมัครสมาชิกทั่วไป
+                {t("auth.userSignupTab")}
               </button>
             </p>
           ) : (
@@ -1547,7 +1547,7 @@ export default function AuthView({ initialMode = "login", initialSubFlow, onClos
                 onClick={() => handleSwitchMode("login")}
                 className="font-bold text-[#E0533C] hover:underline cursor-pointer"
               >
-                เข้าสู่ระบบ
+                {t("auth.submitLogin")}
               </button>
             </p>
           )}

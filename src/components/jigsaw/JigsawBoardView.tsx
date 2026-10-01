@@ -57,7 +57,7 @@ export default function JigsawBoardView({
   // If selectedQuestId not found, fallback to first quest
   const safeQuest = selectedQuest || {
     id: "default",
-    title: "เควสต์จิ๊กซอว์",
+    title: "mv.jigsawQuest",
     badge: "Quest",
     category: "General",
     description: "",
@@ -159,8 +159,7 @@ export default function JigsawBoardView({
             </button>
 
             <span className="text-xs font-extrabold text-stone-300 bg-white/10 px-3 py-2 rounded-xl backdrop-blur-xs">
-              สะสมได้: <strong className="text-orange-400 text-sm font-black">{userPiecesCount}</strong> / {totalPieces} ชิ้น ({progressPercent}%)
-            </span>
+              {t("jb.collected")}: <strong className="text-orange-400 text-sm font-black">{userPiecesCount}</strong></span>
           </div>
         </div>
 
@@ -206,7 +205,7 @@ export default function JigsawBoardView({
             <div className="flex items-center gap-2">
               <h3 className="font-black text-sm text-stone-900 flex items-center gap-2">
                 <span>{t("jig.board")}</span>
-                <span className="text-[10px] text-stone-400 font-bold">({safeQuest.gridRows}x{safeQuest.gridCols} ชิ้นส่วน)</span>
+                <span className="text-[10px] text-stone-400 font-bold">({safeQuest.gridRows}x{safeQuest.gridCols})</span>
               </h3>
             </div>
 
@@ -219,7 +218,7 @@ export default function JigsawBoardView({
                     ? "bg-orange-500 text-white border-orange-500 shadow-xs"
                     : "bg-stone-100 text-stone-600 border-stone-200 hover:bg-stone-200"
                 }`}
-                title="คลิกเพื่อสลับระหว่างภาพต่อเนียนสนิท หรือแสดงเส้นรอยต่อจิ๊กซอว์"
+                title={t("jb.toggleHint")}
               >
                 <span>{showPuzzleLines ? t("jig.showSeams") : t("jig.seamless")}</span>
               </button>
@@ -230,7 +229,7 @@ export default function JigsawBoardView({
                   title={t("jig.reset")}
                   className="text-[10px] font-bold text-stone-400 hover:text-stone-700 flex items-center gap-1 cursor-pointer"
                 >
-                  <RotateCcw size={11} /> รีเซ็ต
+                  <RotateCcw size={11} /> {t("sd.reset")}
                 </button>
               )}
             </div>
@@ -247,7 +246,7 @@ export default function JigsawBoardView({
               />
             ) : (
               <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-stone-800 to-stone-900 flex items-center justify-center text-stone-500 font-bold text-xs">
-                ไม่มีรูปภาพเควสต์
+                {t("jb.noImage")}
               </div>
             )}
 
@@ -317,8 +316,8 @@ export default function JigsawBoardView({
                     }`}
                     title={
                       isCollected
-                        ? `ชิ้นส่วนที่ ${idx + 1}: ${piece.checkpointName} (ปลดล็อกแล้ว - แตะเพื่อดูรายละเอียด)`
-                        : `ชิ้นส่วนที่ ${idx + 1}: ${piece.checkpointName} (ยังไม่ได้สะสม - แตะเพื่อดูคำใบ้)`
+                        ? `${t("jg.piece")} ${idx + 1}: ${piece.checkpointName} (${t("jb.unlockedTap")})`
+                        : `${t("jg.piece")} ${idx + 1}: ${piece.checkpointName} (${t("jb.lockedTap")})`
                     }
                   >
                     {isCollected ? (
@@ -335,7 +334,7 @@ export default function JigsawBoardView({
                         {/* Hover Tooltip Pill */}
                         <div className="absolute bottom-2 inset-x-2 flex justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-20">
                           <span className="bg-black/80 backdrop-blur-md text-white text-[9px] font-bold px-2.5 py-1 rounded-full shadow-lg border border-white/15 truncate max-w-[90%] text-center">
-                            ชิ้นที่ {idx + 1}: {piece.checkpointName}
+                            {t("jg.piece")} {idx + 1}: {piece.checkpointName}
                           </span>
                         </div>
                       </>
@@ -346,7 +345,7 @@ export default function JigsawBoardView({
                           <Lock size={15} />
                         </div>
                         <span className="text-[10px] font-black text-stone-300 group-hover:text-stone-100 transition">
-                          ชิ้นส่วนที่ {idx + 1}
+                          {t("jg.piece")} {idx + 1}
                         </span>
                         <span className="text-[8px] font-bold text-stone-400 mt-0.5 line-clamp-1 max-w-[110px]">
                           {piece.checkpointName}
@@ -366,7 +365,7 @@ export default function JigsawBoardView({
             {isComplete && (
               <div className="absolute top-3 inset-x-0 flex justify-center pointer-events-none z-30 animate-fade-in">
                 <span className="bg-emerald-600/95 backdrop-blur-md text-white text-[10px] font-black px-3.5 py-1 rounded-full shadow-xl border border-emerald-300/40 flex items-center gap-1.5">
-                  <Sparkles size={12} /> ปลดล็อกภาพสมบูรณ์ 100%!
+                  <Sparkles size={12} /> {t("jb.complete100")}
                 </span>
               </div>
             )}
@@ -376,7 +375,7 @@ export default function JigsawBoardView({
           <p className="text-[11px] text-stone-500 mt-3 text-center">
             {isComplete
               ? t("jig.completeBanner")
-              : "แตะที่ช่องเพื่อดูคำใบ้สถานที่ และนำกล้องไปสแกนพร้อมเปิด GPS"}
+              : t("jb.tapHintScan")}
           </p>
 
           {/* Full Completion Reward Card */}
@@ -407,7 +406,7 @@ export default function JigsawBoardView({
                   className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[10px] font-bold transition flex items-center gap-1 cursor-pointer"
                 >
                   {copiedReward ? <Check size={12} /> : <Copy size={12} />}
-                  <span>{copiedReward ? "คัดลอกแล้ว" : "คัดลอก"}</span>
+                  <span>{copiedReward ? t("sm.copied") : t("sm.copy")}</span>
                 </button>
               </div>
             </div>
@@ -419,7 +418,7 @@ export default function JigsawBoardView({
           <div className="flex items-center justify-between">
             <h3 className="font-black text-sm text-stone-900 flex items-center gap-2">
               <MapPin size={16} className="text-[#FD775C]" />
-              <span>จุดล่าชิ้นส่วนตามสถานที่จริง ({safeQuest.pieces.length} จุด)</span>
+              <span>{t("jb.huntPoints")} ({safeQuest.pieces.length})</span>
             </h3>
             <span className="text-[10px] font-bold text-stone-400">{t("jig.gpsNeeded")}</span>
           </div>
@@ -461,11 +460,11 @@ export default function JigsawBoardView({
                       {/* Hint Card */}
                       <div className="mt-2 ml-8 p-2.5 bg-orange-50/70 border border-orange-100 rounded-2xl text-[10.5px] text-amber-900 space-y-1">
                         <div className="font-extrabold flex items-center gap-1 text-orange-800 text-[10px]">
-                          <Compass size={12} /> คำใบ้สถานที่:
+                          <Compass size={12} /> {t("jb.placeHint")}
                         </div>
                         <p className="leading-snug">{piece.hint}</p>
                         <p className="text-[9px] text-stone-500 font-semibold pt-0.5">
-                           {piece.locationArea} (รัศมี {piece.radiusMeters} เมตร)
+                           {piece.locationArea} ({t("jg.radiusShort")} {piece.radiusMeters} m)
                         </p>
                       </div>
                     </div>
@@ -473,7 +472,7 @@ export default function JigsawBoardView({
                     <div className="shrink-0 flex flex-col items-end gap-2">
                       {isCollected ? (
                         <span className="text-[10px] font-black text-emerald-700 bg-emerald-100/80 px-3 py-1 rounded-full flex items-center gap-1">
-                          <CheckCircle2 size={12} /> เก็บแล้ว
+                          <CheckCircle2 size={12} /> {t("collection.collectedTag")}
                         </span>
                       ) : (
                         <button
@@ -506,13 +505,13 @@ export default function JigsawBoardView({
           >
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-black uppercase text-orange-600 bg-orange-100 px-2.5 py-0.5 rounded-full">
-                ชิ้นส่วนที่ {selectedPieceForDetail.pieceIndex + 1}
+                {t("jg.piece")} {selectedPieceForDetail.pieceIndex + 1}
               </span>
               <button
                 type="button"
                 onClick={() => setSelectedPieceForDetail(null)}
                 className="p-1 rounded-xl hover:bg-stone-100 text-stone-400 hover:text-stone-700 transition cursor-pointer"
-                title="ปิด"
+                title={t("common.close")}
               >
                 <X size={20} />
               </button>
@@ -535,8 +534,7 @@ export default function JigsawBoardView({
                 <strong>{t("jig.hint")}</strong> {selectedPieceForDetail.hint}
               </div>
               <p className="text-[10px] text-stone-500">
-                พิกัดเป้าหมาย: {selectedPieceForDetail.targetLat}, {selectedPieceForDetail.targetLng} (รัศมี {selectedPieceForDetail.radiusMeters} ม.)
-              </p>
+                GPS: {selectedPieceForDetail.targetLat}, {selectedPieceForDetail.targetLng}</p>
             </div>
 
             <div className="flex items-center gap-2 pt-1">
@@ -545,7 +543,7 @@ export default function JigsawBoardView({
                 onClick={() => setSelectedPieceForDetail(null)}
                 className="px-4 py-3 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-xl text-xs transition cursor-pointer"
               >
-                ปิด / ออก
+                {t("common.close")}
               </button>
               <button
                 type="button"
@@ -555,7 +553,7 @@ export default function JigsawBoardView({
                 }}
                 className="flex-1 py-3 bg-[#FD775C] hover:bg-[#E31E27] text-white font-black rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md transition cursor-pointer"
               >
-                <Camera size={15} /> สแกนชิ้นส่วนนี้
+                <Camera size={15} /> {t("jb.scanThisPiece")}
               </button>
             </div>
           </div>

@@ -16,8 +16,8 @@ const REGIONS = ["Kanto", "Kansai", "Hokkaido", "Tohoku", "Chubu", "Chugoku", "K
 const REGION_FILTERS = [{ id: "All", label: "All" }, ...REGIONS.map(r => ({ id: r, label: r }))];
 
 const VERSION_STATUS_FILTERS = [
-  { id: "All", label: "ทุกแสตมป์" },
-  { id: "current", label: "แสตมป์ปัจจุบัน " },
+  { id: "All", label: "cv.allStamps" },
+  { id: "current", label: "cv.currentStamps" },
 ];
 
 export default function CollectionView({ searchQuery = "", openPlace }: { searchQuery?: string; openPlace?: (place: any) => void }) {
@@ -155,18 +155,18 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
  <span> CLIPPI STAMP BOOK</span>
           </div>
           <h3 className="text-xl font-black drop-shadow-xs">
-            สะสมแล้ว {totalCollectedShops} / {places.length} สถานที่ (รวม {totalCollectedTotalStamps} แสตมป์)
+            {totalCollectedShops} / {places.length} ({totalCollectedTotalStamps})
           </h3>
           <p className="text-xs text-stone-300">
             {totalCollectedShops > 0
-              ? `สุดยอดมาก! สะสมไปแล้ว ${totalCollectedTotalStamps} แสตมป์ ออกเดินทางสะสมเพิ่มได้เรื่อยๆ เลย!`
-              : "ยังไม่มีแสตมป์ มาออกเดินทางเช็คอินและเก็บคลิปแสตมป์กัน!"}
+              ? t("cv.greatJob").replace("{n}", String(totalCollectedTotalStamps))
+              : t("cv.noStampsYet")}
           </p>
         </div>
         <div className="shrink-0 z-10">
           <ClippiMascot
             size="md"
-            speech={totalCollectedShops > 0 ? `ได้ ${totalCollectedTotalStamps} แสตมป์แล้ว! ` : "มาเก็บแสตมป์กัน! "}
+            speech={totalCollectedShops > 0 ? t("cv.gotStamps").replace("{n}", String(totalCollectedTotalStamps)) : t("cv.letsCollect")}
             animate={true}
           />
         </div>
@@ -206,11 +206,11 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
           <div className="flex items-center justify-between flex-wrap gap-2 select-none">
             <h3 className="text-[10px] font-black uppercase tracking-wider text-[#8A7870] flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
-              {t("collection.collected")} ({collectedShopCards.length} สถานที่)
+              {t("collection.collected")} ({collectedShopCards.length})
             </h3>
             {totalCollectedPages > 1 && (
               <span className="text-[9.5px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
-                หน้า {safeCollectedPage} / {totalCollectedPages} (12 สถานที่/หน้า)
+                {t("sm.page")} {safeCollectedPage} / {totalCollectedPages}
               </span>
             )}
           </div>
@@ -243,11 +243,11 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
 
                   {/* Round Badge */}
                   <div className="inline-flex items-center gap-1 my-1 px-2.5 py-0.5 rounded-full text-[8.5px] font-black bg-amber-50 text-amber-900 border border-amber-300">
- <span> สะสมแล้ว {roundsCount} รอบ</span>
+ <span>{t("cv.rounds").replace("{n}", String(roundsCount))}</span>
                   </div>
 
                   <span className="text-[7.5px] font-bold text-green-600 mt-0.5">{t("collection.collectedTag")}</span>
-                  <span className="text-[7.5px] text-[#8A7870]">ล่าสุด {collectedDate}</span>
+                  <span className="text-[7.5px] text-[#8A7870]">{t("sm.latest")} {collectedDate}</span>
 
                   {/* View Versions Button */}
                   <button
@@ -256,10 +256,10 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
                       setSelectedShopForHistory(place);
                     }}
                     className="mt-1.5 px-2 py-0.5 rounded-full text-[8.5px] font-black bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-200 flex items-center gap-0.5 cursor-pointer"
-                    title="ดูประวัติเวอร์ชันและวันหมดเขตสะสม"
+                    title={t("cv.verHistoryTip")}
                   >
                     <Layers size={10} className="text-amber-500" />
-                    <span>เวอร์ชัน & รอบสะสม ({versions.length})</span>
+                    <span>{t("cv.verRounds")} ({versions.length})</span>
                   </button>
                 </div>
               );
@@ -269,7 +269,7 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
           {/* Collected Pagination Control Bar */}
           {totalCollectedPages > 1 && (
             <div className="flex items-center justify-between pt-2 text-xs font-bold text-stone-600 select-none">
-              <span>แสดงหน้า {safeCollectedPage} / {totalCollectedPages}</span>
+              <span>{t("sm.page")} {safeCollectedPage} / {totalCollectedPages}</span>
               <div className="flex items-center gap-1">
                 <button
                   type="button"
@@ -278,7 +278,7 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
                   className="px-3 py-1 rounded-xl border bg-stone-50 hover:bg-stone-100 disabled:opacity-40 disabled:cursor-not-allowed text-[11px] cursor-pointer"
                   style={{ borderColor: C.line }}
                 >
-                  ← ก่อนหน้า
+                  ← {t("sm.prev")}
                 </button>
                 {Array.from({ length: totalCollectedPages }, (_, i) => i + 1)
                   .filter((p) => totalCollectedPages <= 7 || p === 1 || p === totalCollectedPages || Math.abs(p - safeCollectedPage) <= 2)
@@ -308,7 +308,7 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
                   className="px-3 py-1 rounded-xl border bg-stone-50 hover:bg-stone-100 disabled:opacity-40 disabled:cursor-not-allowed text-[11px] cursor-pointer"
                   style={{ borderColor: C.line }}
                 >
-                  ถัดไป →
+                  {t("sm.next")} →
                 </button>
               </div>
             </div>
@@ -322,11 +322,11 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 select-none">
             <h3 className="text-[10px] font-black uppercase tracking-wider text-[#8A7870] flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-[#8A7870] inline-block" />
-              {t("collection.remaining")} (แสดง {remainingStartIndex} - {remainingEndIndex} จาก {filteredRemainingPlaces.length} สถานที่)
+              {t("collection.remaining")} ({remainingStartIndex} - {remainingEndIndex} / {filteredRemainingPlaces.length})
             </h3>
             {totalRemainingPages > 1 && (
               <span className="text-[9.5px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200">
-                ⚡ หน้า {safeRemainingPage} จาก {totalRemainingPages} (12 สถานที่ / หน้า)
+                {t("sm.page")} {safeRemainingPage} / {totalRemainingPages}
               </span>
             )}
           </div>
@@ -370,7 +370,7 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
                     className="mt-1.5 px-2 py-0.5 rounded-full text-[8.5px] font-black bg-stone-50 hover:bg-stone-100 text-stone-600 border border-stone-200 flex items-center gap-0.5 cursor-pointer"
                   >
                     <Layers size={10} className="text-amber-500" />
-                    <span>เวอร์ชัน ({versions.length})</span>
+                    <span>{t("sd.tab.version")} ({versions.length})</span>
                   </button>
                 </div>
               );
@@ -380,7 +380,7 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
           {/* Remaining Pagination Control Bar */}
           {totalRemainingPages > 1 && (
             <div className="flex items-center justify-between pt-2 text-xs font-bold text-stone-600 select-none">
-              <span>กำลังแสดงหน้า {safeRemainingPage} / {totalRemainingPages}</span>
+              <span>{t("sm.page")} {safeRemainingPage} / {totalRemainingPages}</span>
               <div className="flex items-center gap-1">
                 <button
                   type="button"
@@ -389,7 +389,7 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
                   className="px-3 py-1 rounded-xl border bg-stone-50 hover:bg-stone-100 disabled:opacity-40 disabled:cursor-not-allowed text-[11px] cursor-pointer"
                   style={{ borderColor: C.line }}
                 >
-                  ← ก่อนหน้า
+                  ← {t("sm.prev")}
                 </button>
                 {Array.from({ length: totalRemainingPages }, (_, i) => i + 1)
                   .filter((p) => totalRemainingPages <= 7 || p === 1 || p === totalRemainingPages || Math.abs(p - safeRemainingPage) <= 2)
@@ -419,7 +419,7 @@ export default function CollectionView({ searchQuery = "", openPlace }: { search
                   className="px-3.5 py-1 rounded-xl border bg-stone-50 hover:bg-stone-100 disabled:opacity-40 disabled:cursor-not-allowed text-[11px] cursor-pointer"
                   style={{ borderColor: C.line }}
                 >
-                  ถัดไป →
+                  {t("sm.next")} →
                 </button>
               </div>
             </div>

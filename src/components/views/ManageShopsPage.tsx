@@ -217,7 +217,7 @@ export default function ManageShopsPage({ onGoHome, onAddNewPlaceClick }: Manage
 
   // Handle permanent deletion of rejected submission history entry
   const handleDeleteSubmission = async (id: string) => {
-    if (!confirm("คุณแน่ใจหรือไม่ว่าต้องการลบประวัติการส่งนี้? (Delete submission history permanently?)")) {
+    if (!confirm(t("sm.confirmDeleteSub"))) {
       return;
     }
 
@@ -231,7 +231,7 @@ export default function ManageShopsPage({ onGoHome, onAddNewPlaceClick }: Manage
       if (error) throw error;
       setSubmissions((prev) => prev.filter((item) => item.id !== id));
     } catch (err: any) {
-      alert("ไม่สามารถลบข้อมูลได้: " + (err.message || "Failed"));
+      alert(t("sm.deleteFail") + (err.message || "Failed"));
     } finally {
       setDeletingId(null);
     }
@@ -239,7 +239,7 @@ export default function ManageShopsPage({ onGoHome, onAddNewPlaceClick }: Manage
 
   // Handle direct deletion of an approved shop from century_shops
   const handleDeleteApprovedShop = async (shopId: string | number, shopName: string) => {
-    if (!confirm(`คุณต้องการลบร้านนี้ใช่หรือไม่? (${shopName})`)) {
+    if (!confirm(t("sm.confirmDeleteShop").replace("{n}", shopName))) {
       return;
     }
 
@@ -253,7 +253,7 @@ export default function ManageShopsPage({ onGoHome, onAddNewPlaceClick }: Manage
       setApprovedShops((prev) => prev.filter((s) => String(s.id) !== String(shopId)));
       loadData();
     } catch (err: any) {
-      alert("ไม่สามารถลบร้านค้าได้: " + (err.message || "Failed"));
+      alert(t("sm.deleteShopFail") + (err.message || "Failed"));
     }
   };
 
@@ -296,10 +296,10 @@ export default function ManageShopsPage({ onGoHome, onAddNewPlaceClick }: Manage
           </div>
           <div>
             <h2 className="text-lg font-black tracking-tight" style={{ color: C.ink }}>
-              {isAdminUser ? "จัดการร้านค้าทั้งหมดในระบบ (All System Shops Management)" : "จัดการร้านค้าและประวัติการส่ง (Shop Management)"}
+              {isAdminUser ? t("sm.listAll") : t("msp.myShops")}
             </h2>
             <p className="text-xs text-[#8A7870] font-semibold mt-0.5">
-              {isAdminUser ? "จัดการ แก้ไข และลบข้อมูลร้านค้าในฐานข้อมูลระบบ" : "ติดตามสถานะการอนุมัติและปรับปรุงข้อมูลสถานที่ของคุณ"}
+              {isAdminUser ? t("sm.listAllDesc") : t("msp.myShopsDesc")}
             </p>
           </div>
         </div>
@@ -309,7 +309,7 @@ export default function ManageShopsPage({ onGoHome, onAddNewPlaceClick }: Manage
           className="px-4 py-2.5 rounded-xl text-xs font-black text-white bg-[#E0533C] hover:bg-[#c94530] transition flex items-center justify-center gap-2 cursor-pointer shadow-xs self-start sm:self-auto"
         >
           <Plus size={16} strokeWidth={2.5} />
-          <span>เพิ่มสถานที่ใหม่ (Add New Spot)</span>
+          <span>{t("action.submitSpot")}</span>
         </button>
       </div>
 
@@ -326,7 +326,7 @@ export default function ManageShopsPage({ onGoHome, onAddNewPlaceClick }: Manage
             }`}
             style={activeTab !== "history" ? { borderColor: C.line } : undefined}
           >
-            <span>ประวัติการส่งร้านค้า (Submission History)</span>
+            <span>{t("msp.subHistory")}</span>
             <span className="px-1.5 py-0.2 text-[10px] rounded-full bg-[#E0533C] text-white font-bold">
               {countAll}
             </span>
@@ -347,7 +347,7 @@ export default function ManageShopsPage({ onGoHome, onAddNewPlaceClick }: Manage
           }`}
           style={activeTab !== "approved" ? { borderColor: C.line } : undefined}
         >
-          <span>ร้านค้าที่อนุมัติแล้ว (Approved Shops)</span>
+          <span>{t("msp.approvedShops")}</span>
           <span className="px-1.5 py-0.2 text-[10px] rounded-full bg-emerald-600 text-white font-bold">
             {approvedShops.length}
           </span>
@@ -367,7 +367,7 @@ export default function ManageShopsPage({ onGoHome, onAddNewPlaceClick }: Manage
               }`}
               style={statusFilter !== "all" ? { borderColor: C.line } : undefined}
             >
-              ทั้งหมด ({countAll})
+              {t("filter.all")} ({countAll})
             </button>
 
             <button
@@ -379,7 +379,7 @@ export default function ManageShopsPage({ onGoHome, onAddNewPlaceClick }: Manage
               }`}
               style={statusFilter !== "pending" ? { borderColor: C.line } : undefined}
             >
-              ⏳ รออนุมัติ ({countPending})
+              {t("sm.pending")} ({countPending})
             </button>
 
             <button
@@ -391,7 +391,7 @@ export default function ManageShopsPage({ onGoHome, onAddNewPlaceClick }: Manage
               }`}
               style={statusFilter !== "approved" ? { borderColor: C.line } : undefined}
             >
-              อนุมัติแล้ว ({countApproved})
+              {t("sm.approved")} ({countApproved})
             </button>
 
             <button
@@ -403,7 +403,7 @@ export default function ManageShopsPage({ onGoHome, onAddNewPlaceClick }: Manage
               }`}
               style={statusFilter !== "rejected" ? { borderColor: C.line } : undefined}
             >
-              ไม่อนุมัติ ({countRejected})
+              {t("msp.notApproved")} ({countRejected})
             </button>
 
             <button
@@ -415,12 +415,12 @@ export default function ManageShopsPage({ onGoHome, onAddNewPlaceClick }: Manage
               }`}
               style={statusFilter !== "deleted" ? { borderColor: C.line } : undefined}
             >
-              ถูกลบ ({countDeleted})
+              {t("msp.deleted")} ({countDeleted})
             </button>
           </div>
         ) : (
           <div className="text-xs font-bold text-[#8A7870]">
-            แสดงร้านค้าที่อนุมัติแล้ว ({filteredApprovedShops.length} รายการ)
+            {t("msp.approvedShops")} ({filteredApprovedShops.length})
           </div>
         )}
 
@@ -430,7 +430,7 @@ export default function ManageShopsPage({ onGoHome, onAddNewPlaceClick }: Manage
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="ค้นหารายชื่อร้าน..."
+            placeholder={t("msp.searchShop")}
             className="w-full text-xs outline-none bg-transparent"
           />
         </div>
@@ -442,14 +442,14 @@ export default function ManageShopsPage({ onGoHome, onAddNewPlaceClick }: Manage
           {loading ? (
             <div className="p-12 text-center bg-white rounded-3xl border flex flex-col items-center justify-center gap-3" style={{ borderColor: C.line }}>
               <Loader2 size={24} className="animate-spin text-[#E0533C]" />
-              <span className="text-xs font-bold text-[#8A7870]">กำลังโหลดประวัติการส่งข้อมูล...</span>
+              <span className="text-xs font-bold text-[#8A7870]">{t("msp.loadingSub")}</span>
             </div>
           ) : filteredSubmissions.length === 0 ? (
             <div className="p-12 text-center bg-white rounded-3xl border flex flex-col items-center justify-center gap-2" style={{ borderColor: C.line }}>
               <Store size={32} className="text-[#8A7870] opacity-40 mb-1" />
-              <p className="text-sm font-black text-[#231C18]">ไม่พบประวัติการส่งร้านค้าในหมวดนี้</p>
+              <p className="text-sm font-black text-[#231C18]">{t("msp.noSub")}</p>
               <p className="text-xs text-[#8A7870] font-semibold">
-                คุณสามารถเพิ่มสถานที่ใหม่เพื่อส่งให้แอดมินตรวจสอบได้
+                {t("msp.noSubHint")}
               </p>
             </div>
           ) : (
@@ -482,25 +482,25 @@ export default function ManageShopsPage({ onGoHome, onAddNewPlaceClick }: Manage
                           {item.status === "pending" && (
                             <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1">
                               <Clock size={10} />
-                              <span>PENDING / รออนุมัติ</span>
+                              <span>PENDING</span>
                             </span>
                           )}
                           {item.status === "approved" && (
                             <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
                               <CheckCircle2 size={10} />
-                              <span>APPROVED / อนุมัติแล้ว</span>
+                              <span>APPROVED</span>
                             </span>
                           )}
                           {item.status === "rejected" && (
                             <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-red-100 text-red-800 border border-red-300 flex items-center gap-1">
                               <XCircle size={10} />
-                              <span>REJECTED / ไม่อนุมัติ</span>
+                              <span>REJECTED</span>
                             </span>
                           )}
                           {item.status === "deleted" && (
                             <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-stone-200 text-stone-700 border border-stone-400 flex items-center gap-1">
                               <AlertCircle size={10} />
-                              <span>DELETED / ร้านถูกลบออกแล้ว</span>
+                              <span>DELETED</span>
                             </span>
                           )}
                         </div>
@@ -515,14 +515,14 @@ export default function ManageShopsPage({ onGoHome, onAddNewPlaceClick }: Manage
                         {/* Rejection Reason Notice */}
                         {item.status === "rejected" && item.rejection_reason && (
                           <div className="mt-2 p-2.5 rounded-xl bg-red-50 border border-red-200 text-[11px] text-red-700 font-semibold">
-                            เหตุผลที่ไม่ผ่าน: {item.rejection_reason}
+                            {t("sm.rejectReason")} {item.rejection_reason}
                           </div>
                         )}
 
                         {/* Deleted Shop Locked Notice */}
                         {item.status === "deleted" && (
                           <div className="mt-2 p-2 rounded-xl bg-stone-100 border border-stone-300 text-[10px] text-stone-600 font-bold">
-                            ร้านถูกลบออกแล้ว ไม่สามารถแก้ไขได้
+                            {t("msp.deletedNoEdit")}
                           </div>
                         )}
                       </div>
@@ -539,7 +539,7 @@ export default function ManageShopsPage({ onGoHome, onAddNewPlaceClick }: Manage
                             className="px-3.5 py-1.5 rounded-xl text-xs font-black text-white bg-[#E0533C] hover:bg-[#c94530] transition flex items-center gap-1.5 cursor-pointer shadow-xs"
                           >
                             <Edit3 size={12} />
-                            <span>แก้ไขและส่งตรวจใหม่</span>
+                            <span>{t("sm.editResubmit")}</span>
                           </button>
 
                           <button
@@ -548,7 +548,7 @@ export default function ManageShopsPage({ onGoHome, onAddNewPlaceClick }: Manage
                             className="px-3 py-1.5 rounded-xl text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition flex items-center gap-1 cursor-pointer"
                           >
                             <Trash2 size={12} />
-                            <span>{deletingId === item.id ? "กำลังลบ..." : "ลบประวัติการส่ง"}</span>
+                            <span>{deletingId === item.id ? t("msp.deleting") : t("msp.deleteSub")}</span>
                           </button>
                         </>
                       )}
@@ -559,7 +559,7 @@ export default function ManageShopsPage({ onGoHome, onAddNewPlaceClick }: Manage
                           onClick={() => setActiveTab("approved")}
                           className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition flex items-center gap-1.5 cursor-pointer"
                         >
-                          <span>ไปแก้ไขที่แท็บร้านที่อนุมัติแล้ว</span>
+                          <span>{t("msp.goApprovedTab")}</span>
                           <ArrowRight size={12} />
                         </button>
                       )}
@@ -573,13 +573,13 @@ export default function ManageShopsPage({ onGoHome, onAddNewPlaceClick }: Manage
                             style={{ borderColor: C.line }}
                           >
                             <Edit3 size={12} />
-                            <span>แก้ไขข้อมูล</span>
+                            <span>{t("ach.tip.edit")}</span>
                           </button>
                           <button
                             onClick={() => handleDeleteSubmission(item.id)}
                             className="px-3 py-1.5 rounded-xl text-xs font-bold text-stone-500 hover:text-red-600 transition cursor-pointer"
                           >
-                            ยกเลิก
+                            {t("common.cancel")}
                           </button>
                         </>
                       )}
@@ -587,7 +587,7 @@ export default function ManageShopsPage({ onGoHome, onAddNewPlaceClick }: Manage
                       {/* Actions for DELETED shops */}
                       {item.status === "deleted" && (
                         <span className="text-[11px] font-bold text-stone-400 select-none">
-                          ไม่สามารถแก้ไขได้
+                          {t("msp.cannotEdit")}
                         </span>
                       )}
 
@@ -608,14 +608,14 @@ export default function ManageShopsPage({ onGoHome, onAddNewPlaceClick }: Manage
           {loading ? (
             <div className="p-12 text-center bg-white rounded-3xl border flex flex-col items-center justify-center gap-3" style={{ borderColor: C.line }}>
               <Loader2 size={24} className="animate-spin text-[#E0533C]" />
-              <span className="text-xs font-bold text-[#8A7870]">กำลังโหลดร้านค้าที่อนุมัติแล้ว...</span>
+              <span className="text-xs font-bold text-[#8A7870]">{t("msp.loadingApproved")}</span>
             </div>
           ) : filteredApprovedShops.length === 0 ? (
             <div className="p-12 text-center bg-white rounded-3xl border flex flex-col items-center justify-center gap-2" style={{ borderColor: C.line }}>
               <CheckCircle2 size={32} className="text-emerald-500 opacity-40 mb-1" />
-              <p className="text-sm font-black text-[#231C18]">ยังไม่มีร้านค้าที่ได้รับการอนุมัติในระบบ</p>
+              <p className="text-sm font-black text-[#231C18]">{t("msp.noApproved")}</p>
               <p className="text-xs text-[#8A7870] font-semibold">
-                เมื่อร้านค้าของคุณผ่านการตรวจสอบจากแอดมิน รายชื่อจะแสดงขึ้นที่นี่
+                {t("msp.noApprovedHint")}
               </p>
             </div>
           ) : (
@@ -650,19 +650,19 @@ export default function ManageShopsPage({ onGoHome, onAddNewPlaceClick }: Manage
                       onClick={() => setEditingApprovedShop(shop)}
                       className="px-3 py-1.5 rounded-xl text-xs font-bold text-[#E0533C] bg-[#FAF6F0] hover:bg-[#E0533C] hover:text-white border transition flex items-center gap-1 cursor-pointer"
                       style={{ borderColor: C.line }}
-                      title="แก้ไขข้อมูลร้านค้า (Edit Shop)"
+                      title={t("sm.tipEdit")}
                     >
                       <Edit3 size={12} />
-                      <span>แก้ไขข้อมูลร้าน</span>
+                      <span>{t("sm.tipEdit")}</span>
                     </button>
 
                     <button
-                      onClick={() => handleDeleteApprovedShop(shop.id, shop.shop_name || shop.name || "ร้านค้า")}
+                      onClick={() => handleDeleteApprovedShop(shop.id, shop.shop_name || shop.name || t("log.d.shop"))}
                       className="px-3 py-1.5 rounded-xl text-xs font-bold text-red-600 bg-red-50 hover:bg-red-600 hover:text-white border border-red-200 transition flex items-center gap-1 cursor-pointer"
-                      title="ลบร้านค้าออกจากระบบ (Delete Shop)"
+                      title={t("sm.tipDelete")}
                     >
                       <Trash2 size={12} />
-                      <span>ลบร้านค้า</span>
+                      <span>{t("sm.tipDelete")}</span>
                     </button>
                   </div>
                 </div>

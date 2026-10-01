@@ -61,6 +61,7 @@ import {
   getDefaultStampDesign,
 } from "../lib/stampHelpers";
 import StampSealRenderer from "./StampSealRenderer";
+import { useLang } from "../lib/i18n";
 
 // Helper to render preset icon visuals
 const renderPresetIconVisual = (iconId: string, size = 20) => {
@@ -206,6 +207,7 @@ export default function StampDesignerModal({
   seasonalTitle,
   onSave,
 }: StampDesignerModalProps) {
+  const { t } = useLang();
   const [design, setDesign] = useState<StampDesign>({});
   const [versions, setVersions] = useState<ShopStampVersion[]>([]);
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
@@ -236,7 +238,7 @@ export default function StampDesignerModal({
 
   if (!isOpen || !shop) return null;
 
-  const shopName = shop.shop_name || shop.name || "ร้านของคุณ";
+  const shopName = shop.shop_name || shop.name || t("sd.yourShop");
   const currentEditingVersion = versions.find((v) => v.id === selectedVersionId) || versions[0];
 
   // Helper to update design state and sync into versions array
@@ -312,12 +314,12 @@ export default function StampDesignerModal({
     const newVer: ShopStampVersion = {
       id: `ver_${Date.now()}`,
       version_code: `v${nextVerNum}.0`,
-      title: `เวอร์ชัน ${nextVerNum}.0 (ฉลองใหม่ ${new Date().getFullYear()})`,
+      title: `${t("sd.verTitle")} ${nextVerNum}.0 (${new Date().getFullYear()})`,
       valid_from: todayStr,
       valid_until: endOfYear,
       is_current: true,
       status: "current",
-      note: "แสตมป์เวอร์ชันใหม่",
+      note: t("sd.newVerNote"),
       design: {
         ...design,
         sub_text: `VERSION ${nextVerNum}.0`,
@@ -336,7 +338,7 @@ export default function StampDesignerModal({
 
   const handleDeleteVersion = (verId: string) => {
     if (versions.length <= 1) {
-      alert("ร้านค้าต้องมีอย่างน้อย 1 เวอร์ชันตราแสตมป์ครับ");
+      alert(t("sd.needOne"));
       return;
     }
     const filtered = versions.filter((v) => v.id !== verId);
@@ -363,7 +365,7 @@ export default function StampDesignerModal({
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 3 * 1024 * 1024) {
-        alert("กรุณาเลือกไฟล์รูปภาพขนาดไม่เกิน 3MB ครับ");
+        alert(t("sd.fileTooBig"));
         return;
       }
       const reader = new FileReader();
@@ -410,10 +412,10 @@ export default function StampDesignerModal({
             </div>
             <div>
               <h2 className="text-base font-black tracking-tight">
-                {seasonalTitle ? `ออกแบบตราแสตมป์: ${seasonalTitle}` : "ออกแบบตราแสตมป์ดิจิทัลประจำร้าน"}
+                {seasonalTitle ? `${t("sd.designFor")}: ${seasonalTitle}` : t("sd.designTitle")}
               </h2>
               <p className="text-xs text-stone-300">
-                ปรับแต่งสีหมึก กรอบตรา สัญลักษณ์ เอฟเฟกต์เงา กำหนดเวอร์ชัน และวันหมดเขตสะสม
+                {t("sd.designSubtitle")}
               </p>
             </div>
           </div>
@@ -431,7 +433,7 @@ export default function StampDesignerModal({
           <div className="p-4 rounded-2xl bg-gradient-to-br from-stone-50 via-amber-50/20 to-stone-100 border flex flex-col items-center justify-center relative overflow-hidden" style={{ borderColor: C.line }}>
             <div className="absolute top-2.5 left-3 flex items-center gap-1 text-[10px] font-black uppercase text-stone-500 bg-white/90 px-2.5 py-0.5 rounded-full border border-stone-200 shadow-2xs">
               <Sparkles size={11} className="text-amber-500" />
-              <span>ตัวอย่างตราแสตมป์: {currentEditingVersion?.version_code ? `${currentEditingVersion.version_code} - ` : ""}{currentEditingVersion?.title || shopName}</span>
+              <span>{t("sd.preview")}: {currentEditingVersion?.version_code ? `${currentEditingVersion.version_code} - ` : ""}{currentEditingVersion?.title || shopName}</span>
             </div>
 
             <div className="mt-5 mb-1.5 p-3 bg-white rounded-3xl shadow-md border border-stone-100 flex items-center justify-center">
@@ -439,7 +441,7 @@ export default function StampDesignerModal({
             </div>
 
             <p className="text-[10.5px] font-bold text-stone-600 text-center">
-              ตราชนิดนี้จะแสดงในสมุดสะสมแสตมป์ของผู้ใช้งาน  {formatExpiryLabel(currentEditingVersion?.valid_until)}
+              {t("sd.previewNote")}  {formatExpiryLabel(currentEditingVersion?.valid_until, t)}
             </p>
           </div>
 
@@ -455,7 +457,7 @@ export default function StampDesignerModal({
               }`}
             >
               <Palette size={13} className={activeTab === "style" ? "text-rose-600" : "text-stone-500"} />
-              <span className="whitespace-nowrap">1. สี & กรอบ</span>
+              <span className="whitespace-nowrap">1. {t("sd.tab.style")}</span>
             </button>
 
             <button
@@ -468,7 +470,7 @@ export default function StampDesignerModal({
               }`}
             >
               <ImageIcon size={13} className={activeTab === "icon" ? "text-rose-600" : "text-stone-500"} />
-              <span className="whitespace-nowrap">2. ไอคอน</span>
+              <span className="whitespace-nowrap">2. {t("sd.tab.iconShort")}</span>
             </button>
 
             <button
@@ -481,7 +483,7 @@ export default function StampDesignerModal({
               }`}
             >
               <Type size={13} className={activeTab === "text" ? "text-rose-600" : "text-stone-500"} />
-              <span className="whitespace-nowrap">3. ข้อความ</span>
+              <span className="whitespace-nowrap">3. {t("sd.tab.textShort")}</span>
             </button>
 
             <button
@@ -494,7 +496,7 @@ export default function StampDesignerModal({
               }`}
             >
               <Sun size={13} className={activeTab === "effects" ? "text-rose-600" : "text-stone-500"} />
-              <span className="whitespace-nowrap">4. เงา & ขอบ</span>
+              <span className="whitespace-nowrap">4. {t("sd.tab.effects")}</span>
             </button>
 
             <button
@@ -507,7 +509,7 @@ export default function StampDesignerModal({
               }`}
             >
               <Tag size={13} className={activeTab === "versions" ? "text-amber-400" : "text-amber-600"} />
- <span className="whitespace-nowrap">5. เวอร์ชัน </span>
+ <span className="whitespace-nowrap">5. {t("sd.tab.version")}</span>
             </button>
           </div>
 
@@ -518,16 +520,16 @@ export default function StampDesignerModal({
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-xs font-black text-[#231C18]">
-                    เลือกสีหมึกตราประทับหลัก (Main Stamp Ink Color):
+                    {t("sd.inkColor")}
                   </label>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-bold text-stone-500">เลือกสีอิสระ:</span>
+                    <span className="text-[10px] font-bold text-stone-500">{t("sd.freeColor")}</span>
                     <input
                       type="color"
                       value={design.ink_color || "#D9381E"}
                       onChange={(e) => updateDesignState((prev) => ({ ...prev, ink_color: e.target.value }))}
                       className="w-7 h-7 rounded-lg cursor-pointer border border-stone-300 p-0.5 bg-white"
-                      title="เลือกสีหมึกแบบสเปกตรัม"
+                      title={t("sd.spectrum")}
                     />
                   </div>
                 </div>
@@ -552,7 +554,7 @@ export default function StampDesignerModal({
                         >
                           {isSelected && <Check size={12} className="text-white drop-shadow-xs" />}
                         </span>
-                        <span className="text-[11px] font-black text-[#231C18] truncate">{color.name}</span>
+                        <span className="text-[11px] font-black text-[#231C18] truncate">{t(color.name)}</span>
                       </button>
                     );
                   })}
@@ -561,7 +563,7 @@ export default function StampDesignerModal({
 
               {/* Show/Hide Border Toggle */}
               <div className="flex items-center justify-between p-3 rounded-2xl bg-stone-50 border" style={{ borderColor: C.line }}>
-                <label className="text-xs font-black text-[#231C18]">กำหนดการแสดงเส้นกรอบ (Border Visibility):</label>
+                <label className="text-xs font-black text-[#231C18]">{t("sd.borderVisibility")}</label>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -572,7 +574,7 @@ export default function StampDesignerModal({
                         : "bg-white text-stone-600 border border-stone-200"
                     }`}
                   >
-                    แสดงเส้นกรอบ
+                    {t("sd.showBorder")}
                   </button>
                   <button
                     type="button"
@@ -583,7 +585,7 @@ export default function StampDesignerModal({
                         : "bg-white text-stone-600 border border-stone-200"
                     }`}
                   >
-                    ซ่อนเส้นกรอบ (No Border)
+                    {t("sd.hideBorder")}
                   </button>
                 </div>
               </div>
@@ -591,7 +593,7 @@ export default function StampDesignerModal({
               {/* Shape Selector with Visual Icons */}
               <div>
                 <label className="text-xs font-black text-[#231C18] mb-2 block">
-                  เลือกรูปทรงกรอบตราแสตมป์ (Seal Shape):
+                  {t("sd.shape")}
                 </label>
                 <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
                   {STAMP_SHAPES.map((shape) => {
@@ -600,7 +602,7 @@ export default function StampDesignerModal({
                       <button
                         key={shape.id}
                         type="button"
-                        title={shape.label}
+                        title={t(shape.label)}
                         onClick={() => updateDesignState((prev) => ({ ...prev, shape: shape.id as any }))}
                         className={`p-2.5 rounded-2xl border text-center transition flex flex-col items-center justify-center gap-1 cursor-pointer group ${
                           isSelected
@@ -612,7 +614,7 @@ export default function StampDesignerModal({
                           {renderSealShapeVisual(shape.id)}
                         </div>
                         <span className="text-[10px] font-bold truncate max-w-full">
-                          {shape.label}
+                          {t(shape.label)}
                         </span>
                       </button>
                     );
@@ -623,7 +625,7 @@ export default function StampDesignerModal({
               {/* Border Width */}
               <div>
                 <label className="text-xs font-black text-[#231C18] mb-2 block">
-                  ความหนาของเส้นกรอบ (Border Width):
+                  {t("sd.borderWidth")}
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {STAMP_BORDER_WIDTHS.map((bw) => {
@@ -639,7 +641,7 @@ export default function StampDesignerModal({
                             : "bg-white border-stone-200 text-stone-700 hover:border-stone-300"
                         }`}
                       >
-                        {bw.label}
+                        {t(bw.label)}
                       </button>
                     );
                   })}
@@ -663,9 +665,9 @@ export default function StampDesignerModal({
                   }`}
                 >
                   <Sparkles size={14} className={iconSubTab === "preset" ? "text-rose-500" : "text-stone-400"} />
-                  <span>ไอคอนสำเร็จรูป</span>
+                  <span>{t("sd.presetIcon")}</span>
                   {!design.image_url && !design.custom_emoji && (
-                    <span className="text-[10px] bg-rose-100 text-rose-700 px-1.5 py-0.2 rounded-full font-bold">ใช้อยู่</span>
+                    <span className="text-[10px] bg-rose-100 text-rose-700 px-1.5 py-0.2 rounded-full font-bold">{t("sd.inUse")}</span>
                   )}
                 </button>
 
@@ -679,9 +681,9 @@ export default function StampDesignerModal({
                   }`}
                 >
                   <Smile size={14} className={iconSubTab === "emoji" ? "text-rose-500" : "text-stone-400"} />
-                  <span>อิโมจิ</span>
+                  <span>{t("sd.emoji")}</span>
                   {Boolean(design.custom_emoji && !design.image_url) && (
-                    <span className="text-[10px] bg-rose-100 text-rose-700 px-1.5 py-0.2 rounded-full font-bold">ใช้อยู่</span>
+                    <span className="text-[10px] bg-rose-100 text-rose-700 px-1.5 py-0.2 rounded-full font-bold">{t("sd.inUse")}</span>
                   )}
                 </button>
 
@@ -695,9 +697,9 @@ export default function StampDesignerModal({
                   }`}
                 >
                   <ImageIcon size={14} className={iconSubTab === "image" ? "text-rose-500" : "text-stone-400"} />
-                  <span>โลโก้รูปภาพ</span>
+                  <span>{t("sd.imageLogo")}</span>
                   {Boolean(design.image_url) && (
-                    <span className="text-[10px] bg-rose-100 text-rose-700 px-1.5 py-0.2 rounded-full font-bold">ใช้อยู่</span>
+                    <span className="text-[10px] bg-rose-100 text-rose-700 px-1.5 py-0.2 rounded-full font-bold">{t("sd.inUse")}</span>
                   )}
                 </button>
               </div>
@@ -707,7 +709,7 @@ export default function StampDesignerModal({
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-black text-[#231C18]">
-                      เลือกสัญลักษณ์ไอคอนสำเร็จรูป (Preset Icon):
+                      {t("sd.pickPreset")}
                     </label>
                   </div>
                   <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 max-h-64 overflow-y-auto pr-1">
@@ -717,7 +719,7 @@ export default function StampDesignerModal({
                         <button
                           key={icon.id}
                           type="button"
-                          title={icon.label}
+                          title={t(icon.label)}
                           onClick={() =>
                             updateDesignState((prev) => ({
                               ...prev,
@@ -736,7 +738,7 @@ export default function StampDesignerModal({
                             {renderPresetIconVisual(icon.id, 22)}
                           </div>
                           <span className="text-[10px] font-bold truncate max-w-full">
-                            {icon.label}
+                            {t(icon.label)}
                           </span>
                         </button>
                       );
@@ -751,15 +753,15 @@ export default function StampDesignerModal({
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-200 pb-2">
                     <div>
                       <label className="text-xs font-black text-[#231C18] flex items-center gap-1.5">
-                        <span>✨ ใส่อิโมจิสัญลักษณ์ (Custom Emoji Icon):</span>
+                        <span>{t("sd.customEmoji")}</span>
                       </label>
                       <p className="text-[10px] text-stone-500">
-                        เลือกอิโมจิยอดนิยม หรือพิมพ์/วางอิโมจิใดๆ เพื่อแสดงเป็นไอคอนตรงกลางตราแสตมป์
+                        {t("sd.emojiHint")}
                       </p>
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-[10px] font-bold text-stone-500">พิมพ์อิโมจิ:</span>
+                      <span className="text-[10px] font-bold text-stone-500">{t("sd.typeEmoji")}</span>
                       <input
                         type="text"
                         value={design.custom_emoji || ""}
@@ -779,7 +781,7 @@ export default function StampDesignerModal({
                           onClick={() => updateDesignState((prev) => ({ ...prev, custom_emoji: "" }))}
                           className="text-[10px] font-bold text-rose-600 hover:underline cursor-pointer"
                         >
-                          ลบอิโมจิ
+                          {t("sd.clearEmoji")}
                         </button>
                       )}
                     </div>
@@ -808,7 +810,7 @@ export default function StampDesignerModal({
                                     ? "bg-rose-50 border-rose-500 shadow-xs ring-2 ring-rose-500/20"
                                     : "bg-white border-stone-200 hover:bg-stone-50"
                                 }`}
-                                title={`ใช้อิโมจิ ${emoji}`}
+                                title={`${t("sd.useEmoji")} ${emoji}`}
                               >
                                 {emoji}
                               </button>
@@ -828,7 +830,7 @@ export default function StampDesignerModal({
                     <div className="flex items-center gap-2">
                       <ImageIcon size={16} className="text-amber-600" />
                       <label className="text-xs font-black text-amber-900">
-                        อัปโหลดรูปภาพ / โลโก้ตรงกลางตราประทับ (Custom Image Logo):
+                        {t("sd.uploadLogo")}
                       </label>
                     </div>
                     {design.image_url && (
@@ -838,14 +840,13 @@ export default function StampDesignerModal({
                         className="text-xs font-bold text-rose-600 hover:underline flex items-center gap-1 cursor-pointer"
                       >
                         <Trash2 size={13} />
-                        <span>ลบรูปภาพ</span>
+                        <span>{t("bn.removeImage")}</span>
                       </button>
                     )}
                   </div>
 
                   <p className="text-[11px] text-amber-800 leading-relaxed">
-                    หากคุณมีโลโก้ร้านค้า รูปถ่ายสถานที่ หรือตราสัญลักษณ์เฉพาะ สามารถเลือกไฟล์รูปภาพ (PNG/JPG) เพื่อนำมาประทับใจกลางตราแสตมป์ได้ทันที
-                  </p>
+                    {t("sd.logoHint")}</p>
 
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                     <input
@@ -857,14 +858,14 @@ export default function StampDesignerModal({
                     />
                     {design.image_url && (
                       <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full border border-emerald-200 inline-flex items-center gap-1">
-                        <Check size={13} /> อัปโหลดสำเร็จ
+                        <Check size={13} /> {t("sd.uploadOk")}
                       </span>
                     )}
                   </div>
 
                   {design.image_url && (
                     <div className="pt-2 border-t border-amber-200/60 flex items-center gap-2">
-                      <span className="text-xs font-bold text-amber-900">ขนาดรูปภาพโลโก้:</span>
+                      <span className="text-xs font-bold text-amber-900">{t("sd.logoSize")}</span>
                       <div className="flex items-center gap-1.5">
                         {STAMP_IMAGE_SIZES.map((sz) => (
                           <button
@@ -877,7 +878,7 @@ export default function StampDesignerModal({
                                 : "bg-white text-stone-700 border border-stone-200"
                             }`}
                           >
-                            {sz.label}
+                            {t(sz.label)}
                           </button>
                         ))}
                       </div>
@@ -896,15 +897,15 @@ export default function StampDesignerModal({
                 {/* Top Text (Custom Text) */}
                 <div className="space-y-2 p-3 rounded-2xl bg-stone-50 border" style={{ borderColor: C.line }}>
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-black text-[#231C18]">ข้อความหลัก (Custom Text):</label>
+                    <label className="text-xs font-black text-[#231C18]">{t("sd.mainText")}</label>
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-bold text-stone-500">สีข้อความ:</span>
+                      <span className="text-[10px] font-bold text-stone-500">{t("sd.textColor")}</span>
                       <input
                         type="color"
                         value={design.custom_text_color || design.ink_color || "#D9381E"}
                         onChange={(e) => updateDesignState((prev) => ({ ...prev, custom_text_color: e.target.value }))}
                         className="w-5 h-5 rounded-md cursor-pointer border border-stone-300 p-0.5 bg-white"
-                        title="เปลี่ยนสีข้อความหลัก"
+                        title={t("sd.changeMainColor")}
                       />
                     </div>
                   </div>
@@ -916,7 +917,7 @@ export default function StampDesignerModal({
                     placeholder={shopName}
                   />
                   <div className="flex items-center justify-between pt-0.5">
-                    <span className="text-[10px] font-bold text-stone-500">ฟอนต์ข้อความหลัก:</span>
+                    <span className="text-[10px] font-bold text-stone-500">{t("sd.mainFont")}</span>
                     <select
                       value={design.custom_text_font_style || design.font_style || "sans"}
                       onChange={(e) =>
@@ -930,7 +931,7 @@ export default function StampDesignerModal({
                     >
                       {STAMP_FONT_STYLES.map((f) => (
                         <option key={f.id} value={f.id}>
-                          {f.name}
+                          {t(f.name)}
                         </option>
                       ))}
                     </select>
@@ -940,15 +941,15 @@ export default function StampDesignerModal({
                 {/* Sub Text (Bottom Text) */}
                 <div className="space-y-2 p-3 rounded-2xl bg-stone-50 border" style={{ borderColor: C.line }}>
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-black text-[#231C18]">ข้อความรองด้านล่าง (Sub Text):</label>
+                    <label className="text-xs font-black text-[#231C18]">{t("sd.subText")}</label>
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-bold text-stone-500">สีข้อความรอง:</span>
+                      <span className="text-[10px] font-bold text-stone-500">{t("sd.subTextColor")}</span>
                       <input
                         type="color"
                         value={design.sub_text_color || design.ink_color || "#D9381E"}
                         onChange={(e) => updateDesignState((prev) => ({ ...prev, sub_text_color: e.target.value }))}
                         className="w-5 h-5 rounded-md cursor-pointer border border-stone-300 p-0.5 bg-white"
-                        title="เปลี่ยนสีข้อความรอง"
+                        title={t("sd.changeSubColor")}
                       />
                     </div>
                   </div>
@@ -960,7 +961,7 @@ export default function StampDesignerModal({
                     placeholder="EKITAG SEAL"
                   />
                   <div className="flex items-center justify-between pt-0.5">
-                    <span className="text-[10px] font-bold text-stone-500">ฟอนต์ข้อความรอง:</span>
+                    <span className="text-[10px] font-bold text-stone-500">{t("sd.subFont")}</span>
                     <select
                       value={design.sub_text_font_style || design.font_style || "sans"}
                       onChange={(e) =>
@@ -973,7 +974,7 @@ export default function StampDesignerModal({
                     >
                       {STAMP_FONT_STYLES.map((f) => (
                         <option key={f.id} value={f.id}>
-                          {f.name}
+                          {t(f.name)}
                         </option>
                       ))}
                     </select>
@@ -986,10 +987,10 @@ export default function StampDesignerModal({
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-200/80 pb-2.5">
                   <div>
                     <label className="text-xs font-black text-[#231C18] block">
-                      เลือกรูปแบบฟอนต์ (Font Family Grid):
+                      {t("sd.fontFamily")}
                     </label>
                     <p className="text-[10px] text-stone-500 font-medium">
-                      เลือกสลับปรับฟอนต์ข้อความหลัก (บน) หรือข้อความรอง (ล่าง)
+                      {t("sd.fontSwitchHint")}
                     </p>
                   </div>
 
@@ -1004,7 +1005,7 @@ export default function StampDesignerModal({
                           : "text-stone-700 hover:text-stone-900 hover:bg-stone-300/60"
                       }`}
                     >
-                      <span>🔤 ข้อความหลัก (บน)</span>
+                      <span>{t("sd.mainTextTop")}</span>
                       <span className="text-[9px] px-1.5 py-0.2 bg-white/20 rounded-full font-black">
                         {STAMP_FONT_STYLES.find((f) => f.id === (design.custom_text_font_style || design.font_style || "sans"))?.name}
                       </span>
@@ -1019,7 +1020,7 @@ export default function StampDesignerModal({
                           : "text-stone-700 hover:text-stone-900 hover:bg-stone-300/60"
                       }`}
                     >
-                      <span>🔤 ข้อความรอง (ล่าง)</span>
+                      <span>{t("sd.subTextBottom")}</span>
                       <span className="text-[9px] px-1.5 py-0.2 bg-white/20 rounded-full font-black">
                         {STAMP_FONT_STYLES.find((f) => f.id === (design.sub_text_font_style || design.font_style || "sans"))?.name}
                       </span>
@@ -1061,15 +1062,15 @@ export default function StampDesignerModal({
                       >
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-black text-[#231C18]" style={{ fontFamily: font.family }}>
-                            {font.name}
+                            {t(font.name)}
                           </span>
                           {isSelected && (
                             <span className="text-[9px] font-black text-rose-600 bg-rose-100 px-1.5 py-0.5 rounded-full">
-                              เลือกอยู่
+                              {t("sd.selected")}
                             </span>
                           )}
                         </div>
-                        <span className="text-[10px] text-stone-500 truncate">{font.label}</span>
+                        <span className="text-[10px] text-stone-500 truncate">{t(font.label)}</span>
                       </button>
                     );
                   })}
@@ -1083,7 +1084,7 @@ export default function StampDesignerModal({
             <div className="space-y-4 pt-1">
               <div>
                 <label className="text-xs font-black text-[#231C18] mb-2 block">
-                  เลือกเอฟเฟกต์หมึกตราประทับ (Stamp Shadow & Ink Effect):
+                  {t("sd.shadow")}
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {STAMP_SHADOW_EFFECTS.map((effect) => {
@@ -1099,7 +1100,7 @@ export default function StampDesignerModal({
                             : "bg-white border-stone-200 text-stone-700 hover:border-stone-300 hover:bg-stone-50"
                         }`}
                       >
-                        {effect.label}
+                        {t(effect.label)}
                       </button>
                     );
                   })}
@@ -1115,10 +1116,10 @@ export default function StampDesignerModal({
                 <div className="space-y-0.5">
                   <span className="text-xs font-black text-amber-900 flex items-center gap-1.5">
                     <Sparkles size={14} className="text-amber-600" />
-                    เพิ่มตราแสตมป์เวอร์ชันใหม่ (Add New Stamp Version)
+                    {t("sd.addVerTitle")}
                   </span>
                   <p className="text-[11px] text-amber-800">
-                    สร้างเวอร์ชันใหม่ (เช่น v2.0) และกำหนดวันหมดเขตสะสม เพื่อกระตุ้นให้นักท่องเที่ยวกลับมาเช็คอินสะสมเพิ่ม
+                    {t("sd.addVerDesc")}
                   </p>
                 </div>
                 <button
@@ -1127,19 +1128,19 @@ export default function StampDesignerModal({
                   className="px-4 py-2 rounded-xl text-xs font-black bg-amber-500 hover:bg-amber-600 text-stone-950 transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer shrink-0"
                 >
                   <Plus size={15} />
-                  <span>สร้างเวอร์ชันใหม่</span>
+                  <span>{t("sd.createVer")}</span>
                 </button>
               </div>
 
               <div className="space-y-3">
                 <h3 className="text-xs font-black text-stone-600 uppercase tracking-wider flex items-center gap-1.5">
-                  <span>ประวัติเวอร์ชันตราแสตมป์ของร้าน ({versions.length})</span>
+                  <span>{t("sd.verHistory")} ({versions.length})</span>
                 </h3>
 
                 {versions.map((ver) => {
                   const isCurrent = ver.is_current === true;
                   const isSelected = ver.id === selectedVersionId;
-                  const expiryText = formatExpiryLabel(ver.valid_until);
+                  const expiryText = formatExpiryLabel(ver.valid_until, t);
 
                   return (
                     <div
@@ -1159,43 +1160,43 @@ export default function StampDesignerModal({
                           <div className="space-y-2 min-w-0 flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
                               <div className="flex items-center gap-1.5 bg-stone-900 text-amber-400 px-2.5 py-1 rounded-xl shadow-xs border border-stone-800">
-                                <span className="text-[10px] font-extrabold text-amber-400 shrink-0">รหัสเวอร์ชัน:</span>
+                                <span className="text-[10px] font-extrabold text-amber-400 shrink-0">{t("sd.verCode")}</span>
                                 <input
                                   type="text"
                                   value={ver.version_code ?? ""}
                                   onChange={(e) => handleUpdateVersionTitle(ver.id, "version_code", e.target.value)}
                                   className="bg-stone-800 text-amber-300 font-mono font-black text-xs focus:outline-none focus:ring-1 focus:ring-amber-400 rounded px-1.5 py-0.5 w-24 text-center border border-amber-500/40"
-                                  placeholder="(เว้นว่างได้)"
-                                  title="พิมพ์ปรับรหัส หรือลบออกได้เลยหากต้องการตั้งเฉพาะชื่อคอลเล็กชั่น"
+                                  placeholder={t("sd.optional")}
+                                  title={t("sd.verCodeTip")}
                                 />
                               </div>
 
                               {isCurrent ? (
                                 <span className="px-2.5 py-1 rounded-full text-[10.5px] font-black bg-emerald-500 text-white shadow-2xs flex items-center gap-1">
                                   <CheckCircle2 size={12} />
-                                  <span>แสตมป์ปัจจุบัน (Active)</span>
+                                  <span>{t("sd.active")}</span>
                                 </span>
                               ) : (
                                 <span className="px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-stone-200 text-stone-600">
-                                  เวอร์ชันเดิม (Archived)
+                                  {t("sd.archived")}
                                 </span>
                               )}
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                               <div>
-                                <label className="text-[10px] font-extrabold text-stone-500 block mb-0.5">ชื่อเวอร์ชัน (Display Title):</label>
+                                <label className="text-[10px] font-extrabold text-stone-500 block mb-0.5">{t("sd.verName")}</label>
                                 <input
                                   type="text"
                                   value={ver.title}
                                   onChange={(e) => handleUpdateVersionTitle(ver.id, "title", e.target.value)}
                                   className="w-full px-2.5 py-1 text-xs font-black text-stone-900 bg-white rounded-xl border border-stone-300 focus:border-amber-500 focus:outline-none shadow-2xs"
-                                  placeholder="ชื่อเวอร์ชันตราแสตมป์"
+                                  placeholder={t("sd.verNamePlaceholder")}
                                 />
                               </div>
 
                               <div>
-                                <label className="text-[10px] font-extrabold text-stone-500 block mb-0.5">ข้อความบนตรา (Stamp Sub-Text):</label>
+                                <label className="text-[10px] font-extrabold text-stone-500 block mb-0.5">{t("sd.subTextLabel")}</label>
                                 <input
                                   type="text"
                                   value={ver.design?.sub_text || ""}
@@ -1215,7 +1216,7 @@ export default function StampDesignerModal({
                             className="px-3 py-1.5 rounded-xl text-xs font-black bg-rose-600 hover:bg-rose-700 text-white transition flex items-center gap-1 cursor-pointer shadow-2xs"
                           >
                             <Edit3 size={13} />
-                            <span>ปรับแต่งแบบดีไซน์</span>
+                            <span>{t("vm.tabDesign")}</span>
                           </button>
 
                           {!isCurrent && (
@@ -1224,7 +1225,7 @@ export default function StampDesignerModal({
                               onClick={() => handleSetCurrentVersion(ver.id)}
                               className="px-3 py-1.5 rounded-xl text-xs font-bold bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-300 transition cursor-pointer"
                             >
-                              ตั้งเป็นปัจจุบัน
+                              {t("sd.setActive")}
                             </button>
                           )}
 
@@ -1232,7 +1233,7 @@ export default function StampDesignerModal({
                             type="button"
                             onClick={() => handleDeleteVersion(ver.id)}
                             className="p-1.5 rounded-xl text-stone-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
-                            title="ลบเวอร์ชันนี้"
+                            title={t("sd.deleteVer")}
                           >
                             <Trash2 size={16} />
                           </button>
@@ -1243,7 +1244,7 @@ export default function StampDesignerModal({
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                         <div className="flex items-center gap-2">
                           <Clock size={14} className="text-amber-600 shrink-0" />
-                          <span className="font-bold text-stone-700">เก็บได้ถึงวันที่ (Valid Until):</span>
+                          <span className="font-bold text-stone-700">{t("sd.validUntil")}</span>
                           <input
                             type="date"
                             value={ver.valid_until || ""}
@@ -1255,7 +1256,7 @@ export default function StampDesignerModal({
                         <div className="flex items-center gap-1.5 text-stone-500 font-medium">
                           <AlertCircle size={13} className="text-stone-400 shrink-0" />
                           <span className="text-[11px] truncate">
-                            สถานะ: <strong className="text-amber-700 font-bold">{expiryText}</strong>
+                            {t("sd.status")}: <strong className="text-amber-700 font-bold">{expiryText}</strong>
                           </span>
                         </div>
                       </div>
@@ -1275,7 +1276,7 @@ export default function StampDesignerModal({
               style={{ borderColor: C.line }}
             >
               <RefreshCw size={13} />
-              <span>รีเซ็ตตั้งต้น</span>
+              <span>{t("sd.reset")}</span>
             </button>
 
             <div className="flex items-center gap-2">
@@ -1285,7 +1286,7 @@ export default function StampDesignerModal({
                 className="py-2.5 px-4 rounded-xl border text-xs font-bold text-stone-600 hover:bg-stone-100 transition cursor-pointer"
                 style={{ borderColor: C.line }}
               >
-                ยกเลิก
+                {t("common.cancel")}
               </button>
               <button
                 type="submit"
@@ -1295,12 +1296,12 @@ export default function StampDesignerModal({
                 {saving ? (
                   <>
                     <RefreshCw size={14} className="animate-spin" />
-                    <span>กำลังบันทึก...</span>
+                    <span>{t("bn.saving")}</span>
                   </>
                 ) : (
                   <>
                     <Check size={15} />
-                    <span>บันทึกแบบแสตมป์ & เวอร์ชัน</span>
+                    <span>{t("sd.saveDesign")}</span>
                   </>
                 )}
               </button>

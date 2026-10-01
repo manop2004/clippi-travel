@@ -73,6 +73,7 @@ import { ShopStampVersion } from "../../types/review-stamp";
 import StoreRulesModal from "../../components/StoreRulesModal";
 import { StoreRuleItem, getShopRules, encodeRulesInText } from "../../lib/ruleHelpers";
 import { ShieldAlert } from "lucide-react";
+import { useLang } from "../../lib/i18n";
 export type { HolidayItem, ShopSchedule };
 
 export interface ShopRecord {
@@ -156,6 +157,7 @@ export default function StoreManagementPage({ onOpenAddPlace }: StoreManagementP
 }
 
 function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
+  const { t } = useLang();
   const [shops, setShops] = useState<ShopRecord[]>([]);
   const [submissions, setSubmissions] = useState<SubmissionItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -675,7 +677,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
       const shopNameMap = new Map<number, string>();
       ownedShopsList.forEach((s) => {
         if (s.id && !isNaN(Number(s.id))) {
-          shopNameMap.set(Number(s.id), s.shop_name || "ร้านค้า");
+          shopNameMap.set(Number(s.id), s.shop_name || t("log.d.shop"));
         }
       });
 
@@ -685,7 +687,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
         .select("id, shop_name");
       (allShops || []).forEach((s: any) => {
         if (s.id !== undefined && s.id !== null) {
-          shopNameMap.set(Number(s.id), s.shop_name || `ร้านค้า #${s.id}`);
+          shopNameMap.set(Number(s.id), s.shop_name || `${t("log.d.shop")} #${s.id}`);
         }
       });
 
@@ -746,7 +748,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
           profile.full_name ||
           profile.username ||
           (profile.email ? profile.email.split("@")[0] : null) ||
-          (uid ? `นักท่องเที่ยว #${uid.slice(0, 6)}` : "นักท่องเที่ยว");
+          (uid ? `${t("log.d.traveler")} #${uid.slice(0, 6)}` : t("log.d.traveler"));
 
         return {
           id: String(rev.id),
@@ -755,7 +757,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
           created_at: rev.created_at,
           place_id: String(rev.place_id),
           user_id: rev.user_id,
-          shop_name: shopNameMap.get(Number(rev.place_id)) || `ร้านค้า #${rev.place_id}`,
+          shop_name: shopNameMap.get(Number(rev.place_id)) || `${t("log.d.shop")} #${rev.place_id}`,
           reviewer_name: reviewerName,
           reviewer_avatar: profile.avatar_url || null,
         };
@@ -830,14 +832,14 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
   const handleDeleteShop = async (itemOrId: any, shopName?: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("ไม่พบข้อมูลผู้ใช้งาน กรุณาล็อกอินใหม่");
+      if (!user) throw new Error(t("sm.noUser"));
 
       const item = typeof itemOrId === "object" ? itemOrId : { id: itemOrId, shop_name: shopName };
       const itemId = item.id || item.submissionId;
       const shopTitle = item.shop_name || item.name_en || shopName || "";
       const isNumberId = typeof itemId === "number" || (!isNaN(Number(itemId)) && !String(itemId).includes("-"));
 
-      if (!window.confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบ "${shopTitle || "ร้านนี้"}"?`)) return;
+      if (!window.confirm(t("sm.confirmDeleteShop").replace("{n}", shopTitle || t("sm.thisShop")))) return;
 
       setLoading(true);
 
@@ -942,10 +944,10 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
 
               if (retryErr) throw retryErr;
               if (!retryRows || retryRows.length === 0) {
-                throw new Error("Supabase RLS Policy ป้องกันการลบร้านค้า (ลบสำเร็จ 0 รายการ) กรุณาเพิ่ม DELETE Policy ใน Supabase");
+                throw new Error(t("sm.rlsBlocked"));
               }
             } else {
-              throw new Error("Supabase RLS Policy ป้องกันการลบร้านค้า (ลบสำเร็จ 0 รายการ) กรุณาเพิ่ม DELETE Policy ใน Supabase");
+              throw new Error(t("sm.rlsBlocked"));
             }
           }
         }
@@ -1005,19 +1007,19 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
         })
       );
 
-      alert("ลบร้านค้าเรียบร้อยแล้ว");
+      alert(t("sm.deleteShopOk"));
       await fetchOwnedShops(user.id);
       await fetchSubmissions(user.id);
     } catch (err: any) {
       console.error("Delete Error:", err);
-      alert("ไม่สามารถลบร้านค้าได้: " + (err.message || "กรุณาตรวจสอบ permissions (RLS policy) ใน Supabase"));
+      alert(t("sm.deleteShopFail") + (err.message || t("sm.checkRls")));
     } finally {
       setLoading(false);
     }
   };
 
   const handleDeleteSubmission = async (id: string) => {
-    if (!window.confirm("คุณแน่ใจหรือไม่ว่าต้องการลบประวัติการส่งนี้?")) return;
+    if (!window.confirm(t("sm.confirmDeleteSub"))) return;
 
     setDeletingSubId(id);
     try {
@@ -1029,9 +1031,9 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
 
       if (error) throw error;
       setSubmissions((prev) => prev.filter((item) => item.id !== id));
-      alert("ลบประวัติการส่งเรียบร้อยแล้ว");
+      alert(t("sm.deleteSubOk"));
     } catch (err: any) {
-      alert("ไม่สามารถลบข้อมูลได้: " + (err.message || "Failed"));
+      alert(t("sm.deleteFail") + (err.message || "Failed"));
     } finally {
       setDeletingSubId(null);
     }
@@ -1070,7 +1072,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
         id: sub.id,
         submissionId: sub.id,
         isSubmission: true,
-        shop_name: sub.name_en || sub.shop_name || "ร้านค้าที่ยื่นขออนุมัติ",
+        shop_name: sub.name_en || sub.shop_name || t("sm.pendingShopName"),
         name_en: sub.name_en || sub.shop_name,
         shop_name_jp: sub.name_jp,
         address: sub.street || sub.prefecture || "",
@@ -1212,7 +1214,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
     return (
       <div className="p-16 text-center flex flex-col items-center justify-center gap-3">
         <Loader2 className="animate-spin text-[#E0533C]" size={32} />
-        <span className="text-xs font-bold text-[#8A7870]">กำลังโหลดข้อมูลระบบร้านค้า...</span>
+        <span className="text-xs font-bold text-[#8A7870]">{t("sm.loading")}</span>
       </div>
     );
   }
@@ -1227,23 +1229,23 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
             <button
               onClick={() => setIsReviewsModalOpen(false)}
               className="p-3 rounded-2xl bg-white/10 hover:bg-white/20 text-amber-400 hover:text-white transition cursor-pointer shrink-0 border border-amber-400/30 flex items-center gap-1.5 font-bold text-xs"
-              title="กลับสู่หน้าหลักจัดการร้านค้า"
+              title={t("sm.backToMain")}
             >
               <ArrowRight size={18} className="rotate-180 text-amber-400" />
-              <span className="hidden sm:inline">กลับหน้าหลัก</span>
+              <span className="hidden sm:inline">{t("sm.backShort")}</span>
             </button>
 
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-xl font-black tracking-tight text-white">
-                  ศูนย์วิเคราะห์รีวิว & เสียงตอบรับจากลูกค้า (Customer Reviews Feed & Analytics)
+                  {t("sm.reviewHubTitle")}
                 </h2>
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-400/20 text-amber-300 border border-amber-400/40">
-                  {totalReviewsCount} รีวิวในระบบ
+                  {totalReviewsCount} {t("sm.reviewsUnit")}
                 </span>
               </div>
               <p className="text-xs text-amber-200/80 font-medium mt-1">
-                แดชบอดสรุปสถิติคะแนนดาว ตัวกรองความคิดเห็น และติดตามเสียงตอบรับนักท่องเที่ยวแบบเจาะลึก
+                {t("sm.reviewHubDesc")}
               </p>
             </div>
           </div>
@@ -1252,14 +1254,14 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
             onClick={() => setIsReviewsModalOpen(false)}
             className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black rounded-xl flex items-center gap-2 transition cursor-pointer shrink-0 shadow-md self-start md:self-auto"
           >
-            <span>← กลับสู่หน้าหลักการจัดการร้านค้า</span>
+            <span>← {t("sm.backToMain")}</span>
           </button>
         </div>
 
         {/* Analytics KPI Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white p-5 rounded-3xl border shadow-2xs space-y-1.5" style={{ borderColor: C.line }}>
-            <span className="text-[10px] font-black uppercase text-[#8A7870] tracking-wider">Average Rating Score</span>
+            <span className="text-[10px] font-black uppercase text-[#8A7870] tracking-wider">{t("sm.avgRating")}</span>
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-black text-amber-600">{avgReviewScore}</span>
               <span className="text-xs font-bold text-stone-400">/ 5.0</span>
@@ -1276,28 +1278,28 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
           </div>
 
           <div className="bg-white p-5 rounded-3xl border shadow-2xs space-y-1.5" style={{ borderColor: C.line }}>
-            <span className="text-[10px] font-black uppercase text-[#8A7870] tracking-wider">Total Customer Reviews</span>
+            <span className="text-[10px] font-black uppercase text-[#8A7870] tracking-wider">{t("sm.allComments")}</span>
             <div className="text-3xl font-black text-[#231C18]">{totalReviewsCount}</div>
-            <p className="text-xs text-[#8A7870] font-semibold">ความคิดเห็นจากนักท่องเที่ยวทั้งหมด</p>
+            <p className="text-xs text-[#8A7870] font-semibold">{t("sm.allComments")}</p>
           </div>
 
           <div className="bg-white p-5 rounded-3xl border shadow-2xs space-y-1.5" style={{ borderColor: C.line }}>
             <span className="text-[10px] font-black uppercase text-[#8A7870] tracking-wider">5-Star Satisfaction Ratio</span>
             <div className="text-3xl font-black text-emerald-600">{fiveStarRatio}%</div>
-            <p className="text-xs text-[#8A7870] font-semibold">สัดส่วนลูกค้ารีวิว 5 ดาว ({ratingDistribution[5]} รายการ)</p>
+            <p className="text-xs text-[#8A7870] font-semibold">{t("sm.fiveStarShare")}</p>
           </div>
 
           <div className="bg-white p-5 rounded-3xl border shadow-2xs space-y-1.5" style={{ borderColor: C.line }}>
-            <span className="text-[10px] font-black uppercase text-[#8A7870] tracking-wider">Shops Covered</span>
+            <span className="text-[10px] font-black uppercase text-[#8A7870] tracking-wider">{t("sm.shopsWithReviews")}</span>
             <div className="text-3xl font-black text-indigo-600">{uniqueShopsReviewedCount}</div>
-            <p className="text-xs text-[#8A7870] font-semibold">จำนวนร้านค้าที่มีรีวิวเข้ามา</p>
+            <p className="text-xs text-[#8A7870] font-semibold">{t("sm.shopsWithReviews")}</p>
           </div>
         </div>
 
         {/* Star Rating Breakdown Progress Bars */}
         <div className="bg-white p-6 rounded-3xl border shadow-2xs space-y-4" style={{ borderColor: C.line }}>
           <h4 className="text-xs font-black uppercase tracking-wider text-[#8A7870] flex items-center gap-2">
-            <TrendingUp size={16} className="text-amber-600" /> สถิติการกระจายของคะแนนดาว (Star Rating Distribution)
+            <TrendingUp size={16} className="text-amber-600" /> {t("sm.starDist")}
           </h4>
 
           <div className="space-y-2.5">
@@ -1338,7 +1340,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-0">
               <span className="text-xs font-black text-[#231C18] flex items-center gap-1.5 mr-1">
-                <Filter size={15} className="text-amber-600" /> ตัวกรองรีวิว:
+                <Filter size={15} className="text-amber-600" /> {t("sm.reviewFilter")}
               </span>
 
               <div className="relative">
@@ -1350,7 +1352,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                   }`}
                   style={reviewShopFilter === "all" ? { borderColor: C.line } : undefined}
                 >
-                  <option value="all">ทุกร้านค้า (All Shops)</option>
+                  <option value="all">{t("sm.allShops")}</option>
                   {shops.map((s) => (
                     <option key={s.id} value={String(s.id)}>{s.shop_name}</option>
                   ))}
@@ -1365,10 +1367,10 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                   className="px-3.5 py-2 rounded-xl text-xs font-bold outline-none border bg-stone-50 text-[#231C18] transition cursor-pointer"
                   style={{ borderColor: C.line }}
                 >
-                  <option value="newest">ล่าสุดก่อน (Newest)</option>
-                  <option value="oldest">เก่าสุดก่อน (Oldest)</option>
-                  <option value="highest">คะแนนสูงสุด (Highest)</option>
-                  <option value="lowest">คะแนนต่ำสุด (Lowest)</option>
+                  <option value="newest">{t("um.sortNewest")}</option>
+                  <option value="oldest">{t("um.sortOldest")}</option>
+                  <option value="highest">{t("sm.sortHighest")}</option>
+                  <option value="lowest">{t("sm.sortLowest")}</option>
                 </select>
               </div>
             </div>
@@ -1379,7 +1381,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                 type="text"
                 value={reviewSearch}
                 onChange={(e) => setReviewSearch(e.target.value)}
-                placeholder="ค้นหาข้อความ, ชื่อลูกค้า..."
+                placeholder={t("sm.searchReview")}
                 className="bg-transparent text-xs outline-none w-full font-medium"
               />
               {reviewSearch && (
@@ -1398,7 +1400,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                 reviewRatingFilter === 0 ? "bg-[#FD775C] text-white" : "bg-stone-100 text-stone-600 hover:bg-stone-200"
               }`}
             >
-              ทั้งหมด ({recentReviews.length})
+              {t("filter.all")} ({recentReviews.length})
             </button>
             {[5, 4, 3, 2, 1].map((star) => (
               <button
@@ -1411,7 +1413,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                 }`}
               >
                 <Star size={12} className={reviewRatingFilter === star ? "fill-stone-950" : "fill-amber-400 text-amber-400"} />
-                <span>{star} ดาว ({ratingDistribution[star as keyof typeof ratingDistribution] || 0})</span>
+                <span>{star} {t("sm.starUnit")} ({ratingDistribution[star as keyof typeof ratingDistribution] || 0})</span>
               </button>
             ))}
           </div>
@@ -1421,7 +1423,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
         {filteredModalReviews.length === 0 ? (
           <div className="p-14 text-center bg-white rounded-3xl border flex flex-col items-center justify-center gap-3 text-stone-400" style={{ borderColor: C.line }}>
             <MessageSquare size={36} className="text-stone-300" />
-            <h3 className="text-base font-black text-[#231C18]">ไม่พบข้อมูลรีวิวที่ตรงตามเงื่อนไข</h3>
+            <h3 className="text-base font-black text-[#231C18]">{t("sm.noReviewMatch")}</h3>
             <button
               onClick={() => {
                 setReviewShopFilter("all");
@@ -1431,7 +1433,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
               }}
               className="px-4 py-2 bg-[#FD775C] text-white text-xs font-black rounded-xl cursor-pointer"
             >
-              ล้างการกรองทั้งหมด
+              {t("sm.clearAllFilters")}
             </button>
           </div>
         ) : (
@@ -1481,7 +1483,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                     {`"${rev.comment}"`}
                   </div>
                 ) : (
-                  <p className="text-xs text-stone-400 italic">ไม่มีข้อความรีวิวเพิ่มเติม</p>
+                  <p className="text-xs text-stone-400 italic">{t("sm.noMoreText")}</p>
                 )}
               </div>
             ))}
@@ -1505,13 +1507,13 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-lg font-black text-[#231C18]">บัญชีเจ้าของร้านค้าอยู่ระหว่างการรออนุมัติ</h2>
+                  <h2 className="text-lg font-black text-[#231C18]">{t("sm.pendingTitle")}</h2>
                   <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
                     <Clock size={11} /> Pending Admin Approval
                   </span>
                 </div>
                 <p className="text-xs text-[#8A7870] font-semibold mt-1">
-                  ข้อมูลการลงทะเบียนและเอกสารยืนยันสิทธิ์ของคุณถูกส่งไปยังทีมงานแอดมินเรียบร้อยแล้ว กรุณารอแอดมินอนุมัติสิทธิ์และเปิดใช้งานร้านค้า
+                  {t("sm.pendingDesc")}
                 </p>
               </div>
             </div>
@@ -1520,7 +1522,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
               className="px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-black flex items-center gap-2 shadow-sm transition cursor-pointer shrink-0"
             >
               <RotateCw size={14} className={loading ? "animate-spin" : ""} />
-              <span>รีเฟรชสถานะ</span>
+              <span>{t("sm.refreshStatus")}</span>
             </button>
           </div>
 
@@ -1531,8 +1533,8 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                 <CheckCircle2 size={16} />
               </div>
               <div>
-                <h4 className="text-xs font-black">1. ลงทะเบียน & แนบเอกสาร</h4>
-                <p className="text-[10px] text-emerald-800 font-semibold mt-0.5">ส่งคำขอและเอกสารเรียบร้อย</p>
+                <h4 className="text-xs font-black">{t("sm.step1")}</h4>
+                <p className="text-[10px] text-emerald-800 font-semibold mt-0.5">{t("sm.step1Desc")}</p>
               </div>
             </div>
 
@@ -1541,8 +1543,8 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                 <Clock size={16} className="animate-spin" />
               </div>
               <div>
-                <h4 className="text-xs font-black">2. แอดมินตรวจสอบสิทธิ์</h4>
-                <p className="text-[10px] text-amber-800 font-bold mt-0.5">กำลังรอแอดมินอนุมัติร้าน</p>
+                <h4 className="text-xs font-black">{t("sm.step2")}</h4>
+                <p className="text-[10px] text-amber-800 font-bold mt-0.5">{t("sm.step2Desc")}</p>
               </div>
             </div>
 
@@ -1551,8 +1553,8 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                 3
               </div>
               <div>
-                <h4 className="text-xs font-black text-stone-600">3. เข้าใช้งาน Merchant Portal</h4>
-                <p className="text-[10px] text-stone-400 font-semibold mt-0.5">ออกแสตมป์ & จัดการร้านค้า</p>
+                <h4 className="text-xs font-black text-stone-600">{t("sm.step3")}</h4>
+                <p className="text-[10px] text-stone-400 font-semibold mt-0.5">{t("sm.step3Desc")}</p>
               </div>
             </div>
           </div>
@@ -1561,7 +1563,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
           {submissions.length > 0 && (
             <div className="border rounded-2xl p-5 space-y-3 bg-[#FAF6F0]" style={{ borderColor: C.line }}>
               <h3 className="text-xs font-black text-[#231C18] uppercase tracking-wider">
-                สถานะคำขอลงทะเบียนร้านค้าของคุณ ({submissions.length} รายการ)
+                {t("sm.yourRequests")} ({submissions.length})
               </h3>
               <div className="space-y-3">
                 {submissions.map((sub) => (
@@ -1570,11 +1572,11 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                       <div>
                         <h4 className="text-sm font-black text-[#231C18]">{sub.name_en || sub.shop_name}</h4>
                         <p className="text-xs text-[#8A7870] font-semibold mt-0.5">
-                          จังหวัด: {sub.prefecture || "-"} | ผู้ติดต่อ: {sub.contact_name || currentUser?.email || "-"}
+                          {t("rv.f.prefecture")}: {sub.prefecture || "-"} | {t("rv.f.contact")}: {sub.contact_name || currentUser?.email || "-"}
                         </p>
                         {sub.ownership_proof_url && (
                           <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                            <FileText size={11} /> แนบเอกสารยืนยันสิทธิ์ร้านค้าแล้ว
+                            <FileText size={11} /> {t("sm.docAttached")}
                           </span>
                         )}
                       </div>
@@ -1585,16 +1587,16 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                             ? "bg-rose-100 text-rose-900 border-rose-300"
                             : "bg-emerald-100 text-emerald-900 border-emerald-300"
                       }`}>
-                        {sub.status === "pending" && "⏳ แอดมินยังไม่อนุมัติ (Pending Review)"}
-                        {sub.status === "rejected" && " คำขอถูกปฏิเสธ (Rejected)"}
-                        {sub.status === "approved" && " อนุมัติแล้ว (Approved)"}
+                        {sub.status === "pending" && t("sm.statusPending")}
+                        {sub.status === "rejected" && t("sm.statusRejected")}
+                        {sub.status === "approved" && t("sm.statusApproved")}
                       </span>
                     </div>
 
                     {/* Pending Info Message */}
                     {sub.status === "pending" && (
                       <p className="text-xs text-amber-800 bg-amber-50 p-3 rounded-xl border border-amber-200 font-medium">
-                        ⏳ <strong>สถานะปัจจุบัน:</strong> แอดมินกำลังอยู่ระหว่างการตรวจสอบข้อมูลร้านค้าและเอกสารยืนยันสิทธิ์ของคุณ หากได้รับการอนุมัติแล้ว ระบบจะปลดล็อค Merchant Portal ให้ทันที
+                        <strong>{t("sm.currentStatus")}</strong> {t("sm.reviewingNow")}
                       </p>
                     )}
 
@@ -1603,10 +1605,10 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                       <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-950 text-xs space-y-2.5">
                         <div className="font-bold text-rose-900 flex items-center gap-1.5">
                           <AlertCircle size={15} className="text-rose-600 shrink-0" />
-                          <span>สาเหตุที่แอดมินปฏิเสธคำขอ:</span>
+                          <span>{t("sm.rejectReason")}</span>
                         </div>
                         <p className="font-semibold bg-white p-2.5 rounded-lg border border-rose-200 text-rose-900">
-                          {`"${sub.rejection_reason || "ข้อมูลร้านค้าหรือเอกสารสิทธิ์ไม่ครบถ้วน กรุณาตรวจสอบและส่งใหม่"}"`}
+                          {`"${sub.rejection_reason || t("sm.defaultRejectReason")}"`}
                         </p>
                         <button
                           type="button"
@@ -1614,7 +1616,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                           className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black transition cursor-pointer shadow-xs inline-flex items-center gap-1.5"
                         >
                           <Edit3 size={13} />
-                          <span>แก้ไขข้อมูลและส่งตรวจใหม่ (Edit & Resubmit)</span>
+                          <span>{t("sm.editResubmit")}</span>
                         </button>
                       </div>
                     )}
@@ -1641,14 +1643,13 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
               </div>
               <div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-xl font-black tracking-tight text-white">ระบบบริหารจัดการร้านค้าภาพรวม (Admin Command Center)</h2>
+                  <h2 className="text-xl font-black tracking-tight text-white">{t("sm.adminTitle")}</h2>
                   <span className="px-3 py-1 rounded-full text-[11px] font-black bg-amber-400/20 text-amber-300 border border-amber-400/40 flex items-center gap-1.5 shadow-xs">
-                    <ShieldCheck size={13} className="text-amber-400" /> ผู้ดูแลระบบสูงสุด (System Admin)
+                    <ShieldCheck size={13} className="text-amber-400" /> {t("sm.sysAdmin")}
                   </span>
                 </div>
                 <p className="text-xs text-amber-200/80 font-medium mt-1">
-                  ภาพรวมร้านค้าทั้งหมดในระบบ ({shops.length} ร้าน) | วิเคราะห์ร้านค้ายอดฮิต สถิติการสะสมแสตมป์ และจัดการร้านค้าได้โดยตรง
-                </p>
+                  {t("sm.adminDesc").replace("{n}", String(shops.length))}</p>
               </div>
             </div>
 
@@ -1658,14 +1659,14 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                 className="px-4 py-2.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-400/40 text-xs font-black rounded-xl flex items-center gap-2 transition cursor-pointer"
               >
                 <BarChart3 size={15} />
-                <span>ศูนย์วิเคราะห์รีวิว ({recentReviews.length})</span>
+                <span>{t("sm.reviewHub")} ({recentReviews.length})</span>
               </button>
               <button
                 onClick={handleAddClick}
                 className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black rounded-xl flex items-center gap-2 transition shadow-lg shrink-0 cursor-pointer"
               >
                 <Plus size={16} strokeWidth={3} />
-                <span>เพิ่มร้านค้าใหม่ในระบบ</span>
+                <span>{t("sm.addShopSystem")}</span>
               </button>
             </div>
           </div>
@@ -1680,13 +1681,13 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-xl font-black tracking-tight text-white">Merchant Portal & Dashboard</h2>
+                <h2 className="text-xl font-black tracking-tight text-white">{t("sm.merchantPortal")}</h2>
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
-                  <ShieldCheck className="text-emerald-400" size={12} /> เจ้าของร้านค้า
+                  <ShieldCheck className="text-emerald-400" size={12} /> {t("um.statStore")}
                 </span>
               </div>
               <p className="text-xs text-stone-300 font-medium mt-1">
-                แดชบอดสรุปสถิติการเช็คอิน เสียงตอบรับจากลูกค้า และจัดการร้านค้าในความดูแลของคุณ ({shops.length} ร้าน)
+                {t("sm.ownerDesc").replace("{n}", String(shops.length))}
               </p>
             </div>
           </div>
@@ -1697,14 +1698,14 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
               className="px-4 py-2.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-400/40 text-xs font-black rounded-xl flex items-center gap-2 transition cursor-pointer"
             >
               <BarChart3 size={15} />
-              <span>ศูนย์วิเคราะห์รีวิว ({recentReviews.length})</span>
+              <span>{t("sm.reviewHub")} ({recentReviews.length})</span>
             </button>
             <button
               onClick={handleAddClick}
               className="px-4 py-2.5 bg-[#E0533C] hover:bg-[#c8432d] text-white text-xs font-black rounded-xl flex items-center gap-1.5 transition shadow-sm cursor-pointer"
             >
               <Plus size={16} strokeWidth={2.5} />
-              <span>เพิ่มร้านค้าใหม่</span>
+              <span>{t("sm.addShop")}</span>
             </button>
             {shops.length > 0 && (
               <button
@@ -1712,7 +1713,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                 className="px-3.5 py-2.5 bg-[#FD775C] hover:bg-stone-700 text-amber-300 border border-stone-700 text-xs font-bold rounded-xl flex items-center gap-1.5 transition cursor-pointer"
               >
                 <QrCode size={15} />
-                <span>QR Code ร้าน</span>
+                <span>{t("sm.shopQr")}</span>
               </button>
             )}
           </div>
@@ -1729,10 +1730,10 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
               </div>
               <div>
                 <h3 className="text-base font-black text-rose-950 flex items-center gap-2">
-                  คุณมีคำขอถูกปฏิเสธโดยแอดมิน ({countRejected} รายการ)
+                  {t("sm.rejectedCount").replace("{n}", String(countRejected))}
                 </h3>
                 <p className="text-xs text-rose-700 font-semibold mt-0.5">
-                  แอดมินได้ระบุเหตุผลที่ปฏิเสธไว้ คุณสามารถกดแก้ไขข้อมูลเพื่อปรับปรุงและส่งกลับไปให้แอดมินตรวจสอบใหม่ได้ทันที
+                  {t("sm.rejectedHint")}
                 </p>
               </div>
             </div>
@@ -1757,13 +1758,13 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                       </div>
                     </div>
                     <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300 shrink-0">
-                      ถูกปฏิเสธ
+                      {t("um.statusBanned")}
                     </span>
                   </div>
 
                   {rejSub.rejection_reason && (
                     <div className="bg-rose-50 p-2.5 rounded-xl border border-rose-200 text-xs text-rose-900 font-medium">
-                      <span className="font-bold block text-[11px] text-rose-950 mb-0.5">เหตุผลที่แอดมินปฏิเสธ:</span>
+                      <span className="font-bold block text-[11px] text-rose-950 mb-0.5">{t("sm.rejectReason")}</span>
                       {`"${rejSub.rejection_reason}"`}
                     </div>
                   )}
@@ -1774,7 +1775,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                   className="w-full mt-1 py-2.5 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-black flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs"
                 >
                   <Edit3 size={14} />
-                  <span>แก้ไขและส่งให้แอดมินตรวจสอบใหม่</span>
+                  <span>{t("sm.editResubmit")}</span>
                 </button>
               </div>
             ))}
@@ -1792,9 +1793,9 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
             <p className="text-[9px] font-black uppercase text-[#8A7870] tracking-wider">
               {isAdmin ? "System Live Shops" : "Managed Shops"}
             </p>
-            <h3 className="text-xl font-black text-[#231C18]">{shops.length} ร้าน</h3>
+            <h3 className="text-xl font-black text-[#231C18]">{shops.length}</h3>
             <p className="text-[10px] text-[#8A7870] font-semibold">
-              {isAdmin ? "ร้านค้าทั้งหมดในระบบ" : "ร้านค้าในความดูแลของคุณ"}
+              {isAdmin ? t("sm.allShopsInSystem") : t("sm.yourShops")}
             </p>
           </div>
         </div>
@@ -1804,10 +1805,10 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
             <Stamp size={22} />
           </div>
           <div>
-            <p className="text-[9px] font-black uppercase text-[#8A7870] tracking-wider">Total Stamps Issued</p>
-            <h3 className="text-xl font-black text-[#E0533C]">{totalStamps} ดวง</h3>
+            <p className="text-[9px] font-black uppercase text-[#8A7870] tracking-wider">{t("sm.totalStamps")}</p>
+            <h3 className="text-xl font-black text-[#E0533C]">{totalStamps}</h3>
             <p className="text-[10px] text-[#8A7870] font-semibold">
-              {isAdmin ? "แสตมป์เช็คอินรวมทั้งระบบ" : "สถิติเช็คอินรวมจากลูกค้า"}
+              {isAdmin ? t("sm.totalStampsSystem") : t("sm.totalStampsYours")}
             </p>
           </div>
         </div>
@@ -1817,11 +1818,11 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
             <Star size={22} />
           </div>
           <div>
-            <p className="text-[9px] font-black uppercase text-[#8A7870] tracking-wider">Average Shop Rating</p>
+            <p className="text-[9px] font-black uppercase text-[#8A7870] tracking-wider">{t("sm.avgRating")}</p>
             <h3 className="text-xl font-black text-amber-600">
-              {avgRating !== "N/A" ? `${avgRating} / 5.0` : "ยังไม่มีคะแนน"}
+              {avgRating !== "N/A" ? `${avgRating} / 5.0` : t("sm.noRating")}
             </h3>
-            <p className="text-[10px] text-[#8A7870] font-semibold">คะแนนรีวิวเฉลี่ยร้านค้า</p>
+            <p className="text-[10px] text-[#8A7870] font-semibold">{t("sm.avgRating")}</p>
           </div>
         </div>
 
@@ -1830,9 +1831,9 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
             <Trophy size={22} />
           </div>
           <div>
-            <p className="text-[9px] font-black uppercase text-[#8A7870] tracking-wider">Customer Feedback</p>
+            <p className="text-[9px] font-black uppercase text-[#8A7870] tracking-wider">{t("sm.allComments")}</p>
             <h3 className="text-xl font-black text-emerald-700">
-              {recentReviews.length} รีวิว
+              {recentReviews.length} {t("sm.reviewsUnit")}
             </h3>
           </div>
         </div>
@@ -1848,10 +1849,10 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
             </div>
             <div>
               <h3 className="text-base font-black text-[#231C18]">
-                {isAdmin ? "รายการร้านค้าทั้งหมดในระบบ" : "รายการร้านค้าในความดูแลของคุณ"} ({combinedAllShops.length} รายการ)
+                {isAdmin ? t("sm.listAll") : t("sm.listYours")} ({combinedAllShops.length})
               </h3>
               <p className="text-xs text-[#8A7870] font-semibold">
-                {isAdmin ? "จัดการ ค้นหา และแก้ไขข้อมูลร้านค้าทั้งหมดในระบบ" : "จัดการ ค้นหา ติดตามสถานะอนุมัติ พิมพ์ QR Code และดูสถิติร้านค้า"}
+                {isAdmin ? t("sm.listAllDesc") : t("sm.listYoursDesc")}
               </p>
             </div>
           </div>
@@ -1862,7 +1863,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
           {/* Status Filter Tabs (Approved, Pending, Rejected) */}
           <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b" style={{ borderColor: C.line }}>
             <span className="text-xs font-black text-[#231C18] flex items-center gap-1 mr-1 shrink-0">
-              สถานะ:
+              {t("sd.status")}:
             </span>
             <button
               onClick={() => setStatusFilter("all")}
@@ -1870,7 +1871,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                 statusFilter === "all" ? "bg-[#FD775C] text-white shadow-xs" : "bg-stone-100 text-stone-600 hover:bg-stone-200"
               }`}
             >
-              ทั้งหมด ({combinedAllShops.length})
+              {t("filter.all")} ({combinedAllShops.length})
             </button>
             <button
               onClick={() => setStatusFilter("approved")}
@@ -1878,7 +1879,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                 statusFilter === "approved" ? "bg-emerald-600 text-white shadow-xs" : "bg-emerald-50 text-emerald-700 border border-emerald-200"
               }`}
             >
-               อนุมัติแล้ว ({countApprovedAll})
+               {t("sm.approved")} ({countApprovedAll})
             </button>
             <button
               onClick={() => setStatusFilter("pending")}
@@ -1886,7 +1887,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                 statusFilter === "pending" ? "bg-amber-500 text-white shadow-xs" : "bg-amber-50 text-amber-700 border border-amber-200"
               }`}
             >
-              ⏳ รออนุมัติ ({countPendingAll})
+              {t("sm.pending")} ({countPendingAll})
             </button>
             <button
               onClick={() => setStatusFilter("rejected")}
@@ -1894,14 +1895,14 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                 statusFilter === "rejected" ? "bg-rose-600 text-white shadow-xs" : "bg-rose-50 text-rose-700 border border-rose-200"
               }`}
             >
-               ถูกปฏิเสธ ({countRejectedAll})
+               {t("um.statusBanned")} ({countRejectedAll})
             </button>
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-0">
               <span className="text-xs font-black text-[#231C18] flex items-center gap-1.5 mr-1">
-                <Filter size={14} className="text-amber-600" /> ตัวกรองค้นหา:
+                <Filter size={14} className="text-amber-600" /> {t("sm.searchFilter")}
               </span>
 
               <div className="relative">
@@ -1913,7 +1914,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                   }`}
                   style={selectedPrefecture === "all" ? { borderColor: C.line } : undefined}
                 >
-                  <option value="all">ทุกจังหวัด (All Prefectures)</option>
+                  <option value="all">{t("sm.allPrefectures")}</option>
                   {availablePrefectures.map((pref) => (
                     <option key={pref} value={pref}>{pref}</option>
                   ))}
@@ -1930,10 +1931,10 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                   }`}
                   style={selectedMinRating === 0 ? { borderColor: C.line } : undefined}
                 >
-                  <option value={0}>ทุกระดับคะแนน</option>
-                  <option value={4.5}>4.5 ดาวขึ้นไป</option>
-                  <option value={4.0}>4.0 ดาวขึ้นไป</option>
-                  <option value={3.0}>3.0 ดาวขึ้นไป</option>
+                  <option value={0}>{t("sm.allRatings")}</option>
+                  <option value={4.5}>4.5+</option>
+                  <option value={4.0}>4.0+</option>
+                  <option value={3.0}>3.0+</option>
                 </select>
                 <Star size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-amber-500" />
               </div>
@@ -1947,7 +1948,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                   }`}
                   style={selectedCategory === "all" ? { borderColor: C.line } : undefined}
                 >
-                  <option value="all">ทุกหมวดหมู่</option>
+                  <option value="all">{t("sm.allCategories")}</option>
                   {categories.map((c) => (
                     <option key={c.id} value={c.id}>{c.label}</option>
                   ))}
@@ -1962,7 +1963,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="ค้นหารายชื่อร้าน, จังหวัด..."
+                placeholder={t("sm.searchShop")}
                 className="bg-transparent text-xs outline-none w-full font-medium"
               />
               {searchQuery && (
@@ -1978,15 +1979,15 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
         {filteredShops.length > 0 && (
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white px-5 py-3 rounded-3xl border shadow-2xs select-none" style={{ borderColor: C.line }}>
             <div className="text-xs font-bold text-[#8A7870] flex items-center gap-1.5 flex-wrap">
-              <span>แสดงผลร้านค้าลำดับที่ <strong className="text-[#231C18] font-black">{shopStartIndex} - {shopEndIndex}</strong> จากทั้งหมด <strong className="text-[#E0533C] font-black">{filteredShops.length}</strong> รายการ</span>
+              <span>{t("sm.showingRange")} <strong className="text-[#231C18] font-black">{shopStartIndex} - {shopEndIndex}</strong> / <strong className="text-[#E0533C] font-black">{filteredShops.length}</strong></span>
               {totalPages > 1 && (
                 <span className="px-2 py-0.5 rounded-md bg-stone-100 text-stone-700 font-bold text-[11px] border border-stone-200">
-                  หน้า {safeCurrentPage} จาก {totalPages}
+                  {t("sm.page")} {safeCurrentPage} / {totalPages}
                 </span>
               )}
             </div>
             <span className="text-[11px] font-bold text-amber-800 bg-amber-50 px-2.5 py-1 rounded-xl border border-amber-200/80">
-              ⚡ แสดงผล 12 ร้านค้า / หน้า
+              {t("sm.perPage")}
             </span>
           </div>
         )}
@@ -1995,9 +1996,9 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
         {filteredShops.length === 0 ? (
           <div className="p-14 text-center bg-white rounded-3xl border flex flex-col items-center justify-center gap-3" style={{ borderColor: C.line }}>
             <Store size={32} className="text-stone-300" />
-            <h3 className="text-base font-black text-[#231C18]">ไม่พบรายการร้านค้าที่ตรงตามเงื่อนไข</h3>
+            <h3 className="text-base font-black text-[#231C18]">{t("sm.noShopMatch")}</h3>
             <button onClick={handleResetFilters} className="px-4 py-2 bg-[#FD775C] text-white text-xs font-black rounded-xl">
-              ล้างการกรองทั้งหมด
+              {t("sm.clearAllFilters")}
             </button>
           </div>
         ) : (
@@ -2076,11 +2077,11 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                         <div className="flex items-center justify-between text-stone-600 font-medium">
                           <span className="flex items-center gap-1">
                             <Clock size={12} className="text-amber-600 shrink-0" />
-                            <span>เวลาเปิด-ปิด: <strong>{statusInfo.openHoursStr}</strong></span>
+                            <span>{t("sm.openHours")}: <strong>{statusInfo.openHoursStr}</strong></span>
                           </span>
                           {statusInfo.sched.closed_days && statusInfo.sched.closed_days.length > 0 && (
                             <span className="text-[10px] text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md font-semibold border border-amber-200 truncate">
-                              หยุด: {statusInfo.sched.closed_days.join(", ")}
+                              {t("sm.closedOn")}: {statusInfo.sched.closed_days.join(", ")}
                             </span>
                           )}
                         </div>
@@ -2088,7 +2089,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                           <div className="text-[10px] text-rose-700 font-medium flex flex-col gap-0.5">
                             <div className="flex items-center gap-1 truncate font-semibold">
                               <CalendarOff size={11} className="shrink-0 text-rose-500" />
-                              <span>วันหยุดพิเศษ ({statusInfo.sched.holidays.length} วัน):</span>
+                              <span>{t("sm.specialHolidays")} ({statusInfo.sched.holidays.length}):</span>
                             </div>
                             <div className="pl-3.5 text-[9.5px] text-rose-600 space-y-0.5">
                               {statusInfo.sched.holidays.map((h, idx) => (
@@ -2113,19 +2114,19 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                             ? "bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-emerald-100"
                             : "bg-rose-50 border-rose-300 text-rose-800 hover:bg-rose-100"
                         }`}
-                        title="เปิด/ปิดร้านชั่วคราววันนี้แบบเร่งด่วน"
+                        title={t("sm.tipQuickClose")}
                       >
                         <Power size={14} className={isClosedToday ? "text-emerald-600 shrink-0" : "text-rose-600 shrink-0"} />
-                        <span className="whitespace-nowrap">{isClosedToday ? "เปิดร้านวันนี้" : "วันนี้ปิด"}</span>
+                        <span className="whitespace-nowrap">{isClosedToday ? t("sm.openToday") : t("sm.closedToday")}</span>
                       </button>
 
                       <button
                         onClick={() => setScheduleShop(shop)}
                         className="w-full py-2.5 px-2.5 rounded-xl border border-sky-200/80 bg-sky-50/90 hover:bg-sky-100 text-sky-900 text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-2xs cursor-pointer"
-                        title="ตั้งเวลาเปิด-ปิดและปฏิทินวันหยุด"
+                        title={t("sm.tipSchedule")}
                       >
                         <Clock size={14} className="text-sky-600 shrink-0" />
-                        <span className="whitespace-nowrap">เวลา / วันหยุด</span>
+                        <span className="whitespace-nowrap">{t("sm.timeHoliday")}</span>
                       </button>
                     </div>
 
@@ -2134,19 +2135,19 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                       <button
                         onClick={() => setStampDesignerShop(shop)}
                         className="w-full py-2.5 px-2 rounded-xl border border-rose-200/90 bg-gradient-to-r from-rose-50 to-pink-50 hover:from-rose-100 hover:to-pink-100 hover:border-rose-300 text-rose-900 text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-2xs cursor-pointer"
-                        title="ออกแบบดีไซน์ตราแสตมป์และจัดการเวอร์ชัน/วันหมดเขต"
+                        title={t("sm.tipStampDesign")}
                       >
                         <Stamp size={14} className="text-rose-600 shrink-0" />
- <span className="whitespace-nowrap">ออกแบบแสตมป์ </span>
+ <span className="whitespace-nowrap">{t("sm.stampDesign")}</span>
                       </button>
 
                       <button
                         onClick={() => setRulesShop(shop)}
                         className="w-full py-2.5 px-2 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 hover:border-stone-300 text-stone-800 text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-2xs cursor-pointer"
-                        title="กำหนดกฎระเบียบประจำร้าน"
+                        title={t("sm.tipRules")}
                       >
                         <ShieldAlert size={14} className="text-amber-600 shrink-0" />
-                        <span className="whitespace-nowrap">กฎร้านค้า</span>
+                        <span className="whitespace-nowrap">{t("sm.rules")}</span>
                       </button>
                     </div>
 
@@ -2155,16 +2156,16 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                       <button
                         onClick={() => setEditingShop(shop)}
                         className="py-2 px-0.5 sm:px-2 rounded-xl border border-amber-200 bg-amber-50/70 hover:bg-amber-100 text-amber-900 text-[10.5px] sm:text-xs font-bold flex items-center justify-center gap-0.5 sm:gap-1 transition cursor-pointer shadow-2xs min-w-0"
-                        title="แก้ไขข้อมูลร้าน"
+                        title={t("sm.tipEdit")}
                       >
                         <Edit3 size={11} className="text-amber-700 shrink-0" />
-                        <span className="whitespace-nowrap">แก้ไข</span>
+                        <span className="whitespace-nowrap">{t("ach.tip.edit")}</span>
                       </button>
 
                       <button
                         onClick={() => setQrShop(shop)}
                         className="py-2 px-0.5 sm:px-2 rounded-xl border border-stone-200 bg-white hover:bg-stone-100 text-stone-700 text-[10.5px] sm:text-xs font-bold flex items-center justify-center gap-0.5 sm:gap-1 transition cursor-pointer shadow-2xs min-w-0"
-                        title="ดู QR Code ร้านค้า"
+                        title={t("sm.tipQr")}
                       >
                         <QrCode size={11} className="text-stone-600 shrink-0" />
                         <span className="whitespace-nowrap">QR</span>
@@ -2173,19 +2174,19 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                       <button
                         onClick={() => setSelectedSummaryShop(shop)}
                         className="py-2 px-0.5 sm:px-2 rounded-xl border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100 text-indigo-900 text-[10.5px] sm:text-xs font-bold flex items-center justify-center gap-0.5 sm:gap-1 transition cursor-pointer shadow-2xs min-w-0"
-                        title="ดูสถิติคนเก็บแสตมป์ ช่วงเวลา และสรุปรายเดือน"
+                        title={t("sm.tipStats")}
                       >
                         <BarChart3 size={11} className="text-indigo-600 shrink-0" />
-                        <span className="whitespace-nowrap">สถิติ</span>
+                        <span className="whitespace-nowrap">{t("sm.stats")}</span>
                       </button>
 
                       <button
                         onClick={() => handleDeleteShop(shop)}
                         className="py-2 px-0.5 sm:px-2 rounded-xl border border-rose-200/80 bg-rose-50/70 hover:bg-rose-100 text-rose-700 text-[10.5px] sm:text-xs font-bold flex items-center justify-center gap-0.5 sm:gap-1 transition cursor-pointer shadow-2xs min-w-0"
-                        title="ลบร้านค้า"
+                        title={t("sm.tipDelete")}
                       >
                         <Trash2 size={11} className="text-rose-600 shrink-0" />
-                        <span className="whitespace-nowrap">ลบ</span>
+                        <span className="whitespace-nowrap">{t("ach.tip.delete")}</span>
                       </button>
                     </div>
                   </div>
@@ -2199,7 +2200,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
         {filteredShops.length > 0 && totalPages > 1 && (
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-4.5 rounded-3xl border shadow-2xs select-none" style={{ borderColor: C.line }}>
             <div className="text-xs font-bold text-[#8A7870]">
-              กำลังแสดงหน้า <strong className="text-[#231C18] font-black">{safeCurrentPage}</strong> / <strong className="text-[#231C18] font-black">{totalPages}</strong> (รวมทั้งหมด {filteredShops.length} ร้าน)
+              {t("sm.showingPage")} <strong className="text-[#231C18] font-black">{safeCurrentPage}</strong> / <strong className="text-[#231C18] font-black">{totalPages}</strong>
             </div>
 
             <div className="flex items-center gap-1.5 flex-wrap">
@@ -2210,7 +2211,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                 className="px-3.5 py-2 rounded-xl border text-xs font-bold bg-stone-50 hover:bg-stone-100 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer text-[#231C18] flex items-center gap-1"
                 style={{ borderColor: C.line }}
               >
-                ← ก่อนหน้า
+                ← {t("sm.prev")}
               </button>
 
               {Array.from({ length: totalPages }, (_, i) => i + 1)
@@ -2249,7 +2250,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                 className="px-3.5 py-2 rounded-xl border text-xs font-bold bg-stone-50 hover:bg-stone-100 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer text-[#231C18] flex items-center gap-1"
                 style={{ borderColor: C.line }}
               >
-                ถัดไป →
+                {t("sm.next")} →
               </button>
             </div>
           </div>
@@ -2264,8 +2265,8 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
               <Star size={22} className="fill-amber-400 text-amber-500" />
             </div>
             <div>
-              <h3 className="text-base font-black text-[#231C18]">เสียงตอบรับและรีวิวล่าสุดจากลูกค้า (Customer Reviews Feed)</h3>
-              <p className="text-xs text-[#8A7870] font-semibold">ความคิดเห็นที่นักท่องเที่ยวเขียนถึงร้านค้าในระบบ</p>
+              <h3 className="text-base font-black text-[#231C18]">{t("sm.recentReviews")}</h3>
+              <p className="text-xs text-[#8A7870] font-semibold">{t("sm.recentReviewsDesc")}</p>
             </div>
           </div>
 
@@ -2274,19 +2275,19 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
             className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black rounded-2xl flex items-center justify-center gap-2 transition shadow-md cursor-pointer shrink-0 self-start sm:self-auto"
           >
             <BarChart3 size={15} />
-            <span>เปิดหน้าศูนย์วิเคราะห์และดูรีวิวทั้งหมด ({recentReviews.length}) →</span>
+            <span>{t("sm.openReviewHub")} ({recentReviews.length}) →</span>
           </button>
         </div>
 
         {reviewsLoading ? (
           <div className="p-8 text-center flex items-center justify-center gap-2 text-xs font-bold text-[#8A7870]">
             <Loader2 size={16} className="animate-spin text-[#E0533C]" />
-            <span>กำลังโหลดรีวิวล่าสุด...</span>
+            <span>{t("sm.loadingReviews")}</span>
           </div>
         ) : recentReviews.length === 0 ? (
           <div className="p-8 text-center bg-stone-50/50 rounded-2xl border border-dashed text-stone-400 space-y-1" style={{ borderColor: C.line }}>
-            <p className="text-xs font-bold text-[#231C18]">ยังไม่มีรีวิวล่าสุดสำหรับร้านของคุณ</p>
-            <p className="text-[11px] text-[#8A7870]">เมื่อมีนักท่องเที่ยวเดินทางมาเช็คอินและเขียนรีวิว ข้อมูลความคิดเห็นจะมาปรากฏที่นี่โดยอัตโนมัติ</p>
+            <p className="text-xs font-bold text-[#231C18]">{t("sm.noRecentReviews")}</p>
+            <p className="text-[11px] text-[#8A7870]">{t("sm.noRecentReviewsHint")}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -2336,7 +2337,7 @@ function MerchantContent({ onOpenAddPlace }: { onOpenAddPlace?: () => void }) {
                   onClick={() => setIsReviewsModalOpen(true)}
                   className="px-5 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-[#231C18] text-xs font-bold transition cursor-pointer inline-flex items-center gap-1.5"
                 >
-                  <span>ดูรีวิวทั้งหมดอีก {recentReviews.length - 4} รายการ และเข้าสู่หน้าสรุปสถิติแดชบอด →</span>
+                  <span>{t("sm.viewMoreReviews").replace("{n}", String(recentReviews.length - 4))} →</span>
                 </button>
               </div>
             )}
@@ -2474,6 +2475,7 @@ interface CreateShopModalProps {
 }
 
 function CreateShopModal({ isOpen, currentUserId, onClose, onShopCreated }: CreateShopModalProps) {
+  const { t } = useLang();
   const [shopName, setShopName] = useState("");
   const [shopNameJp, setShopNameJp] = useState("");
   const [category, setCategory] = useState("spot");
@@ -2494,11 +2496,11 @@ function CreateShopModal({ isOpen, currentUserId, onClose, onShopCreated }: Crea
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!shopName.trim()) {
-      alert("กรุณากรอกชื่อร้านค้า");
+      alert(t("sm.needShopName"));
       return;
     }
     if (!currentUserId) {
-      alert("ไม่พบข้อมูลผู้ใช้งานที่เข้าสู่ระบบ");
+      alert(t("sm.noLoggedUser"));
       return;
     }
 
@@ -2528,10 +2530,10 @@ function CreateShopModal({ isOpen, currentUserId, onClose, onShopCreated }: Crea
 
       if (error) throw error;
       const createdRecord = data?.[0];
-      alert("เพิ่มร้านค้าใหม่เรียบร้อยแล้ว!");
+      alert(t("sm.addShopOk"));
       onShopCreated(createdRecord || payload);
     } catch (err: any) {
-      alert("ไม่สามารถเพิ่มร้านค้าได้: " + (err.message || "Failed"));
+      alert(t("sm.addShopFail") + (err.message || "Failed"));
     } finally {
       setSaving(false);
     }
@@ -2549,8 +2551,8 @@ function CreateShopModal({ isOpen, currentUserId, onClose, onShopCreated }: Crea
               <Store size={18} />
             </div>
             <div>
-              <h3 className="text-base font-black text-[#231C18]">เพิ่มร้านค้าใหม่ (Add New Shop)</h3>
-              <p className="text-[11px] text-[#8A7870] font-semibold">สร้างร้านค้าใหม่ภายใต้การดูแลของคุณ</p>
+              <h3 className="text-base font-black text-[#231C18]">{t("sm.addShopTitle")}</h3>
+              <p className="text-[11px] text-[#8A7870] font-semibold">{t("sm.addShopDesc")}</p>
             </div>
           </div>
 
@@ -2566,14 +2568,14 @@ function CreateShopModal({ isOpen, currentUserId, onClose, onShopCreated }: Crea
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-[10px] font-black uppercase text-[#8A7870] block mb-1">
-                ชื่อร้านค้า / Spot Name (EN/TH) *
+                {t("sm.f.name")} *
               </label>
               <input
                 type="text"
                 required
                 value={shopName}
                 onChange={(e) => setShopName(e.target.value)}
-                placeholder="เช่น Tokyo Ramen Ichiban"
+                placeholder={t("sm.f.namePlaceholder")}
                 className="w-full px-3.5 py-2.5 rounded-xl border outline-none bg-stone-50/50 focus:border-[#E0533C]"
                 style={{ borderColor: C.line }}
               />
@@ -2581,13 +2583,13 @@ function CreateShopModal({ isOpen, currentUserId, onClose, onShopCreated }: Crea
 
             <div>
               <label className="text-[10px] font-black uppercase text-[#8A7870] block mb-1">
-                ชื่อภาษาญี่ปุ่น (Japanese Name)
+                {t("sm.f.nameJp")}
               </label>
               <input
                 type="text"
                 value={shopNameJp}
                 onChange={(e) => setShopNameJp(e.target.value)}
-                placeholder="เช่น 東京ラーメン一番"
+                placeholder={t("sm.f.nameJpPlaceholder")}
                 className="w-full px-3.5 py-2.5 rounded-xl border outline-none bg-stone-50/50 focus:border-[#E0533C]"
                 style={{ borderColor: C.line }}
               />
@@ -2597,7 +2599,7 @@ function CreateShopModal({ isOpen, currentUserId, onClose, onShopCreated }: Crea
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="text-[10px] font-black uppercase text-[#8A7870] block mb-1">
-                หมวดหมู่ (Category)
+                {t("rv.f.category")}
               </label>
               <select
                 value={category}
@@ -2605,23 +2607,23 @@ function CreateShopModal({ isOpen, currentUserId, onClose, onShopCreated }: Crea
                 className="w-full px-3.5 py-2.5 rounded-xl border outline-none bg-stone-50/50 focus:border-[#E0533C] cursor-pointer"
                 style={{ borderColor: C.line }}
               >
-                <option value="station">Station (สถานี)</option>
-                <option value="shrine">Shrine (ศาลเจ้า/วัด)</option>
-                <option value="spot">Spot (จุดท่องเที่ยว)</option>
-                <option value="food">Food (ร้านอาหาร/คาเฟ่)</option>
-                <option value="shop">Shop (ร้านค้าทั่วไป)</option>
+                <option value="station">{t("sm.cat.station")}</option>
+                <option value="shrine">{t("sm.cat.shrine")}</option>
+                <option value="spot">{t("sm.cat.spot")}</option>
+                <option value="food">{t("sm.cat.food")}</option>
+                <option value="shop">{t("sm.cat.shop")}</option>
               </select>
             </div>
 
             <div>
               <label className="text-[10px] font-black uppercase text-[#8A7870] block mb-1">
-                จังหวัด (Prefecture)
+                {t("rv.f.prefecture")}
               </label>
               <input
                 type="text"
                 value={prefecture}
                 onChange={(e) => setPrefecture(e.target.value)}
-                placeholder="เช่น Tokyo, Kyoto, Osaka"
+                placeholder={t("sm.f.prefPlaceholder")}
                 className="w-full px-3.5 py-2.5 rounded-xl border outline-none bg-stone-50/50 focus:border-[#E0533C]"
                 style={{ borderColor: C.line }}
               />
@@ -2629,7 +2631,7 @@ function CreateShopModal({ isOpen, currentUserId, onClose, onShopCreated }: Crea
 
             <div>
               <label className="text-[10px] font-black uppercase text-[#8A7870] block mb-1">
-                ภูมิภาค (Region)
+                {t("sm.f.region")}
               </label>
               <select
                 value={region}
@@ -2637,25 +2639,25 @@ function CreateShopModal({ isOpen, currentUserId, onClose, onShopCreated }: Crea
                 className="w-full px-3.5 py-2.5 rounded-xl border outline-none bg-stone-50/50 focus:border-[#E0533C] cursor-pointer"
                 style={{ borderColor: C.line }}
               >
-                <option value="Kanto">Kanto (คันโต)</option>
-                <option value="Kansai">Kansai (คันไซ)</option>
-                <option value="Chubu">Chubu (ชูบุ)</option>
-                <option value="Hokkaido">Hokkaido (ฮอกไกโด)</option>
-                <option value="Tohoku">Tohoku (โทโฮคุ)</option>
-                <option value="Kyushu">Kyushu (คิวชู)</option>
+                <option value="Kanto">Kanto</option>
+                <option value="Kansai">Kansai</option>
+                <option value="Chubu">Chubu</option>
+                <option value="Hokkaido">Hokkaido</option>
+                <option value="Tohoku">Tohoku</option>
+                <option value="Kyushu">Kyushu</option>
               </select>
             </div>
           </div>
 
           <div>
             <label className="text-[10px] font-black uppercase text-[#8A7870] block mb-1">
-              ที่อยู่ / ทำเลที่ตั้ง (Address / Street)
+              {t("sm.f.address")}
             </label>
             <input
               type="text"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              placeholder="เช่น 1-1 Chiyoda, Chiyoda City, Tokyo"
+              placeholder={t("sm.f.addressPlaceholder")}
               className="w-full px-3.5 py-2.5 rounded-xl border outline-none bg-stone-50/50 focus:border-[#E0533C]"
               style={{ borderColor: C.line }}
             />
@@ -2664,13 +2666,13 @@ function CreateShopModal({ isOpen, currentUserId, onClose, onShopCreated }: Crea
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-[10px] font-black uppercase text-[#8A7870] block mb-1">
-                คำอธิบายร้าน (Description EN/TH)
+                {t("sm.f.desc")}
               </label>
               <textarea
                 rows={3}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="รายละเอียดจุดเด่น เมนูแนะนำ หรือประวัติร้านค้า..."
+                placeholder={t("sm.f.descPlaceholder")}
                 className="w-full px-3.5 py-2 rounded-xl border outline-none resize-none bg-stone-50/50 focus:border-[#E0533C]"
                 style={{ borderColor: C.line }}
               />
@@ -2678,7 +2680,7 @@ function CreateShopModal({ isOpen, currentUserId, onClose, onShopCreated }: Crea
 
             <div>
               <label className="text-[10px] font-black uppercase text-[#8A7870] block mb-1">
-                คำอธิบายภาษาญี่ปุ่น (Description JP)
+                {t("sm.f.descJp")}
               </label>
               <textarea
                 rows={3}
@@ -2694,7 +2696,7 @@ function CreateShopModal({ isOpen, currentUserId, onClose, onShopCreated }: Crea
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="sm:col-span-2">
               <label className="text-[10px] font-black uppercase text-[#8A7870] block mb-1">
-                รูปภาพร้านค้า (Image URL)
+                {t("sm.f.image")}
               </label>
               <input
                 type="url"
@@ -2708,7 +2710,7 @@ function CreateShopModal({ isOpen, currentUserId, onClose, onShopCreated }: Crea
 
             <div>
               <label className="text-[10px] font-black uppercase text-[#8A7870] block mb-1">
-                เว็บไซต์ (Website)
+                {t("sm.f.website")}
               </label>
               <input
                 type="url"
@@ -2724,7 +2726,7 @@ function CreateShopModal({ isOpen, currentUserId, onClose, onShopCreated }: Crea
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-[10px] font-black uppercase text-[#8A7870] block mb-1">
-                พิกัด ละติจูด (Latitude)
+                Latitude
               </label>
               <input
                 type="number"
@@ -2738,7 +2740,7 @@ function CreateShopModal({ isOpen, currentUserId, onClose, onShopCreated }: Crea
             </div>
             <div>
               <label className="text-[10px] font-black uppercase text-[#8A7870] block mb-1">
-                พิกัด ลองจิจูด (Longitude)
+                Longitude
               </label>
               <input
                 type="number"
@@ -2759,7 +2761,7 @@ function CreateShopModal({ isOpen, currentUserId, onClose, onShopCreated }: Crea
               className="px-4 py-2.5 rounded-xl border text-xs font-bold hover:bg-stone-100 transition cursor-pointer"
               style={{ borderColor: C.line }}
             >
-              ยกเลิก
+              {t("common.cancel")}
             </button>
             <button
               type="submit"
@@ -2767,7 +2769,7 @@ function CreateShopModal({ isOpen, currentUserId, onClose, onShopCreated }: Crea
               className="px-6 py-2.5 rounded-xl text-xs font-black text-white bg-[#E0533C] hover:bg-[#c8432d] transition flex items-center gap-2 cursor-pointer shadow-xs disabled:opacity-50"
             >
               {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-              <span>บันทึกร้านค้าใหม่</span>
+              <span>{t("sm.saveNewShop")}</span>
             </button>
           </div>
         </form>
@@ -2788,6 +2790,7 @@ interface EditShopFormModalProps {
 }
 
 function EditShopFormModal({ isOpen, shop, currentUserId, onClose, onShopUpdated }: EditShopFormModalProps) {
+  const { t } = useLang();
   const [shopName, setShopName] = useState(shop.shop_name || "");
   const [shopNameJp, setShopNameJp] = useState(shop.shop_name_jp || "");
   const [category, setCategory] = useState(shop.category || "spot");
@@ -2808,7 +2811,7 @@ function EditShopFormModal({ isOpen, shop, currentUserId, onClose, onShopUpdated
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!shopName.trim()) {
-      alert("กรุณากรอกชื่อร้านค้า");
+      alert(t("sm.needShopName"));
       return;
     }
 
@@ -2838,10 +2841,10 @@ function EditShopFormModal({ isOpen, shop, currentUserId, onClose, onShopUpdated
 
       if (error) throw error;
       const updatedRecord = data?.[0] || { ...shop, ...updatePayload };
-      alert("อัปเดตข้อมูลร้านค้าเรียบร้อยแล้ว!");
+      alert(t("sm.updateShopOk"));
       onShopUpdated(updatedRecord);
     } catch (err: any) {
-      alert("ไม่สามารถอัปเดตข้อมูลร้านค้าได้: " + (err.message || "Failed"));
+      alert(t("sm.updateShopFail") + (err.message || "Failed"));
     } finally {
       setSaving(false);
     }
@@ -2859,8 +2862,8 @@ function EditShopFormModal({ isOpen, shop, currentUserId, onClose, onShopUpdated
               <Edit3 size={18} />
             </div>
             <div>
-              <h3 className="text-base font-black text-[#231C18]">แก้ไขข้อมูลร้านค้า (Edit Shop)</h3>
-              <p className="text-[11px] text-[#8A7870] font-semibold">ปรับปรุงรายละเอียดร้านค้า ID #{shop.id}</p>
+              <h3 className="text-base font-black text-[#231C18]">{t("sm.editShopTitle")}</h3>
+              <p className="text-[11px] text-[#8A7870] font-semibold">{t("sm.editShopDesc")} ID #{shop.id}</p>
             </div>
           </div>
 
@@ -2876,7 +2879,7 @@ function EditShopFormModal({ isOpen, shop, currentUserId, onClose, onShopUpdated
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-[10px] font-black uppercase text-[#8A7870] block mb-1">
-                ชื่อร้านค้า / Spot Name (EN/TH) *
+                {t("sm.f.name")} *
               </label>
               <input
                 type="text"
@@ -2890,7 +2893,7 @@ function EditShopFormModal({ isOpen, shop, currentUserId, onClose, onShopUpdated
 
             <div>
               <label className="text-[10px] font-black uppercase text-[#8A7870] block mb-1">
-                ชื่อภาษาญี่ปุ่น (Japanese Name)
+                {t("sm.f.nameJp")}
               </label>
               <input
                 type="text"
@@ -2905,7 +2908,7 @@ function EditShopFormModal({ isOpen, shop, currentUserId, onClose, onShopUpdated
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="text-[10px] font-black uppercase text-[#8A7870] block mb-1">
-                หมวดหมู่ (Category)
+                {t("rv.f.category")}
               </label>
               <select
                 value={category}
@@ -2913,17 +2916,17 @@ function EditShopFormModal({ isOpen, shop, currentUserId, onClose, onShopUpdated
                 className="w-full px-3.5 py-2.5 rounded-xl border outline-none bg-stone-50/50 focus:border-[#E0533C] cursor-pointer"
                 style={{ borderColor: C.line }}
               >
-                <option value="station">Station (สถานี)</option>
-                <option value="shrine">Shrine (ศาลเจ้า/วัด)</option>
-                <option value="spot">Spot (จุดท่องเที่ยว)</option>
-                <option value="food">Food (ร้านอาหาร/คาเฟ่)</option>
-                <option value="shop">Shop (ร้านค้าทั่วไป)</option>
+                <option value="station">{t("sm.cat.station")}</option>
+                <option value="shrine">{t("sm.cat.shrine")}</option>
+                <option value="spot">{t("sm.cat.spot")}</option>
+                <option value="food">{t("sm.cat.food")}</option>
+                <option value="shop">{t("sm.cat.shop")}</option>
               </select>
             </div>
 
             <div>
               <label className="text-[10px] font-black uppercase text-[#8A7870] block mb-1">
-                จังหวัด (Prefecture)
+                {t("rv.f.prefecture")}
               </label>
               <input
                 type="text"
@@ -2936,7 +2939,7 @@ function EditShopFormModal({ isOpen, shop, currentUserId, onClose, onShopUpdated
 
             <div>
               <label className="text-[10px] font-black uppercase text-[#8A7870] block mb-1">
-                ภูมิภาค (Region)
+                {t("sm.f.region")}
               </label>
               <select
                 value={region}
@@ -2944,19 +2947,19 @@ function EditShopFormModal({ isOpen, shop, currentUserId, onClose, onShopUpdated
                 className="w-full px-3.5 py-2.5 rounded-xl border outline-none bg-stone-50/50 focus:border-[#E0533C] cursor-pointer"
                 style={{ borderColor: C.line }}
               >
-                <option value="Kanto">Kanto (คันโต)</option>
-                <option value="Kansai">Kansai (คันไซ)</option>
-                <option value="Chubu">Chubu (ชูบุ)</option>
-                <option value="Hokkaido">Hokkaido (ฮอกไกโด)</option>
-                <option value="Tohoku">Tohoku (โทโฮคุ)</option>
-                <option value="Kyushu">Kyushu (คิวชู)</option>
+                <option value="Kanto">Kanto</option>
+                <option value="Kansai">Kansai</option>
+                <option value="Chubu">Chubu</option>
+                <option value="Hokkaido">Hokkaido</option>
+                <option value="Tohoku">Tohoku</option>
+                <option value="Kyushu">Kyushu</option>
               </select>
             </div>
           </div>
 
           <div>
             <label className="text-[10px] font-black uppercase text-[#8A7870] block mb-1">
-              ที่อยู่ / ทำเลที่ตั้ง (Address)
+              {t("sm.f.address")}
             </label>
             <input
               type="text"
@@ -2970,7 +2973,7 @@ function EditShopFormModal({ isOpen, shop, currentUserId, onClose, onShopUpdated
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-[10px] font-black uppercase text-[#8A7870] block mb-1">
-                คำอธิบายร้าน (Description EN/TH)
+                {t("sm.f.desc")}
               </label>
               <textarea
                 rows={3}
@@ -2983,7 +2986,7 @@ function EditShopFormModal({ isOpen, shop, currentUserId, onClose, onShopUpdated
 
             <div>
               <label className="text-[10px] font-black uppercase text-[#8A7870] block mb-1">
-                คำอธิบายภาษาญี่ปุ่น (Description JP)
+                {t("sm.f.descJp")}
               </label>
               <textarea
                 rows={3}
@@ -2998,7 +3001,7 @@ function EditShopFormModal({ isOpen, shop, currentUserId, onClose, onShopUpdated
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="sm:col-span-2">
               <label className="text-[10px] font-black uppercase text-[#8A7870] block mb-1">
-                รูปภาพร้านค้า (Image URL)
+                {t("sm.f.image")}
               </label>
               <input
                 type="url"
@@ -3011,7 +3014,7 @@ function EditShopFormModal({ isOpen, shop, currentUserId, onClose, onShopUpdated
 
             <div>
               <label className="text-[10px] font-black uppercase text-[#8A7870] block mb-1">
-                เว็บไซต์ (Website)
+                {t("sm.f.website")}
               </label>
               <input
                 type="url"
@@ -3026,7 +3029,7 @@ function EditShopFormModal({ isOpen, shop, currentUserId, onClose, onShopUpdated
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-[10px] font-black uppercase text-[#8A7870] block mb-1">
-                พิกัด ละติจูด (Latitude)
+                Latitude
               </label>
               <input
                 type="number"
@@ -3039,7 +3042,7 @@ function EditShopFormModal({ isOpen, shop, currentUserId, onClose, onShopUpdated
             </div>
             <div>
               <label className="text-[10px] font-black uppercase text-[#8A7870] block mb-1">
-                พิกัด ลองจิจูด (Longitude)
+                Longitude
               </label>
               <input
                 type="number"
@@ -3059,7 +3062,7 @@ function EditShopFormModal({ isOpen, shop, currentUserId, onClose, onShopUpdated
               className="px-4 py-2.5 rounded-xl border text-xs font-bold hover:bg-stone-100 transition cursor-pointer"
               style={{ borderColor: C.line }}
             >
-              ยกเลิก
+              {t("common.cancel")}
             </button>
             <button
               type="submit"
@@ -3067,7 +3070,7 @@ function EditShopFormModal({ isOpen, shop, currentUserId, onClose, onShopUpdated
               className="px-6 py-2.5 rounded-xl text-xs font-black text-white bg-[#E0533C] hover:bg-[#c8432d] transition flex items-center gap-2 cursor-pointer shadow-xs disabled:opacity-50"
             >
               {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-              <span>บันทึกการแก้ไข</span>
+              <span>{t("bn.saveEdit")}</span>
             </button>
           </div>
         </form>
@@ -3090,7 +3093,7 @@ const formatEventDisplayDate = (dtString: string) => {
   const d = new Date(dtString);
   if (isNaN(d.getTime())) return dtString;
   const day = d.getDate();
-  const months = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   const month = months[d.getMonth()];
   const year = d.getFullYear() + 543;
   const hours = String(d.getHours()).padStart(2, "0");
@@ -3099,11 +3102,12 @@ const formatEventDisplayDate = (dtString: string) => {
 };
 
 function MerchantQrModal({ isOpen, shop, onClose }: MerchantQrModalProps) {
+  const { t } = useLang();
   const [copied, setCopied] = useState(false);
   const [mode, setMode] = useState<"static" | "event">("static");
 
   // Event Mode States
-  const [eventName, setEventName] = useState<string>(`งานเทศกาล ${shop.shop_name}`);
+  const [eventName, setEventName] = useState<string>(`${t("sm.eventDefault")} ${shop.shop_name}`);
   const [eventStartDate, setEventStartDate] = useState<string>("2026-09-22T09:00");
   const [eventEndDate, setEventEndDate] = useState<string>("2026-09-25T18:00");
   const [eventScanMode, setEventScanMode] = useState<string>("100");
@@ -3164,8 +3168,8 @@ function MerchantQrModal({ isOpen, shop, onClose }: MerchantQrModalProps) {
               <QrCode size={16} />
             </div>
             <div>
-              <h3 className="text-xs font-black text-[#231C18]">Stamp Check-in QR (ฝั่งร้านค้า)</h3>
-              <p className="text-[10px] text-[#8A7870]">สร้างและพิมพ์ QR Code ประจำร้านหรือตารางจัดงาน</p>
+              <h3 className="text-xs font-black text-[#231C18]">{t("sm.qrTitle")}</h3>
+              <p className="text-[10px] text-[#8A7870]">{t("sm.qrDesc")}</p>
             </div>
           </div>
 
@@ -3188,7 +3192,7 @@ function MerchantQrModal({ isOpen, shop, onClose }: MerchantQrModalProps) {
             }`}
           >
             <QrCode size={13} />
-            <span>QR ถาวรประจำร้าน</span>
+            <span>{t("sm.qrPermanent")}</span>
           </button>
           <button
             onClick={() => setMode("event")}
@@ -3199,7 +3203,7 @@ function MerchantQrModal({ isOpen, shop, onClose }: MerchantQrModalProps) {
             }`}
           >
             <Calendar size={13} />
-            <span>จัดงานอีเวนต์ (Schedule)</span>
+            <span>{t("sm.qrEvent")}</span>
           </button>
         </div>
 
@@ -3209,7 +3213,7 @@ function MerchantQrModal({ isOpen, shop, onClose }: MerchantQrModalProps) {
             <div className="flex items-center justify-between">
               <p className="text-[11px] font-black text-amber-900 flex items-center gap-1">
                 <Calendar size={13} className="text-amber-600" />
-                ตั้งค่าตารางจัดงานอีเวนต์ (Event Schedule)
+                {t("sm.eventSchedule")}
               </p>
               <span className="text-[9px] font-bold bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full">
                 Date Range
@@ -3217,19 +3221,19 @@ function MerchantQrModal({ isOpen, shop, onClose }: MerchantQrModalProps) {
             </div>
 
             <div>
-              <label className="block text-[10px] font-bold text-stone-700 mb-1">ชื่อกิจกรรม / อีเวนต์</label>
+              <label className="block text-[10px] font-bold text-stone-700 mb-1">{t("sm.eventName")}</label>
               <input
                 type="text"
                 value={eventName}
                 onChange={(e) => setEventName(e.target.value)}
-                placeholder="เช่น เทศกาลอาหาร 22-25 ก.ย."
+                placeholder={t("sm.eventNamePlaceholder")}
                 className="w-full bg-white border border-stone-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-stone-900 focus:ring-1 focus:ring-amber-500 focus:outline-none"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-2 text-[10px]">
               <div>
-                <label className="block font-bold text-stone-700 mb-1">วัน/เวลา เริ่มต้น</label>
+                <label className="block font-bold text-stone-700 mb-1">{t("bn.startTime")}</label>
                 <input
                   type="datetime-local"
                   value={eventStartDate}
@@ -3239,7 +3243,7 @@ function MerchantQrModal({ isOpen, shop, onClose }: MerchantQrModalProps) {
               </div>
 
               <div>
-                <label className="block font-bold text-stone-700 mb-1">วัน/เวลา สิ้นสุด</label>
+                <label className="block font-bold text-stone-700 mb-1">{t("bn.endTime")}</label>
                 <input
                   type="datetime-local"
                   value={eventEndDate}
@@ -3250,17 +3254,17 @@ function MerchantQrModal({ isOpen, shop, onClose }: MerchantQrModalProps) {
             </div>
 
             <div className="text-[10px]">
-              <label className="block font-bold text-stone-700 mb-1">โควต้าจำนวนครั้งที่สแกนได้ตลอดงาน</label>
+              <label className="block font-bold text-stone-700 mb-1">{t("sm.quota")}</label>
               <select
                 value={eventScanMode}
                 onChange={(e) => setEventScanMode(e.target.value)}
                 className="w-full bg-white border border-stone-200 rounded-xl px-2.5 py-1.5 font-bold text-stone-800 focus:outline-none focus:ring-1 focus:ring-amber-500"
               >
-                <option value="unlimited">ไม่จำกัดจำนวนครั้ง (สแกนได้ตลอดงาน)</option>
-                <option value="50">50 ครั้งแรกตลอดงาน</option>
-                <option value="100">100 ครั้งแรกตลอดงาน</option>
-                <option value="500">500 ครั้งแรกตลอดงาน</option>
-                <option value="custom">⚙️ กำหนดจำนวนครั้งเอง...</option>
+                <option value="unlimited">{t("sm.unlimited")}</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="500">500</option>
+                <option value="custom">{t("sm.customQuota")}</option>
               </select>
 
               {eventScanMode === "custom" && (
@@ -3272,9 +3276,9 @@ function MerchantQrModal({ isOpen, shop, onClose }: MerchantQrModalProps) {
                     value={customEventScans}
                     onChange={(e) => setCustomEventScans(Math.max(1, parseInt(e.target.value) || 1))}
                     className="w-full bg-white border border-amber-300 rounded-lg px-2 py-1 font-bold text-stone-900 text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none"
-                    placeholder="เช่น 200"
+                    placeholder={t("sm.quotaPlaceholder")}
                   />
-                  <span className="text-[10px] font-bold text-stone-600 shrink-0">ครั้ง</span>
+                  <span className="text-[10px] font-bold text-stone-600 shrink-0">{t("sm.timesUnit")}</span>
                 </div>
               )}
             </div>
@@ -3287,7 +3291,7 @@ function MerchantQrModal({ isOpen, shop, onClose }: MerchantQrModalProps) {
             <span className={`w-2 h-2 rounded-full ${mode === "event" ? "bg-amber-600" : "bg-emerald-500"} animate-ping`} />
             <span className={`text-[10px] font-black uppercase tracking-widest ${mode === "event" ? "text-amber-800" : "text-emerald-700"}`}>
               {mode === "event"
-                ? `EVENT: ${eventName || 'จัดงานอีเวนต์'}`
+                ? `EVENT: ${eventName || t("sm.qrEvent")}`
                 : "OFFICIAL STAMP TRIGGER"}
             </span>
           </div>
@@ -3301,10 +3305,10 @@ function MerchantQrModal({ isOpen, shop, onClose }: MerchantQrModalProps) {
             <div className="bg-amber-100/80 p-2.5 rounded-xl border border-amber-200 text-[10px] font-bold text-amber-950 space-y-0.5">
               <p className="flex items-center justify-center gap-1 text-[#231C18]">
                 <Calendar size={11} className="text-amber-700" />
-                <span>ช่วงเวลา: {formatEventDisplayDate(eventStartDate)} - {formatEventDisplayDate(eventEndDate)}</span>
+                <span>{t("sm.period")}: {formatEventDisplayDate(eventStartDate)} - {formatEventDisplayDate(eventEndDate)}</span>
               </p>
               <p className="text-amber-800">
-                โควต้า: {effectiveEventMaxScans === "unlimited" ? "ไม่จำกัดจำนวนครั้ง" : `${effectiveEventMaxScans} ครั้งตลอดกิจกรรม`}
+                {t("sm.quotaShort")}: {effectiveEventMaxScans === "unlimited" ? t("sm.unlimited") : `${effectiveEventMaxScans}`}
               </p>
             </div>
           )}
@@ -3329,7 +3333,7 @@ function MerchantQrModal({ isOpen, shop, onClose }: MerchantQrModalProps) {
               className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-stone-100 hover:bg-stone-200 transition flex items-center gap-1 cursor-pointer"
             >
               {copied ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
-              <span>{copied ? "คัดลอกแล้ว" : "คัดลอก"}</span>
+              <span>{copied ? t("sm.copied") : t("sm.copy")}</span>
             </button>
           </div>
         </div>
@@ -3340,13 +3344,13 @@ function MerchantQrModal({ isOpen, shop, onClose }: MerchantQrModalProps) {
             className="flex-1 py-2.5 rounded-xl border border-stone-200 hover:bg-stone-50 text-xs font-black text-[#231C18] flex items-center justify-center gap-2 transition cursor-pointer"
           >
             <Printer size={14} />
-            <span>พิมพ์ป้าย QR (Print)</span>
+            <span>{t("sm.printQr")}</span>
           </button>
           <button
             onClick={onClose}
             className="px-5 py-2.5 rounded-xl bg-[#FD775C] text-white hover:bg-[#E31E27] text-xs font-black transition cursor-pointer"
           >
-            ปิดหน้าต่าง
+            {t("common.close")}
           </button>
         </div>
       </div>
@@ -3374,6 +3378,7 @@ function AdminShopSummaryModal({
   onDelete,
   onViewQr,
 }: AdminShopSummaryModalProps) {
+  const { t } = useLang();
   if (!isOpen || !shop) return null;
 
   const [activeTab, setActiveTab] = useState<"overview" | "collectors" | "time" | "monthly">("overview");
@@ -3593,8 +3598,8 @@ function AdminShopSummaryModal({
   const formatMonthLabel = (yearMonthKey: string) => {
     const [year, month] = yearMonthKey.split("-");
     const monthNames = [
-      "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
-      "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
+      "January","February","March","April","May","June",
+      "July","August","September","October","November","December"
     ];
     const mIdx = parseInt(month, 10) - 1;
     const thYear = parseInt(year, 10) + 543;
@@ -3632,7 +3637,7 @@ function AdminShopSummaryModal({
                 {shop.category || "Shop"}
               </span>
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500 text-white">
-                 สถิติแสตมป์ร้านค้า
+                 {t("sm.statsTitle")}
               </span>
               {shop.prefecture && (
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/20 backdrop-blur-md text-white">
@@ -3658,7 +3663,7 @@ function AdminShopSummaryModal({
             }`}
           >
             <PieChart size={14} />
-            <span>ภาพรวม</span>
+            <span>{t("sm.tabOverview")}</span>
           </button>
 
           <button
@@ -3670,7 +3675,7 @@ function AdminShopSummaryModal({
             }`}
           >
             <Users size={14} />
-            <span>คนเก็บแสตมป์ ({uniqueCollectorsCount})</span>
+            <span>{t("sm.tabCollectors")} ({uniqueCollectorsCount})</span>
           </button>
 
           <button
@@ -3682,7 +3687,7 @@ function AdminShopSummaryModal({
             }`}
           >
             <Clock size={14} />
-            <span>ช่วงเวลา</span>
+            <span>{t("sm.tabTime")}</span>
           </button>
 
           <button
@@ -3694,7 +3699,7 @@ function AdminShopSummaryModal({
             }`}
           >
             <Calendar size={14} />
-            <span>สรุปรายเดือน</span>
+            <span>{t("sm.tabMonthly")}</span>
           </button>
         </div>
 
@@ -3703,7 +3708,7 @@ function AdminShopSummaryModal({
           {loadingStamps ? (
             <div className="flex flex-col items-center justify-center py-10 text-stone-500 space-y-2">
               <Loader2 size={24} className="animate-spin text-amber-600" />
-              <span className="text-xs font-bold">กำลังโหลดข้อมูลสถิติแสตมป์...</span>
+              <span className="text-xs font-bold">{t("sm.loadingStats")}</span>
             </div>
           ) : (
             <>
@@ -3714,42 +3719,42 @@ function AdminShopSummaryModal({
                     <div className="bg-amber-50/90 border border-amber-200 p-3.5 rounded-2xl">
                       <div className="flex items-center gap-1.5 text-amber-700 text-xs font-bold mb-1">
                         <Stamp size={15} />
-                        <span>ยอดแสตมป์รวม</span>
+                        <span>{t("sm.totalStamps")}</span>
                       </div>
-                      <p className="text-2xl font-black text-amber-900">{totalStampsCount} ครั้ง</p>
-                      <p className="text-[10px] text-amber-700/80 font-semibold mt-0.5">การสแกนทั้งหมด</p>
+                      <p className="text-2xl font-black text-amber-900">{totalStampsCount}</p>
+                      <p className="text-[10px] text-amber-700/80 font-semibold mt-0.5">{t("sm.allScans")}</p>
                     </div>
 
                     <div className="bg-sky-50/90 border border-sky-200 p-3.5 rounded-2xl">
                       <div className="flex items-center gap-1.5 text-sky-700 text-xs font-bold mb-1">
                         <UserCheck size={15} />
-                        <span>คนสะสมไม่ซ้ำหน้า</span>
+                        <span>{t("sm.uniqueCollectors")}</span>
                       </div>
-                      <p className="text-2xl font-black text-sky-900">{uniqueCollectorsCount} คน</p>
-                      <p className="text-[10px] text-sky-700/80 font-semibold mt-0.5">นักสะสมยูนีค</p>
+                      <p className="text-2xl font-black text-sky-900">{uniqueCollectorsCount}</p>
+                      <p className="text-[10px] text-sky-700/80 font-semibold mt-0.5">{t("sm.uniqueShort")}</p>
                     </div>
 
                     <div className="bg-emerald-50/90 border border-emerald-200 p-3.5 rounded-2xl col-span-2 sm:col-span-1">
                       <div className="flex items-center gap-1.5 text-emerald-700 text-xs font-bold mb-1">
                         <Star size={15} />
-                        <span>คะแนนรีวิว</span>
+                        <span>{t("sm.reviewScore")}</span>
                       </div>
                       <p className="text-2xl font-black text-emerald-900">
-                        {ratingVal > 0 ? `${ratingVal.toFixed(1)} / 5.0` : "ไม่มีคะแนน"}
+                        {ratingVal > 0 ? `${ratingVal.toFixed(1)} / 5.0` : t("sm.noRating")}
                       </p>
-                      <p className="text-[10px] text-emerald-700/80 font-semibold mt-0.5">จาก {reviewsCount} รีวิว</p>
+                      <p className="text-[10px] text-emerald-700/80 font-semibold mt-0.5">{t("sm.fromReviews").replace("{n}", String(reviewsCount))}</p>
                     </div>
                   </div>
 
                   <div className="bg-stone-50 p-4 rounded-2xl border space-y-2.5 text-xs text-[#231C18]" style={{ borderColor: C.line }}>
                     <div className="flex items-start justify-between gap-2 border-b pb-2" style={{ borderColor: C.line }}>
-                      <span className="font-bold text-[#8A7870]">ที่อยู่ร้านค้า:</span>
-                      <span className="font-semibold text-right max-w-[260px] truncate">{shop.address || "ไม่ได้ระบุที่อยู่"}</span>
+                      <span className="font-bold text-[#8A7870]">{t("sm.shopAddress")}</span>
+                      <span className="font-semibold text-right max-w-[260px] truncate">{shop.address || t("sm.noAddress")}</span>
                     </div>
 
                     {shop.website && (
                       <div className="flex items-center justify-between gap-2 border-b pb-2" style={{ borderColor: C.line }}>
-                        <span className="font-bold text-[#8A7870]">เว็บไซต์:</span>
+                        <span className="font-bold text-[#8A7870]">{t("sm.f.website")}</span>
                         <a
                           href={shop.website}
                           target="_blank"
@@ -3762,19 +3767,19 @@ function AdminShopSummaryModal({
                     )}
 
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-bold text-[#8A7870]">เจ้าของร้าน (Owner ID):</span>
+                      <span className="font-bold text-[#8A7870]">{t("sm.ownerId")}</span>
                       <span
                         className="font-medium text-xs text-stone-700 truncate max-w-[260px] text-right"
-                        title={shop.owner_id ? `Owner ID: ${shop.owner_id}` : "ไม่มี Owner ID"}
+                        title={shop.owner_id ? `Owner ID: ${shop.owner_id}` : t("sm.noOwnerId")}
                       >
                         {loadingOwner ? (
-                          <span className="text-stone-400 font-mono text-[11px] animate-pulse">กำลังโหลด...</span>
+                          <span className="text-stone-400 font-mono text-[11px] animate-pulse">{t("common.loading")}</span>
                         ) : ownerDisplayText ? (
                           <span className="font-semibold text-stone-800">{ownerDisplayText}</span>
                         ) : shop.owner_id ? (
                           <span className="font-mono text-[11px] text-stone-600">{shop.owner_id}</span>
                         ) : (
-                          <span className="text-stone-500">ระบบ (Admin/Unassigned)</span>
+                          <span className="text-stone-500">{t("sm.systemUnassigned")}</span>
                         )}
                       </span>
                     </div>
@@ -3788,16 +3793,16 @@ function AdminShopSummaryModal({
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-black uppercase text-stone-700 flex items-center gap-1.5">
                       <Users size={14} className="text-amber-600" />
-                      <span>รายชื่อผู้สะสมแสตมป์ ({uniqueCollectorsCount} คน)</span>
+                      <span>{t("sm.collectorList")} ({uniqueCollectorsCount})</span>
                     </h4>
-                    <span className="text-[11px] text-stone-500 font-semibold">เรียงตามจำนวนสแกน</span>
+                    <span className="text-[11px] text-stone-500 font-semibold">{t("sm.sortByScans")}</span>
                   </div>
 
                   {uniqueCollectorsList.length === 0 ? (
                     <div className="text-center py-8 bg-stone-50 rounded-2xl border border-stone-200/80">
                       <Stamp size={28} className="mx-auto text-stone-400 mb-2" />
-                      <p className="text-xs font-bold text-stone-600">ยังไม่มีผู้สะสมแสตมป์ร้านนี้</p>
-                      <p className="text-[11px] text-stone-400 mt-0.5">เมื่อมีผู้ใช้สแกนเช็คอิน ข้อมูลจะปรากฏที่นี่</p>
+                      <p className="text-xs font-bold text-stone-600">{t("sm.noCollectors")}</p>
+                      <p className="text-[11px] text-stone-400 mt-0.5">{t("sm.noCollectorsHint")}</p>
                     </div>
                   ) : (
                     <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
@@ -3806,7 +3811,7 @@ function AdminShopSummaryModal({
                           item.profile?.display_name ||
                           item.profile?.full_name ||
                           item.profile?.username ||
-                          `ผู้ใช้ #${item.user_id.slice(0, 6)}`;
+                          `${t("log.d.user")} #${item.user_id.slice(0, 6)}`;
                         const avatar = item.profile?.avatar_url;
 
                         return (
@@ -3832,13 +3837,13 @@ function AdminShopSummaryModal({
                               <div className="min-w-0">
                                 <p className="text-xs font-bold text-stone-900 truncate">{name}</p>
                                 <p className="text-[10px] text-stone-500 font-medium truncate">
-                                  ล่าสุด: {formatThaiDate(item.lastCollected)}
+                                  {t("sm.latest")}: {formatThaiDate(item.lastCollected)}
                                 </p>
                               </div>
                             </div>
 
                             <span className="px-2.5 py-1 rounded-full text-xs font-black bg-amber-50 text-amber-800 border border-amber-200 shrink-0">
-                              {item.count} สแกน
+                              {item.count} {t("sm.scansUnit")}
                             </span>
                           </div>
                         );
@@ -3854,9 +3859,9 @@ function AdminShopSummaryModal({
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-black uppercase text-stone-700 flex items-center gap-1.5">
                       <Clock size={14} className="text-amber-600" />
-                      <span>สถิติช่วงเวลาการสแกนแสตมป์</span>
+                      <span>{t("sm.timeStats")}</span>
                     </h4>
-                    <span className="text-[11px] text-stone-500 font-semibold">รวมทั้งหมด {stampsData.length} ครั้ง</span>
+                    <span className="text-[11px] text-stone-500 font-semibold">{t("sm.totalTimes").replace("{n}", String(stampsData.length))}</span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -3865,9 +3870,9 @@ function AdminShopSummaryModal({
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
                           <Sunrise size={15} className="text-amber-600 shrink-0" />
-                          <span>ช่วงเช้า (06:00 - 11:59 น.)</span>
+                          <span>{t("sm.morning")} (06:00 - 11:59)</span>
                         </span>
-                        <span className="text-xs font-black text-amber-900">{timeSlots.morning} ครั้ง</span>
+                        <span className="text-xs font-black text-amber-900">{timeSlots.morning}</span>
                       </div>
                       <div className="w-full h-2 bg-amber-200/60 rounded-full overflow-hidden">
                         <div
@@ -3876,7 +3881,7 @@ function AdminShopSummaryModal({
                         />
                       </div>
                       <span className="text-[10px] font-bold text-amber-700/90 block text-right">
-                        {timeSlotPercentages.morning}% ของทั้งหมด
+                        {timeSlotPercentages.morning}% {t("sm.ofTotal")}
                       </span>
                     </div>
 
@@ -3885,9 +3890,9 @@ function AdminShopSummaryModal({
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-orange-900 flex items-center gap-1.5">
                           <Sun size={15} className="text-orange-600 shrink-0" />
-                          <span>ช่วงบ่าย (12:00 - 17:59 น.)</span>
+                          <span>{t("sm.afternoon")} (12:00 - 17:59)</span>
                         </span>
-                        <span className="text-xs font-black text-orange-900">{timeSlots.afternoon} ครั้ง</span>
+                        <span className="text-xs font-black text-orange-900">{timeSlots.afternoon}</span>
                       </div>
                       <div className="w-full h-2 bg-orange-200/60 rounded-full overflow-hidden">
                         <div
@@ -3896,7 +3901,7 @@ function AdminShopSummaryModal({
                         />
                       </div>
                       <span className="text-[10px] font-bold text-orange-700/90 block text-right">
-                        {timeSlotPercentages.afternoon}% ของทั้งหมด
+                        {timeSlotPercentages.afternoon}% {t("sm.ofTotal")}
                       </span>
                     </div>
 
@@ -3905,9 +3910,9 @@ function AdminShopSummaryModal({
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
                           <Sunset size={15} className="text-indigo-600 shrink-0" />
-                          <span>ช่วงเย็น/ค่ำ (18:00 - 23:59 น.)</span>
+                          <span>{t("sm.evening")} (18:00 - 23:59)</span>
                         </span>
-                        <span className="text-xs font-black text-indigo-900">{timeSlots.evening} ครั้ง</span>
+                        <span className="text-xs font-black text-indigo-900">{timeSlots.evening}</span>
                       </div>
                       <div className="w-full h-2 bg-indigo-200/60 rounded-full overflow-hidden">
                         <div
@@ -3916,7 +3921,7 @@ function AdminShopSummaryModal({
                         />
                       </div>
                       <span className="text-[10px] font-bold text-indigo-700/90 block text-right">
-                        {timeSlotPercentages.evening}% ของทั้งหมด
+                        {timeSlotPercentages.evening}% {t("sm.ofTotal")}
                       </span>
                     </div>
 
@@ -3925,9 +3930,9 @@ function AdminShopSummaryModal({
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                           <Moon size={15} className="text-slate-600 shrink-0" />
-                          <span>ช่วงดึก (00:00 - 05:59 น.)</span>
+                          <span>{t("sm.night")} (00:00 - 05:59)</span>
                         </span>
-                        <span className="text-xs font-black text-slate-900">{timeSlots.night} ครั้ง</span>
+                        <span className="text-xs font-black text-slate-900">{timeSlots.night}</span>
                       </div>
                       <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
                         <div
@@ -3936,7 +3941,7 @@ function AdminShopSummaryModal({
                         />
                       </div>
                       <span className="text-[10px] font-bold text-slate-600 block text-right">
-                        {timeSlotPercentages.night}% ของทั้งหมด
+                        {timeSlotPercentages.night}% {t("sm.ofTotal")}
                       </span>
                     </div>
                   </div>
@@ -3949,15 +3954,15 @@ function AdminShopSummaryModal({
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-black uppercase text-stone-700 flex items-center gap-1.5">
                       <Calendar size={14} className="text-amber-600" />
-                      <span>สรุปยอดสแกนแสตมป์แยกรายเดือน</span>
+                      <span>{t("sm.monthlySummary")}</span>
                     </h4>
-                    <span className="text-[11px] text-stone-500 font-semibold">จำนวน {sortedMonths.length} เดือน</span>
+                    <span className="text-[11px] text-stone-500 font-semibold">{sortedMonths.length} {t("sm.monthsUnit")}</span>
                   </div>
 
                   {sortedMonths.length === 0 ? (
                     <div className="text-center py-8 bg-stone-50 rounded-2xl border border-stone-200/80">
                       <Calendar size={28} className="mx-auto text-stone-400 mb-2" />
-                      <p className="text-xs font-bold text-stone-600">ยังไม่มีข้อมูลรายเดือน</p>
+                      <p className="text-xs font-bold text-stone-600">{t("sm.noMonthly")}</p>
                     </div>
                   ) : (
                     <div className="space-y-2.5 max-h-[320px] overflow-y-auto pr-1">
@@ -3970,7 +3975,7 @@ function AdminShopSummaryModal({
                           >
                             <div className="flex items-center justify-between text-xs">
                               <span className="font-bold text-stone-800">{formatMonthLabel(mKey)}</span>
-                              <span className="font-black text-amber-700">{count} สแกน</span>
+                              <span className="font-black text-amber-700">{count} {t("sm.scansUnit")}</span>
                             </div>
                             <div className="w-full h-2.5 bg-stone-100 rounded-full overflow-hidden">
                               <div
@@ -3999,7 +4004,7 @@ function AdminShopSummaryModal({
               }}
               className="flex-1 py-2 px-3 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
             >
-              <Edit3 size={13} /> แก้ไขข้อมูล
+              <Edit3 size={13} /> {t("ach.tip.edit")}
             </button>
 
             <button
@@ -4020,7 +4025,7 @@ function AdminShopSummaryModal({
             }}
             className="py-2 px-3 rounded-xl border border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
           >
-            <Trash2 size={13} /> ลบร้าน
+            <Trash2 size={13} /> {t("ach.tip.delete")}
           </button>
         </div>
       </div>
@@ -4046,6 +4051,7 @@ export function StoreScheduleModal({
   onClose,
   onScheduleUpdated,
 }: StoreScheduleModalProps) {
+  const { t } = useLang();
   const [isClosedToday, setIsClosedToday] = useState<boolean>(false);
   const [openTime, setOpenTime] = useState<string>("09:00");
   const [closeTime, setCloseTime] = useState<string>("18:00");
@@ -4070,7 +4076,7 @@ export function StoreScheduleModal({
 
   if (!isOpen || !shop) return null;
 
-  const ALL_DAYS = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"];
+  const ALL_DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 
   const toggleClosedDay = (day: string) => {
     setClosedDays((prev) =>
@@ -4081,10 +4087,10 @@ export function StoreScheduleModal({
   const handleAddHoliday = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newHolidayDate) {
-      alert("กรุณาเลือกวันที่วันหยุดพิเศษ");
+      alert(t("sm.needHolidayDate"));
       return;
     }
-    const title = newHolidayTitle.trim() || "วันหยุดพิเศษ";
+    const title = newHolidayTitle.trim() || t("sm.specialHoliday");
     const newItem: HolidayItem = {
       id: Date.now().toString(),
       date: newHolidayDate,
@@ -4138,10 +4144,10 @@ export function StoreScheduleModal({
       } catch (e) {}
 
       onScheduleUpdated(scheduleObj);
-      alert("บันทึกตารางเวลาเปิด-ปิดและวันหยุดเรียบร้อยแล้ว!");
+      alert(t("sm.scheduleOk"));
       onClose();
     } catch (err: any) {
-      alert("ไม่สามารถบันทึกตารางเวลาได้: " + (err.message || "Failed"));
+      alert(t("sm.scheduleFail") + (err.message || "Failed"));
     } finally {
       setSaving(false);
     }
@@ -4155,11 +4161,11 @@ export function StoreScheduleModal({
     } else if (presetType === "weekdays") {
       setOpenTime("10:00");
       setCloseTime("20:00");
-      setClosedDays(["เสาร์", "อาทิตย์"]);
+      setClosedDays(["Sat","Sun"]);
     } else if (presetType === "mon_off") {
       setOpenTime("08:30");
       setCloseTime("17:30");
-      setClosedDays(["จันทร์"]);
+      setClosedDays(["Mon"]);
     }
   };
 
@@ -4185,8 +4191,8 @@ export function StoreScheduleModal({
               <Clock size={20} />
             </div>
             <div>
-              <h3 className="text-base font-black text-[#231C18]">จัดการเวลาเปิด-ปิด & ปฏิทินวันหยุด</h3>
-              <p className="text-xs text-[#8A7870] font-semibold truncate max-w-sm">ร้าน: {shop.shop_name}</p>
+              <h3 className="text-base font-black text-[#231C18]">{t("sm.scheduleTitle")}</h3>
+              <p className="text-xs text-[#8A7870] font-semibold truncate max-w-sm">{t("log.d.shop")}: {shop.shop_name}</p>
             </div>
           </div>
           <button
@@ -4201,7 +4207,7 @@ export function StoreScheduleModal({
         {/* Status Preview Header Banner */}
         <div className="px-6 py-3 bg-[#FD775C] text-white flex items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-2">
-            <span className="font-bold text-stone-300">สถานะคำนวณวันนี้:</span>
+            <span className="font-bold text-stone-300">{t("sm.todayStatus")}</span>
             <span className={`px-2.5 py-0.5 rounded-full font-black text-[11px] ${statusInfo.badgeBg}`}>
               {statusInfo.badgeText}
             </span>
@@ -4221,7 +4227,7 @@ export function StoreScheduleModal({
             style={{ borderColor: activeTab === "today" ? C.line : "transparent" }}
           >
             <Power size={14} className={isClosedToday ? "text-rose-600" : "text-emerald-600"} />
-            <span>สวิตช์วันนี้ปิด</span>
+            <span>{t("sm.todayToggle")}</span>
           </button>
 
           <button
@@ -4234,7 +4240,7 @@ export function StoreScheduleModal({
             style={{ borderColor: activeTab === "hours" ? C.line : "transparent" }}
           >
             <Clock size={14} className="text-amber-600" />
-            <span>เวลาเปิด-ปิดประจำสัปดาห์</span>
+            <span>{t("sm.weeklyHours")}</span>
           </button>
 
           <button
@@ -4247,7 +4253,7 @@ export function StoreScheduleModal({
             style={{ borderColor: activeTab === "holidays" ? C.line : "transparent" }}
           >
             <CalendarOff size={14} className="text-rose-600" />
-            <span>ปฏิทินวันหยุด ({holidays.length})</span>
+            <span>{t("sm.holidayCalendar")} ({holidays.length})</span>
           </button>
         </div>
 
@@ -4259,11 +4265,10 @@ export function StoreScheduleModal({
               <div className="p-5 rounded-2xl border bg-stone-50/50 space-y-3" style={{ borderColor: C.line }}>
                 <h4 className="text-sm font-black text-[#231C18] flex items-center gap-2">
                   <Power size={16} className="text-amber-600" />
-                  <span>สวิตช์ปิดให้บริการร้านค้าวันนี้ (Quick Today Close Toggle)</span>
+                  <span>{t("sm.quickCloseTitle")}</span>
                 </h4>
                 <p className="text-xs text-[#8A7870] font-semibold leading-relaxed">
-                  กดปุ่มนี้เพื่อสลับสถานะเป็น <strong>"ปิดบริการชั่วคราววันนี้"</strong> แบบเร่งด่วนทันที โดยที่ไม่ต้องแก้ไขตารางเวลาเปิด-ปิดหลัก เหมาะสำหรับกรณีติดภารกิจด่วน หรือปิดร้านก่อนเวลา
-                </p>
+                  {t("sm.quickCloseDesc")}</p>
 
                 <div className="pt-3 border-t flex flex-col sm:flex-row items-center justify-between gap-4" style={{ borderColor: C.line }}>
                   <div className="flex items-center gap-3">
@@ -4272,10 +4277,10 @@ export function StoreScheduleModal({
                     </div>
                     <div>
                       <p className="text-xs font-black text-[#231C18]">
-                        {isClosedToday ? " สถานะปัจจุบัน: วันนี้ปิดบริการชั่วคราว" : " สถานะปัจจุบัน: เปิดให้บริการตามตารางเวลา"}
+                        {isClosedToday ? t("sm.statusClosedToday") : t("sm.statusOpenNormal")}
                       </p>
                       <p className="text-[11px] text-[#8A7870]">
-                        {isClosedToday ? "นักท่องเที่ยวจะเห็นป้ายเตือนว่าร้านปิดบริการวันนี้" : `เวลาทำการวันนี้: ${openTime} - ${closeTime}`}
+                        {isClosedToday ? t("sm.closedNotice") : `${t("sm.todayHours")}: ${openTime} - ${closeTime}`}
                       </p>
                     </div>
                   </div>
@@ -4290,7 +4295,7 @@ export function StoreScheduleModal({
                     }`}
                   >
                     <Power size={16} />
-                    <span>{isClosedToday ? "เปลี่ยนเป็น: เปิดบริการวันนี้" : "เปลี่ยนเป็น: วันนี้ปิดบริการ"}</span>
+                    <span>{isClosedToday ? t("sm.switchOpen") : t("sm.switchClose")}</span>
                   </button>
                 </div>
               </div>
@@ -4302,7 +4307,7 @@ export function StoreScheduleModal({
             <div className="space-y-6">
               {/* Presets */}
               <div className="space-y-2">
-                <label className="text-xs font-black text-[#231C18] block">เลือกรูปแบบเวลาสำเร็จรูป (Presets):</label>
+                <label className="text-xs font-black text-[#231C18] block">{t("sm.presets")}</label>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
@@ -4310,7 +4315,7 @@ export function StoreScheduleModal({
                     className="px-3 py-2 rounded-xl border bg-stone-50 hover:bg-amber-50 hover:border-amber-300 text-[#231C18] text-xs font-bold transition cursor-pointer"
                     style={{ borderColor: C.line }}
                   >
-                     เปิดทุกวัน 09:00 - 18:00
+                     {t("sm.presetDaily")} 09:00 - 18:00
                   </button>
                   <button
                     type="button"
@@ -4318,7 +4323,7 @@ export function StoreScheduleModal({
                     className="px-3 py-2 rounded-xl border bg-stone-50 hover:bg-amber-50 hover:border-amber-300 text-[#231C18] text-xs font-bold transition cursor-pointer"
                     style={{ borderColor: C.line }}
                   >
-                     10:00 - 20:00 (หยุดเสาร์-อาทิตย์)
+                     10:00 - 20:00 ({t("sm.presetWeekend")})
                   </button>
                   <button
                     type="button"
@@ -4326,7 +4331,7 @@ export function StoreScheduleModal({
                     className="px-3 py-2 rounded-xl border bg-stone-50 hover:bg-amber-50 hover:border-amber-300 text-[#231C18] text-xs font-bold transition cursor-pointer"
                     style={{ borderColor: C.line }}
                   >
-                     08:30 - 17:30 (หยุดวันจันทร์)
+                     08:30 - 17:30 ({t("sm.presetMonday")})
                   </button>
                 </div>
               </div>
@@ -4334,7 +4339,7 @@ export function StoreScheduleModal({
               {/* Time inputs */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl border bg-stone-50/50" style={{ borderColor: C.line }}>
                 <div>
-                  <label className="text-xs font-black text-[#231C18] block mb-1">เวลาเปิด (Opening Time):</label>
+                  <label className="text-xs font-black text-[#231C18] block mb-1">{t("sm.openingTime")}</label>
                   <input
                     type="time"
                     value={openTime}
@@ -4344,7 +4349,7 @@ export function StoreScheduleModal({
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-black text-[#231C18] block mb-1">เวลาปิด (Closing Time):</label>
+                  <label className="text-xs font-black text-[#231C18] block mb-1">{t("sm.closingTime")}</label>
                   <input
                     type="time"
                     value={closeTime}
@@ -4358,8 +4363,8 @@ export function StoreScheduleModal({
               {/* Weekly Closed Days */}
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs font-black text-[#231C18] block">วันหยุดประจำสัปดาห์ (Weekly Closed Days):</label>
-                  <p className="text-[11px] text-[#8A7870] font-medium">คลิกเลือกวันหยุดทำการประจำของร้านค้า</p>
+                  <label className="text-xs font-black text-[#231C18] block">{t("sm.weeklyClosed")}</label>
+                  <p className="text-[11px] text-[#8A7870] font-medium">{t("sm.weeklyClosedHint")}</p>
                 </div>
 
                 <div className="flex flex-wrap gap-2">
@@ -4393,12 +4398,12 @@ export function StoreScheduleModal({
               <form onSubmit={handleAddHoliday} className="p-4 rounded-2xl border bg-stone-50/50 space-y-3" style={{ borderColor: C.line }}>
                 <h4 className="text-xs font-black text-[#231C18] flex items-center gap-1.5">
                   <CalendarOff size={15} className="text-rose-600" />
-                  <span>เพิ่มวันหยุดพิเศษ / ปฏิทินวันหยุด (Add Custom Holiday Date)</span>
+                  <span>{t("sm.addHoliday")}</span>
                 </h4>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[11px] font-bold text-[#8A7870] block mb-1">วันที่วันหยุด:</label>
+                    <label className="text-[11px] font-bold text-[#8A7870] block mb-1">{t("sm.holidayDate")}</label>
                     <input
                       type="date"
                       value={newHolidayDate}
@@ -4408,10 +4413,10 @@ export function StoreScheduleModal({
                     />
                   </div>
                   <div>
-                    <label className="text-[11px] font-bold text-[#8A7870] block mb-1">เหตุผล / ชื่อวันหยุด (เช่น สงกรานต์):</label>
+                    <label className="text-[11px] font-bold text-[#8A7870] block mb-1">{t("sm.holidayName")}</label>
                     <input
                       type="text"
-                      placeholder="เช่น วันหยุดเทศกาล, ปิดปรับปรุงร้าน"
+                      placeholder={t("sm.holidayNamePlaceholder")}
                       value={newHolidayTitle}
                       onChange={(e) => setNewHolidayTitle(e.target.value)}
                       className="w-full p-2.5 rounded-xl border bg-white text-xs font-semibold outline-hidden focus:border-amber-500"
@@ -4426,19 +4431,19 @@ export function StoreScheduleModal({
                     className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-black rounded-xl flex items-center gap-1.5 transition shadow-xs cursor-pointer"
                   >
                     <Plus size={14} />
-                    <span>+ เพิ่มวันหยุดพิเศษลงปฏิทิน</span>
+                    <span>+ {t("sm.addHolidayBtn")}</span>
                   </button>
                 </div>
               </form>
 
               {/* Holiday List */}
               <div className="space-y-2">
-                <label className="text-xs font-black text-[#231C18] block">รายการวันหยุดพิเศษที่ตั้งไว้ ({holidays.length}):</label>
+                <label className="text-xs font-black text-[#231C18] block">{t("sm.holidayList")} ({holidays.length}):</label>
 
                 {holidays.length === 0 ? (
                   <div className="p-6 text-center border border-dashed rounded-2xl bg-stone-50/30 text-stone-400 space-y-1" style={{ borderColor: C.line }}>
-                    <p className="text-xs font-bold text-[#231C18]">ยังไม่มีวันหยุดพิเศษในปฏิทิน</p>
-                    <p className="text-[11px] text-[#8A7870]">คุณสามารถกำหนดวันหยุดเทศกาลหรือวันปิดปรับปรุงร้านล่วงหน้าได้จากแบบฟอร์มด้านบน</p>
+                    <p className="text-xs font-bold text-[#231C18]">{t("sm.noHolidays")}</p>
+                    <p className="text-[11px] text-[#8A7870]">{t("sm.noHolidaysHint")}</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -4454,7 +4459,7 @@ export function StoreScheduleModal({
                           </div>
                           <div>
                             <p className="text-xs font-black text-[#231C18]">{h.date} — {h.title}</p>
-                            <p className="text-[10px] text-rose-600 font-semibold">ร้านจะแสดงสถานะปิดให้บริการในวันที่นี้โดยอัตโนมัติ</p>
+                            <p className="text-[10px] text-rose-600 font-semibold">{t("sm.holidayAutoNote")}</p>
                           </div>
                         </div>
 
@@ -4462,7 +4467,7 @@ export function StoreScheduleModal({
                           type="button"
                           onClick={() => handleRemoveHoliday(h.id)}
                           className="p-2 rounded-lg text-rose-600 hover:bg-rose-50 transition cursor-pointer"
-                          title="ลบวันหยุดนี้"
+                          title={t("sm.deleteHoliday")}
                         >
                           <Trash2 size={15} />
                         </button>
@@ -4483,7 +4488,7 @@ export function StoreScheduleModal({
             className="px-5 py-2.5 rounded-xl border text-xs font-bold hover:bg-stone-100 transition cursor-pointer"
             style={{ borderColor: C.line }}
           >
-            ยกเลิก
+            {t("common.cancel")}
           </button>
 
           <button
@@ -4493,7 +4498,7 @@ export function StoreScheduleModal({
             className="px-6 py-2.5 rounded-xl text-xs font-black text-white bg-[#E0533C] hover:bg-[#c8432d] transition flex items-center gap-2 cursor-pointer shadow-xs disabled:opacity-50"
           >
             {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-            <span>บันทึกการตั้งค่าตารางเวลา</span>
+            <span>{t("sm.saveSchedule")}</span>
           </button>
         </div>
       </div>

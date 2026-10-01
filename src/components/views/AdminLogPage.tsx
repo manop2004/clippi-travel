@@ -32,6 +32,7 @@ import { supabase } from "../../supabaseClient";
 import { C } from "../../constants/mockData";
 import { timeAgo, resolveUserAvatarUrl } from "../../lib/activityHelpers";
 import { UserAvatar } from "../UserAvatar";
+import { useLang } from "../../lib/i18n";
 
 interface UnifiedLogRow {
   id: string;
@@ -53,27 +54,28 @@ interface UnifiedLogRow {
     | null;
 }
 
-function formatAdminDetailText(detail: any): string | null {
+function formatAdminDetailText(detail: any, t: (k: string) => string): string | null {
   if (!detail) return null;
   if (typeof detail === "string") {
     try {
       const parsed = JSON.parse(detail);
-      return formatAdminDetailText(parsed);
+      return formatAdminDetailText(parsed, t);
     } catch {
       return detail;
     }
   }
 
   const parts: string[] = [];
-  if (detail.note) parts.push(`หมายเหตุ: ${detail.note}`);
-  if (detail.reason) parts.push(`เหตุผล: ${detail.reason}`);
-  if (detail.rejection_reason) parts.push(`เหตุผลที่ปฏิเสธ: ${detail.rejection_reason}`);
+  if (detail.note) parts.push(`${t("log.d.note")}: ${detail.note}`);
+  if (detail.reason) parts.push(`${t("log.d.reason")}: ${detail.reason}`);
+  if (detail.rejection_reason) parts.push(`${t("log.d.rejectReason")}: ${detail.rejection_reason}`);
 
   if (parts.length > 0) return parts.join(" | ");
   return null;
 }
 
 export default function AdminLogPage() {
+  const { t } = useLang();
   const [logs, setLogs] = useState<UnifiedLogRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -212,14 +214,14 @@ export default function AdminLogPage() {
         }
       });
 
-      const resolveActorIdentifier = (userId?: string, detailEmail?: string, actorObj?: any, fallbackRole = "ผู้ใช้งาน") => {
+      const resolveActorIdentifier = (userId?: string, detailEmail?: string, actorObj?: any, fallbackRole = "") => {
         const email = detailEmail || actorObj?.email || (userId ? localStorage.getItem(`user_email_${userId}`) : null);
         if (email) return email;
 
         const cachedName = userId ? localStorage.getItem(`user_display_name_${userId}`) : null;
         const name = cachedName || actorObj?.display_name || actorObj?.full_name || actorObj?.username;
         if (name) return name;
-        if (userId) return `ผู้ใช้ #${String(userId).slice(0, 8)}`;
+        if (userId) return `${t("log.d.user")} #${String(userId).slice(0, 8)}`;
         return fallbackRole;
       };
 
@@ -273,41 +275,41 @@ export default function AdminLogPage() {
           ? profileMap.get(uid) || (detailEmail ? profileMap.get(detailEmail.toLowerCase()) : {})
           : (detailEmail ? profileMap.get(detailEmail.toLowerCase()) || {} : {});
 
-        const actorName = resolveActorIdentifier(uid, detailEmail, actor, row.action_type === "user_login" ? "ผู้ใช้งานระบบ" : "แอดมินระบบ");
+        const actorName = resolveActorIdentifier(uid, detailEmail, actor, row.action_type === "user_login" ? t("log.d.systemUser") : t("log.d.sysAdmin"));
 
-        let actionTitle = row.action_type || "ดำเนินการระบบ";
+        let actionTitle = row.action_type || t("log.a.system");
         let category: UnifiedLogRow["category"] = "admin";
         let badgeColor = "bg-amber-100 text-amber-900 border-amber-300";
 
         if (row.action_type === "user_login" || row.action_type === "login") {
-          actionTitle = "เข้าสู่ระบบสำเร็จ (Login)";
+          actionTitle = t("log.a.login");
           category = "login";
           badgeColor = "bg-sky-100 text-sky-900 border-sky-300";
         } else if (row.action_type === "user_logout" || row.action_type === "logout") {
-          actionTitle = "ออกจากระบบ (Logout)";
+          actionTitle = t("log.a.logout");
           category = "login";
           badgeColor = "bg-slate-100 text-slate-800 border-slate-300";
         } else if (row.action_type === "approve_submission") {
-          actionTitle = "อนุมัติสถานที่เสนอใหม่";
+          actionTitle = t("log.a.approve");
           category = "submission";
         } else if (row.action_type === "reject_submission") {
-          actionTitle = "ปฏิเสธการเสนอสถานที่";
+          actionTitle = t("log.a.reject");
           category = "submission";
         } else if (row.action_type === "shop_updated") {
-          actionTitle = "อัปเดตข้อมูลร้านค้า";
+          actionTitle = t("log.a.shopUpdate");
           category = "store";
         } else if (row.action_type === "shop_deleted") {
-          actionTitle = "ลบร้านค้าออกจากระบบ";
+          actionTitle = t("log.a.shopDelete");
           category = "store";
         } else if (row.action_type === "assign_store_owner") {
-          actionTitle = "มอบสิทธิ์เจ้าของร้านค้า";
+          actionTitle = t("log.a.grantOwner");
           category = "store";
         } else if (row.action_type === "auto_approve_own_submission") {
-          actionTitle = "เพิ่มร้านค้าโดยตรง (Self-Approved)";
+          actionTitle = t("log.a.selfAdd");
           category = "store";
         }
 
-        const shopTitle = category === "login" ? "ระบบ CheckInJapan" : row.detail?.shop_name || shop?.shop_name || (row.target_id ? `เป้าหมาย #${row.target_id.slice(0, 8)}` : "ระบบ");
+        const shopTitle = category === "login" ? t("log.d.systemName") : row.detail?.shop_name || shop?.shop_name || (row.target_id ? `${t("log.target")} #${row.target_id.slice(0, 8)}` : t("log.d.systemShort"));
 
         unified.push({
           id: `admin_${row.id}`,
@@ -319,7 +321,7 @@ export default function AdminLogPage() {
           actor_avatar: actor.avatar_url || null,
           actor_role: actor.resolved_role || "user",
           target_title: shopTitle,
-          detail_text: formatAdminDetailText(row.detail),
+          detail_text: formatAdminDetailText(row.detail, t),
           raw_detail: row.detail,
           created_at: row.created_at,
           badge_color: badgeColor,
@@ -342,19 +344,19 @@ export default function AdminLogPage() {
           const actor = uid
             ? profileMap.get(uid) || (detailEmail ? profileMap.get(detailEmail.toLowerCase()) : {})
             : (detailEmail ? profileMap.get(detailEmail.toLowerCase()) || {} : {});
-          const actorName = resolveActorIdentifier(uid, detailEmail, actor, "ผู้ใช้งานระบบ");
+          const actorName = resolveActorIdentifier(uid, detailEmail, actor, t("log.d.systemUser"));
 
           unified.push({
             id: `act_${row.id}`,
             category: "login",
             action_type: "user_login",
-            action_title: "เข้าสู่ระบบสำเร็จ (Login)",
+            action_title: t("log.a.login"),
             actor_id: uid,
             actor_name: actorName,
             actor_avatar: actor.avatar_url || null,
             actor_role: actor.resolved_role || "user",
-            target_title: "ระบบ CheckInJapan",
-            detail_text: formatAdminDetailText(detailObj),
+            target_title: t("log.d.systemName"),
+            detail_text: formatAdminDetailText(detailObj, t),
             raw_detail: detailObj,
             created_at: row.created_at,
             badge_color: "bg-sky-100 text-sky-900 border-sky-300",
@@ -366,21 +368,21 @@ export default function AdminLogPage() {
       (stampsRes.data || []).forEach((row: any) => {
         const uid = row.user_id ? String(row.user_id) : undefined;
         const actor = uid ? profileMap.get(uid) || {} : {};
-        const actorName = resolveActorIdentifier(uid, undefined, actor, "นักท่องเที่ยว");
+        const actorName = resolveActorIdentifier(uid, undefined, actor, t("log.d.traveler"));
         const shop = shopMap.get(Number(row.shop_id));
-        const shopTitle = shop?.shop_name || `ร้านค้า #${row.shop_id}`;
+        const shopTitle = shop?.shop_name || `${t("log.d.shop")} #${row.shop_id}`;
 
         unified.push({
           id: `stamp_${row.id}`,
           category: "checkin",
           action_type: "checkin",
-          action_title: "เช็คอินสะสมแสตมป์สำเร็จ",
+          action_title: t("log.a.checkin"),
           actor_id: uid,
           actor_name: actorName,
           actor_avatar: actor.avatar_url || null,
           actor_role: actor.resolved_role || "user",
           target_title: shopTitle,
-          detail_text: `เช็คอิน ณ สถานที่: ${shopTitle}`,
+          detail_text: `${t("log.d.checkinAt")}: ${shopTitle}`,
           raw_detail: { shop_id: row.shop_id, shop_name: shopTitle },
           created_at: row.collected_at || new Date().toISOString(),
           badge_color: "bg-emerald-100 text-emerald-900 border-emerald-300",
@@ -391,15 +393,15 @@ export default function AdminLogPage() {
       (reviewsRes.data || []).forEach((row: any) => {
         const uid = row.user_id ? String(row.user_id) : undefined;
         const actor = uid ? profileMap.get(uid) || {} : {};
-        const actorName = resolveActorIdentifier(uid, undefined, actor, "นักท่องเที่ยว");
+        const actorName = resolveActorIdentifier(uid, undefined, actor, t("log.d.traveler"));
         const shop = shopMap.get(Number(row.place_id));
-        const shopTitle = shop?.shop_name || `ร้านค้า #${row.place_id}`;
+        const shopTitle = shop?.shop_name || `${t("log.d.shop")} #${row.place_id}`;
 
         unified.push({
           id: `review_${row.id}`,
           category: "review",
           action_type: "review",
-          action_title: `เขียนรีวิว  ${row.rating || 5}.0 ดาว`,
+          action_title: `${t("log.a.review")} ${row.rating || 5}.0`,
           actor_id: uid,
           actor_name: actorName,
           actor_avatar: actor.avatar_url || null,
@@ -416,7 +418,7 @@ export default function AdminLogPage() {
       (submissionsRes.data || []).forEach((row: any) => {
         const uid = row.user_id ? String(row.user_id) : undefined;
         const actor = uid ? profileMap.get(uid) || {} : {};
-        const actorName = resolveActorIdentifier(uid, undefined, actor, "ผู้ใช้งาน");
+        const actorName = resolveActorIdentifier(uid, undefined, actor, t("log.d.user"));
         const isApproved = row.status === "approved";
         const isRejected = row.status === "rejected";
 
@@ -424,13 +426,13 @@ export default function AdminLogPage() {
           id: `sub_${row.id}`,
           category: "submission",
           action_type: `submission_${row.status}`,
-          action_title: isApproved ? "คำขอได้รับการอนุมัติ" : isRejected ? "คำขอถูกปฏิเสธ" : "ยื่นคำขอเสนอสถานที่ใหม่",
+          action_title: isApproved ? t("log.a.reqApproved") : isRejected ? t("log.a.reqRejected") : t("log.a.reqNew"),
           actor_id: uid,
           actor_name: actorName,
           actor_avatar: actor.avatar_url || null,
           actor_role: actor.resolved_role || "user",
-          target_title: row.name_en || "สถานที่เสนอใหม่",
-          detail_text: row.rejection_reason ? `เหตุผลที่ปฏิเสธ: ${row.rejection_reason}` : null,
+          target_title: row.name_en || t("log.d.newPlace"),
+          detail_text: row.rejection_reason ? `${t("log.d.rejectReason")}: ${row.rejection_reason}` : null,
           raw_detail: { name_en: row.name_en, status: row.status, rejection_reason: row.rejection_reason },
           created_at: row.created_at,
           badge_color: isApproved ? "bg-emerald-100 text-emerald-900 border-emerald-300" : isRejected ? "bg-rose-100 text-rose-900 border-rose-300" : "bg-purple-100 text-purple-900 border-purple-300",
@@ -497,12 +499,12 @@ export default function AdminLogPage() {
       const email = profile?.email || localStorage.getItem(`user_email_${actorId}`) || actorNameFallback;
       const roleVal = roleRow?.role || (profile?.is_admin ? "admin" : profile?.role || "user");
       const cachedDisplayName = localStorage.getItem(`user_display_name_${actorId}`);
-      const resolvedDisplayName = cachedDisplayName || profile?.display_name || profile?.full_name || profile?.username || (email && email.includes("@") ? email.split("@")[0] : email) || "ผู้ใช้งาน";
+      const resolvedDisplayName = cachedDisplayName || profile?.display_name || profile?.full_name || profile?.username || (email && email.includes("@") ? email.split("@")[0] : email) || t("log.d.user");
 
       setSummaryUserObj({
         id: actorId,
         display_name: resolvedDisplayName,
-        email: email || "ไม่ระบุอีเมล",
+        email: email || t("log.d.noEmail"),
         avatar_url: resolvedAvatar,
         role: roleVal,
         is_banned: profile?.is_banned || false,
@@ -528,10 +530,10 @@ export default function AdminLogPage() {
 
     if (!currentBannedState) {
       // Ban User
-      const inputReason = window.prompt("ระบุสาเหตุการแบนสมาชิก:", "ละเมิดเงื่อนไขการใช้งานระบบ");
+      const inputReason = window.prompt(t("log.banPrompt"), t("log.banDefaultReason"));
       if (inputReason === null) return; // Cancelled
 
-      const banReasonText = inputReason.trim() || "ละเมิดเงื่อนไขการใช้งานระบบ";
+      const banReasonText = inputReason.trim() || t("log.banDefaultReason");
       setBanningUserId(userId);
 
       try {
@@ -551,7 +553,7 @@ export default function AdminLogPage() {
             target_table: "profiles",
             target_id: userId,
             detail: {
-              note: `แบนสมาชิก: ${summaryUserObj.email}`,
+              note: `${t("log.note.ban")}: ${summaryUserObj.email}`,
               reason: banReasonText,
               banned_user_id: userId,
             },
@@ -561,17 +563,17 @@ export default function AdminLogPage() {
         setSummaryUserObj((prev: any) =>
           prev ? { ...prev, is_banned: true, ban_reason: banReasonText } : prev
         );
-        alert(`สั่งระงับสิทธิ์ (แบน) ผู้ใช้งาน ${summaryUserObj.email} เรียบร้อยแล้ว`);
+        alert(t("log.banOk").replace("{email}", summaryUserObj.email));
         fetchUnifiedLogs();
       } catch (err: any) {
         console.error("Ban error:", err);
-        alert("ไม่สามารถแบนผู้ใช้ได้: " + (err.message || "Failed"));
+        alert(t("log.banFail") + (err.message || "Failed"));
       } finally {
         setBanningUserId(null);
       }
     } else {
       // Unban User
-      if (!window.confirm(`คุณต้องการปลดแบนผู้ใช้งาน ${summaryUserObj.email} ใช่หรือไม่?`)) return;
+      if (!window.confirm(t("log.confirmUnban").replace("{email}", summaryUserObj.email))) return;
 
       setBanningUserId(userId);
       try {
@@ -591,7 +593,7 @@ export default function AdminLogPage() {
             target_table: "profiles",
             target_id: userId,
             detail: {
-              note: `ปลดแบนสมาชิก: ${summaryUserObj.email}`,
+              note: `${t("log.note.unban")}: ${summaryUserObj.email}`,
               banned_user_id: userId,
             },
           });
@@ -600,11 +602,11 @@ export default function AdminLogPage() {
         setSummaryUserObj((prev: any) =>
           prev ? { ...prev, is_banned: false, ban_reason: null } : prev
         );
-        alert(`ปลดระงับสิทธิ์ (ปลดแบน) ผู้ใช้งาน ${summaryUserObj.email} เรียบร้อยแล้ว`);
+        alert(t("log.unbanOk").replace("{email}", summaryUserObj.email));
         fetchUnifiedLogs();
       } catch (err: any) {
         console.error("Unban error:", err);
-        alert("ไม่สามารถปลดแบนได้: " + (err.message || "Failed"));
+        alert(t("log.unbanFail") + (err.message || "Failed"));
       } finally {
         setBanningUserId(null);
       }
@@ -614,7 +616,7 @@ export default function AdminLogPage() {
   const handlePurgeLogs = async (daysToKeep: number) => {
     if (!daysToKeep || daysToKeep <= 0) return;
     const cutoffDateObj = new Date(Date.now() - daysToKeep * 86400000);
-    const confirmMsg = `คุณต้องการลบ Log ระบบที่เก่ากว่า ${daysToKeep} วัน ออกอย่างถาวรใช่หรือไม่?\n\n(Log ที่สร้างขึ้นก่อนวันที่ ${cutoffDateObj.toLocaleDateString("th-TH")} จะถูกลบทิ้งทั้งในตาราง admin_action_log และ activity_log)`;
+    const confirmMsg = t("log.confirmPurge").replace("{d}", String(daysToKeep)) + `\n\n(Log ที่สร้างขึ้นก่อนวันที่ ${cutoffDateObj.toLocaleDateString("th-TH")} จะถูกลบทิ้งทั้งในตาราง admin_action_log และ activity_log)`;
     if (!window.confirm(confirmMsg)) return;
 
     setPurgingLogs(true);
@@ -636,18 +638,18 @@ export default function AdminLogPage() {
           detail: {
             retention_days: daysToKeep,
             cutoff_date: cutoffIso,
-            note: `ลบ Log ระบบที่เก่ากว่า ${daysToKeep} วัน`,
+            note: `${t("log.note.purge")}: ${daysToKeep}`,
           },
         });
       }
 
       localStorage.setItem("admin_log_retention_days", String(daysToKeep));
       setRetentionDays(daysToKeep);
-      setPurgeSuccessMsg(`🎉 ลบ Log ที่เก่ากว่า ${daysToKeep} วันเรียบร้อยแล้ว!`);
+      setPurgeSuccessMsg(t("log.purgeOk").replace("{d}", String(daysToKeep)));
       await fetchUnifiedLogs();
     } catch (err: any) {
       console.error("Purge logs error:", err);
-      alert("เกิดข้อผิดพลาดในการลบ Log: " + (err.message || "Failed"));
+      alert(t("log.deleteFail") + (err.message || "Failed"));
     } finally {
       setPurgingLogs(false);
     }
@@ -700,7 +702,7 @@ export default function AdminLogPage() {
       return (
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-900 border border-indigo-300 shrink-0">
           <Store size={10} className="text-indigo-700" />
-          <span>Store Owner</span>
+          <span>{t("um.statStore")}</span>
         </span>
       );
     }
@@ -726,9 +728,9 @@ export default function AdminLogPage() {
             <ScrollText size={24} />
           </div>
           <div>
-            <h2 className="text-lg font-black text-[#231C18]">System Activity & Audit Log</h2>
+            <h2 className="text-lg font-black text-[#231C18]">{t("log.title")}</h2>
             <p className="text-xs text-[#8A7870] font-semibold mt-0.5">
-              บันทึกประวัติการทำงานของแอดมิน การเข้าสู่ระบบ เช็คอิน รีวิว และกิจกรรมทั้งหมดในระบบ
+              {t("log.subtitle")}
             </p>
           </div>
         </div>
@@ -741,7 +743,7 @@ export default function AdminLogPage() {
             style={{ borderColor: "rgba(245, 158, 11, 0.3)" }}
           >
             <Clock size={13} className="text-amber-700" />
-            <span>ตั้งค่าการลบ Log</span>
+            <span>{t("log.retentionSettings")}</span>
           </button>
 
           <button
@@ -751,7 +753,7 @@ export default function AdminLogPage() {
             style={{ borderColor: C.line }}
           >
             <RotateCcw size={13} className="text-[#8A7870]" />
-            <span>รีเฟรช Log</span>
+            <span>{t("log.refresh")}</span>
           </button>
         </div>
       </div>
@@ -765,7 +767,7 @@ export default function AdminLogPage() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="ค้นหาตามชื่อแอดมิน, ผู้ใช้งาน, อีเมล, ชื่อร้านค้า, การกระทำ หรือรายละเอียด..."
+            placeholder={t("log.searchPlaceholder")}
             className="w-full text-xs font-semibold outline-none bg-transparent placeholder:text-stone-400"
           />
           {searchQuery && (
@@ -789,7 +791,7 @@ export default function AdminLogPage() {
             }`}
             style={categoryFilter !== "all" ? { borderColor: C.line } : undefined}
           >
-            <span>ทั้งหมด ({categoryCounts.all})</span>
+            <span>{t("filter.all")} ({categoryCounts.all})</span>
           </button>
 
           <button
@@ -802,7 +804,7 @@ export default function AdminLogPage() {
             style={categoryFilter !== "login" ? { borderColor: C.line } : undefined}
           >
             <LogIn size={13} className={categoryFilter === "login" ? "text-white" : "text-sky-600"} />
-            <span>เข้า/ออกจากระบบ ({categoryCounts.login})</span>
+            <span>{t("log.cat.login")} ({categoryCounts.login})</span>
           </button>
 
           <button
@@ -815,7 +817,7 @@ export default function AdminLogPage() {
             style={categoryFilter !== "admin" ? { borderColor: C.line } : undefined}
           >
             <Crown size={13} className={categoryFilter === "admin" ? "text-stone-950" : "text-amber-600"} />
-            <span>แอดมิน ({categoryCounts.admin})</span>
+            <span>{t("log.cat.admin")} ({categoryCounts.admin})</span>
           </button>
 
           <button
@@ -828,7 +830,7 @@ export default function AdminLogPage() {
             style={categoryFilter !== "checkin" ? { borderColor: C.line } : undefined}
           >
             <MapPin size={13} className={categoryFilter === "checkin" ? "text-white" : "text-emerald-600"} />
-            <span>เช็คอิน ({categoryCounts.checkin})</span>
+            <span>{t("log.cat.checkin")} ({categoryCounts.checkin})</span>
           </button>
 
           <button
@@ -841,7 +843,7 @@ export default function AdminLogPage() {
             style={categoryFilter !== "review" ? { borderColor: C.line } : undefined}
           >
             <MessageSquare size={13} className={categoryFilter === "review" ? "text-white" : "text-blue-600"} />
-            <span>รีวิว ({categoryCounts.review})</span>
+            <span>{t("log.cat.review")} ({categoryCounts.review})</span>
           </button>
 
           <button
@@ -854,7 +856,7 @@ export default function AdminLogPage() {
             style={categoryFilter !== "store" ? { borderColor: C.line } : undefined}
           >
             <Store size={13} className={categoryFilter === "store" ? "text-white" : "text-indigo-600"} />
-            <span>ร้านค้า ({categoryCounts.store})</span>
+            <span>{t("log.cat.store")} ({categoryCounts.store})</span>
           </button>
 
           <button
@@ -867,7 +869,7 @@ export default function AdminLogPage() {
             style={categoryFilter !== "submission" ? { borderColor: C.line } : undefined}
           >
             <FileText size={13} className={categoryFilter === "submission" ? "text-white" : "text-purple-600"} />
-            <span>เสนอสถานที่ ({categoryCounts.submission})</span>
+            <span>{t("log.cat.submission")} ({categoryCounts.submission})</span>
           </button>
         </div>
       </div>
@@ -876,19 +878,19 @@ export default function AdminLogPage() {
       {loading ? (
         <div className="p-12 text-center bg-white rounded-3xl border flex flex-col items-center justify-center gap-3" style={{ borderColor: C.line }}>
           <Loader2 size={24} className="animate-spin text-[#E0533C]" />
-          <span className="text-xs font-bold text-[#8A7870]">กำลังโหลดประวัติกิจกรรมในระบบ...</span>
+          <span className="text-xs font-bold text-[#8A7870]">{t("log.loading")}</span>
         </div>
       ) : filteredLogs.length === 0 ? (
         <div className="p-12 text-center bg-white rounded-3xl border flex flex-col items-center justify-center gap-2" style={{ borderColor: C.line }}>
           <FileText size={32} className="text-[#8A7870] opacity-40 mb-1" />
-          <p className="text-sm font-black text-[#231C18]">ไม่พบประวัติกิจกรรมตามเงื่อนไขที่ค้นหา</p>
+          <p className="text-sm font-black text-[#231C18]">{t("log.noResult")}</p>
           {(searchQuery || categoryFilter !== "all") && (
             <button
               onClick={handleResetFilters}
               className="mt-2 px-3.5 py-1.5 bg-[#FD775C] text-white text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer"
             >
               <RotateCcw size={13} />
-              <span>ล้างตัวกรองทั้งหมด</span>
+              <span>{t("log.clearFilters")}</span>
             </button>
           )}
         </div>
@@ -917,7 +919,7 @@ export default function AdminLogPage() {
                       type="button"
                       onClick={() => handleOpenUserSummary(log.actor_id, log.actor_name)}
                       className="shrink-0 cursor-pointer group"
-                      title="คลิกเพื่อดูสรุปโปรไฟล์ผู้ใช้งาน"
+                      title={t("log.viewProfile")}
                     >
                       <UserAvatar
                         src={log.actor_avatar}
@@ -936,7 +938,7 @@ export default function AdminLogPage() {
                           type="button"
                           onClick={() => handleOpenUserSummary(log.actor_id, log.actor_name)}
                           className="font-black text-xs text-[#231C18] hover:text-[#E0533C] hover:underline cursor-pointer truncate transition text-left"
-                          title="คลิกเพื่อดูรายละเอียดโปรไฟล์ยูสเซอร์นี้"
+                          title={t("log.viewProfileDetail")}
                         >
                           {log.actor_name}
                         </button>
@@ -951,7 +953,7 @@ export default function AdminLogPage() {
                       </div>
 
                       <p className="text-xs text-[#231C18] font-bold mt-1">
-                        เป้าหมาย: <span className="text-[#E0533C]">{log.target_title}</span>
+                        {t("log.target")}: <span className="text-[#E0533C]">{log.target_title}</span>
                       </p>
 
                       <div className="text-[10px] text-[#8A7870] font-semibold flex items-center gap-2 mt-1">
@@ -971,10 +973,10 @@ export default function AdminLogPage() {
                       type="button"
                       onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
                       className="px-2.5 py-1 bg-stone-100 hover:bg-stone-200 border border-stone-300 text-stone-700 text-[10px] font-bold rounded-lg transition flex items-center gap-1 shrink-0 cursor-pointer"
-                      title="ดูรายละเอียด JSON Payload"
+                      title={t("log.viewJson")}
                     >
                       <Code size={11} />
-                      <span>{isExpanded ? "ซ่อน JSON" : "ดู JSON"}</span>
+                      <span>{isExpanded ? t("log.hideJson") : t("log.showJson")}</span>
                       {isExpanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
                     </button>
                   )}
@@ -1023,7 +1025,7 @@ export default function AdminLogPage() {
             {loadingUserSummary ? (
               <div className="py-12 text-center flex flex-col items-center gap-3">
                 <Loader2 size={24} className="animate-spin text-[#E0533C]" />
-                <span className="text-xs font-bold text-[#8A7870]">กำลังโหลดข้อมูลสรุปโปรไฟล์...</span>
+                <span className="text-xs font-bold text-[#8A7870]">{t("log.loadingProfile")}</span>
               </div>
             ) : summaryUserObj ? (
               <>
@@ -1052,11 +1054,11 @@ export default function AdminLogPage() {
                     <div className="pt-1 flex items-center justify-between gap-3 flex-wrap">
                       {summaryUserObj.is_banned ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold bg-rose-100 text-rose-900 border border-rose-300">
-                          <Ban size={11} /> บัญชีถูกระงับ (เหตุผล: {summaryUserObj.ban_reason || "ละเมิดเงื่อนไข"})
+                          <Ban size={11} /> {t("log.accBanned")} ({t("log.d.reason")}: {summaryUserObj.ban_reason || t("log.banDefaultReason")})
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
-                          <CheckCircle2 size={11} /> บัญชีปกติ (Active)
+                          <CheckCircle2 size={11} /> {t("log.accActive")}
                         </span>
                       )}
 
@@ -1069,19 +1071,19 @@ export default function AdminLogPage() {
                             ? "bg-emerald-600 hover:bg-emerald-700 text-white"
                             : "bg-rose-600 hover:bg-rose-700 text-white"
                         }`}
-                        title={summaryUserObj.is_banned ? "ปลดระงับการใช้งานสมาชิกคนนี้" : "สั่งระงับสิทธิ์การใช้งาน (แบน)"}
+                        title={summaryUserObj.is_banned ? t("log.tipUnban") : t("log.tipBan")}
                       >
                         {banningUserId ? (
                           <Loader2 size={12} className="animate-spin" />
                         ) : summaryUserObj.is_banned ? (
                           <>
                             <CheckCircle2 size={12} />
-                            <span>ปลดแบนสมาชิก</span>
+                            <span>{t("log.unbanUser")}</span>
                           </>
                         ) : (
                           <>
                             <Ban size={12} />
-                            <span>แบนผู้ใช้งานนี้</span>
+                            <span>{t("log.banUser")}</span>
                           </>
                         )}
                       </button>
@@ -1094,19 +1096,19 @@ export default function AdminLogPage() {
                   <div className="bg-[#FAF6F0] p-3.5 rounded-2xl border text-center space-y-1" style={{ borderColor: C.line }}>
                     <MapPin size={18} className="mx-auto text-emerald-600" />
                     <p className="text-lg font-black text-[#231C18]">{summaryUserObj.stamps_count}</p>
-                    <p className="text-[10px] font-bold text-[#8A7870]">สะสมแสตมป์</p>
+                    <p className="text-[10px] font-bold text-[#8A7870]">{t("profile.stamps")}</p>
                   </div>
 
                   <div className="bg-[#FAF6F0] p-3.5 rounded-2xl border text-center space-y-1" style={{ borderColor: C.line }}>
                     <MessageSquare size={18} className="mx-auto text-blue-600" />
                     <p className="text-lg font-black text-[#231C18]">{summaryUserObj.reviews_count}</p>
-                    <p className="text-[10px] font-bold text-[#8A7870]">รีวิวที่เขียน</p>
+                    <p className="text-[10px] font-bold text-[#8A7870]">{t("profile.reviews")}</p>
                   </div>
 
                   <div className="bg-[#FAF6F0] p-3.5 rounded-2xl border text-center space-y-1" style={{ borderColor: C.line }}>
                     <FileText size={18} className="mx-auto text-purple-600" />
                     <p className="text-lg font-black text-[#231C18]">{summaryUserObj.submissions_count}</p>
-                    <p className="text-[10px] font-bold text-[#8A7870]">คำขอเสนอสถานที่</p>
+                    <p className="text-[10px] font-bold text-[#8A7870]">{t("log.submissions")}</p>
                   </div>
                 </div>
 
@@ -1114,12 +1116,12 @@ export default function AdminLogPage() {
                 <div className="space-y-3 pt-2">
                   <h4 className="text-xs font-black text-[#231C18] flex items-center gap-1.5">
                     <Activity size={14} className="text-[#E0533C]" />
-                    <span>ประวัติกิจกรรมล่าสุดของผู้ใช้นี้ ({userActivityLogs.length} รายการ)</span>
+                    <span>{t("log.userRecent")} ({userActivityLogs.length})</span>
                   </h4>
 
                   {userActivityLogs.length === 0 ? (
                     <div className="p-4 rounded-xl bg-stone-50 border text-center" style={{ borderColor: C.line }}>
-                      <p className="text-xs font-semibold text-stone-500 italic">ไม่พบประวัติกิจกรรมเพิ่มเติม</p>
+                      <p className="text-xs font-semibold text-stone-500 italic">{t("log.noMoreActivity")}</p>
                     </div>
                   ) : (
                     <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
@@ -1139,7 +1141,7 @@ export default function AdminLogPage() {
                           </div>
 
                           <p className="text-xs font-bold text-[#231C18]">
-                            เป้าหมาย: <span className="text-[#E0533C]">{uLog.target_title}</span>
+                            {t("log.target")}: <span className="text-[#E0533C]">{uLog.target_title}</span>
                           </p>
 
                           {uLog.detail_text && (
@@ -1172,8 +1174,8 @@ export default function AdminLogPage() {
                   <Clock size={20} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black text-stone-900">⚙️ ตั้งค่าระยะเวลาลบ Log (Log Retention)</h3>
-                  <p className="text-[11px] text-stone-500 font-semibold">กำหนดและกำจัด Log เก่าในระบบตามระยะเวลา</p>
+                  <h3 className="text-sm font-black text-stone-900">{t("log.retentionTitle")}</h3>
+                  <p className="text-[11px] text-stone-500 font-semibold">{t("log.retentionDesc")}</p>
                 </div>
               </div>
               <button
@@ -1198,15 +1200,15 @@ export default function AdminLogPage() {
             {/* Retention Presets */}
             <div className="space-y-3">
               <label className="text-xs font-black text-stone-700 block">
-                เลือกระยะเวลารักษา Log (จะทำการลบ Log ที่เก่ากว่าช่วงเวลานี้):
+                {t("log.pickPeriod")}
               </label>
 
               <div className="grid grid-cols-2 gap-2.5">
                 {[
-                  { days: 7, label: "7 วัน (1 สัปดาห์)" },
-                  { days: 14, label: "14 วัน (2 สัปดาห์)" },
-                  { days: 30, label: "30 วัน (1 เดือน)" },
-                  { days: 90, label: "90 วัน (3 เดือน)" },
+                  { days: 7, label: t("log.p.7") },
+                  { days: 14, label: t("log.p.14") },
+                  { days: 30, label: t("log.p.30") },
+                  { days: 90, label: t("log.p.90") },
                 ].map((preset) => (
                   <button
                     key={preset.days}
@@ -1230,7 +1232,7 @@ export default function AdminLogPage() {
               {/* Custom Input */}
               <div className="pt-2">
                 <label className="text-[11px] font-bold text-stone-600 block mb-1">
-                  หรือระบุจำนวนวันเอง (Custom Days):
+                  {t("log.customDays")}
                 </label>
                 <div className="flex items-center gap-2">
                   <input
@@ -1244,10 +1246,10 @@ export default function AdminLogPage() {
                       const parsed = parseInt(val, 10);
                       if (parsed > 0) setRetentionDays(parsed);
                     }}
-                    placeholder="เช่น 15"
+                    placeholder={t("log.daysPlaceholder")}
                     className="flex-1 px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs font-black outline-none bg-stone-50 focus:bg-white focus:border-amber-500 transition"
                   />
-                  <span className="text-xs font-bold text-stone-600">วัน</span>
+                  <span className="text-xs font-bold text-stone-600">{t("log.days")}</span>
                 </div>
               </div>
             </div>
@@ -1255,7 +1257,7 @@ export default function AdminLogPage() {
             <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200 text-xs text-amber-900 leading-relaxed space-y-1">
               <p className="font-black text-amber-950 flex items-center gap-1.5">
                 <Sparkles size={14} className="text-amber-600" />
-                <span>นโยบายการจัดเก็บ Log:</span>
+                <span>{t("log.retentionPolicy")}</span>
               </p>
               <p className="text-[11px] font-medium text-amber-800">
                 Log ที่สร้างก่อนวันที่ <strong className="text-stone-900 underline">{new Date(Date.now() - retentionDays * 86400000).toLocaleDateString("th-TH")}</strong> (เก่ากว่า {retentionDays} วัน) จะถูกลบทิ้งถาวร
@@ -1275,7 +1277,7 @@ export default function AdminLogPage() {
                 ) : (
                   <>
                     <RotateCcw size={14} />
-                    <span>ลบ Log ที่เก่ากว่า {retentionDays} วันออกทันที</span>
+                    <span>{t("log.purgeNow").replace("{d}", String(retentionDays))}</span>
                   </>
                 )}
               </button>
@@ -1285,7 +1287,7 @@ export default function AdminLogPage() {
                 onClick={() => setShowRetentionModal(false)}
                 className="px-4 py-2.5 rounded-xl text-xs font-bold border border-stone-300 bg-stone-100 hover:bg-stone-200 text-stone-700 transition cursor-pointer"
               >
-                ปิด
+                {t("common.close")}
               </button>
             </div>
           </div>

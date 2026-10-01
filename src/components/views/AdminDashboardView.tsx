@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { ChevronLeft, Loader2, MapPin, Clock, CheckCircle, XCircle, Store } from "lucide-react";
 import { C } from "../../constants/mockData";
 import { supabase } from "../../supabaseClient";
+import { useLang } from "../../lib/i18n";
 
 interface AdminDashboardViewProps {
   onBack: () => void;
@@ -21,27 +22,29 @@ type Submission = {
 };
 
 const STATUS_FILTERS = [
-  { id: "all", label: "ทั้งหมด" },
-  { id: "pending", label: "รอพิจารณา" },
-  { id: "approved", label: "อนุมัติแล้ว" },
-  { id: "rejected", label: "ปฏิเสธแล้ว" },
+  { id: "all", label: "filter.all" },
+  { id: "pending", label: "sm.pending" },
+  { id: "approved", label: "sm.approved" },
+  { id: "rejected", label: "msp.notApproved" },
 ];
 
 const StatusBadge = ({ status }: { status: string }) => {
+  const { t } = useLang();
   const styles: Record<string, { bg: string; color: string; icon: React.ReactNode; label: string }> = {
-    pending:  { bg: "#FFF7ED", color: "#C2410C", icon: <Clock size={11} />,        label: "รอพิจารณา" },
-    approved: { bg: "#F0FDF4", color: "#15803D", icon: <CheckCircle size={11} />,  label: "อนุมัติแล้ว" },
-    rejected: { bg: "#FEF2F2", color: "#B91C1C", icon: <XCircle size={11} />,      label: "ปฏิเสธแล้ว" },
+    pending:  { bg: "#FFF7ED", color: "#C2410C", icon: <Clock size={11} />,        label: "sm.pending" },
+    approved: { bg: "#F0FDF4", color: "#15803D", icon: <CheckCircle size={11} />,  label: "sm.approved" },
+    rejected: { bg: "#FEF2F2", color: "#B91C1C", icon: <XCircle size={11} />,      label: "msp.notApproved" },
   };
   const s = styles[status] ?? styles.pending;
   return (
     <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ background: s.bg, color: s.color }}>
-      {s.icon} {s.label}
+      {s.icon} {t(s.label)}
     </span>
   );
 };
 
 export default function AdminDashboardView({ onBack }: AdminDashboardViewProps) {
+  const { t } = useLang();
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
@@ -91,8 +94,8 @@ export default function AdminDashboardView({ onBack }: AdminDashboardViewProps) 
           <ChevronLeft size={16} color={C.ink} />
         </button>
         <div>
-          <h2 className="text-lg font-black tracking-tight" style={{ color: C.ink }}>Admin Dashboard</h2>
-          <p className="text-[11px] font-semibold text-[#8A7870] mt-0.5">จัดการ submissions ทั้งหมด</p>
+          <h2 className="text-lg font-black tracking-tight" style={{ color: C.ink }}>{t("dash.title")}</h2>
+          <p className="text-[11px] font-semibold text-[#8A7870] mt-0.5">{t("dash.subtitle")}</p>
         </div>
       </div>
 
@@ -109,7 +112,7 @@ export default function AdminDashboardView({ onBack }: AdminDashboardViewProps) 
                 : { background: "#fff", color: C.inkSoft, borderColor: C.line }
             }
           >
-            {f.label} ({counts[f.id as keyof typeof counts]})
+            {t(f.label)} ({counts[f.id as keyof typeof counts]})
           </button>
         ))}
       </div>
@@ -121,7 +124,7 @@ export default function AdminDashboardView({ onBack }: AdminDashboardViewProps) 
         </div>
       ) : filtered.length === 0 ? (
         <div className="p-8 rounded-2xl bg-white border text-center" style={{ borderColor: C.line }}>
-          <p className="text-xs text-[#8A7870] italic">ไม่มี submission ในหมวดนี้</p>
+          <p className="text-xs text-[#8A7870] italic">{t("dash.empty")}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -131,7 +134,7 @@ export default function AdminDashboardView({ onBack }: AdminDashboardViewProps) 
               className="flex items-start gap-3 p-4 rounded-2xl bg-white border"
               style={{ borderColor: C.line }}
             >
-              {/* รูป */}
+              
               <div
                 className="w-14 h-14 rounded-xl overflow-hidden shrink-0 flex items-center justify-center text-xl"
                 style={{ background: C.accentSoft }}
@@ -141,14 +144,14 @@ export default function AdminDashboardView({ onBack }: AdminDashboardViewProps) 
                 ) : <Store size={20} style={{ color: C.accent }} />}
               </div>
 
-              {/* ข้อมูล */}
+              
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">
                   <p className="text-xs font-black truncate" style={{ color: C.ink }}>{sub.name_en}</p>
                   <StatusBadge status={sub.status} />
                 </div>
                 <p className="text-[10px] text-[#8A7870] mt-0.5">
-                  โดย {sub.profiles?.display_name ?? "Unknown"}
+                  {t("nb.by")} {sub.profiles?.display_name ?? "Unknown"}
                 </p>
                 {sub.description && (
                   <p className="text-[10px] text-[#8A7870] mt-1 line-clamp-2">{sub.description}</p>

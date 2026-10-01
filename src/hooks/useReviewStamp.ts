@@ -207,8 +207,8 @@ export async function collectStamp(
     const remainingMs = (24 * 60 * 60 * 1000) - (Date.now() - lastTime);
     const hours = Math.floor(remainingMs / (1000 * 60 * 60));
     const minutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
-    const timeStr = hours > 0 ? `${hours} ชั่วโมง ${minutes} นาที` : `${minutes} นาที`;
-    throw new Error(`คุณเช็คอินร้านนี้ไปแล้ว! ต้องรอคูลดาวน์อีก ${timeStr} ถึงจะเช็คอินสะสมแสตมป์รอบใหม่ได้ (จำกัด 24 ชม. ต่อ 1 ครั้ง)`);
+    const timeStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+    throw new Error(`cooldown|${timeStr}`);
   }
 
   // Store Operating Hours Check: Verify store is currently open
@@ -219,11 +219,11 @@ export async function collectStamp(
         const { getShopStatusToday } = await import("../lib/scheduleHelpers");
         const statusInfo = getShopStatusToday(shopData);
         if (statusInfo.isClosed) {
-          throw new Error(`🔴 ร้านค้านี้กำลังปิดอยู่! (${statusInfo.description}) สามารถเช็คอินได้เฉพาะช่วงเวลาเปิดทำการเท่านั้น (${statusInfo.openHoursStr})`);
+          throw new Error(`closed|${statusInfo.description}`);
         }
       }
     } catch (e: any) {
-      if (e.message && e.message.includes("ร้านค้านี้กำลังปิดอยู่")) {
+      if (e.message && e.message.startsWith("closed|")) {
         throw e;
       }
     }
@@ -397,11 +397,11 @@ export async function createPlaceSubmission(
   // Non-blocking secondary admin notification insert
   try {
     const submissionId = createdRecord?.id;
-    const shopNameText = input.name_en || input.name_jp || "ร้านค้าใหม่";
+    const shopNameText = input.name_en || input.name_jp || "Shop";
 
     const notifPayload: Record<string, any> = {
-      title: "มีการส่งร้านค้าใหม่",
-      message: `มีสถานที่ใหม่ส่งเข้ามาตรวจสอบ: ${shopNameText}`,
+      title: "notif.newSubmission",
+      message: shopNameText,
       shop_name: shopNameText,
       actor_id: user?.id || null,
       type: "place_submission",

@@ -18,6 +18,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { C } from "../../constants/mockData";
+import { useLang } from "../../lib/i18n";
 import {
   AppBanner,
   PRESET_GRADIENTS,
@@ -29,6 +30,7 @@ import {
 } from "../../lib/bannerHelpers";
 
 export default function AdminBannerManagePage() {
+  const { t } = useLang();
   const [banners, setBanners] = useState<AppBanner[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [filter, setFilter] = useState<"all" | "active" | "scheduled" | "expired" | "disabled">("all");
@@ -42,7 +44,7 @@ export default function AdminBannerManagePage() {
     title: "",
     subtitle: "",
     tag: " PROMOTION",
-    cta_text: "ดูรายละเอียด",
+    cta_text: "",
     cta_link: "",
     image_url: "",
     bg_gradient: PRESET_GRADIENTS[0].value,
@@ -90,7 +92,7 @@ export default function AdminBannerManagePage() {
       title: "",
       subtitle: "",
       tag: " PROMOTION",
-      cta_text: "ดูรายละเอียด",
+      cta_text: "",
       cta_link: "",
       image_url: "",
       bg_gradient: PRESET_GRADIENTS[0].value,
@@ -109,7 +111,7 @@ export default function AdminBannerManagePage() {
       title: b.title || "",
       subtitle: b.subtitle || "",
       tag: b.tag || " PROMOTION",
-      cta_text: b.cta_text || "ดูรายละเอียด",
+      cta_text: b.cta_text || "",
       cta_link: b.cta_link || "",
       image_url: b.image_url || "",
       bg_gradient: b.bg_gradient || PRESET_GRADIENTS[0].value,
@@ -127,17 +129,17 @@ export default function AdminBannerManagePage() {
       await updateBanner(b.id, { is_active: !b.is_active });
       loadBanners();
     } catch (err) {
-      alert("ไม่สามารถเปลี่ยนสถานะได้ กรุณาลองใหม่อีกครั้ง");
+      alert(t("bn.toggleFail"));
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("คุณต้องการลบแบนเนอร์นี้ใช่หรือไม่?")) {
+    if (confirm(t("bn.confirmDelete"))) {
       try {
         await deleteBanner(id);
         loadBanners();
       } catch (err) {
-        alert("ไม่สามารถลบแบนเนอร์ได้");
+        alert(t("bn.deleteFail"));
       }
     }
   };
@@ -145,7 +147,7 @@ export default function AdminBannerManagePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title.trim()) {
-      alert("กรุณากรอกหัวข้อแบนเนอร์");
+      alert(t("bn.needTitle"));
       return;
     }
 
@@ -175,7 +177,7 @@ export default function AdminBannerManagePage() {
       loadBanners();
     } catch (err) {
       console.error("Error saving banner:", err);
-      alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+      alert(t("bn.saveFail"));
     } finally {
       setSaving(false);
     }
@@ -216,13 +218,13 @@ export default function AdminBannerManagePage() {
         <div className="space-y-1">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 text-rose-600 text-xs font-black">
             <Sparkles size={13} />
-            <span>ระบบจัดการหลังบ้าน · แบนเนอร์</span>
+            <span>{t("bn.breadcrumb")}</span>
           </div>
           <h1 className="text-xl md:text-2xl font-black tracking-tight" style={{ color: C.ink }}>
-            จัดการแบนเนอร์ประชาสัมพันธ์ & โปรโมชัน
+            {t("bn.pageTitle")}
           </h1>
           <p className="text-xs font-medium text-[#777]">
-            สร้าง ลบ แก้ไขแบนเนอร์ และกำหนดช่วงเวลาการแสดงผลล่วงหน้าบนหน้าแรกของแอปพลิเคชัน
+            {t("bn.pageDesc")}
           </p>
         </div>
 
@@ -231,7 +233,7 @@ export default function AdminBannerManagePage() {
           className="px-4 py-2.5 rounded-2xl bg-[#E0533C] text-white text-xs font-black hover:bg-[#c94530] transition flex items-center justify-center gap-2 shadow-xs shrink-0 cursor-pointer"
         >
           <Plus size={16} />
-          <span>เพิ่มแบนเนอร์ใหม่</span>
+          <span>{t("bn.addNew")}</span>
         </button>
       </div>
 
@@ -241,7 +243,7 @@ export default function AdminBannerManagePage() {
           onClick={() => setFilter("all")}
           className={`p-4 rounded-2xl border transition cursor-pointer ${filter === "all" ? "bg-[#FD775C] text-white border-[#FD775C] shadow-md" : "bg-white text-stone-800 border-stone-200 hover:bg-stone-50"}`}
         >
-          <p className="text-[11px] font-bold opacity-80">แบนเนอร์ทั้งหมด</p>
+          <p className="text-[11px] font-bold opacity-80">{t("bn.statAll")}</p>
           <p className="text-xl font-black mt-1">{stats.total}</p>
         </div>
 
@@ -249,7 +251,7 @@ export default function AdminBannerManagePage() {
           onClick={() => setFilter("active")}
           className={`p-4 rounded-2xl border transition cursor-pointer ${filter === "active" ? "bg-emerald-600 text-white border-emerald-600 shadow-md" : "bg-emerald-50/70 text-emerald-950 border-emerald-200 hover:bg-emerald-100"}`}
         >
- <p className="text-[11px] font-bold opacity-80"> แสดงผลอยู่</p>
+ <p className="text-[11px] font-bold opacity-80">{t("bn.statLive")}</p>
           <p className="text-xl font-black mt-1">{stats.active}</p>
         </div>
 
@@ -257,7 +259,7 @@ export default function AdminBannerManagePage() {
           onClick={() => setFilter("scheduled")}
           className={`p-4 rounded-2xl border transition cursor-pointer ${filter === "scheduled" ? "bg-amber-600 text-white border-amber-600 shadow-md" : "bg-amber-50/70 text-amber-950 border-amber-200 hover:bg-amber-100"}`}
         >
-          <p className="text-[11px] font-bold opacity-80">⏳ รอกำหนดเวลา</p>
+          <p className="text-[11px] font-bold opacity-80">{t("bn.statScheduled")}</p>
           <p className="text-xl font-black mt-1">{stats.scheduled}</p>
         </div>
 
@@ -265,7 +267,7 @@ export default function AdminBannerManagePage() {
           onClick={() => setFilter("expired")}
           className={`p-4 rounded-2xl border transition cursor-pointer ${filter === "expired" ? "bg-rose-600 text-white border-rose-600 shadow-md" : "bg-rose-50/70 text-rose-950 border-rose-200 hover:bg-rose-100"}`}
         >
- <p className="text-[11px] font-bold opacity-80"> หมดอายุแล้ว</p>
+ <p className="text-[11px] font-bold opacity-80">{t("bn.statExpired")}</p>
           <p className="text-xl font-black mt-1">{stats.expired}</p>
         </div>
 
@@ -273,7 +275,7 @@ export default function AdminBannerManagePage() {
           onClick={() => setFilter("disabled")}
           className={`p-4 rounded-2xl border transition cursor-pointer ${filter === "disabled" ? "bg-stone-600 text-white border-[#FD775C] shadow-md" : "bg-stone-100 text-stone-900 border-stone-200 hover:bg-stone-200"}`}
         >
- <p className="text-[11px] font-bold opacity-80"> ปิดใช้งาน</p>
+ <p className="text-[11px] font-bold opacity-80">{t("bn.statOff")}</p>
           <p className="text-xl font-black mt-1">{stats.disabled}</p>
         </div>
       </div>
@@ -281,18 +283,18 @@ export default function AdminBannerManagePage() {
       {/* Banners List */}
       {loading ? (
         <div className="p-12 text-center text-xs font-bold text-[#8A7870] bg-white rounded-3xl border">
-          กำลังโหลดข้อมูลแบนเนอร์...
+          {t("bn.loading")}
         </div>
       ) : filteredBanners.length === 0 ? (
         <div className="p-12 text-center bg-white rounded-3xl border text-stone-500 space-y-3" style={{ borderColor: C.line }}>
           <Image size={40} className="mx-auto text-stone-300" />
-          <p className="text-sm font-bold">ไม่พบแบนเนอร์ในหมวดหมู่นี้</p>
+          <p className="text-sm font-bold">{t("bn.empty")}</p>
           <button
             onClick={handleOpenAddModal}
             className="px-4 py-2 rounded-xl bg-[#FD775C] text-white text-xs font-bold hover:bg-[#E31E27] transition inline-flex items-center gap-1.5 cursor-pointer"
           >
             <Plus size={14} />
-            <span>สร้างแบนเนอร์ใหม่</span>
+            <span>{t("bn.createNew")}</span>
           </button>
         </div>
       ) : (
@@ -335,7 +337,7 @@ export default function AdminBannerManagePage() {
 
                   <div className="z-10 mt-3 flex items-center justify-between">
                     <span className="inline-flex items-center gap-1 text-[10px] font-black px-3 py-1 rounded-full bg-white/95 text-stone-900 shadow-xs">
-                      {b.cta_text || "ดูรายละเอียด"} →
+                      {b.cta_text || t("bn.defaultCta")} →
                     </span>
                     {b.cta_link && (
                       <span className="text-[10px] font-mono text-white/80 truncate max-w-[140px]" title={b.cta_link}>
@@ -359,7 +361,7 @@ export default function AdminBannerManagePage() {
                             {b.end_date ? new Date(b.end_date).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" }) : "ไม่มีวันหมดอายุ"}
                           </>
                         ) : (
-                          <span className="text-emerald-700 font-bold">แสดงผลตลอดไป (ไม่มีวันหมดอายุ)</span>
+                          <span className="text-emerald-700 font-bold">{t("bn.forever")}</span>
                         )}
                       </span>
                     </div>
@@ -374,21 +376,21 @@ export default function AdminBannerManagePage() {
                       }`}
                     >
                       {b.is_active ? <Eye size={13} /> : <EyeOff size={13} />}
-                      <span>{b.is_active ? "เปิดการใช้งานอยู่" : "ปิดการใช้งาน"}</span>
+                      <span>{b.is_active ? t("bn.isOn") : t("bn.isOff")}</span>
                     </button>
 
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleOpenEditModal(b)}
                         className="p-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 transition cursor-pointer"
-                        title="แก้ไขแบนเนอร์"
+                        title={t("bn.edit")}
                       >
                         <Edit3 size={14} />
                       </button>
                       <button
                         onClick={() => handleDelete(b.id)}
                         className="p-2 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-700 transition cursor-pointer"
-                        title="ลบแบนเนอร์"
+                        title={t("bn.delete")}
                       >
                         <Trash2 size={14} />
                       </button>
@@ -410,7 +412,7 @@ export default function AdminBannerManagePage() {
               <div className="flex items-center gap-2">
                 <Image size={18} className="text-[#E0533C]" />
                 <h2 className="text-base font-black text-stone-900">
-                  {editingBanner ? "แก้ไขแบนเนอร์" : "เพิ่มแบนเนอร์ใหม่"}
+                  {editingBanner ? t("bn.edit") : t("bn.addNew")}
                 </h2>
               </div>
               <button
@@ -426,12 +428,12 @@ export default function AdminBannerManagePage() {
               {/* Title */}
               <div>
                 <label className="block text-xs font-black text-stone-800 mb-1">
-                  หัวข้อแบนเนอร์ <span className="text-rose-500">*</span>
+                  {t("bn.fTitle")} <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="เช่น ภารกิจล่าแสตมป์สะสมลุ้นรางวัลพิเศษ!"
+                  placeholder={t("bn.titlePlaceholder")}
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs font-bold focus:outline-none focus:border-[#E0533C]"
@@ -441,11 +443,11 @@ export default function AdminBannerManagePage() {
               {/* Subtitle */}
               <div>
                 <label className="block text-xs font-black text-stone-800 mb-1">
-                  รายละเอียด / คำบรรยายสั้น
+                  {t("bn.fDesc")}
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="เช่น สะสมแสตมป์ครบ 5 ดวงในเดือนนี้ รับเหรียญรางวัลพิเศษ..."
+                  placeholder={t("bn.descPlaceholder")}
                   value={formData.subtitle}
                   onChange={(e) => setFormData({ ...formData, subtitle: e.target.value })}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs font-medium focus:outline-none focus:border-[#E0533C]"
@@ -456,11 +458,11 @@ export default function AdminBannerManagePage() {
                 {/* Tag */}
                 <div>
                   <label className="block text-xs font-black text-stone-800 mb-1">
-                    แท็กหัวข้อ (Tag/Badge)
+                    {t("bn.fTag")}
                   </label>
                   <input
                     type="text"
-                    placeholder="เช่น  PROMOTION"
+                    placeholder={t("bn.tagPlaceholder")}
                     value={formData.tag}
                     onChange={(e) => setFormData({ ...formData, tag: e.target.value })}
                     className="w-full px-3.5 py-2 rounded-xl border border-stone-300 text-xs font-bold focus:outline-none focus:border-[#E0533C]"
@@ -470,11 +472,11 @@ export default function AdminBannerManagePage() {
                 {/* Button Text */}
                 <div>
                   <label className="block text-xs font-black text-stone-800 mb-1">
-                    ข้อความบนปุ่ม (CTA Button)
+                    {t("bn.fCta")}
                   </label>
                   <input
                     type="text"
-                    placeholder="เช่น เริ่มสะสมเลย"
+                    placeholder={t("bn.ctaPlaceholder")}
                     value={formData.cta_text}
                     onChange={(e) => setFormData({ ...formData, cta_text: e.target.value })}
                     className="w-full px-3.5 py-2 rounded-xl border border-stone-300 text-xs font-bold focus:outline-none focus:border-[#E0533C]"
@@ -485,11 +487,11 @@ export default function AdminBannerManagePage() {
               {/* Link */}
               <div>
                 <label className="block text-xs font-black text-stone-800 mb-1">
-                  ลิงก์เมื่อกดแบนเนอร์ (CTA Link / Path)
+                  {t("bn.fLink")}
                 </label>
                 <input
                   type="text"
-                  placeholder="เช่น /stamp-rally หรือ https://example.com"
+                  placeholder={t("bn.linkPlaceholder")}
                   value={formData.cta_link}
                   onChange={(e) => setFormData({ ...formData, cta_link: e.target.value })}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs font-medium focus:outline-none focus:border-[#E0533C]"
@@ -500,7 +502,7 @@ export default function AdminBannerManagePage() {
               <div className="p-4 bg-stone-50 rounded-2xl border space-y-3" style={{ borderColor: C.line }}>
                 <div className="flex items-center justify-between">
                   <label className="block text-xs font-black text-stone-900">
-                    รูปภาพประกอบแบนเนอร์ (Banner Cover Image)
+                    {t("bn.fImage")}
                   </label>
                   {formData.image_url && (
                     <button
@@ -508,7 +510,7 @@ export default function AdminBannerManagePage() {
                       onClick={() => setFormData({ ...formData, image_url: "" })}
                       className="text-[10px] font-bold text-rose-600 hover:underline flex items-center gap-1 cursor-pointer"
                     >
-                      <Trash2 size={11} /> ลบรูปภาพ
+                      <Trash2 size={11} /> {t("bn.removeImage")}
                     </button>
                   )}
                 </div>
@@ -517,12 +519,12 @@ export default function AdminBannerManagePage() {
                 <div className="p-3 bg-amber-50/80 rounded-xl border border-amber-200/80 text-[11px] text-amber-950 space-y-1">
                   <div className="font-bold flex items-center gap-1.5 text-amber-900">
                     <Sparkles size={13} className="text-amber-600 shrink-0" />
-                    <span>คำแนะนำและขนาดภาพที่เหมาะสม:</span>
+                    <span>{t("bn.imageTips")}</span>
                   </div>
                   <ul className="list-disc list-inside space-y-0.5 font-medium text-[10.5px] text-amber-900/90 pl-1">
-                    <li><strong>ขนาดที่แนะนำ (Recommended Size):</strong> <span className="font-bold underline">1200 x 600 px</span> (อัตราส่วน 2:1 หรือ 16:9)</li>
-                    <li><strong>ขนาดไฟล์สูงสุด:</strong> ไม่เกิน <span className="font-bold">5 MB</span></li>
-                    <li><strong>ชนิดไฟล์ที่รองรับ:</strong> JPG, PNG, WEBP, GIF</li>
+                    <li><strong>{t("bn.tipSize")}</strong> <span className="font-bold underline">1200 x 600 px</span> ({t("bn.ratio")})</li>
+                    <li><strong>{t("bn.tipMaxSize")}</strong> {t("bn.tipMax")} <span className="font-bold">5 MB</span></li>
+                    <li><strong>{t("bn.tipTypes")}</strong> JPG, PNG, WEBP, GIF</li>
                   </ul>
                 </div>
 
@@ -530,7 +532,7 @@ export default function AdminBannerManagePage() {
                 <div className="flex flex-col sm:flex-row items-center gap-3">
                   <label className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-[#FD775C] text-white text-xs font-black hover:bg-[#E31E27] transition flex items-center justify-center gap-2 cursor-pointer shrink-0 shadow-xs">
                     <Plus size={15} />
-                    <span>อัปโหลดรูปภาพจากเครื่อง / มือถือ</span>
+                    <span>{t("bn.upload")}</span>
                     <input
                       type="file"
                       accept="image/*"
@@ -539,7 +541,7 @@ export default function AdminBannerManagePage() {
                         const file = e.target.files?.[0];
                         if (file) {
                           if (file.size > 5 * 1024 * 1024) {
-                            alert("ขนาดไฟล์ใหญ่เกินไป กรุณาเลือกไฟล์ที่มีขนาดไม่เกิน 5MB");
+                            alert(t("bn.fileTooBig"));
                             return;
                           }
                           const reader = new FileReader();
@@ -552,12 +554,12 @@ export default function AdminBannerManagePage() {
                     />
                   </label>
 
-                  <span className="text-xs font-bold text-stone-400 hidden sm:inline">หรือ</span>
+                  <span className="text-xs font-bold text-stone-400 hidden sm:inline">{t("bn.or")}</span>
 
                   {/* Image URL Direct Input */}
                   <input
                     type="text"
-                    placeholder="วางลิงก์รูปภาพ (Image URL)..."
+                    placeholder={t("bn.urlPlaceholder")}
                     value={formData.image_url}
                     onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
                     className="w-full px-3.5 py-2 rounded-xl border border-stone-300 text-xs font-medium focus:outline-none focus:border-[#E0533C]"
@@ -573,7 +575,7 @@ export default function AdminBannerManagePage() {
                       className="w-full h-full object-cover"
                     />
                     <div className="absolute bottom-2 left-2 px-2.5 py-1 rounded-full bg-stone-900/80 backdrop-blur-md text-[10px] font-bold text-white">
-                      ตัวอย่างรูปภาพประกอบ
+                      {t("bn.imagePreview")}
                     </div>
                   </div>
                 )}
@@ -582,7 +584,7 @@ export default function AdminBannerManagePage() {
               {/* Preset Gradients */}
               <div>
                 <label className="block text-xs font-black text-stone-800 mb-2">
-                  ธีมสีแบนเนอร์ (Gradient) {formData.image_url ? "(ใช้เป็นสีพื้นหลังสำรอง)" : ""}
+                  {t("bn.fTheme")} {formData.image_url ? t("bn.themeFallback") : ""}
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {PRESET_GRADIENTS.map((g) => (
@@ -606,7 +608,7 @@ export default function AdminBannerManagePage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 text-xs font-black text-stone-900">
                     <Calendar size={15} className="text-[#E0533C]" />
-                    <span>ตั้งระยะเวลาแสดงผลแบนเนอร์</span>
+                    <span>{t("bn.schedule")}</span>
                   </div>
 
                   <label className="inline-flex items-center gap-2 cursor-pointer">
@@ -616,7 +618,7 @@ export default function AdminBannerManagePage() {
                       onChange={(e) => setFormData({ ...formData, has_duration: e.target.checked })}
                       className="w-4 h-4 rounded-md accent-[#E0533C]"
                     />
-                    <span className="text-xs font-bold text-stone-700">กำหนดวัน-เวลาแสดงผล</span>
+                    <span className="text-xs font-bold text-stone-700">{t("bn.setDateTime")}</span>
                   </label>
                 </div>
 
@@ -624,41 +626,41 @@ export default function AdminBannerManagePage() {
                   <div className="space-y-3 pt-2">
                     {/* Presets */}
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold text-stone-500">กำหนดด่วน:</span>
+                      <span className="text-[10px] font-bold text-stone-500">{t("bn.quickSet")}</span>
                       <button
                         type="button"
                         onClick={() => addDurationDays(7)}
                         className="px-2 py-1 bg-white border rounded-lg text-[10px] font-bold hover:bg-stone-100 transition cursor-pointer"
                       >
-                        + 7 วัน
+                        + 7{t("log.days")}
                       </button>
                       <button
                         type="button"
                         onClick={() => addDurationDays(14)}
                         className="px-2 py-1 bg-white border rounded-lg text-[10px] font-bold hover:bg-stone-100 transition cursor-pointer"
                       >
-                        + 14 วัน
+                        + 14{t("log.days")}
                       </button>
                       <button
                         type="button"
                         onClick={() => addDurationDays(30)}
                         className="px-2 py-1 bg-white border rounded-lg text-[10px] font-bold hover:bg-stone-100 transition cursor-pointer"
                       >
-                        + 1 เดือน
+                        {t("bn.plus1m")}
                       </button>
                       <button
                         type="button"
                         onClick={() => addDurationDays(90)}
                         className="px-2 py-1 bg-white border rounded-lg text-[10px] font-bold hover:bg-stone-100 transition cursor-pointer"
                       >
-                        + 3 เดือน
+                        {t("bn.plus3m")}
                       </button>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block text-[10px] font-bold text-stone-600 mb-1">
-                          วัน-เวลาเริ่มแสดงผล (Start Time)
+                          {t("bn.startTime")}
                         </label>
                         <input
                           type="datetime-local"
@@ -670,7 +672,7 @@ export default function AdminBannerManagePage() {
 
                       <div>
                         <label className="block text-[10px] font-bold text-stone-600 mb-1">
-                          วัน-เวลาสิ้นสุดการแสดงผล (End Time)
+                          {t("bn.endTime")}
                         </label>
                         <input
                           type="datetime-local"
@@ -683,7 +685,7 @@ export default function AdminBannerManagePage() {
                   </div>
                 ) : (
                   <p className="text-[11px] font-medium text-stone-600">
-                    แสดงผลทันทีและไม่มีวันหมดอายุ (จนกว่าจะปิดการใช้งานหรือลบ)
+                    {t("bn.noExpiry")}
                   </p>
                 )}
               </div>
@@ -691,7 +693,7 @@ export default function AdminBannerManagePage() {
               {/* Order & Status */}
               <div className="flex items-center justify-between pt-2">
                 <div className="flex items-center gap-2">
-                  <label className="text-xs font-black text-stone-800">ลำดับการแสดงผล:</label>
+                  <label className="text-xs font-black text-stone-800">{t("bn.sortOrder")}</label>
                   <input
                     type="number"
                     min={1}
@@ -708,7 +710,7 @@ export default function AdminBannerManagePage() {
                     onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
                     className="w-4 h-4 rounded-md accent-emerald-600"
                   />
-                  <span className="text-xs font-bold text-stone-800">เปิดการใช้งานทันที</span>
+                  <span className="text-xs font-bold text-stone-800">{t("bn.activateNow")}</span>
                 </label>
               </div>
 
@@ -719,14 +721,14 @@ export default function AdminBannerManagePage() {
                   onClick={() => setIsModalOpen(false)}
                   className="px-4 py-2 rounded-xl bg-stone-100 text-stone-700 text-xs font-bold hover:bg-stone-200 transition cursor-pointer"
                 >
-                  ยกเลิก
+                  {t("common.cancel")}
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
                   className="px-5 py-2 rounded-xl bg-[#E0533C] text-white text-xs font-black hover:bg-[#c94530] transition shadow-xs cursor-pointer"
                 >
-                  {saving ? "กำลังบันทึก..." : editingBanner ? "บันทึกการแก้ไข" : "สร้างแบนเนอร์"}
+                  {saving ? t("bn.saving") : editingBanner ? t("bn.saveEdit") : t("bn.create")}
                 </button>
               </div>
             </form>

@@ -31,6 +31,7 @@ import { UserRole } from "../../hooks/useUserRole";
 import { resolveUserDisplayName, resolveUserAvatarUrl, getDeletedUserIds } from "../../lib/activityHelpers";
 import { UserAvatar } from "../UserAvatar";
 import AdminAnnouncementModal from "../AdminAnnouncementModal";
+import { useLang } from "../../lib/i18n";
 
 export default function UserManagementPage() {
   return (
@@ -41,6 +42,7 @@ export default function UserManagementPage() {
 }
 
 function UserManagementContent() {
+  const { t } = useLang();
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -197,11 +199,11 @@ function UserManagementContent() {
 
       if (rpcErr) throw rpcErr;
 
-      alert("มอบสิทธิ์เจ้าของร้านค้าเรียบร้อยแล้ว!");
+      alert(t("um.grantOk"));
       setSelectedUserForAssign(null);
       fetchUsers(); // Refresh user list
     } catch (err: any) {
-      alert("เกิดข้อผิดพลาดในการมอบสิทธิ์: " + (err.message || "Failed"));
+      alert(t("um.grantFail") + (err.message || "Failed"));
     } finally {
       setAssigning(false);
     }
@@ -413,10 +415,10 @@ function UserManagementContent() {
         )
       );
 
-      alert("อัปเดตสิทธิ์ผู้ใช้เรียบร้อยแล้ว!");
+      alert(t("um.roleOk"));
     } catch (err: any) {
       console.error("[UserManagement] Failed to update role:", err);
-      alert("ไม่สามารถเปลี่ยนสิทธิ์ได้: " + (err.message || "Failed"));
+      alert(t("um.roleFail") + (err.message || "Failed"));
     } finally {
       setUpdatingId(null);
     }
@@ -425,10 +427,10 @@ function UserManagementContent() {
   const handleToggleBan = async (userId: string, currentBannedState: boolean) => {
     if (!currentBannedState) {
       // Banning user: Prompt for ban_reason
-      const inputReason = window.prompt("ระบุสาเหตุการแบนสมาชิก:", "ละเมิดเงื่อนไขการใช้งานระบบ");
+      const inputReason = window.prompt(t("log.banPrompt"), t("log.banDefaultReason"));
       if (inputReason === null) return; // Cancelled
 
-      const banReasonText = inputReason.trim() || "ละเมิดเงื่อนไขการใช้งานระบบ";
+      const banReasonText = inputReason.trim() || t("log.banDefaultReason");
       setBanningId(userId);
 
       try {
@@ -466,16 +468,16 @@ function UserManagementContent() {
             u.id === userId ? { ...u, is_banned: true, ban_reason: banReasonText } : u
           )
         );
-        alert("แบนสมาชิกเรียบร้อยแล้ว!");
+        alert(t("um.banOk"));
       } catch (err: any) {
         console.error("Failed to ban user:", err);
-        alert("เกิดข้อผิดพลาดในการเปลี่ยนสถานะ: " + (err.message || "Failed"));
+        alert(t("um.statusFail") + (err.message || "Failed"));
       } finally {
         setBanningId(null);
       }
     } else {
       // Unbanning user: Reset ban_reason to null
-      if (!window.confirm("คุณต้องการปลดแบนผู้ใช้งานนี้ใช่หรือไม่?")) return;
+      if (!window.confirm(t("um.confirmUnban"))) return;
 
       setBanningId(userId);
       try {
@@ -513,10 +515,10 @@ function UserManagementContent() {
             u.id === userId ? { ...u, is_banned: false, ban_reason: null } : u
           )
         );
-        alert("ปลดแบนผู้ใช้งานเรียบร้อยแล้ว!");
+        alert(t("um.unbanOk"));
       } catch (err: any) {
         console.error("Failed to unban user:", err);
-        alert("เกิดข้อผิดพลาดในการเปลี่ยนสถานะ: " + (err.message || "Failed"));
+        alert(t("um.statusFail") + (err.message || "Failed"));
       } finally {
         setBanningId(null);
       }
@@ -595,9 +597,9 @@ function UserManagementContent() {
             <Users size={20} />
           </div>
           <div>
-            <h2 className="text-base font-black text-[#231C18]">จัดการผู้ใช้งาน (User Management)</h2>
+            <h2 className="text-base font-black text-[#231C18]">{t("um.title")}</h2>
             <p className="text-xs text-[#8A7870] font-semibold mt-0.5">
-              จัดการสิทธิ์ผู้ใช้งาน บทบาทในระบบ และส่งประกาศแจ้งเตือน
+              {t("um.subtitle")}
             </p>
           </div>
         </div>
@@ -607,7 +609,7 @@ function UserManagementContent() {
           className="px-4 py-2 rounded-2xl bg-gradient-to-r from-[#FD775C] to-[#E31E27] hover:from-[#E31E27] hover:to-[#FD775C] text-white text-xs font-black shadow-xs flex items-center justify-center gap-2 transition cursor-pointer active:scale-95 shrink-0"
         >
           <Megaphone size={15} />
-          <span>ส่งประกาศระบบ (Broadcast)</span>
+          <span>{t("um.broadcast")}</span>
         </button>
       </div>
 
@@ -618,8 +620,8 @@ function UserManagementContent() {
             <Users size={18} />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase text-[#8A7870] tracking-wider truncate">สมาชิกทั้งหมด</p>
-            <h3 className="text-sm font-black text-[#231C18]">{users.length} คน</h3>
+            <p className="text-[10px] font-bold uppercase text-[#8A7870] tracking-wider truncate">{t("um.statAll")}</p>
+            <h3 className="text-sm font-black text-[#231C18]">{users.length}</h3>
           </div>
         </div>
 
@@ -628,8 +630,8 @@ function UserManagementContent() {
             <Crown size={18} />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase text-[#8A7870] tracking-wider truncate">แอดมิน</p>
-            <h3 className="text-sm font-black text-amber-700">{adminCount} คน</h3>
+            <p className="text-[10px] font-bold uppercase text-[#8A7870] tracking-wider truncate">{t("log.cat.admin")}</p>
+            <h3 className="text-sm font-black text-amber-700">{adminCount}</h3>
           </div>
         </div>
 
@@ -638,8 +640,8 @@ function UserManagementContent() {
             <Store size={18} />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase text-[#8A7870] tracking-wider truncate">เจ้าของร้าน</p>
-            <h3 className="text-sm font-black text-indigo-700">{storeOwnerCount} คน</h3>
+            <p className="text-[10px] font-bold uppercase text-[#8A7870] tracking-wider truncate">{t("um.statStore")}</p>
+            <h3 className="text-sm font-black text-indigo-700">{storeOwnerCount}</h3>
           </div>
         </div>
 
@@ -648,7 +650,7 @@ function UserManagementContent() {
             <UserCheck size={18} />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase text-[#8A7870] tracking-wider truncate">ปกติ / ถูกแบน</p>
+            <p className="text-[10px] font-bold uppercase text-[#8A7870] tracking-wider truncate">{t("um.statNormalBanned")}</p>
             <h3 className="text-sm font-black text-emerald-700">
               {activeCount} <span className="text-xs text-rose-600 font-bold">/ {bannedCount}</span>
             </h3>
@@ -666,7 +668,7 @@ function UserManagementContent() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="ค้นหาตามชื่อ, username หรือ อีเมล..."
+              placeholder={t("um.searchPlaceholder")}
               className="w-full text-xs outline-none bg-transparent font-medium text-stone-900 placeholder-stone-400"
             />
             {searchQuery && (
@@ -682,7 +684,7 @@ function UserManagementContent() {
               className="px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer shrink-0"
             >
               <RotateCcw size={13} />
-              <span>ล้างตัวกรอง</span>
+              <span>{t("um.clearFilter")}</span>
             </button>
           )}
         </div>
@@ -692,48 +694,48 @@ function UserManagementContent() {
           {/* Role Select Dropdown */}
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border bg-white text-xs font-bold" style={{ borderColor: C.line }}>
             <Filter size={13} className="text-[#FD775C] shrink-0" />
-            <span className="text-[11px] text-stone-500 font-medium shrink-0">บทบาท:</span>
+            <span className="text-[11px] text-stone-500 font-medium shrink-0">{t("um.role")}</span>
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value as any)}
               className="w-full bg-transparent outline-none font-bold text-stone-800 cursor-pointer"
             >
-              <option value="all">ทั้งหมด ({users.length})</option>
+              <option value="all">{t("filter.all")} ({users.length})</option>
               <option value="admin">Admin ({adminCount})</option>
-              <option value="store">เจ้าของร้าน ({storeOwnerCount})</option>
-              <option value="user">ผู้ใช้ทั่วไป ({generalUserCount})</option>
+              <option value="store">{t("um.statStore")} ({storeOwnerCount})</option>
+              <option value="user">{t("um.generalUser")} ({generalUserCount})</option>
             </select>
           </div>
 
           {/* Status Select Dropdown */}
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border bg-white text-xs font-bold" style={{ borderColor: C.line }}>
             <Shield size={13} className="text-emerald-600 shrink-0" />
-            <span className="text-[11px] text-stone-500 font-medium shrink-0">สถานะ:</span>
+            <span className="text-[11px] text-stone-500 font-medium shrink-0">{t("sd.status")}</span>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as any)}
               className="w-full bg-transparent outline-none font-bold text-stone-800 cursor-pointer"
             >
-              <option value="all">ทุกสถานะ ({users.length})</option>
-              <option value="active">ใช้งานปกติ ({activeCount})</option>
-              <option value="banned">ถูกแบน ({bannedCount})</option>
+              <option value="all">{t("um.allStatus")} ({users.length})</option>
+              <option value="active">{t("um.statusActive")} ({activeCount})</option>
+              <option value="banned">{t("um.statusBanned")} ({bannedCount})</option>
             </select>
           </div>
 
           {/* Sort Select Dropdown */}
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border bg-white text-xs font-bold" style={{ borderColor: C.line }}>
             <ArrowUpDown size={13} className="text-amber-600 shrink-0" />
-            <span className="text-[11px] text-stone-500 font-medium shrink-0">จัดเรียง:</span>
+            <span className="text-[11px] text-stone-500 font-medium shrink-0">{t("um.sort")}</span>
             <select
               value={sortOrder}
               onChange={(e) => setSortOrder(e.target.value as any)}
               className="w-full bg-transparent outline-none font-bold text-stone-800 cursor-pointer"
             >
-              <option value="newest">สมัครล่าสุด (Newest)</option>
-              <option value="oldest">สมัครก่อนหน้า (Oldest)</option>
-              <option value="name">ตามชื่อ (A-Z)</option>
-              <option value="most_stamps">เช็คอินเยอะที่สุด</option>
-              <option value="most_reviews">รีวิวเยอะที่สุด</option>
+              <option value="newest">{t("um.sortNewest")}</option>
+              <option value="oldest">{t("um.sortOldest")}</option>
+              <option value="name">{t("um.sortName")}</option>
+              <option value="most_stamps">{t("um.sortStamps")}</option>
+              <option value="most_reviews">{t("um.sortReviews")}</option>
             </select>
           </div>
         </div>
@@ -741,26 +743,26 @@ function UserManagementContent() {
 
       {/* User Count Bar */}
       <div className="flex items-center justify-between text-[11px] font-bold text-stone-500 px-1 select-none">
-        <span>แสดงผล {filteredUsers.length} จาก {users.length} สมาชิก</span>
+        <span>{t("um.showing").replace("{a}", String(filteredUsers.length)).replace("{b}", String(users.length))}</span>
       </div>
 
       {/* User List Content */}
       {loading ? (
         <div className="p-12 text-center bg-white rounded-3xl border flex flex-col items-center justify-center gap-3" style={{ borderColor: C.line }}>
           <Loader2 size={24} className="animate-spin text-[#FD775C]" />
-          <span className="text-xs font-bold text-stone-500">กำลังโหลดรายชื่อสมาชิก...</span>
+          <span className="text-xs font-bold text-stone-500">{t("um.loading")}</span>
         </div>
       ) : filteredUsers.length === 0 ? (
         <div className="p-12 text-center bg-white rounded-3xl border flex flex-col items-center justify-center gap-2" style={{ borderColor: C.line }}>
           <Users size={32} className="text-stone-300" />
-          <p className="text-xs font-bold text-stone-500">ไม่พบข้อมูลผู้ใช้งานตามเงื่อนไข</p>
+          <p className="text-xs font-bold text-stone-500">{t("um.noResult")}</p>
           {isAnyFilterActive && (
             <button
               onClick={handleResetFilters}
               className="mt-2 px-3.5 py-1.5 bg-[#FD775C] text-white text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer"
             >
               <RotateCcw size={13} />
-              <span>ล้างตัวกรอง</span>
+              <span>{t("um.clearFilter")}</span>
             </button>
           )}
         </div>
@@ -775,7 +777,7 @@ function UserManagementContent() {
                   month: "short",
                   day: "numeric",
                 })
-              : "ไม่ระบุ";
+              : t("um.notSpecified");
 
             return (
               <div
@@ -797,7 +799,7 @@ function UserManagementContent() {
                         <h4 className="text-xs sm:text-sm font-black text-stone-900 truncate">{mainDisplayName}</h4>
                         {isSelf && (
                           <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                            (คุณ)
+                            ({t("um.you")})
                           </span>
                         )}
                       </div>
@@ -832,11 +834,11 @@ function UserManagementContent() {
                     {/* Status Badge */}
                     {u.is_banned ? (
                       <span className="px-2 py-0.5 rounded-lg text-[10px] font-black bg-rose-100 text-rose-700 border border-rose-200">
-                        ถูกแบน
+                        {t("um.statusBanned")}
                       </span>
                     ) : (
                       <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200">
-                        ปกติ
+                        {t("um.normal")}
                       </span>
                     )}
                   </div>
@@ -849,10 +851,10 @@ function UserManagementContent() {
                       type="button"
                       onClick={() => handleInspectUserActivity(u, "stamps")}
                       className="hover:text-amber-700 transition cursor-pointer flex items-center gap-1 font-bold"
-                      title="ดูประวัติการเช็คอิน"
+                      title={t("um.viewCheckins")}
                     >
                       <MapPin size={11} className="text-amber-600" />
-                      <span>เช็คอิน: <strong className="text-stone-900">{u.stamps_count}</strong></span>
+                      <span>{t("log.cat.checkin")}: <strong className="text-stone-900">{u.stamps_count}</strong></span>
                     </button>
 
                     <span className="text-stone-300">•</span>
@@ -861,18 +863,18 @@ function UserManagementContent() {
                       type="button"
                       onClick={() => handleInspectUserActivity(u, "reviews")}
                       className="hover:text-blue-700 transition cursor-pointer flex items-center gap-1 font-bold"
-                      title="ดูประวัติการเขียนรีวิว"
+                      title={t("um.viewReviews")}
                     >
                       <MessageSquare size={11} className="text-blue-600" />
-                      <span>รีวิว: <strong className="text-stone-900">{u.reviews_count}</strong></span>
+                      <span>{t("log.cat.review")}: <strong className="text-stone-900">{u.reviews_count}</strong></span>
                     </button>
                   </div>
 
                   <div className="text-[10px] text-stone-400 font-semibold">
-                    สมัครเมื่อ: {regDateFormatted}
+                    {t("um.joined")}: {regDateFormatted}
                     {u.is_banned && (
                       <span className="text-rose-600 font-bold ml-1.5">
-                        ({u.ban_reason || "ละเมิดเงื่อนไข"})
+                        ({u.ban_reason || t("log.banDefaultReason")})
                       </span>
                     )}
                   </div>
@@ -886,7 +888,7 @@ function UserManagementContent() {
                       onClick={() => setSelectedUserForAssign(u)}
                       className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition cursor-pointer"
                     >
-                      มอบสิทธิ์ร้าน
+                      {t("um.grantStore")}
                     </button>
                   )}
 
@@ -898,7 +900,7 @@ function UserManagementContent() {
                     style={{ borderColor: C.line }}
                   >
                     <option value="user">User</option>
-                    <option value="store">Store Owner</option>
+                    <option value="store">{t("um.statStore")}</option>
                     <option value="admin">Admin</option>
                   </select>
 
@@ -907,7 +909,7 @@ function UserManagementContent() {
                       disabled
                       className="px-2.5 py-1.5 rounded-xl text-xs font-bold text-stone-400 bg-stone-100 cursor-not-allowed border border-stone-200"
                     >
-                      แบนสมาชิก
+                      {t("um.banMember")}
                     </button>
                   ) : (
                     <button
@@ -923,9 +925,9 @@ function UserManagementContent() {
                       {banningId === u.id ? (
                         <Loader2 size={13} className="animate-spin" />
                       ) : u.is_banned ? (
-                        "ปลดแบน"
+                        t("um.unban")
                       ) : (
-                        "แบนสมาชิก"
+                        t("um.banMember")
                       )}
                     </button>
                   )}
@@ -942,7 +944,7 @@ function UserManagementContent() {
           <div className="bg-white rounded-3xl w-full max-w-md border shadow-2xl overflow-hidden flex flex-col p-6 space-y-4" style={{ borderColor: C.line }}>
             {/* Header */}
             <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: C.line }}>
-              <h3 className="text-sm font-black text-[#231C18]">มอบสิทธิ์ดูแลร้านค้า</h3>
+              <h3 className="text-sm font-black text-[#231C18]">{t("um.grantTitle")}</h3>
               <button
                 type="button"
                 onClick={() => setSelectedUserForAssign(null)}
@@ -954,32 +956,32 @@ function UserManagementContent() {
 
             {/* User Info Detail */}
             <div className="bg-[#FAF6F0] p-3 rounded-2xl border text-xs space-y-1" style={{ borderColor: C.line }}>
-              <p className="font-bold text-[#8A7870]">ผู้รับสิทธิ์:</p>
+              <p className="font-bold text-[#8A7870]">{t("um.recipient")}</p>
               <p className="font-black text-[#231C18]">
                 {selectedUserForAssign.display_name || selectedUserForAssign.username || selectedUserForAssign.id}
               </p>
               <p className="text-[10px] text-[#8A7870] font-semibold uppercase tracking-wider mt-1">
-                บทบาทปัจจุบัน: {selectedUserForAssign.role}
+                {t("um.currentRole")}: {selectedUserForAssign.role}
               </p>
             </div>
 
             {/* Shop Selection Form */}
             <form onSubmit={handleAssignShopSubmit} className="space-y-4">
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase text-[#8A7870] block">ค้นหาและเลือกร้านค้า</label>
+                <label className="text-[10px] font-black uppercase text-[#8A7870] block">{t("um.pickShop")}</label>
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border bg-[#FAF6F0]" style={{ borderColor: C.line }}>
                   <Search size={14} className="text-[#8A7870]" />
                   <input
                     type="text"
                     value={shopSearch}
                     onChange={(e) => setShopSearch(e.target.value)}
-                    placeholder="พิมพ์ชื่อร้านเพื่อค้นหา..."
+                    placeholder={t("um.shopSearchPlaceholder")}
                     className="w-full text-xs outline-none bg-transparent"
                   />
                 </div>
 
                 {loadingShops ? (
-                  <div className="p-4 text-center text-xs font-bold text-[#8A7870] animate-pulse">กำลังโหลดร้านค้า...</div>
+                  <div className="p-4 text-center text-xs font-bold text-[#8A7870] animate-pulse">{t("um.loadingShops")}</div>
                 ) : (
                   <div className="max-h-48 overflow-y-auto border rounded-xl divide-y bg-white" style={{ borderColor: C.line }}>
                     {shops
@@ -996,12 +998,12 @@ function UserManagementContent() {
                             }`}
                           >
                             <span>{s.shop_name}</span>
-                            {isSelected && <span className="text-amber-600 font-bold"> Selected</span>}
+                            {isSelected && <span className="text-amber-600 font-bold">{t("sd.selected")}</span>}
                           </div>
                         );
                       })}
                     {shops.filter(s => (s.shop_name || "").toLowerCase().includes(shopSearch.toLowerCase().trim())).length === 0 && (
-                      <div className="p-4 text-center text-xs text-[#8A7870]">ไม่พบร้านค้าที่ตรงกับคำค้นหา</div>
+                      <div className="p-4 text-center text-xs text-[#8A7870]">{t("um.noShopMatch")}</div>
                     )}
                   </div>
                 )}
@@ -1015,7 +1017,7 @@ function UserManagementContent() {
                   className="px-4 py-2 rounded-xl border text-xs font-bold hover:bg-stone-100 transition cursor-pointer"
                   style={{ borderColor: C.line }}
                 >
-                  ยกเลิก
+                  {t("common.cancel")}
                 </button>
                 <button
                   type="submit"
@@ -1023,7 +1025,7 @@ function UserManagementContent() {
                   className="px-5 py-2 rounded-xl text-xs font-black text-white bg-[#E0533C] hover:bg-[#c94530] transition flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
                 >
                   {assigning && <Loader2 size={13} className="animate-spin" />}
-                  <span>ยืนยันมอบสิทธิ์</span>
+                  <span>{t("um.confirmGrant")}</span>
                 </button>
               </div>
             </form>
@@ -1081,7 +1083,7 @@ function UserManagementContent() {
                 }`}
               >
                 <MapPin size={14} />
-                <span>ประวัติการเช็คอิน ({userActivityStamps.length})</span>
+                <span>{t("um.checkinHistory")} ({userActivityStamps.length})</span>
               </button>
 
               <button
@@ -1094,7 +1096,7 @@ function UserManagementContent() {
                 }`}
               >
                 <MessageSquare size={14} />
-                <span>ประวัติการรีวิว ({userActivityReviews.length})</span>
+                <span>{t("um.reviewHistory")} ({userActivityReviews.length})</span>
               </button>
             </div>
 
@@ -1103,7 +1105,7 @@ function UserManagementContent() {
               {loadingUserActivity ? (
                 <div className="py-12 text-center text-xs font-bold text-[#8A7870] flex flex-col items-center gap-2 animate-pulse">
                   <Loader2 size={24} className="animate-spin text-[#E0533C]" />
-                  <span>กำลังดึงข้อมูลประวัติกิจกรรมผู้ใช้งาน...</span>
+                  <span>{t("um.loadingActivity")}</span>
                 </div>
               ) : activeDetailTab === "stamps" ? (
                 /* TAB 1: STAMPS / CHECK-INS LIST */
@@ -1111,7 +1113,7 @@ function UserManagementContent() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {userActivityStamps.map((item: any) => {
                       const shop = item.century_shops || {};
-                      const shopName = shop.shop_name || `ร้านค้า #${item.shop_id || item.stamp_id}`;
+                      const shopName = shop.shop_name || `${t("log.d.shop")} #${item.shop_id || item.stamp_id}`;
                       return (
                         <div
                           key={item.id}
@@ -1154,7 +1156,7 @@ function UserManagementContent() {
                   </div>
                 ) : (
                   <div className="py-12 text-center text-xs font-semibold text-[#8A7870] bg-white rounded-2xl border p-6" style={{ borderColor: C.line }}>
-                    ยังไม่มีประวัติการเช็คอินสถานที่
+                    {t("um.noCheckins")}
                   </div>
                 )
               ) : (
@@ -1163,7 +1165,7 @@ function UserManagementContent() {
                   <div className="space-y-3">
                     {userActivityReviews.map((rev: any) => {
                       const shop = rev.century_shops || {};
-                      const shopName = shop.shop_name || `ร้านค้า #${rev.place_id}`;
+                      const shopName = shop.shop_name || `${t("log.d.shop")} #${rev.place_id}`;
                       const rating = Number(rev.rating) || 5;
                       return (
                         <div
@@ -1206,7 +1208,7 @@ function UserManagementContent() {
                   </div>
                 ) : (
                   <div className="py-12 text-center text-xs font-semibold text-[#8A7870] bg-white rounded-2xl border p-6" style={{ borderColor: C.line }}>
-                    ยังไม่มีประวัติการเขียนรีวิวหรือคอมเมนต์
+                    {t("um.noReviews")}
                   </div>
                 )
               )}
@@ -1220,7 +1222,7 @@ function UserManagementContent() {
                 className="px-5 py-2 rounded-xl border text-xs font-bold hover:bg-stone-200 transition cursor-pointer bg-white"
                 style={{ borderColor: C.line }}
               >
-                ปิดหน้าต่าง
+                {t("common.close")}
               </button>
             </div>
           </div>

@@ -3,6 +3,7 @@ import { X, Megaphone, Send, Store, Users, Globe, AlertTriangle, CheckCircle, Be
 import { C } from "../constants/mockData";
 import { createSystemAnnouncement } from "../lib/announcementHelpers";
 import { useUserRole } from "../hooks/useUserRole";
+import { useLang } from "../lib/i18n";
 
 interface AdminAnnouncementModalProps {
   isOpen: boolean;
@@ -11,6 +12,7 @@ interface AdminAnnouncementModalProps {
 }
 
 export default function AdminAnnouncementModal({ isOpen, onClose, onSuccess }: AdminAnnouncementModalProps) {
+  const { t } = useLang();
   const { user } = useUserRole();
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
@@ -49,23 +51,23 @@ export default function AdminAnnouncementModal({ isOpen, onClose, onSuccess }: A
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !message.trim()) {
-      setErrorMsg("กรุณากรอกหัวข้อและรายละเอียดประกาศให้ครบถ้วน");
+      setErrorMsg(t("ann.needTitleMsg"));
       return;
     }
 
     let finalScheduledAt: string | null = null;
     if (isScheduled) {
       if (!scheduledDateTime) {
-        setErrorMsg("กรุณาระบุวันและเวลาที่ต้องการประกาศล่วงหน้า");
+        setErrorMsg(t("ann.needSchedule"));
         return;
       }
       const scheduledTimeMs = new Date(scheduledDateTime).getTime();
       if (isNaN(scheduledTimeMs)) {
-        setErrorMsg("รูปแบบวันและเวลาไม่ถูกต้อง");
+        setErrorMsg(t("ann.badDate"));
         return;
       }
       if (scheduledTimeMs <= Date.now()) {
-        setErrorMsg("เวลาที่ตั้งประกาศล่วงหน้าต้องเป็นเวลาในอนาคต");
+        setErrorMsg(t("ann.mustBeFuture"));
         return;
       }
       finalScheduledAt = new Date(scheduledDateTime).toISOString();
@@ -99,7 +101,7 @@ export default function AdminAnnouncementModal({ isOpen, onClose, onSuccess }: A
       }, 1400);
     } catch (err) {
       console.error("Failed to broadcast announcement:", err);
-      setErrorMsg("เกิดข้อผิดพลาดในการส่งประกาศ กรุณาลองใหม่อีกครั้ง");
+      setErrorMsg(t("ann.sendFail"));
     } finally {
       setSubmitting(false);
     }
@@ -118,8 +120,8 @@ export default function AdminAnnouncementModal({ isOpen, onClose, onSuccess }: A
               <Megaphone size={20} />
             </div>
             <div>
-              <h3 className="text-base font-black text-[#231C18]">ส่งประกาศจากระบบ (Admin Announcement)</h3>
-              <p className="text-[11px] font-bold text-[#8A7870]">เลือกกลุ่มเป้าหมายและตั้งเวลาประกาศล่วงหน้าได้</p>
+              <h3 className="text-base font-black text-[#231C18]">{t("ann.title")}</h3>
+              <p className="text-[11px] font-bold text-[#8A7870]">{t("ann.subtitle")}</p>
             </div>
           </div>
           <button
@@ -142,7 +144,7 @@ export default function AdminAnnouncementModal({ isOpen, onClose, onSuccess }: A
           {/* 1. Target Role Selector */}
           <div>
             <label className="block text-xs font-black text-[#231C18] mb-2">
-              1. เลือกกลุ่มเป้าหมายผู้รับประกาศ <span className="text-rose-500">*</span>
+              1. {t("ann.step1")} <span className="text-rose-500">*</span>
             </label>
             <div className="grid grid-cols-3 gap-2">
               {/* Option: ALL */}
@@ -156,8 +158,8 @@ export default function AdminAnnouncementModal({ isOpen, onClose, onSuccess }: A
                 }`}
               >
                 <Globe size={20} />
-                <span className="text-xs">ทุกกลุ่มผู้ใช้งาน</span>
-                <span className="text-[9px] opacity-75">All Users</span>
+                <span className="text-xs">{t("ann.targetAll")}</span>
+                <span className="text-[9px] opacity-75">{t("ann.targetAll")}</span>
               </button>
 
               {/* Option: STORE */}
@@ -171,8 +173,8 @@ export default function AdminAnnouncementModal({ isOpen, onClose, onSuccess }: A
                 }`}
               >
                 <Store size={20} />
-                <span className="text-xs">เฉพาะร้านค้า</span>
-                <span className="text-[9px] opacity-75">Store Role</span>
+                <span className="text-xs">{t("ann.targetStore")}</span>
+                <span className="text-[9px] opacity-75">{t("um.statStore")}</span>
               </button>
 
               {/* Option: USER */}
@@ -186,8 +188,8 @@ export default function AdminAnnouncementModal({ isOpen, onClose, onSuccess }: A
                 }`}
               >
                 <Users size={20} />
-                <span className="text-xs">เฉพาะผู้ใช้งาน</span>
-                <span className="text-[9px] opacity-75">User Role</span>
+                <span className="text-xs">{t("ann.targetUser")}</span>
+                <span className="text-[9px] opacity-75">{t("um.generalUser")}</span>
               </button>
             </div>
           </div>
@@ -197,7 +199,7 @@ export default function AdminAnnouncementModal({ isOpen, onClose, onSuccess }: A
             <div className="flex items-center justify-between">
               <label className="text-xs font-black text-[#231C18] flex items-center gap-1.5">
                 <Clock size={16} className="text-[#FD775C]" />
-                <span>2. ตั้งเวลาประกาศล่วงหน้า (Scheduled Publishing)</span>
+                <span>2. {t("ann.step2")}</span>
               </label>
 
               <button
@@ -218,7 +220,7 @@ export default function AdminAnnouncementModal({ isOpen, onClose, onSuccess }: A
             {isScheduled && (
               <div className="space-y-3 pt-1 border-t border-stone-200/80 animate-fade-in">
                 <p className="text-[11px] font-semibold text-[#8A7870]">
-                  กำหนดวันและเวลาที่ประกาศจะแสดงขึ้นบนไอคอนกระดิ่งของผู้ใช้ล่วงหน้า:
+                  {t("ann.scheduleDesc")}
                 </p>
 
                 {/* Preset Quick Buttons */}
@@ -228,21 +230,21 @@ export default function AdminAnnouncementModal({ isOpen, onClose, onSuccess }: A
                     onClick={() => handleSetPresetTime(1)}
                     className="px-2.5 py-1 rounded-xl text-[10px] font-extrabold bg-white border border-stone-200 text-stone-700 hover:bg-stone-100 transition cursor-pointer"
                   >
-                    + 1 ชั่วโมง
+                    + 1{t("ann.hour")}
                   </button>
                   <button
                     type="button"
                     onClick={() => handleSetPresetTime(3)}
                     className="px-2.5 py-1 rounded-xl text-[10px] font-extrabold bg-white border border-stone-200 text-stone-700 hover:bg-stone-100 transition cursor-pointer"
                   >
-                    + 3 ชั่วโมง
+                    + 3{t("ann.hour")}
                   </button>
                   <button
                     type="button"
                     onClick={handleSetTomorrowMorning}
                     className="px-2.5 py-1 rounded-xl text-[10px] font-extrabold bg-white border border-stone-200 text-stone-700 hover:bg-stone-100 transition cursor-pointer"
                   >
-                    พรุ่งนี้ 09:00 น.
+                    {t("ann.tomorrow9")}
                   </button>
                 </div>
 
@@ -261,12 +263,12 @@ export default function AdminAnnouncementModal({ isOpen, onClose, onSuccess }: A
 
           {/* 3. Priority Level */}
           <div>
-            <label className="block text-xs font-black text-[#231C18] mb-2">3. ระดับความสำคัญ</label>
+            <label className="block text-xs font-black text-[#231C18] mb-2">3. {t("ann.priority")}</label>
             <div className="flex gap-2">
               {[
-                { id: "normal", label: "ปกติ", bg: "bg-stone-100 text-stone-700 border-stone-300" },
-                { id: "high", label: "สำคัญ", bg: "bg-amber-100 text-amber-800 border-amber-400" },
-                { id: "urgent", label: "ด่วนที่สุด ", bg: "bg-rose-100 text-rose-800 border-rose-400" },
+                { id: "normal", label: t("um.normal"), bg: "bg-stone-100 text-stone-700 border-stone-300" },
+                { id: "high", label: t("ann.pr.high"), bg: "bg-amber-100 text-amber-800 border-amber-400" },
+                { id: "urgent", label: t("ann.pr.urgent"), bg: "bg-rose-100 text-rose-800 border-rose-400" },
               ].map((p) => (
                 <button
                   key={p.id}
@@ -285,13 +287,13 @@ export default function AdminAnnouncementModal({ isOpen, onClose, onSuccess }: A
           {/* Title */}
           <div>
             <label className="block text-xs font-black text-[#231C18] mb-1.5">
-              หัวข้อประกาศ <span className="text-rose-500">*</span>
+              {t("ann.fTitle")} <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="เช่น แจ้งอัปเดตฟีเจอร์ใหม่ หรือ ประกาศปิดระบบชั่วคราว"
+              placeholder={t("ann.titlePlaceholder")}
               className="w-full px-4 py-2.5 rounded-2xl border text-xs font-bold bg-stone-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#FD775C]/40 transition"
               style={{ borderColor: C.line }}
             />
@@ -300,13 +302,13 @@ export default function AdminAnnouncementModal({ isOpen, onClose, onSuccess }: A
           {/* Message */}
           <div>
             <label className="block text-xs font-black text-[#231C18] mb-1.5">
-              รายละเอียดประกาศ <span className="text-rose-500">*</span>
+              {t("ann.fMessage")} <span className="text-rose-500">*</span>
             </label>
             <textarea
               rows={3}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="กรอกรายละเอียดข้อความประกาศที่ต้องการแจ้งเตือนไปยังผู้ใช้งาน..."
+              placeholder={t("ann.msgPlaceholder")}
               className="w-full px-4 py-2.5 rounded-2xl border text-xs font-medium bg-stone-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#FD775C]/40 transition"
               style={{ borderColor: C.line }}
             />
@@ -316,12 +318,12 @@ export default function AdminAnnouncementModal({ isOpen, onClose, onSuccess }: A
           <div className="p-3.5 rounded-2xl border bg-stone-50/80 space-y-1.5" style={{ borderColor: C.line }}>
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-black uppercase text-[#8A7870] tracking-wider flex items-center gap-1">
-                <Bell size={12} /> ตัวอย่างการแสดงผลในกระดิ่ง (Live Preview)
+                <Bell size={12} /> {t("ann.preview")}
               </span>
               <div className="flex items-center gap-1">
                 {isScheduled && (
                   <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-purple-600 text-white flex items-center gap-1">
-                    <Clock size={10} /> ตั้งเวลาล่วงหน้า
+                    <Clock size={10} /> {t("ann.scheduled")}
                   </span>
                 )}
                 <span
@@ -333,7 +335,7 @@ export default function AdminAnnouncementModal({ isOpen, onClose, onSuccess }: A
                       : "bg-[#FD775C]"
                   }`}
                 >
-                  {targetRole === "store" ? "ส่งถึง: ร้านค้า" : targetRole === "user" ? "ส่งถึง: ผู้ใช้ทั่วไป" : "ส่งถึง: ทุกคน"}
+                  {t("ann.sendTo")}: {targetRole === "store" ? t("um.statStore") : targetRole === "user" ? t("um.generalUser") : t("ann.targetAll")}
                 </span>
               </div>
             </div>
@@ -341,11 +343,11 @@ export default function AdminAnnouncementModal({ isOpen, onClose, onSuccess }: A
               <div className="flex items-center gap-1.5">
                 {priority === "urgent" && <AlertTriangle size={13} className="text-red-500 shrink-0" />}
                 <p className="text-xs font-bold text-[#231C18] truncate">
-                  {title.trim() || "หัวข้อประกาศจะปรากฏที่นี่"}
+                  {title.trim() || t("ann.titlePreview")}
                 </p>
               </div>
               <p className="text-[11px] text-[#555] font-medium mt-1 line-clamp-2">
-                {message.trim() || "รายละเอียดข้อความประกาศ..."}
+                {message.trim() || t("ann.msgPreview")}
               </p>
               {isScheduled && scheduledDateTime && (
                 <div className="text-[9.5px] font-bold text-purple-700 mt-2 flex items-center gap-1">
@@ -364,7 +366,7 @@ export default function AdminAnnouncementModal({ isOpen, onClose, onSuccess }: A
             onClick={onClose}
             className="px-4 py-2.5 rounded-2xl text-xs font-bold text-[#8A7870] hover:bg-stone-200/70 transition cursor-pointer"
           >
-            ยกเลิก
+            {t("common.cancel")}
           </button>
           <button
             type="button"
@@ -375,14 +377,14 @@ export default function AdminAnnouncementModal({ isOpen, onClose, onSuccess }: A
             {showSuccessToast ? (
               <>
                 <CheckCircle size={16} />
-                <span>{isScheduled ? "ตั้งเวลาประกาศเรียบร้อย!" : "ส่งประกาศเรียบร้อยแล้ว!"}</span>
+                <span>{isScheduled ? t("ann.scheduledOk") : t("ann.sentOk")}</span>
               </>
             ) : submitting ? (
-              <span>กำลังส่งประกาศ...</span>
+              <span>{t("ann.sending")}</span>
             ) : (
               <>
                 <Send size={15} />
-                <span>{isScheduled ? "บันทึกการตั้งเวลาประกาศ" : "ส่งประกาศไปยังกระดิ่ง"}</span>
+                <span>{isScheduled ? t("ann.saveSchedule") : t("ann.sendNow")}</span>
               </>
             )}
           </button>

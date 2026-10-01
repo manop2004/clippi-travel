@@ -115,7 +115,7 @@ export default function App() {
   const requireAuth = (actionName?: string, mode: "login" | "signup" = "login") => {
     if (!session?.user) {
       if (actionName) {
-        setAuthNotice(`กรุณาเข้าสู่ระบบหรือสมัครสมาชิกก่อนเพื่อ${actionName}`);
+        setAuthNotice(t("app.needLogin").replace("{a}", actionName));
       } else {
         setAuthNotice(null);
       }
@@ -141,7 +141,7 @@ export default function App() {
       "jigsaw_manage",
     ];
     if (!session?.user && protectedTabs.includes(newTab)) {
-      requireAuth("เข้าถึงหน้านี้");
+      requireAuth(t("app.act.openPage"));
       return;
     }
     setTab(newTab);
@@ -184,15 +184,15 @@ export default function App() {
     { id: "explore", label: t("nav.explore"), icon: Compass, roles: ["user", "store", "admin"] },
     { id: "map", label: t("nav.map"), icon: MapPin, roles: ["user", "store", "admin"] },
     { id: "collection", label: t("nav.collection"), icon: BookOpen, roles: ["user", "store", "admin"] },
-    { id: "jigsaw", label: "Jigsaw Quest", icon: Puzzle, roles: ["user", "store", "admin"] },
+    { id: "jigsaw", label: t("nav.jigsaw"), icon: Puzzle, roles: ["user", "store", "admin"] },
     { id: "profile", label: t("nav.profile"), icon: User, roles: ["user", "store", "admin"] },
-    { id: "store_manage", label: "Manage My Shop", icon: Store, roles: ["store", "admin"] },
-    { id: "admin", label: "Admin Review", icon: ShieldCheck, roles: ["admin"] },
-    { id: "banners_manage", label: "Manage Banners", icon: Image, roles: ["admin"] },
-    { id: "users_manage", label: "User Management", icon: Users, roles: ["admin"] },
-    { id: "admin_log", label: "Activity Log", icon: ScrollText, roles: ["admin"] },
-    { id: "achievements", label: "Achievements", icon: Trophy, roles: ["admin"] },
-    { id: "jigsaw_manage", label: "Manage Jigsaws", icon: Puzzle, roles: ["admin"] },
+    { id: "store_manage", label: t("nav.storeManage"), icon: Store, roles: ["store", "admin"] },
+    { id: "admin", label: t("rv.tabMerchant"), icon: ShieldCheck, roles: ["admin"] },
+    { id: "banners_manage", label: t("bn.pageTitle"), icon: Image, roles: ["admin"] },
+    { id: "users_manage", label: t("um.title"), icon: Users, roles: ["admin"] },
+    { id: "admin_log", label: t("log.title"), icon: ScrollText, roles: ["admin"] },
+    { id: "achievements", label: t("ach.title"), icon: Trophy, roles: ["admin"] },
+    { id: "jigsaw_manage", label: t("jg.manageQuests"), icon: Puzzle, roles: ["admin"] },
   ];
 
   const navTabs = allNavTabs.filter((item) => item.roles.includes(role));
@@ -269,7 +269,7 @@ export default function App() {
         target_table: "profiles",
         target_id: uid,
         detail: {
-          note: "ออกจากระบบสำเร็จ",
+          note: t("log.a.logout"),
           email: email,
         },
       });
@@ -296,7 +296,7 @@ export default function App() {
     }
 
     const detailObj = {
-      note: "เข้าสู่ระบบสำเร็จ",
+      note: t("log.a.login"),
       email: email,
     };
 
@@ -364,10 +364,10 @@ export default function App() {
           setAuthNotice(null);
           const name = currentSession.user.user_metadata?.display_name ||
                        currentSession.user.user_metadata?.full_name ||
-                       (currentSession.user.email ? currentSession.user.email.split("@")[0] : "ผู้ใช้งาน");
+                       (currentSession.user.email ? currentSession.user.email.split("@")[0] : t("log.d.user"));
           setToastMessage({
-            title: "🎉 เข้าสู่ระบบสำเร็จ!",
-            message: `ยินดีต้อนรับกลับมาคุณ ${name}`,
+            title: t("au.loginOk"),
+            message: `${t("app.welcomeBack")} ${name}`,
           });
         }
 
@@ -428,12 +428,12 @@ export default function App() {
           <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-5 text-4xl">
             
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">บัญชีของคุณถูกระงับการใช้งาน</h2>
-          <p className="text-gray-500 text-sm mb-6">คุณไม่สามารถเข้าถึงส่วนใดๆ ของระบบได้เนื่องจากบัญชีถูกแบน</p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">{t("ban.title")}</h2>
+          <p className="text-gray-500 text-sm mb-6">{t("ban.desc")}</p>
 
           <div className="bg-red-50 text-red-700 p-4 rounded-2xl border border-red-200 text-left mb-6">
-            <p className="text-xs font-bold uppercase text-red-500 mb-1">สาเหตุการแบน:</p>
-            <p className="text-sm font-semibold">{banReason || 'ละเมิดเงื่อนไขการใช้งานระบบ'}</p>
+            <p className="text-xs font-bold uppercase text-red-500 mb-1">{t("ban.reasonLabel")}</p>
+            <p className="text-sm font-semibold">{banReason || t('log.banDefaultReason')}</p>
           </div>
 
           <button
@@ -443,7 +443,7 @@ export default function App() {
             }}
             className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 px-4 rounded-xl transition shadow-lg shadow-red-200 cursor-pointer"
           >
-            ออกจากระบบ (Logout)
+            {t("action.signOut")}
           </button>
         </div>
       </div>
@@ -468,7 +468,7 @@ export default function App() {
         session.user.email,
         session.user.user_metadata?.display_name
       )
-    : "ผู้เยี่ยมชม";
+    : t("app.visitor");
   const headerAvatarUrl = session?.user
     ? resolveUserAvatarUrl(
         session.user.user_metadata?.custom_avatar_url,
@@ -488,13 +488,13 @@ export default function App() {
             activeTab={tab}
             onTabChange={handleTabChange}
             onAddPlaceClick={() => {
-              if (requireAuth("เพิ่มสถานที่ท่องเที่ยว")) setIsAddOpen(true);
+              if (requireAuth(t("app.act.addPlace"))) setIsAddOpen(true);
             }}
             onOpenMerchantModal={() => {
-              if (requireAuth("สมัครสมาชิกร้านค้า")) setIsMerchantApplyOpen(true);
+              if (requireAuth(t("app.act.merchantSignup"))) setIsMerchantApplyOpen(true);
             }}
             isLoggedIn={!!session?.user}
-            onOpenAuthModal={() => requireAuth("เข้าสู่ระบบ")}
+            onOpenAuthModal={() => requireAuth(t("auth.submitLogin"))}
           />
 
           {/* Main Content Wrapper */}
@@ -515,12 +515,12 @@ export default function App() {
                   </div>
                 ) : (
                   <button
-                    onClick={() => requireAuth("ใช้งานระบบ")}
+                    onClick={() => requireAuth(t("app.act.useSystem"))}
                     className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-[#FD775C] to-[#E31E27] hover:from-[#E31E27] hover:to-[#FD775C] text-white text-xs font-black shadow-xs transition cursor-pointer active:scale-95 whitespace-nowrap shrink-0"
                   >
                     <User size={14} className="shrink-0" />
-                    <span className="hidden sm:inline">เข้าสู่ระบบ / สมัครสมาชิก</span>
-                    <span className="sm:hidden">เข้าสู่ระบบ</span>
+                    <span className="hidden sm:inline">{t("app.loginOrSignup")}</span>
+                    <span className="sm:hidden">{t("auth.submitLogin")}</span>
                   </button>
                 )}
               </div>
@@ -583,7 +583,7 @@ export default function App() {
                 <NotificationBell
                   hideOnMobileSearch={showMobileSearch}
                   onOpenMerchantModal={() => {
-                    if (requireAuth("สมัครสมาชิกร้านค้า")) setIsMerchantApplyOpen(true);
+                    if (requireAuth(t("app.act.merchantSignup"))) setIsMerchantApplyOpen(true);
                   }}
                 />
 
@@ -612,7 +612,7 @@ export default function App() {
                   openPlace={(p: any) => setSelectedPlace(p)}
                   searchQuery={searchQuery}
                   onOpenScanner={() => {
-                    if (requireAuth("สแกน QR Code เช็คอิน")) setIsScannerOpen(true);
+                    if (requireAuth(t("app.act.scanQr"))) setIsScannerOpen(true);
                   }}
                   collectedJigsawPieces={collectedPieceIds}
                   onNavigateTab={handleTabChange}
@@ -628,7 +628,7 @@ export default function App() {
                 <JigsawBoardView
                   collectedPieceIds={collectedPieceIds}
                   onOpenScanner={() => {
-                    if (requireAuth("สแกน QR Code เช็คอิน")) setIsScannerOpen(true);
+                    if (requireAuth(t("app.act.scanQr"))) setIsScannerOpen(true);
                   }}
                   onResetProgress={() => setCollectedPieceIds([])}
                   onNavigateTab={handleTabChange}
@@ -637,7 +637,7 @@ export default function App() {
               {tab === "profile" && (
                 <ProfileView
                   onOpenMerchantModal={() => {
-                    if (requireAuth("สมัครสมาชิกร้านค้า")) setIsMerchantApplyOpen(true);
+                    if (requireAuth(t("app.act.merchantSignup"))) setIsMerchantApplyOpen(true);
                   }}
                   onGoToStoreManage={() => handleTabChange("store_manage")}
                   onNavigateTab={handleTabChange}
@@ -655,7 +655,7 @@ export default function App() {
               )}
               {tab === "store_manage" && (
                 <StoreManagementPage onOpenAddPlace={() => {
-                  if (requireAuth("เพิ่มสถานที่ท่องเที่ยว")) setIsAddOpen(true);
+                  if (requireAuth(t("app.act.addPlace"))) setIsAddOpen(true);
                 }} />
               )}
               {tab === "users_manage" && <UserManagementPage />}
@@ -717,7 +717,7 @@ export default function App() {
             <div className="relative flex flex-col items-center flex-1 shrink-0 -mt-7">
               <button
                 onClick={() => {
-                  if (requireAuth("สแกน QR Code เช็คอิน")) setIsScannerOpen(true);
+                  if (requireAuth(t("app.act.scanQr"))) setIsScannerOpen(true);
                 }}
                 className="relative flex flex-col items-center group cursor-pointer active:scale-90 transition"
               >
@@ -752,7 +752,7 @@ export default function App() {
               }`}
             >
               <User size={20} strokeWidth={tab === "profile" ? 2.5 : 1.8} />
-              <span className="text-[10px] tracking-wider font-black">PROFILE</span>
+              <span className="text-[10px] tracking-wider font-black">{t("nav.profile")}</span>
             </button>
           </nav>
 
@@ -761,7 +761,7 @@ export default function App() {
             place={selectedPlace}
             onClose={() => setSelectedPlace(null)}
             onOpenScanner={() => {
-              if (requireAuth("สแกน QR Code เช็คอิน")) setIsScannerOpen(true);
+              if (requireAuth(t("app.act.scanQr"))) setIsScannerOpen(true);
             }}
             onRequireAuth={(msg) => requireAuth(msg)}
             onEditStore={(p) => {
@@ -785,11 +785,11 @@ export default function App() {
             onClose={() => setEditingShop(null)}
             onShopUpdated={() => {
               setEditingShop(null);
-              alert("Shop was updated successfully!");
+              alert(t("sm.updateShopOk"));
             }}
             onShopDeleted={() => {
               setEditingShop(null);
-              alert("Shop was deleted successfully.");
+              alert(t("sm.deleteShopOk"));
             }}
           />
           <AddPlaceModal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} />
@@ -873,7 +873,7 @@ export default function App() {
                     className={`p-3.5 rounded-2xl border text-left flex flex-col justify-between transition cursor-pointer ${tab === "store_manage" ? "bg-rose-50 border-rose-400 text-rose-950 font-black shadow-xs" : "bg-stone-50 hover:bg-stone-100 border-stone-200 text-stone-800 font-bold"}`}
                   >
                     <Store size={20} className="text-rose-500 mb-2" />
-                    <span className="text-xs">Manage My Shop</span>
+                    <span className="text-xs">{t("nav.storeManage")}</span>
                   </button>
                   {role === "admin" && (<>
                   <button
@@ -881,7 +881,7 @@ export default function App() {
                     className={`p-3.5 rounded-2xl border text-left flex flex-col justify-between transition cursor-pointer ${tab === "banners_manage" ? "bg-rose-50 border-rose-400 text-rose-950 font-black shadow-xs" : "bg-stone-50 hover:bg-stone-100 border-stone-200 text-stone-800 font-bold"}`}
                   >
                     <Image size={20} className="text-rose-500 mb-2" />
-                    <span className="text-xs">จัดการแบนเนอร์</span>
+                    <span className="text-xs">{t("bn.pageTitle")}</span>
                   </button>
 
                   <button
@@ -889,7 +889,7 @@ export default function App() {
                     className={`p-3.5 rounded-2xl border text-left flex flex-col justify-between transition cursor-pointer ${tab === "admin" ? "bg-rose-50 border-rose-400 text-rose-950 font-black shadow-xs" : "bg-stone-50 hover:bg-stone-100 border-stone-200 text-stone-800 font-bold"}`}
                   >
                     <ShieldCheck size={20} className="text-amber-500 mb-2" />
-                    <span className="text-xs">คำขอเปิดร้าน</span>
+                    <span className="text-xs">{t("rv.tabMerchant")}</span>
                   </button>
 
                   <button
@@ -897,7 +897,7 @@ export default function App() {
                     className={`p-3.5 rounded-2xl border text-left flex flex-col justify-between transition cursor-pointer ${tab === "users_manage" ? "bg-rose-50 border-rose-400 text-rose-950 font-black shadow-xs" : "bg-stone-50 hover:bg-stone-100 border-stone-200 text-stone-800 font-bold"}`}
                   >
                     <Users size={20} className="text-blue-500 mb-2" />
-                    <span className="text-xs">จัดการผู้ใช้งาน</span>
+                    <span className="text-xs">{t("um.title")}</span>
                   </button>
 
                   <button
@@ -905,7 +905,7 @@ export default function App() {
                     className={`p-3.5 rounded-2xl border text-left flex flex-col justify-between transition cursor-pointer ${tab === "admin_log" ? "bg-rose-50 border-rose-400 text-rose-950 font-black shadow-xs" : "bg-stone-50 hover:bg-stone-100 border-stone-200 text-stone-800 font-bold"}`}
                   >
                     <ScrollText size={20} className="text-purple-500 mb-2" />
-                    <span className="text-xs">ประวัติการทำงาน</span>
+                    <span className="text-xs">{t("log.title")}</span>
                   </button>
 
                   <button
@@ -913,7 +913,7 @@ export default function App() {
                     className={`p-3.5 rounded-2xl border text-left flex flex-col justify-between transition cursor-pointer ${tab === "achievements" ? "bg-rose-50 border-rose-400 text-rose-950 font-black shadow-xs" : "bg-stone-50 hover:bg-stone-100 border-stone-200 text-stone-800 font-bold"}`}
                   >
                     <Trophy size={20} className="text-amber-500 mb-2" />
-                    <span className="text-xs">ภารกิจและรางวัล</span>
+                    <span className="text-xs">{t("ach.title")}</span>
                   </button>
 
                   <button
@@ -921,7 +921,7 @@ export default function App() {
                     className={`p-3.5 rounded-2xl border text-left flex flex-col justify-between transition cursor-pointer ${tab === "jigsaw_manage" ? "bg-rose-50 border-rose-400 text-rose-950 font-black shadow-xs" : "bg-stone-50 hover:bg-stone-100 border-stone-200 text-stone-800 font-bold"}`}
                   >
                     <Puzzle size={20} className="text-emerald-500 mb-2" />
-                    <span className="text-xs">จัดการจิ๊กซอว์</span>
+                    <span className="text-xs">{t("jg.manageQuests")}</span>
                   </button>
                   </>)}
                 </div>

@@ -136,9 +136,9 @@ export function PlaceDetailModal({ place, onClose, onOpenScanner, onEditStore, o
 
     if (!user) {
       if (onRequireAuth) {
-        onRequireAuth("กรุณาเข้าสู่ระบบ หรือ สมัครสมาชิก ก่อนทำการเช็คอินรับแสตมป์");
+        onRequireAuth(t("md.needLoginCheckin"));
       } else {
-        alert("กรุณาเข้าสู่ระบบ หรือ สมัครสมาชิก ก่อนทำการเช็คอินรับแสตมป์");
+        alert(t("md.needLoginCheckin"));
       }
       return;
     }
@@ -146,14 +146,14 @@ export function PlaceDetailModal({ place, onClose, onOpenScanner, onEditStore, o
     // Check Store Operating Hours before checkin
     const currentStatus = getShopStatusToday(livePlace || place);
     if (currentStatus.isClosed) {
-      alert(`🔴 ร้านค้านี้กำลังปิดอยู่! (${currentStatus.description})\nสามารถเดินทางมาเช็คอินรับแสตมป์ได้เฉพาะช่วงเวลาที่ร้านเปิดทำการเท่านั้น (${currentStatus.openHoursStr})`);
+      alert(t("md.shopClosed").replace("{d}", currentStatus.description));
       return;
     }
 
     // Check 24-hour Cooldown before checkin
     const cooldownInfo = getShopCooldownStatus(userStamps, placeId);
     if (cooldownInfo.isCooldown) {
-      alert(`⏱️ ติดคูลดาวน์ 24 ชั่วโมง!\nคุณเช็คอินร้านนี้ไปแล้ว ต้องรออีก ${cooldownInfo.remainingText} ถึงจะเช็คอินสะสมแสตมป์รอบใหม่ได้`);
+      alert(t("md.cooldown").replace("{t}", cooldownInfo.remainingText));
       return;
     }
 
@@ -166,7 +166,7 @@ export function PlaceDetailModal({ place, onClose, onOpenScanner, onEditStore, o
         onOpenScanner();
         return;
       }
-      alert("กรุณาสแกน QR Code ประจำร้านค้าเพื่อทำการเช็คอิน");
+      alert(t("md.needQrScan"));
       return;
     }
 
@@ -185,7 +185,7 @@ export function PlaceDetailModal({ place, onClose, onOpenScanner, onEditStore, o
             );
 
             if (distMeters > 50) {
-              alert(`คุณอยู่ห่างจากร้านเกิน 50 เมตร! (${formatDistance(distMeters)})\nต้องอยู่ในรัศมี 50 เมตรเพื่อเช็คอิน`);
+              alert(t("md.tooFar").replace("{d}", formatDistance(distMeters)));
               setCollectingStamp(null);
               return;
             }
@@ -193,7 +193,7 @@ export function PlaceDetailModal({ place, onClose, onOpenScanner, onEditStore, o
             await collectStamp(placeId);
             const updated = await getUserStamps(user.id);
             setUserStamps(updated);
-            alert(`เช็คอินสำเร็จ! คุณได้รับแสตมป์ร้าน "${shopName}" เรียบร้อยแล้ว (แอดมินปิดระบบสแกน QR Code)`);
+            alert(t("md.checkinOk").replace("{n}", shopName));
             setCollectingStamp(null);
           },
           async (err) => {
@@ -201,7 +201,7 @@ export function PlaceDetailModal({ place, onClose, onOpenScanner, onEditStore, o
             await collectStamp(placeId);
             const updated = await getUserStamps(user.id);
             setUserStamps(updated);
-            alert(`เช็คอินสำเร็จ! คุณได้รับแสตมป์ร้าน "${shopName}" เรียบร้อยแล้ว (แอดมินปิดระบบสแกน QR Code)`);
+            alert(t("md.checkinOk").replace("{n}", shopName));
             setCollectingStamp(null);
           },
           { enableHighAccuracy: true, timeout: 8000 }
@@ -210,12 +210,12 @@ export function PlaceDetailModal({ place, onClose, onOpenScanner, onEditStore, o
         await collectStamp(placeId);
         const updated = await getUserStamps(user.id);
         setUserStamps(updated);
-        alert(`เช็คอินสำเร็จ! คุณได้รับแสตมป์ร้าน "${shopName}" เรียบร้อยแล้ว (แอดมินปิดระบบสแกน QR Code)`);
+        alert(t("md.checkinOk").replace("{n}", shopName));
         setCollectingStamp(null);
       }
     } catch (e: any) {
       console.error("Direct stamp collection error:", e);
-      alert("เกิดข้อผิดพลาดในการรับแสตมป์: " + (e.message || "Failed"));
+      alert(t("md.stampFail") + (e.message || "Failed"));
       setCollectingStamp(null);
     }
   };
@@ -293,7 +293,7 @@ export function PlaceDetailModal({ place, onClose, onOpenScanner, onEditStore, o
               <div className="flex items-center justify-between gap-2">
                 <span className="text-[10px] font-black uppercase tracking-wider text-[#8A7870] flex items-center gap-1">
                   <Clock size={13} className="text-amber-600 shrink-0" />
-                  <span>เวลาทำการ & สถานะเปิด-ปิดร้าน</span>
+                  <span>{t("md.hoursStatus")}</span>
                 </span>
                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ${statusInfo.badgeBg}`}>
                   {statusInfo.badgeText}
@@ -302,14 +302,14 @@ export function PlaceDetailModal({ place, onClose, onOpenScanner, onEditStore, o
               <p className="text-xs font-bold text-[#231C18]">{statusInfo.description}</p>
               {statusInfo.sched.closed_days && statusInfo.sched.closed_days.length > 0 && (
                 <p className="text-[11px] text-amber-800 font-semibold">
-                   วันหยุดประจำสัปดาห์: {statusInfo.sched.closed_days.join(", ")}
+                   {t("sm.weeklyClosed")} {statusInfo.sched.closed_days.join(", ")}
                 </p>
               )}
               {statusInfo.sched.holidays && statusInfo.sched.holidays.length > 0 && (
                 <div className="text-[11px] text-rose-700 font-semibold space-y-0.5 pt-0.5">
                   <div className="flex items-center gap-1 text-rose-800 font-bold">
                     <CalendarOff size={12} className="shrink-0 text-rose-500" />
-                    <span>วันหยุดพิเศษที่จะถึง ({statusInfo.sched.holidays.length} วัน):</span>
+                    <span>{t("md.upcomingHolidays")} ({statusInfo.sched.holidays.length}):</span>
                   </div>
                   <ul className="pl-4 list-disc text-[10.5px] space-y-0.5 text-rose-700 font-medium">
                     {statusInfo.sched.holidays.map((h, idx) => (
@@ -328,7 +328,7 @@ export function PlaceDetailModal({ place, onClose, onOpenScanner, onEditStore, o
                 <div className="flex items-center gap-1.5">
                   <ShieldAlert size={13} className="text-amber-700 shrink-0" />
                   <span className="text-[10px] font-black uppercase tracking-wider text-[#8A7870]">
-                     กฎระเบียบประจำร้าน / Store Rules
+                     {t("md.storeRules")}
                   </span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-0.5">
@@ -383,11 +383,11 @@ export function PlaceDetailModal({ place, onClose, onOpenScanner, onEditStore, o
                   <Crosshair size={13} />
                 )}
                 {statusInfo.isClosed
-                  ? ` 🔴 ร้านปิดอยู่ (${statusInfo.openHoursStr})`
+                  ? ` ${t("md.closedNow")} (${statusInfo.openHoursStr})`
                   : cooldownInfo.isCooldown
-                  ? ` ⏱️ รอคูลดาวน์ (${cooldownInfo.remainingText})`
+                  ? ` ${t("md.waitCooldown")} (${cooldownInfo.remainingText})`
                   : placeId && userStamps.filter(us => String(us.shop_id) === String(placeId)).length > 0
-                  ? ` เช็คอินรับแสตมป์รอบใหม่ (รอบที่ ${userStamps.filter(us => String(us.shop_id) === String(placeId)).length + 1})`
+                  ? ` ${t("md.checkinNewRound")} (${userStamps.filter(us => String(us.shop_id) === String(placeId)).length + 1})`
                   : t("place.checkinHere")}
               </button>
             </div>
@@ -427,7 +427,7 @@ export function PlaceDetailModal({ place, onClose, onOpenScanner, onEditStore, o
                 <span className="block leading-tight">{t("collection.available")}</span>
                 <span className="font-semibold text-[9.5px] opacity-90 block mt-0.5">
                   {placeId && userStamps.filter(us => String(us.shop_id) === String(placeId)).length > 0
-                    ? `คุณสะสมแสตมป์สถานที่นี้แล้ว ${userStamps.filter(us => String(us.shop_id) === String(placeId)).length} รอบ! (เดินทางมาเช็คอินรับแสตมป์รอบใหม่ได้เรื่อยๆ )`
+                    ? t("md.alreadyCollected").replace("{n}", String(userStamps.filter(us => String(us.shop_id) === String(placeId)).length))
                     : t("place.checkinHint")}
                 </span>
               </div>
@@ -439,7 +439,7 @@ export function PlaceDetailModal({ place, onClose, onOpenScanner, onEditStore, o
               className="w-full py-2.5 px-3.5 rounded-xl text-xs font-black bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-200 flex items-center justify-center gap-2 transition cursor-pointer shadow-2xs"
             >
               <Layers size={14} className="text-amber-500" />
- <span>ดูประวัติเวอร์ชัน & รอบการสะสมแสตมป์ร้านนี้ </span>
+ <span>{t("md.viewVerHistory")}</span>
             </button>
 
             {/* About Section */}
@@ -464,9 +464,9 @@ export function PlaceDetailModal({ place, onClose, onOpenScanner, onEditStore, o
                   onClick={() => {
                     if (!user) {
                       if (onRequireAuth) {
-                        onRequireAuth("กรุณาเข้าสู่ระบบ หรือ สมัครสมาชิก ก่อนเขียนรีวิว");
+                        onRequireAuth(t("md.needLoginReview"));
                       } else {
-                        alert("กรุณาเข้าสู่ระบบ หรือ สมัครสมาชิก ก่อนเขียนรีวิว");
+                        alert(t("md.needLoginReview"));
                       }
                       return;
                     }
@@ -845,6 +845,7 @@ function LocationPickerMap({
   userLocation: { lat: number; lng: number } | null;
   onSelectCoords: (c: { lat: number; lng: number }) => void;
 }) {
+  const { t } = useLang();
   const mapContainerRef = React.useRef<HTMLDivElement>(null);
   const mapRef = React.useRef<L.Map | null>(null);
   const storeMarkerRef = React.useRef<L.Marker | null>(null);
@@ -898,7 +899,7 @@ function LocationPickerMap({
         if (userLocationRef.current) {
           const dist = getDistanceInMeters(userLocationRef.current.lat, userLocationRef.current.lng, dragLatLng.lat, dragLatLng.lng);
           if (dist > 200) {
-            alert(`คุณสามารถเลือกตำแหน่งได้เฉพาะในระยะไม่เกิน 200 เมตรรอบตัวคุณเท่านั้น (ระยะปัจจุบัน: ${Math.round(dist)} เมตร)`);
+            alert(t("md.pickRadius"));
             if (coordsRef.current) {
               marker.setLatLng([coordsRef.current.lat, coordsRef.current.lng]);
             } else if (userLocationRef.current) {
@@ -920,7 +921,7 @@ function LocationPickerMap({
       if (userLocationRef.current) {
         const dist = getDistanceInMeters(userLocationRef.current.lat, userLocationRef.current.lng, lat, lng);
         if (dist > 200) {
-          alert(`คุณสามารถเลือกตำแหน่งได้เฉพาะในระยะไม่เกิน 200 เมตรรอบตัวคุณเท่านั้น (ระยะปัจจุบัน: ${Math.round(dist)} เมตร)`);
+          alert(t("md.pickRadius"));
           return;
         }
       }
@@ -936,7 +937,7 @@ function LocationPickerMap({
           if (userLocationRef.current) {
             const dragDist = getDistanceInMeters(userLocationRef.current.lat, userLocationRef.current.lng, dragLatLng.lat, dragLatLng.lng);
             if (dragDist > 200) {
-              alert(`คุณสามารถเลือกตำแหน่งได้เฉพาะในระยะไม่เกิน 200 เมตรรอบตัวคุณเท่านั้น (ระยะปัจจุบัน: ${Math.round(dragDist)} เมตร)`);
+              alert(t("md.pickRadius"));
               if (coordsRef.current) {
                 marker.setLatLng([coordsRef.current.lat, coordsRef.current.lng]);
               }
@@ -1011,7 +1012,7 @@ function LocationPickerMap({
         if (userLocationRef.current) {
           const dragDist = getDistanceInMeters(userLocationRef.current.lat, userLocationRef.current.lng, dragLatLng.lat, dragLatLng.lng);
           if (dragDist > 200) {
-            alert(`คุณสามารถเลือกตำแหน่งได้เฉพาะในระยะไม่เกิน 200 เมตรรอบตัวคุณเท่านั้น (ระยะปัจจุบัน: ${Math.round(dragDist)} เมตร)`);
+            alert(t("md.pickRadius"));
             if (coordsRef.current) {
               marker.setLatLng([coordsRef.current.lat, coordsRef.current.lng]);
             }
@@ -1027,7 +1028,7 @@ function LocationPickerMap({
   // Floating "Near Me" button
   const handleNearMeClick = () => {
     if (!navigator.geolocation) {
-      alert("ไม่สามารถดึงตำแหน่งปัจจุบันได้ โปรดเปิดสิทธิ์ Location บนเบราว์เซอร์");
+      alert(t("md.gpsFail"));
       return;
     }
 
@@ -1049,7 +1050,7 @@ function LocationPickerMap({
             iconAnchor: [10, 10],
           });
 
-          const popupContent = "<div style='font-size:11px;font-weight:bold;color:#231C18;padding:2px;'>ตำแหน่งปัจจุบันของคุณ</div>";
+          const popupContent = "<div style='font-size:11px;font-weight:bold;color:#231C18;padding:2px;'>" + t("md.yourPick") + "</div>";
 
           if (userLocationMarkerRef.current) {
             userLocationMarkerRef.current.setLatLng([latitude, longitude]);
@@ -1064,7 +1065,7 @@ function LocationPickerMap({
         setIsLocating(false);
       },
       (error) => {
-        alert("ไม่สามารถดึงตำแหน่งปัจจุบันได้ โปรดเปิดสิทธิ์ Location บนเบราว์เซอร์");
+        alert(t("md.gpsFail"));
         setIsLocating(false);
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
@@ -1087,7 +1088,7 @@ function LocationPickerMap({
         ) : (
           <Crosshair size={13} className="text-[#2563EB]" />
         )}
-        <span>Near Me</span>
+        <span>{t("place.nearMe")}</span>
       </button>
     </div>
   );
@@ -1407,7 +1408,7 @@ export function AddPlaceModal({
 
     if (!userLocation) {
       setLocationError("Unable to retrieve your GPS location. Please enable location services.");
-      alert("Unable to retrieve your GPS location. Please enable location services.");
+      alert(t("md.gpsFail"));
       return;
     }
 
@@ -1475,7 +1476,7 @@ export function AddPlaceModal({
 
       if (isEditShop && targetData?.id) {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error("ไม่พบข้อมูลผู้ใช้งาน กรุณาล็อกอินใหม่");
+        if (!user) throw new Error(t("sm.noUser"));
 
         const itemId = targetData.submissionId || targetData.id;
         const oldName = targetData.shop_name || targetData.name_en;
@@ -1614,7 +1615,7 @@ export function AddPlaceModal({
           }
         }
 
-        alert("อัปเดตข้อมูลร้านค้าเรียบร้อยแล้ว!");
+        alert(t("sm.updateShopOk"));
         onSuccess?.();
         if (onSubmissionUpdated) onSubmissionUpdated();
         handleClose();
@@ -1677,7 +1678,7 @@ export function AddPlaceModal({
 
           await executeUpdate(payload);
 
-          alert("ส่งข้อมูลที่แก้ไขให้แอดมินเรียบร้อยแล้ว! (Updated submission sent to admin successfully!)");
+          alert(t("md.resubmitOk"));
           onSuccess?.();
           if (onSubmissionUpdated) onSubmissionUpdated();
           handleClose();
@@ -1741,7 +1742,7 @@ export function AddPlaceModal({
             });
           }
 
-          alert("เพิ่มร้านค้าใหม่เข้าสู่ระบบเรียบร้อยแล้ว");
+          alert(t("sm.addShopOk"));
           onSuccess?.();
           if (onSubmissionUpdated) onSubmissionUpdated();
           handleClose();
@@ -1766,7 +1767,7 @@ export function AddPlaceModal({
         try {
           const shopNameText = name || japaneseName || "New shop";
           const notifPayload: Record<string, any> = {
-            title: "New shop submission",
+            title: "notif.newSubmission",
             message: `A new location has been submitted: ${shopNameText}`,
             shop_name: shopNameText,
             actor_id: user?.id || null,
@@ -1818,17 +1819,17 @@ export function AddPlaceModal({
         >
           <h3 className="text-lg font-bold text-gray-900">
             {isEditShop
-              ? "แก้ไขข้อมูลร้านค้า (Edit Shop Details)"
+              ? t("sm.editShopTitle")
               : editSubmission
-              ? "แก้ไขข้อมูลและส่งตรวจใหม่ (Edit & Resubmit Spot)"
+              ? t("md.editResubmitTitle")
               : isAdmin
-              ? "เพิ่มร้านค้าใหม่เข้าสู่ระบบ (Add Shop to System)"
+              ? t("md.addShopTitle")
               : t("action.submitSpot")}
           </h3>
           <button
             type="button"
             onClick={handleClose}
-            aria-label="ปิด"
+            aria-label={t("common.close")}
             className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors"
           >
             <X size={20} />
@@ -1841,17 +1842,16 @@ export function AddPlaceModal({
             <div className="bg-rose-50 border-2 border-rose-300 p-4 rounded-2xl space-y-2 text-xs text-rose-900 shadow-2xs">
               <div className="flex items-center gap-2 text-rose-700 font-black">
                 <AlertCircle size={17} />
-                <span>คำขอนี้ถูกปฏิเสธโดยผู้ดูแลระบบ (Rejected Submission)</span>
+                <span>{t("md.rejectedByAdmin")}</span>
               </div>
               {editSubmission.rejection_reason && (
                 <div className="bg-white/80 p-3 rounded-xl border border-rose-200 text-rose-950 font-medium">
-                  <span className="font-bold text-rose-900 block text-[11px] mb-0.5">เหตุผลที่แอดมินปฏิเสธ:</span>
+                  <span className="font-bold text-rose-900 block text-[11px] mb-0.5">{t("sm.rejectReason")}</span>
                   {`"${editSubmission.rejection_reason}"`}
                 </div>
               )}
               <p className="text-[11px] text-rose-700 font-semibold">
-                กรุณาแก้ไขหรือปรับปรุงข้อมูลตามคำแนะนำข้างต้น แล้วกดปุ่ม <strong>"บันทึกและส่งตรวจใหม่ (Save & Resubmit)"</strong> ด้านล่างเพื่อส่งให้แอดมินตรวจสอบอีกครั้ง
-              </p>
+                {t("md.fixAndResubmit")}</p>
             </div>
           )}
 
@@ -1914,7 +1914,7 @@ export function AddPlaceModal({
 
           {/* Prefecture Selector */}
           <div>
-            <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">Prefecture</label>
+            <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">{t("rv.f.prefecture")}</label>
             <select
               value={prefecture}
               onChange={(e) => {
@@ -1924,17 +1924,17 @@ export function AddPlaceModal({
               className="w-full px-3.5 py-2 rounded-xl text-xs border outline-none bg-stone-50/30 focus:border-[#E0533C] transition-all"
               style={{ borderColor: C.line, color: C.ink }}
             >
-              <option value="">Unknown</option>
+              <option value="">{t("um.notSpecified")}</option>
               {dbPrefectures.map((pref) => (
                 <option key={pref} value={pref}>{pref}</option>
               ))}
-              <option value="custom">Type manually</option>
+              <option value="custom">{t("rv.typeManually")}</option>
             </select>
             {prefecture === "custom" && (
               <div className="mt-2 space-y-1">
                 <input
                   type="text"
-                  placeholder="Enter prefecture name manually (e.g. Tokyo)"
+                  placeholder={t("rv.prefManualPlaceholder")}
                   value={customPrefecture}
                   onChange={(e) => setCustomPrefecture(e.target.value)}
                   className="w-full px-3.5 py-2 rounded-xl text-xs border outline-none bg-stone-50/30 focus:border-[#E0533C] transition-all"
@@ -2006,7 +2006,7 @@ export function AddPlaceModal({
             </label>
             <textarea
               rows={3}
-              placeholder="Enter description in Japanese (e.g. 日本語での説明)"
+              placeholder={t("md.descJpPlaceholder")}
               value={descriptionJp}
               onChange={(e) => setDescriptionJp(e.target.value)}
               className="w-full px-3.5 py-2 rounded-xl text-xs border outline-none resize-none bg-stone-50/30 focus:border-[#E0533C] transition-all"
@@ -2068,7 +2068,7 @@ export function AddPlaceModal({
                 <div className="relative h-20 rounded-xl border overflow-hidden" style={{ borderColor: C.line }}>
                   <div className="w-full h-full flex items-center justify-center bg-stone-50 text-[10px] font-bold text-[#231C18] p-3 text-center truncate flex items-center justify-center gap-1">
                     <FileText size={12} className="text-[#8A7870]" />
-                    <span>{ownershipFile ? ownershipFile.name : "Ownership Document"}</span>
+                    <span>{ownershipFile ? ownershipFile.name : t("rv.proofTitle")}</span>
                   </div>
                   <button
                     type="button"
@@ -2161,12 +2161,12 @@ export function AddPlaceModal({
               : submitting
               ? t("common.submitting")
               : isEditShop
-              ? "บันทึกการแก้ไข"
+              ? t("bn.saveEdit")
               : editSubmission
-              ? "บันทึกและส่งตรวจใหม่ (Save & Resubmit)"
+              ? t("md.saveResubmit")
               : isAdmin
-              ? "เพิ่มเข้าสู่ระบบทันที"
-              : "ส่งเพื่อตรวจสอบ"}
+              ? t("md.addNow")
+              : t("md.submitForReview")}
           </button>
         </form>
       </div>

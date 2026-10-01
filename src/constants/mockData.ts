@@ -14,9 +14,9 @@ export const C = {
 };
 
 export const categories = [
-  { id: "station", label: "Station", icon: TrainFront },
-  { id: "shrine", label: "Shrine/Temple", icon: Landmark },
-  { id: "spot", label: "Tourist Spot", icon: Camera },
-  { id: "food", label: "Restaurant/Cafe", icon: Utensils },
-  { id: "shop", label: "Service/Shop", icon: Store },
-];
+  { id: "station", label: "sm.cat.station", icon: TrainFront },
+  { id: "shrine", label: "sm.cat.shrine", icon: Landmark },
+  { id: "spot", label: "sm.cat.spot", icon: Camera },
+  { id: "food", label: "sm.cat.food", icon: Utensils },
+  { id: "shop", label: "sm.cat.shop", icon: Store },
+];

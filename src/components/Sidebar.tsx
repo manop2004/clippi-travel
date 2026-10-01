@@ -22,15 +22,15 @@ export default function Sidebar({ activeTab, onTabChange, onAddPlaceClick, onOpe
     { id: "explore", label: t("nav.explore"), icon: Compass, roles: ["user", "pending_store", "store", "admin"] },
     { id: "map", label: t("nav.map"), icon: MapPin, roles: ["user", "pending_store", "store", "admin"] },
     { id: "collection", label: t("nav.collection"), icon: BookOpen, roles: ["user", "pending_store", "store", "admin"] },
-    { id: "jigsaw", label: "Jigsaw Quest", icon: Puzzle, roles: ["user", "pending_store", "store", "admin"] },
+    { id: "jigsaw", label: t("nav.jigsaw"), icon: Puzzle, roles: ["user", "pending_store", "store", "admin"] },
     { id: "profile", label: t("nav.profile"), icon: User, roles: ["user", "pending_store", "store", "admin"] },
-    { id: "store_manage", label: "Manage My Shop", icon: Store, roles: ["store", "admin"] },
-    { id: "admin", label: "Admin Review", icon: ShieldCheck, roles: ["admin"] },
-    { id: "banners_manage", label: "Manage Banners", icon: Image, roles: ["admin"] },
-    { id: "users_manage", label: "User Management", icon: Users, roles: ["admin"] },
-    { id: "admin_log", label: "Activity Log", icon: ScrollText, roles: ["admin"] },
-    { id: "achievements", label: "Achievements", icon: Trophy, roles: ["admin"] },
-    { id: "jigsaw_manage", label: "Manage Jigsaws", icon: Puzzle, roles: ["admin"] },
+    { id: "store_manage", label: t("nav.storeManage"), icon: Store, roles: ["store", "admin"] },
+    { id: "admin", label: t("rv.tabMerchant"), icon: ShieldCheck, roles: ["admin"] },
+    { id: "banners_manage", label: t("bn.pageTitle"), icon: Image, roles: ["admin"] },
+    { id: "users_manage", label: t("um.title"), icon: Users, roles: ["admin"] },
+    { id: "admin_log", label: t("log.title"), icon: ScrollText, roles: ["admin"] },
+    { id: "achievements", label: t("ach.title"), icon: Trophy, roles: ["admin"] },
+    { id: "jigsaw_manage", label: t("jg.manageQuests"), icon: Puzzle, roles: ["admin"] },
   ];
 
   const navTabs = allNavTabs.filter((item) => item.roles.includes(role));
@@ -53,14 +53,14 @@ export default function Sidebar({ activeTab, onTabChange, onAddPlaceClick, onOpe
             <button
               key={item.id}
               onClick={() => onTabChange(item.id)}
-              className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl text-xs font-black transition cursor-pointer ${
+              className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl text-xs font-black transition cursor-pointer text-left ${
                 active
                   ? "bg-gradient-to-r from-[#FD775C] to-[#E31E27] text-white shadow-md shadow-[#FD775C]/30"
                   : "text-[#555555] hover:bg-[#FFF0ED] hover:text-[#FD775C]"
               }`}
             >
-              <item.icon size={18} color={active ? "#FFFFFF" : C.inkSoft} strokeWidth={active ? 2.4 : 1.8} />
-              <span>{item.label}</span>
+              <item.icon size={18} color={active ? "#FFFFFF" : C.inkSoft} strokeWidth={active ? 2.4 : 1.8} className="shrink-0" />
+              <span className="flex-1 text-left leading-tight">{item.label}</span>
             </button>
           );
         })}
@@ -85,7 +85,7 @@ export default function Sidebar({ activeTab, onTabChange, onAddPlaceClick, onOpe
             className="w-full py-3 px-4 rounded-2xl text-xs font-black text-white bg-gradient-to-r from-[#FD775C] to-[#E31E27] hover:from-[#E31E27] hover:to-[#FD775C] transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-98"
           >
             <User size={16} strokeWidth={2.5} />
-            <span>เข้าสู่ระบบ / สมัครสมาชิก</span>
+            <span>{t("app.loginOrSignup")}</span>
           </button>
         )}
 
@@ -103,10 +103,10 @@ export default function Sidebar({ activeTab, onTabChange, onAddPlaceClick, onOpe
             <Store size={15} />
             <span>
               {isPendingMerchant
-                ? "⏳ คำขอเปิดร้านค้ารออนุมัติ"
+                ? t("pf.reqPending")
                 : isRejectedMerchant
-                ? " แก้ไขคำขอเปิดร้านค้า"
-                : " สมัครเปิดร้านค้า"}
+                ? t("pf.editResend")
+                : t("pf.applyOwner")}
             </span>
           </button>
         )}

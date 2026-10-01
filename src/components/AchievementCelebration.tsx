@@ -91,14 +91,14 @@ export default function AchievementCelebration({ items, onClose }: AchievementCe
               style={{ background: C.accentSoft, color: C.accentDeep }}
             >
               <PartyPopper size={12} />
-              <span>{current.roundNumber ? `สะสมสำเร็จ • รอบที่ ${current.roundNumber}` : t("celebration.stampLabel")}</span>
+              <span>{current.roundNumber ? t("ac.roundDone").replace("{n}", String(current.roundNumber)) : t("celebration.stampLabel")}</span>
             </div>
             <h2 className="text-lg font-black" style={{ color: C.ink }}>
-              {current.roundNumber ? `สะสมแสตมป์รอบที่ ${current.roundNumber} สำเร็จ!` : t("celebration.stampTitle")}
+              {current.roundNumber ? t("ac.roundDone").replace("{n}", String(current.roundNumber)) : t("celebration.stampTitle")}
             </h2>
             <p className="text-xs font-semibold text-[#8A7870] mt-1.5">
               {t("celebration.stampDesc").replace("{shop}", current.shopName)}
-              {current.roundNumber ? ` (สะสมร้านนี้แล้ว ${current.roundNumber} รอบ)` : ""}
+              {current.roundNumber ? ` (${current.roundNumber})` : ""}
             </p>
           </>
         ) : (

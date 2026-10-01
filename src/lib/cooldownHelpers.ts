@@ -75,9 +75,9 @@ export function getShopCooldownStatus(
 
     let remainingText = "";
     if (hours > 0) {
-      remainingText = `${hours} ชั่วโมง ${minutes} นาที`;
+      remainingText = `${hours}h ${minutes}m`;
     } else {
-      remainingText = `${minutes} นาที`;
+      remainingText = `${minutes}m`;
     }
 
     return {

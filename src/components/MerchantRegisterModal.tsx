@@ -19,11 +19,11 @@ const PREFECTURES = [
 ];
 
 const SHOP_CATEGORIES = [
-  { id: "food", label: "ร้านอาหาร / คาเฟ่ (Food & Cafe)" },
-  { id: "shop", label: "ร้านค้า / ของฝาก (Shopping & Souvenirs)" },
-  { id: "sightseeing", label: "สถานที่ท่องเที่ยว / วัดเซน (Sightseeing & Shrine)" },
-  { id: "service", label: "บริการ / โรงแรม (Service & Hotel)" },
-  { id: "other", label: "อื่นๆ (Other)" },
+  { id: "food", label: "rv.cat.food" },
+  { id: "shop", label: "rv.cat.shop" },
+  { id: "sightseeing", label: "rv.cat.sightseeing" },
+  { id: "service", label: "rv.cat.service" },
+  { id: "other", label: "rv.cat.other" },
 ];
 
 export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user }: MerchantRegisterModalProps) {
@@ -98,7 +98,7 @@ export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       if (file.size > 10 * 1024 * 1024) {
-        setErrorMsg("ขนาดไฟล์ต้องไม่เกิน 10MB");
+        setErrorMsg(t("au.fileMax10"));
         return;
       }
       setOwnershipFile(file);
@@ -109,7 +109,7 @@ export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!shopName.trim() || !contactName.trim() || !phone.trim()) {
-      setErrorMsg("กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน");
+      setErrorMsg(t("mr.fillRequired"));
       return;
     }
 
@@ -120,7 +120,7 @@ export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user
       const { data: { user: authUser } } = await supabase.auth.getUser();
       const targetUser = user || authUser;
       if (!targetUser?.id) {
-        setErrorMsg("ไม่พบข้อมูลผู้ใช้งาน กรุณาลองเข้าสู่ระบบใหม่อีกครั้ง");
+        setErrorMsg(t("sm.noUser"));
         setLoading(false);
         return;
       }
@@ -306,7 +306,7 @@ export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user
       onSuccess();
     } catch (err: any) {
       console.error("Merchant registration failed:", err);
-      setErrorMsg(err.message || "ส่งคำขอลงทะเบียนไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+      setErrorMsg(err.message || t("mr.submitFail"));
     } finally {
       setLoading(false);
     }
@@ -329,10 +329,10 @@ export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user
           <div>
             <h2 className="text-lg font-black text-stone-900">
               {isPendingMerchant
-                ? "ข้อมูลคำขอเปิดร้านค้า (รอการอนุมัติ)"
+                ? t("mr.titlePending")
                 : isRejectedMerchant
-                ? "แก้ไข & ยื่นคำขอเปิดร้านค้าใหม่"
-                : "ลงทะเบียนเปิดร้านค้า (รออนุมัติ)"}
+                ? t("mr.titleEdit")
+                : t("mr.titleNew")}
             </h2>
             <p className="text-xs text-stone-500 font-medium">{t("merchant.subtitle")}</p>
           </div>
@@ -347,8 +347,7 @@ export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user
                 <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-200 text-amber-900">⏳ Pending</span>
               </div>
               <p className="text-[11px] text-amber-800 font-medium mt-0.5 leading-snug">
-                ข้อมูลและเอกสารของคุณถูกส่งเรียบร้อยแล้ว หากต้องการปรับปรุงข้อมูลเพิ่มเติม สามารถแก้ไขแล้วกดส่งใหม่ได้ทันที
-              </p>
+                {t("mr.sentNote")}</p>
             </div>
           </div>
         )}
@@ -359,10 +358,10 @@ export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user
             <div>
               <div className="font-black text-rose-950 flex items-center gap-2">
                 <span>{t("merchant.rejected")}</span>
- <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-rose-200 text-rose-900"> Rejected</span>
+ <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-rose-200 text-rose-900">{t("um.statusBanned")}</span>
               </div>
               <p className="text-[11px] text-rose-800 font-medium mt-0.5 leading-snug">
-                สาเหตุที่ไม่ผ่าน: <strong className="font-bold">{typeof merchantRejectionReason === "object" && merchantRejectionReason !== null ? ((merchantRejectionReason as any).reason || JSON.stringify(merchantRejectionReason)) : (merchantRejectionReason || "ข้อมูลเอกสารไม่ตรงตามเงื่อนไข")}</strong>. สามารถแก้ไขข้อมูลด้านล่างเพื่อยื่นคำขอใหม่ได้ครับ
+                {t("sm.rejectReason")} <strong className="font-bold">{typeof merchantRejectionReason === "object" && merchantRejectionReason !== null ? ((merchantRejectionReason as any).reason || JSON.stringify(merchantRejectionReason)) : (merchantRejectionReason || t("sm.defaultRejectReason"))}</strong>. 
               </p>
             </div>
           </div>
@@ -378,7 +377,7 @@ export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-black text-stone-700 mb-1">
-              ชื่อร้านค้า / สถานประกอบการ <span className="text-red-500">*</span>
+              {t("auth.shopName")} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -393,7 +392,7 @@ export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-black text-stone-700 mb-1">
-                ชื่อผู้ติดต่อ / เจ้าของร้าน <span className="text-red-500">*</span>
+                {t("rv.applicant")} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -406,7 +405,7 @@ export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user
             </div>
             <div>
               <label className="block text-xs font-black text-stone-700 mb-1">
-                เบอร์โทรศัพท์ติดต่อ <span className="text-red-500">*</span>
+                {t("rv.f.phone")} <span className="text-red-500">*</span>
               </label>
               <input
                 type="tel"
@@ -440,7 +439,7 @@ export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user
                 className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-xs outline-none focus:border-amber-500 bg-white"
               >
                 {SHOP_CATEGORIES.map((c) => (
-                  <option key={c.id} value={c.id}>{c.label}</option>
+                  <option key={c.id} value={c.id}>{t(c.label)}</option>
                 ))}
               </select>
             </div>
@@ -448,7 +447,7 @@ export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user
 
           <div>
             <label className="block text-xs font-black text-stone-700 mb-1">
-              เอกสารหลักฐานสิทธิ์ร้านค้า (สัญญาเช่า / ทะเบียนการค้า / ใบอนุญาต)
+              {t("mr.docLabel")}
             </label>
             <div className="border border-dashed border-stone-300 rounded-xl p-3 text-center hover:bg-stone-50 transition cursor-pointer relative">
               <input
@@ -459,7 +458,7 @@ export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user
               />
               <Upload size={18} className="mx-auto text-stone-400 mb-1" />
               <p className="text-xs font-bold text-stone-700">
-                {ownershipFile ? ownershipFile.name : "คลิกเพื่อเลือกไฟล์ หรือลากไฟล์มาวางที่นี่"}
+                {ownershipFile ? ownershipFile.name : t("mr.dropFile")}
               </p>
               <p className="text-[10px] text-stone-400 mt-0.5">{t("merchant.fileHint")}</p>
             </div>
@@ -470,7 +469,7 @@ export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user
               <button
                 type="button"
                 onClick={async () => {
-                  if (confirm("คุณต้องการยกเลิกคำขอสมัครเปิดร้านค้า ใช่หรือไม่?\n(สถานะของคุณจะกลับมาเป็นผู้ใช้งานทั่วไป)")) {
+                  if (confirm(t("pf.confirmCancel"))) {
                     setLoading(true);
                     try {
                       await cancelMerchantApp();
@@ -486,7 +485,7 @@ export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user
                 disabled={loading}
                 className="py-3 px-4 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs transition cursor-pointer"
               >
-                 ไม่สมัครแล้ว (ยกเลิกคำขอ)
+                 {t("pf.cancelReq")}
               </button>
             )}
             <button
@@ -494,14 +493,14 @@ export default function MerchantRegisterModal({ isOpen, onClose, onSuccess, user
               onClick={onClose}
               className="flex-1 py-3 px-4 rounded-xl border border-stone-200 text-stone-600 font-bold text-xs hover:bg-stone-50 transition cursor-pointer"
             >
-              ปิดหน้าต่าง
+              {t("common.close")}
             </button>
             <button
               type="submit"
               disabled={loading}
               className="flex-1 py-3 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs transition shadow-md shadow-amber-200 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
-              {loading ? <Loader2 size={16} className="animate-spin" /> : (isRejectedMerchant ? "ยื่นคำขอใหม่" : "ส่งคำขอลงทะเบียนร้านค้า (รออนุมัติ)")}
+              {loading ? <Loader2 size={16} className="animate-spin" /> : (isRejectedMerchant ? t("mr.resubmit") : t("mr.submit"))}
             </button>
           </div>
         </form>

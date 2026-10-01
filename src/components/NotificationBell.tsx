@@ -381,10 +381,10 @@ export default function NotificationBell({ hideOnMobileSearch, onOpenMerchantMod
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-1">
                     <span className="text-xs font-black text-amber-950">{t("notif.merchantPending")}</span>
-                    <span className="text-[9px] font-extrabold px-1.5 py-0.5 bg-amber-200 text-amber-900 rounded-full">Pending</span>
+                    <span className="text-[9px] font-extrabold px-1.5 py-0.5 bg-amber-200 text-amber-900 rounded-full">{t("sm.pending")}</span>
                   </div>
                   <p className="text-[11px] text-amber-900 font-medium mt-1 leading-snug">
-                    ข้อมูลร้านค้าของคุณถูกส่งเรียบร้อยแล้ว แอดมินกำลังตรวจสอบความถูกต้อง
+                    {t("pf.reqPendingDesc")}
                   </p>
                   <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-amber-200/60">
                     <span
@@ -418,7 +418,7 @@ export default function NotificationBell({ hideOnMobileSearch, onOpenMerchantMod
                       disabled={cancellingMerchant}
                       className="text-[10px] font-black px-2 py-1 rounded-lg bg-amber-200/80 hover:bg-amber-300 text-amber-950 transition cursor-pointer"
                     >
-                      {cancellingMerchant ? "กำลังยกเลิก..." : " ยกเลิกคำขอ"}
+                      {cancellingMerchant ? t("nb.cancelling") : t("pf.cancelReq")}
                     </button>
                   </div>
                 </div>
@@ -440,10 +440,10 @@ export default function NotificationBell({ hideOnMobileSearch, onOpenMerchantMod
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-1">
                     <span className="text-xs font-black text-rose-950">{t("notif.merchantRejected")}</span>
-                    <span className="text-[9px] font-extrabold px-1.5 py-0.5 bg-rose-200 text-rose-900 rounded-full">Rejected</span>
+                    <span className="text-[9px] font-extrabold px-1.5 py-0.5 bg-rose-200 text-rose-900 rounded-full">{t("um.statusBanned")}</span>
                   </div>
                   <p className="text-[11px] text-rose-900 font-medium mt-1 leading-snug">
-                    สาเหตุที่ไม่ผ่าน: <strong className="font-bold">{typeof merchantRejectionReason === "object" && merchantRejectionReason !== null ? ((merchantRejectionReason as any).reason || JSON.stringify(merchantRejectionReason)) : (merchantRejectionReason || "ข้อมูลเอกสารไม่สมบูรณ์")}</strong>
+                    {t("sm.rejectReason")} <strong className="font-bold">{typeof merchantRejectionReason === "object" && merchantRejectionReason !== null ? ((merchantRejectionReason as any).reason || JSON.stringify(merchantRejectionReason)) : (merchantRejectionReason || t("sm.defaultRejectReason"))}</strong>
                   </p>
                   <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-rose-200/60">
                     <span
@@ -477,7 +477,7 @@ export default function NotificationBell({ hideOnMobileSearch, onOpenMerchantMod
                       disabled={cancellingMerchant}
                       className="text-[10px] font-black px-2.5 py-1 rounded-lg bg-rose-200/80 hover:bg-rose-300 text-rose-950 transition cursor-pointer"
                     >
-                      {cancellingMerchant ? "กำลังยกเลิก..." : " ยกเลิกคำขอ (ไม่สมัครแล้ว)"}
+                      {cancellingMerchant ? t("nb.cancelling") : t("pf.cancelReq")}
                     </button>
                   </div>
                 </div>
@@ -530,7 +530,7 @@ export default function NotificationBell({ hideOnMobileSearch, onOpenMerchantMod
                             className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-800 flex items-center gap-0.5"
                             title={`จะประกาศในวันที่ ${new Date(ann.scheduled_at).toLocaleString("th-TH")}`}
                           >
-                            <Clock size={9} /> ตั้งเวลา
+                            <Clock size={9} /> {t("ann.scheduled")}
                           </span>
                         )}
                         <span
@@ -544,15 +544,15 @@ export default function NotificationBell({ hideOnMobileSearch, onOpenMerchantMod
                         >
                           {ann.target_role === "store" ? (
                             <>
-                              <Store size={9} /> ร้านค้า
+                              <Store size={9} /> {t("um.statStore")}
                             </>
                           ) : ann.target_role === "user" ? (
                             <>
-                              <Users size={9} /> ผู้ใช้ทั่วไป
+                              <Users size={9} /> {t("um.generalUser")}
                             </>
                           ) : (
                             <>
-                              <Globe size={9} /> ประกาศทั่วไป
+                              <Globe size={9} /> {t("notif.announce")}
                             </>
                           )}
                         </span>
@@ -565,7 +565,7 @@ export default function NotificationBell({ hideOnMobileSearch, onOpenMerchantMod
 
                     <div className="flex items-center justify-between mt-2">
                       <span className="text-[9.5px] text-[#8A7870] font-semibold">
-                        โดย {ann.admin_name || "Admin"} · {timeAgo(ann.created_at)}
+                        {t("nb.by")} {ann.admin_name || "Admin"} · {timeAgo(ann.created_at)}
                         {ann.scheduled_at && (
                           <span className="ml-1 text-purple-700 font-bold block sm:inline">
                             (ตั้งเวลา: {new Date(ann.scheduled_at).toLocaleString("th-TH")})
@@ -576,7 +576,7 @@ export default function NotificationBell({ hideOnMobileSearch, onOpenMerchantMod
                       <button
                         onClick={(e) => handleDeleteAnnouncement(e, ann.id)}
                         className="text-stone-400 hover:text-rose-600 hover:bg-rose-50 p-1.5 rounded-lg transition cursor-pointer shrink-0 ml-1"
-                        title={isAdmin ? "ลบประกาศออกจากระบบ" : "ลบการแจ้งเตือนนี้"}
+                        title={isAdmin ? t("notif.confirmDeleteAnn") : t("notif.deleteOne")}
                       >
                         <Trash2 size={13} />
                       </button>
@@ -608,7 +608,7 @@ export default function NotificationBell({ hideOnMobileSearch, onOpenMerchantMod
                       )}
                       <div className={`min-w-0 flex-1 ${unread ? "" : "opacity-60"}`}>
                         <p className="text-xs font-bold text-[#231C18] leading-snug">
-                          {n.message || "การแจ้งเตือนใหม่ในระบบ"}
+                          {n.message || t("nb.newNotif")}
                         </p>
                         <div className="flex items-center justify-between mt-1">
                           <p className="text-[10px] text-[#8A7870] font-semibold">
@@ -632,7 +632,7 @@ export default function NotificationBell({ hideOnMobileSearch, onOpenMerchantMod
 
             {!isAdmin && announcements.length === 0 && !hasMerchantStatusNotif && (
               <div className="p-8 text-center text-xs font-semibold text-[#8A7870]">
-                ยังไม่มีการแจ้งเตือนใหม่ในขณะนี้
+                {t("nb.noNotif")}
               </div>
             )}
           </div>

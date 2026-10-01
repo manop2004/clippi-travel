@@ -38,100 +38,100 @@ export interface StampDesign {
 }
 
 export const STAMP_PRESET_EMOJIS = [
-  { category: "ญี่ปุ่น & ท่องเที่ยว", emojis: ["🌸", "⛩️", "🏯", "🗻", "🚄", "✈️", "♨️", "🏮", "🎌", "🎒", "🗼", "🗺️"] },
-  { category: "อาหาร & เครื่องดื่ม", emojis: ["☕", "🍜", "🍣", "🍡", "🍱", "🍵", "🍺", "🍰", "🍦", "🥐", "🧋", "🍕"] },
-  { category: "สัญลักษณ์ & กิจกรรม", emojis: ["⭐", "🌟", "👑", "🎯", "❤️", "🔥", "🎁", "🐾", "📷", "🎵", "🛍️", "📍"] },
+  { category: "sh.em.japan", emojis: ["🌸", "⛩️", "🏯", "🗻", "🚄", "✈️", "♨️", "🏮", "🎌", "🎒", "🗼", "🗺️"] },
+  { category: "sh.em.food", emojis: ["☕", "🍜", "🍣", "🍡", "🍱", "🍵", "🍺", "🍰", "🍦", "🥐", "🧋", "🍕"] },
+  { category: "sh.em.symbol", emojis: ["⭐", "🌟", "👑", "🎯", "❤️", "🔥", "🎁", "🐾", "📷", "🎵", "🛍️", "📍"] },
 ];
 
 export const STAMP_FONT_STYLES = [
-  { id: "sans", name: "Prompt", label: "Prompt (โมเดิร์น สบายตา)", family: "'Prompt', sans-serif" },
-  { id: "serif", name: "Sarabun", label: "Sarabun (ทางการ คลาสสิก)", family: "'Sarabun', serif" },
-  { id: "traditional", name: "Charm", label: "Charm (ตราประทับโบราณ)", family: "'Charm', serif" },
-  { id: "vintage", name: "Chakra Petch", label: "Chakra Petch (วินเทจ ย้อนยุค)", family: "'Chakra Petch', sans-serif" },
-  { id: "rounded", name: "Itim", label: "Itim (ตัวมน น่ารัก Hanko)", family: "'Itim', sans-serif" },
-  { id: "mono", name: "Monospace", label: "Monospace (พิมพ์ดีด หนาดิ่ง)", family: "'Courier New', monospace" },
-  { id: "japanese", name: "Sawarabi", label: "Sawarabi (พู่กัน Mincho ญี่ปุ่น)", family: "'Sawarabi Mincho', serif" },
+  { id: "sans", name: "Prompt", label: "sh.font.sans", family: "'Prompt', sans-serif" },
+  { id: "serif", name: "Sarabun", label: "sh.font.serif", family: "'Sarabun', serif" },
+  { id: "traditional", name: "Charm", label: "sh.font.traditional", family: "'Charm', serif" },
+  { id: "vintage", name: "Chakra Petch", label: "sh.font.vintage", family: "'Chakra Petch', sans-serif" },
+  { id: "rounded", name: "Itim", label: "sh.font.rounded", family: "'Itim', sans-serif" },
+  { id: "mono", name: "Monospace", label: "sh.font.mono", family: "'Courier New', monospace" },
+  { id: "japanese", name: "Sawarabi", label: "sh.font.japanese", family: "'Sawarabi Mincho', serif" },
 ];
 
 export const STAMP_IMAGE_SIZES = [
-  { id: "sm", label: "เล็ก (Small)" },
-  { id: "md", label: "ปานกลาง (Medium)" },
-  { id: "lg", label: "ใหญ่เด่นชัด (Large)" },
-  { id: "full", label: "เต็มตราแสตมป์ (Full)" },
+  { id: "sm", label: "sh.size.sm" },
+  { id: "md", label: "sh.size.md" },
+  { id: "lg", label: "sh.size.lg" },
+  { id: "full", label: "sh.size.full" },
 ];
 
 export const STAMP_BORDER_WIDTHS = [
-  { id: "none", label: "ไม่มีกรอบ (No Border)" },
-  { id: "thin", label: "กรอบบาง" },
-  { id: "medium", label: "กรอบปานกลาง" },
-  { id: "bold", label: "กรอบหนา" },
+  { id: "none", label: "sh.bw.none" },
+  { id: "thin", label: "sh.bw.thin" },
+  { id: "medium", label: "sh.bw.medium" },
+  { id: "bold", label: "sh.bw.bold" },
 ];
 
 export const STAMP_INK_COLORS = [
-  { id: "vermilion", name: "แดงชาด", hex: "#D9381E" },
-  { id: "crimson", name: "แดงกุหลาบ", hex: "#E63946" },
-  { id: "terracotta", name: "ส้มอิฐ", hex: "#BC6C25" },
-  { id: "orange", name: "ส้มซันเซ็ต", hex: "#F4A261" },
-  { id: "gold", name: "ทองโบราณ", hex: "#C59B27" },
-  { id: "matcha", name: "เขียวมัทฉะ", hex: "#2A9D8F" },
-  { id: "emerald", name: "เขียวมรกต", hex: "#10B981" },
-  { id: "ocean", name: "ฟ้าทะเล", hex: "#0077B6" },
-  { id: "indigo", name: "ครามเข้ม", hex: "#1D3557" },
-  { id: "violet", name: "ม่วงลาเวนเดอร์", hex: "#7209B7" },
-  { id: "coffee", name: "น้ำตาลกาแฟ", hex: "#6F4E37" },
-  { id: "obsidian", name: "ดำโอนิกซ์", hex: "#2B2D42" },
-  { id: "silver", name: "เทาเงิน", hex: "#6C757D" },
+  { id: "vermilion", name: "sh.color.vermilion", hex: "#D9381E" },
+  { id: "crimson", name: "sh.color.crimson", hex: "#E63946" },
+  { id: "terracotta", name: "sh.color.terracotta", hex: "#BC6C25" },
+  { id: "orange", name: "sh.color.orange", hex: "#F4A261" },
+  { id: "gold", name: "sh.color.gold", hex: "#C59B27" },
+  { id: "matcha", name: "sh.color.matcha", hex: "#2A9D8F" },
+  { id: "emerald", name: "sh.color.emerald", hex: "#10B981" },
+  { id: "ocean", name: "sh.color.ocean", hex: "#0077B6" },
+  { id: "indigo", name: "sh.color.indigo", hex: "#1D3557" },
+  { id: "violet", name: "sh.color.violet", hex: "#7209B7" },
+  { id: "coffee", name: "sh.color.coffee", hex: "#6F4E37" },
+  { id: "obsidian", name: "sh.color.obsidian", hex: "#2B2D42" },
+  { id: "silver", name: "sh.color.silver", hex: "#6C757D" },
 ];
 
 export const STAMP_SHAPES = [
-  { id: "circle", label: "วงกลม Hanko" },
-  { id: "double_circle", label: "วงกลม 2 ชั้น" },
-  { id: "oval", label: "วงรี Hanko" },
-  { id: "square", label: "ตราสี่เหลี่ยม" },
-  { id: "rounded_square", label: "สี่เหลี่ยมมุมมน" },
-  { id: "double_square", label: "สี่เหลี่ยม 2 ชั้น" },
-  { id: "hexagon", label: "หกเหลี่ยม" },
-  { id: "octagon", label: "แปดเหลี่ยม" },
-  { id: "diamond", label: "ข้าวหลามตัด" },
-  { id: "flower", label: "ดอกซากุระ" },
-  { id: "shield", label: "โล่ประทับ" },
-  { id: "star_badge", label: "ดาว 8 แฉก" },
-  { id: "ticket_cut", label: "ตั๋วบากมุม" },
-  { id: "stamp_edge", label: "ขอบแสตมป์" },
+  { id: "circle", label: "sh.shape.circle" },
+  { id: "double_circle", label: "sh.shape.double_circle" },
+  { id: "oval", label: "sh.shape.oval" },
+  { id: "square", label: "sh.shape.square" },
+  { id: "rounded_square", label: "sh.shape.rounded_square" },
+  { id: "double_square", label: "sh.shape.double_square" },
+  { id: "hexagon", label: "sh.shape.hexagon" },
+  { id: "octagon", label: "sh.shape.octagon" },
+  { id: "diamond", label: "sh.shape.diamond" },
+  { id: "flower", label: "sh.shape.flower" },
+  { id: "shield", label: "sh.shape.shield" },
+  { id: "star_badge", label: "sh.shape.star_badge" },
+  { id: "ticket_cut", label: "sh.shape.ticket_cut" },
+  { id: "stamp_edge", label: "sh.shape.stamp_edge" },
 ];
 
 export const STAMP_PRESET_ICONS = [
-  { id: "hanko", label: "ตราประทับ" },
-  { id: "store", label: "หน้าร้าน" },
-  { id: "coffee", label: "กาแฟ" },
-  { id: "utensils", label: "อาหาร" },
-  { id: "beer", label: "เครื่องดื่ม" },
-  { id: "train", label: "รถไฟ" },
-  { id: "fuji", label: "ภูเขาไฟฟูจิ" },
-  { id: "sakura", label: "ซากุระ" },
-  { id: "torii", label: "เสาโทริอิ" },
-  { id: "waves", label: "คลื่นทะเล" },
-  { id: "hotel", label: "โรงแรม" },
-  { id: "shopping_bag", label: "ช้อปปิ้ง" },
-  { id: "ticket", label: "ตั๋วเดินทาง" },
-  { id: "camera", label: "ถ่ายภาพ" },
-  { id: "heart", label: "หัวใจ" },
-  { id: "sparkles", label: "ประกายดาว" },
-  { id: "crown", label: "มงกุฎ" },
-  { id: "map_pin", label: "ปักหมุด" },
-  { id: "compass", label: "เข็มทิศ" },
-  { id: "flame", label: "ฮอตฮิต" },
-  { id: "gift", label: "ของขวัญ" },
-  { id: "paw", label: "สัตว์เลี้ยง" },
-  { id: "music", label: "เสียงเพลง" },
-  { id: "scissors", label: "ความงาม" },
+  { id: "hanko", label: "sh.icon.hanko" },
+  { id: "store", label: "sh.icon.store" },
+  { id: "coffee", label: "sh.icon.coffee" },
+  { id: "utensils", label: "sh.icon.utensils" },
+  { id: "beer", label: "sh.icon.beer" },
+  { id: "train", label: "sh.icon.train" },
+  { id: "fuji", label: "sh.icon.fuji" },
+  { id: "sakura", label: "sh.icon.sakura" },
+  { id: "torii", label: "sh.icon.torii" },
+  { id: "waves", label: "sh.icon.waves" },
+  { id: "hotel", label: "sh.icon.hotel" },
+  { id: "shopping_bag", label: "sh.icon.shopping_bag" },
+  { id: "ticket", label: "sh.icon.ticket" },
+  { id: "camera", label: "sh.icon.camera" },
+  { id: "heart", label: "sh.icon.heart" },
+  { id: "sparkles", label: "sh.icon.sparkles" },
+  { id: "crown", label: "sh.icon.crown" },
+  { id: "map_pin", label: "sh.icon.map_pin" },
+  { id: "compass", label: "sh.icon.compass" },
+  { id: "flame", label: "sh.icon.flame" },
+  { id: "gift", label: "sh.icon.gift" },
+  { id: "paw", label: "sh.icon.paw" },
+  { id: "music", label: "sh.icon.music" },
+  { id: "scissors", label: "sh.icon.scissors" },
 ];
 
 export const STAMP_SHADOW_EFFECTS = [
-  { id: "none", label: "ปกติ (ไม่มีเงา)" },
-  { id: "subtle", label: "เงานุ่มนวล (Soft)" },
-  { id: "vintage", label: "ประทับซ้อน (Double Stamp)" },
-  { id: "glow", label: "รัศมีหมึก (Ink Glow)" },
+  { id: "none", label: "sh.shadow.none" },
+  { id: "subtle", label: "sh.shadow.subtle" },
+  { id: "vintage", label: "sh.shadow.vintage" },
+  { id: "glow", label: "sh.shadow.glow" },
 ];
 
 export function getDefaultStampDesign(shopName?: string): StampDesign {
@@ -204,12 +204,12 @@ export function getDefaultStampVersions(shopName: string, customDesign?: StampDe
     {
       id: "version_v1",
       version_code: "v1.0",
-      title: "เวอร์ชัน 1.0 (ดีไซน์ดั้งเดิม)",
+      title: "Version 1.0",
       valid_from: "2024-01-01",
       valid_until: "2025-12-31",
       is_current: false,
       status: "archived",
-      note: "ดีไซน์ตราแสตมป์รุ่นแรกประจำร้าน",
+      note: "First stamp design",
       design: customDesign
         ? { ...baseDesign }
         : {
@@ -223,12 +223,12 @@ export function getDefaultStampVersions(shopName: string, customDesign?: StampDe
     {
       id: "version_v2",
       version_code: "v2.0",
-      title: "เวอร์ชัน 2.0 (ปรับโฉมใหม่ล่าสุด)",
+      title: "Version 2.0",
       valid_from: "2026-01-01",
       valid_until: "2026-12-31",
       is_current: true,
       status: "current",
-      note: "เปิดให้เก็บสะสมในปัจจุบัน",
+      note: "Currently collectable",
       design: customDesign
         ? { ...baseDesign }
         : {
@@ -300,23 +300,23 @@ export function getCurrentActiveStampVersion(versions: ShopStampVersion[]): Shop
   return activeByDate || versions[versions.length - 1] || null;
 }
 
-export function formatExpiryLabel(validUntil?: string): string {
-  if (!validUntil) return "ไม่มีวันหมดเขต";
+export function formatExpiryLabel(validUntil?: string, t: (k: string) => string = (x) => x): string {
+  if (!validUntil) return t("sh.noExpiry");
   
   const today = new Date();
   const expiry = new Date(validUntil);
   
-  if (isNaN(expiry.getTime())) return `เก็บได้ถึง ${validUntil}`;
+  if (isNaN(expiry.getTime())) return `${t("sh.until")} ${validUntil}`;
 
   const isExpired = expiry < today;
   const daysLeft = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 3600 * 24));
 
   if (isExpired) {
-    return `หมดเขตสะสมแล้ว (${validUntil})`;
+    return `${t("sh.expired")} (${validUntil})`;
   } else if (daysLeft <= 30) {
-    return `เหลืออีก ${daysLeft} วัน (เก็บได้ถึง ${validUntil})`;
+    return `${t("sh.daysLeft").replace("{n}", String(daysLeft))} (${t("sh.until")} ${validUntil})`;
   } else {
-    return `เก็บได้ถึง ${validUntil}`;
+    return `${t("sh.until")} ${validUntil}`;
   }
 }
 

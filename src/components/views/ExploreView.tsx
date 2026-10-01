@@ -76,14 +76,13 @@ export default function ExploreView({ openPlace, onViewMap, onSeeAllTrending, se
  <span> CLIP, COLLECT, CONNECT</span>
           </div>
           <h1 className="text-xl md:text-2xl font-black tracking-tight drop-shadow-xs">
-            ยินดีต้อนรับสู่ Clippi Stamp Rally!
+            {t("ex.welcome")}
           </h1>
           <p className="text-xs font-medium text-white/90 max-w-lg">
-            สะสมแสตมป์ดิจิทัลจากร้านค้าและสถานที่ท่องเที่ยวที่คุณชื่นชอบ คลิปเก็บความทรงจำได้เลยวันนี้
-          </p>
+            {t("ex.welcomeDesc")}</p>
         </div>
         <div className="shrink-0 z-10">
- <ClippiMascot size="lg" speech="พร้อมสะสมแสตมป์กันหรือยัง? " animate={true} />
+ <ClippiMascot size="lg" speech={t("ex.ready")} animate={true} />
         </div>
         <div className="absolute -right-8 -bottom-8 w-48 h-48 rounded-full bg-white/10 blur-2xl pointer-events-none" />
       </div>

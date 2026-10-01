@@ -32,19 +32,21 @@ import { supabase } from "../../supabaseClient";
 import { ProtectedRoute } from "../auth/ProtectedRoute";
 import { useJigsawQuests } from "../../hooks/useJigsawQuests";
 import { JigsawQuest, JigsawPiece } from "../../constants/jigsawData";
+import { useLang } from "../../lib/i18n";
 
 // Preset Reward Images
 const PRESET_REWARD_IMAGES = [
-  { label: "วัดอรุณ กรุงเทพฯ (Temple of Dawn)", url: "https://images.unsplash.com/photo-1508009603885-50cf7c579365?w=1000&auto=format&fit=crop&q=80" },
-  { label: "ขนมญี่ปุ่นโบราณ (Wagashi Sweets)", url: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=1000&auto=format&fit=crop&q=80" },
-  { label: "เกียวโต & วัดโบราณ (Kyoto Pagoda)", url: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=1000&auto=format&fit=crop&q=80" },
-  { label: "มหานครโตเกียว (Tokyo Tower)", url: "https://images.unsplash.com/photo-1503899036084-c55cdd92da26?w=1000&auto=format&fit=crop&q=80" },
-  { label: "โอซาก้า & คลองโดทงโบริ (Osaka Night)", url: "https://images.unsplash.com/photo-1590559899731-a382839e5549?w=1000&auto=format&fit=crop&q=80" },
-  { label: "ภูเขาไฟฟูจิ & ดอกซากุระ (Mt. Fuji)", url: "https://images.unsplash.com/photo-1490806843957-31f4c9a91c65?w=1000&auto=format&fit=crop&q=80" },
-  { label: "ตลาดกลางคืน & สตรีทฟู้ด (Night Market)", url: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1000&auto=format&fit=crop&q=80" },
+  { label: "Temple of Dawn, Bangkok", url: "https://images.unsplash.com/photo-1508009603885-50cf7c579365?w=1000&auto=format&fit=crop&q=80" },
+  { label: "Traditional Wagashi Sweets", url: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=1000&auto=format&fit=crop&q=80" },
+  { label: "Kyoto Pagoda", url: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=1000&auto=format&fit=crop&q=80" },
+  { label: "Tokyo Tower", url: "https://images.unsplash.com/photo-1503899036084-c55cdd92da26?w=1000&auto=format&fit=crop&q=80" },
+  { label: "Osaka Dotonbori Night", url: "https://images.unsplash.com/photo-1590559899731-a382839e5549?w=1000&auto=format&fit=crop&q=80" },
+  { label: "Mt. Fuji & Sakura", url: "https://images.unsplash.com/photo-1490806843957-31f4c9a91c65?w=1000&auto=format&fit=crop&q=80" },
+  { label: "Night Market & Street Food", url: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1000&auto=format&fit=crop&q=80" },
 ];
 
 export default function AdminJigsawManagePage() {
+  const { t } = useLang();
   return (
     <ProtectedRoute allowedRoles={["admin"]}>
       <AdminJigsawManageContent />
@@ -53,6 +55,7 @@ export default function AdminJigsawManagePage() {
 }
 
 function AdminJigsawManageContent() {
+  const { t } = useLang();
   const {
     quests,
     loading,
@@ -109,11 +112,11 @@ function AdminJigsawManageContent() {
                 Admin Panel
               </span>
               <span className="text-[10px] font-bold text-stone-400">
-                {quests.length} เควสต์ · {quests.reduce((acc, q) => acc + q.pieces.length, 0)} จุดเช็คพอยต์
+                {quests.length} {t("jg.questsUnit")} · {quests.reduce((acc, q) => acc + q.pieces.length, 0)} {t("jg.checkpointsUnit")}
               </span>
             </div>
             <h2 className="text-xl font-black tracking-tight mt-0.5" style={{ color: C.ink }}>
-              จัดการเควสต์ & จุดสแกนจิ๊กซอว์บนแผนที่
+              {t("jg.subtitle")}
             </h2>
           </div>
         </div>
@@ -123,13 +126,13 @@ function AdminJigsawManageContent() {
           {quests.length > 0 && (
             <button
               onClick={() => {
-                if (window.confirm("คุณต้องการลบเควสต์และข้อมูลจำลองทั้งหมดใช่หรือไม่?")) {
+                if (window.confirm(t("jg.confirmDeleteAll"))) {
                   deleteAllQuests();
                 }
               }}
               className="px-3 py-2.5 rounded-xl text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 transition flex items-center gap-1.5 cursor-pointer border border-red-200"
             >
-              <Trash2 size={15} strokeWidth={2} /> ลบเควสต์ทั้งหมด
+              <Trash2 size={15} strokeWidth={2} /> {t("jg.deleteAll")}
             </button>
           )}
 
@@ -140,7 +143,7 @@ function AdminJigsawManageContent() {
             }}
             className="px-3.5 py-2.5 rounded-xl text-xs font-black text-white bg-[#FD775C] hover:bg-[#E31E27] transition flex items-center gap-1.5 cursor-pointer shadow-xs"
           >
-            <Plus size={15} strokeWidth={2.5} /> สร้างเควสต์ใหม่
+            <Plus size={15} strokeWidth={2.5} /> {t("jg.newQuest")}
           </button>
 
           <button
@@ -151,7 +154,7 @@ function AdminJigsawManageContent() {
             }}
             className="px-3.5 py-2.5 rounded-xl text-xs font-black text-white bg-[#FD775C] hover:bg-[#E31E27] transition flex items-center gap-1.5 cursor-pointer shadow-md"
           >
-            <MapPin size={15} strokeWidth={2.5} /> ปักหมุดจุดสแกนบนแมพ
+            <MapPin size={15} strokeWidth={2.5} /> {t("jg.pinOnMap")}
           </button>
         </div>
       </div>
@@ -174,7 +177,7 @@ function AdminJigsawManageContent() {
               <span className={`text-[9.5px] px-2 py-0.5 rounded-full font-bold ${
                 quest.pieces.length >= 4 ? "bg-emerald-500 text-white" : isSelected ? "bg-orange-500 text-white" : "bg-stone-100 text-stone-600"
               }`}>
-                {quest.pieces.length} จุด
+                {quest.pieces.length} {t("jg.pointsUnit")}
               </span>
             </button>
           );
@@ -206,7 +209,7 @@ function AdminJigsawManageContent() {
                     {activeQuest.badge}
                   </span>
                   <span className="text-[10px] font-bold text-stone-400">
-                    หมวด: {activeQuest.category}
+                    {t("rv.f.category")}: {activeQuest.category}
                   </span>
                   <span className="text-[10px] text-stone-400 font-mono">
                     ID: <code>{activeQuest.id}</code>
@@ -222,9 +225,9 @@ function AdminJigsawManageContent() {
                 </p>
 
                 <div className="flex items-center gap-3 pt-1 text-xs text-stone-600">
- <span> รางวัล: <strong className="text-stone-900">{activeQuest.rewardTitle}</strong></span>
+ <span>{t("jg.reward")}: <strong className="text-stone-900">{activeQuest.rewardTitle}</strong></span>
                   <span className="text-stone-300">•</span>
-                  <span>โค้ด: <code className="bg-stone-100 px-1.5 py-0.5 rounded font-mono text-[11px]">{activeQuest.rewardCode}</code></span>
+                  <span>{t("jg.code")}: <code className="bg-stone-100 px-1.5 py-0.5 rounded font-mono text-[11px]">{activeQuest.rewardCode}</code></span>
                 </div>
               </div>
             </div>
@@ -239,18 +242,18 @@ function AdminJigsawManageContent() {
                 className="px-3 py-1.5 rounded-xl border bg-stone-50 hover:bg-stone-100 text-xs font-bold text-stone-700 transition flex items-center gap-1.5 cursor-pointer"
                 style={{ borderColor: C.line }}
               >
-                <Edit3 size={13} /> แก้ไขเควสต์
+                <Edit3 size={13} /> {t("jg.editQuest")}
               </button>
 
               <button
                 onClick={async () => {
-                  if (confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบเควสต์ "${activeQuest.title}" พร้อมจุดเช็คพอยต์ทั้งหมด?`)) {
+                  if (confirm(t("jg.confirmDeleteQuest").replace("{n}", activeQuest.title))) {
                     await deleteQuest(activeQuest.id);
                   }
                 }}
                 className="px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-xs font-bold text-rose-700 transition flex items-center gap-1.5 cursor-pointer"
               >
-                <Trash2 size={13} /> ลบเควสต์
+                <Trash2 size={13} /> {t("jg.deleteQuest")}
               </button>
             </div>
           </div>
@@ -261,11 +264,11 @@ function AdminJigsawManageContent() {
               <div className="flex items-center gap-2">
                 <Grid size={16} className="text-orange-500" />
                 <h4 className="text-xs font-black text-stone-900">
-                  กระดานผูกร้านค้าประจำชิ้นส่วน ({activeQuest.gridRows || 2}x{activeQuest.gridCols || 2} = {(activeQuest.gridRows || 2) * (activeQuest.gridCols || 2)} ชิ้น)
+                  {t("jg.gridBoard")} ({activeQuest.gridRows || 2}x{activeQuest.gridCols || 2} = {(activeQuest.gridRows || 2) * (activeQuest.gridCols || 2)} {t("jg.piecesUnit")})
                 </h4>
               </div>
               <span className="text-[10.5px] font-bold text-stone-500 bg-stone-100 px-2.5 py-0.5 rounded-full border border-stone-200">
-                💡 คลิกที่ช่องชิ้นส่วนเพื่อเลือกผูกร้านค้าหรือแก้ไขข้อมูล
+                {t("jg.gridHint")}
               </span>
             </div>
 
@@ -312,7 +315,7 @@ function AdminJigsawManageContent() {
                       >
                         <div className="flex items-center justify-between gap-1">
                           <span className="text-[9.5px] font-black px-1.5 py-0.5 rounded bg-white/20 text-white">
-                            ชิ้น {idx + 1}
+                            {t("jg.piece")} {idx + 1}
                           </span>
                           {piece ? (
                             <CheckCircle2 size={13} className="text-emerald-400 shrink-0" />
@@ -328,13 +331,13 @@ function AdminJigsawManageContent() {
                             </p>
                             <p className="text-[8.5px] font-bold text-emerald-300 truncate flex items-center gap-0.5">
                               <Store size={9} className="shrink-0" />
-                              <span>{piece.shopName || "ผูกร้านค้าแล้ว"}</span>
+                              <span>{piece.shopName || t("jg.linked")}</span>
                             </p>
                           </div>
                         ) : (
                           <div className="text-center py-1">
                             <p className="text-[9px] font-bold text-orange-200 group-hover:text-white leading-tight">
-                              + กดเพื่อผูกร้านค้า
+                              {t("jg.tapToLink")}
                             </p>
                           </div>
                         )}
@@ -352,13 +355,13 @@ function AdminJigsawManageContent() {
               <div>
                 <h4 className="text-sm font-black text-stone-900 flex items-center gap-2 flex-wrap">
                   <MapPin size={16} className="text-orange-500" />
-                  <span>จุดเช็คพอยต์และหมุดบนแผนที่ ({activeQuest.pieces.length} / {(activeQuest.gridRows || 2) * (activeQuest.gridCols || 2)} ชิ้นส่วน)</span>
+                  <span>{t("jg.checkpointsOnMap")} ({activeQuest.pieces.length} / {(activeQuest.gridRows || 2) * (activeQuest.gridCols || 2)} {t("jg.piecesUnit")})</span>
                   <span className="text-[10px] font-bold text-stone-500 bg-stone-100 px-2 py-0.5 rounded-full border border-stone-200">
-                    รูปแบบ {activeQuest.gridRows || 2}x{activeQuest.gridCols || 2}
+                    {t("jg.layout")} {activeQuest.gridRows || 2}x{activeQuest.gridCols || 2}
                   </span>
                 </h4>
                 <p className="text-[11px] text-stone-500">
-                  ผู้เล่นจะต้องเดินทางไปยังพิกัดจริง และเปิดกล้องสแกน QR Code เพื่อเก็บแต่ละชิ้นส่วน
+                  {t("jg.playerNote")}
                 </p>
               </div>
 
@@ -369,23 +372,23 @@ function AdminJigsawManageContent() {
                 }}
                 className="px-3 py-1.5 rounded-xl bg-orange-50 hover:bg-orange-100 border border-orange-200 text-orange-800 text-xs font-black flex items-center gap-1.5 cursor-pointer transition"
               >
-                <Plus size={13} /> เพิ่มจุดบนแมพ
+                <Plus size={13} /> {t("jg.addPoint")}
               </button>
             </div>
 
             {activeQuest.pieces.length === 0 ? (
               <div className="p-8 text-center bg-stone-50 rounded-2xl border border-dashed border-stone-200 space-y-2">
                 <MapPin size={28} className="mx-auto text-stone-300" />
-                <p className="text-xs font-bold text-stone-600">ยังไม่มีจุดเช็คพอยต์ในเควสต์นี้</p>
-                <p className="text-[11px] text-stone-400">กดปุ่ม "+ ปักหมุดจุดสแกนบนแมพ" เพื่อเพิ่มจุดตรวจและกำหนดพิกัด GPS</p>
+                <p className="text-xs font-bold text-stone-600">{t("jg.noCheckpoint")}</p>
+                <p className="text-[11px] text-stone-400">{t("jg.noCheckpointHint")}</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                 {activeQuest.pieces.map((piece, idx) => {
                   const positionLabel =
-                    piece.pieceIndex === 0 ? "บนซ้าย (Top-Left)" :
-                    piece.pieceIndex === 1 ? "บนขวา (Top-Right)" :
-                    piece.pieceIndex === 2 ? "ล่างซ้าย (Bottom-Left)" : "ล่างขวา (Bottom-Right)";
+                    piece.pieceIndex === 0 ? t("jg.pos.tl") :
+                    piece.pieceIndex === 1 ? t("jg.pos.tr") :
+                    piece.pieceIndex === 2 ? t("jg.pos.bl") : t("jg.pos.br");
 
                   return (
                     <div
@@ -404,7 +407,7 @@ function AdminJigsawManageContent() {
                               </h5>
                               <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
                                 <span className="text-[9.5px] font-bold text-orange-600">
-                                  ตำแหน่งจิ๊กซอว์: {positionLabel}
+                                  {t("jg.piecePos")}: {positionLabel}
                                 </span>
                                 {(piece.shopName || piece.shopId) && (
                                   <span className="text-[9.5px] font-black text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.2 rounded-md flex items-center gap-1">
@@ -419,7 +422,7 @@ function AdminJigsawManageContent() {
                           <div className="flex items-center gap-1">
                             <button
                               onClick={() => setPrintPiece({ piece, quest: activeQuest })}
-                              title="ดู & สั่งพิมพ์ QR Code สำหรับติดสถานที่จริง"
+                              title={t("jg.tipQr")}
                               className="p-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 transition cursor-pointer"
                             >
                               <QrCode size={14} />
@@ -429,18 +432,18 @@ function AdminJigsawManageContent() {
                                 setEditingPiece({ questId: activeQuest.id, piece });
                                 setIsPieceModalOpen(true);
                               }}
-                              title="แก้ไขข้อมูลพิกัด"
+                              title={t("jg.tipEditCoord")}
                               className="p-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 transition cursor-pointer"
                             >
                               <Edit3 size={14} />
                             </button>
                             <button
                               onClick={async () => {
-                                if (confirm(`ต้องการลบจุดเช็คพอยต์ "${piece.checkpointName}" หรือไม่?`)) {
+                                if (confirm(t("jg.confirmDeletePoint").replace("{n}", piece.checkpointName))) {
                                   await deletePiece(activeQuest.id, piece.id);
                                 }
                               }}
-                              title="ลบจุดนี้"
+                              title={t("jg.tipDeletePoint")}
                               className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition cursor-pointer"
                             >
                               <Trash2 size={14} />
@@ -453,7 +456,7 @@ function AdminJigsawManageContent() {
                         </p>
 
                         <div className="pl-8 text-[10.5px] bg-amber-50/70 p-2 rounded-xl border border-amber-200/60 text-amber-900 font-medium">
- <strong>คำใบ้:</strong> {piece.hint}
+ <strong>{t("jig.hint")}</strong> {piece.hint}
                         </div>
                       </div>
 
@@ -470,7 +473,7 @@ function AdminJigsawManageContent() {
                           <button
                             onClick={() => handleCopy(piece.qrCodeValue)}
                             className="text-stone-600 hover:text-black cursor-pointer"
-                            title="คัดลอกรหัส QR"
+                            title={t("jg.tipCopyQr")}
                           >
                             {copiedCode === piece.qrCodeValue ? <Check size={10} className="text-emerald-600" /> : <Copy size={10} />}
                           </button>
@@ -486,10 +489,9 @@ function AdminJigsawManageContent() {
       ) : (
         <div className="p-12 text-center bg-white rounded-3xl border space-y-3" style={{ borderColor: C.line }}>
           <Puzzle size={40} className="mx-auto text-stone-300" strokeWidth={1.5} />
-          <h3 className="text-base font-bold text-stone-700">ยังไม่มีเควสต์จิ๊กซอว์ในระบบ</h3>
+          <h3 className="text-base font-bold text-stone-700">{t("jg.noQuest")}</h3>
           <p className="text-xs text-stone-500 max-w-md mx-auto">
-            คุณได้ลบข้อมูลจำลองทั้งหมดออกเรียบร้อยแล้ว สามารถกดปุ่ม "สร้างเควสต์ใหม่" ด้านบนเพื่อสร้างเควสต์และจุดสแกนจริงในระบบได้เลย
-          </p>
+            {t("jg.noQuestHint")}</p>
         </div>
       )}
 
@@ -585,12 +587,13 @@ function QuestFormModal({
   onClose: () => void;
   onSave: (questData: any) => Promise<void>;
 }) {
+  const { t } = useLang();
   const [title, setTitle] = useState(initialQuest?.title || "");
   const [badge, setBadge] = useState(initialQuest?.badge || "Special Quest");
   const [category, setCategory] = useState(initialQuest?.category || "Culture & Heritage");
   const [description, setDescription] = useState(initialQuest?.description || "");
-  const [rewardTitle, setRewardTitle] = useState(initialQuest?.rewardTitle || "🏆 ตราประทับเกียรติยศ + ส่วนลด 20%");
-  const [rewardDescription, setRewardDescription] = useState(initialQuest?.rewardDescription || "ยินดีด้วย! คุณสะสมจิ๊กซอว์ครบทุกชิ้น ปลดล็อกภาพสมบูรณ์และรับส่วนลดพิเศษ");
+  const [rewardTitle, setRewardTitle] = useState(initialQuest?.rewardTitle || t("jg.defaultReward"));
+  const [rewardDescription, setRewardDescription] = useState(initialQuest?.rewardDescription || t("jg.defaultRewardDesc"));
   const [rewardCode, setRewardCode] = useState(initialQuest?.rewardCode || `CLIPPI-${Date.now().toString().slice(-6)}`);
   const [fullImageUrl, setFullImageUrl] = useState(initialQuest?.fullImageUrl || PRESET_REWARD_IMAGES[0].url);
   const [gridRows, setGridRows] = useState<number>(initialQuest?.gridRows || 2);
@@ -657,7 +660,7 @@ function QuestFormModal({
         return copy;
       });
     } else {
-      const shopName = shop.shop_name || shop.shop_name_jp || "ร้านค้า";
+      const shopName = shop.shop_name || shop.shop_name_jp || t("log.d.shop");
       setCellShops((prev) => ({
         ...prev,
         [cellIdx]: {
@@ -665,8 +668,8 @@ function QuestFormModal({
           shopName: shopName,
           checkpointName: shopName,
           locationArea: shop.address || shop.category || "",
-          description: `สแกน QR Code เพื่อรับชิ้นส่วนจิ๊กซอว์ที่ร้าน ${shopName}`,
-          hint: `สังเกตป้ายร้าน ${shopName}`,
+          description: `${t("jg.scanAt")} ${shopName}`,
+          hint: `${t("jg.lookForSign")} ${shopName}`,
           qrCodeValue: prev[cellIdx]?.qrCodeValue || `CLIPPI-JIGSAW-${cellIdx + 1}-${Date.now().toString().slice(-4)}`,
           lat: shop.lat ? Number(shop.lat) : 13.7563,
           lng: shop.lng ? Number(shop.lng) : 100.5018,
@@ -712,7 +715,7 @@ function QuestFormModal({
       reader.readAsDataURL(file);
     } catch (err) {
       console.error("Image upload failed:", err);
-      alert("ไม่สามารถอัปโหลดรูปภาพได้ กรุณาลองใหม่อีกครั้ง");
+      alert(t("jg.uploadFail"));
     } finally {
       setUploadingImage(false);
     }
@@ -721,7 +724,7 @@ function QuestFormModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
-      alert("กรุณากรอกชื่อเควสต์");
+      alert(t("jg.needTitle"));
       return;
     }
     setSaving(true);
@@ -734,9 +737,9 @@ function QuestFormModal({
         pieces.push({
           id: `piece-${i}-${Date.now()}`,
           pieceIndex: i,
-          checkpointName: assigned?.checkpointName || `จุดสแกนชิ้นที่ ${i + 1}`,
+          checkpointName: assigned?.checkpointName || `${t("jg.scanPoint")} ${i + 1}`,
           locationArea: assigned?.locationArea || "",
-          description: assigned?.description || "สแกน QR Code เพื่อเก็บชิ้นส่วนนี้",
+          description: assigned?.description || t("jg.scanToCollect"),
           hint: assigned?.hint || "",
           qrCodeValue: assigned?.qrCodeValue || `CLIPPI-JIGSAW-${i + 1}-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
           targetLat: assigned?.lat ?? (13.7563 + i * 0.001),
@@ -771,7 +774,7 @@ function QuestFormModal({
         <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: C.line }}>
           <div className="flex items-center gap-2">
             <h3 className="text-base font-black text-stone-900">
-              {initialQuest ? "แก้ไขเควสต์จิ๊กซอว์" : "สร้างเควสต์จิ๊กซอว์ใหม่"}
+              {initialQuest ? t("jg.editQuestTitle") : t("jg.newQuestTitle")}
             </h3>
           </div>
           <button onClick={onClose} className="p-1 rounded-xl hover:bg-stone-100 text-stone-500 cursor-pointer">
@@ -782,13 +785,13 @@ function QuestFormModal({
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           {/* Quest Title */}
           <div>
-            <label className="block font-black text-stone-800 mb-1">ชื่อเควสต์ (Quest Title) *</label>
+            <label className="block font-black text-stone-800 mb-1">{t("jg.f.title")} *</label>
             <input
               type="text"
               required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="เช่น ตะลุยย่านเมืองเก่า: ปริศนาแลนด์มาร์คโบราณ"
+              placeholder={t("jg.f.titlePlaceholder")}
               className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-orange-500 font-medium"
             />
           </div>
@@ -796,22 +799,22 @@ function QuestFormModal({
           {/* Badge & Category */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-black text-stone-800 mb-1">ป้ายกำกับ (Badge)</label>
+              <label className="block font-black text-stone-800 mb-1">{t("jg.f.badge")}</label>
               <input
                 type="text"
                 value={badge}
                 onChange={(e) => setBadge(e.target.value)}
-                placeholder="เช่น Special Quest, Gourmet Quest"
+                placeholder={t("jg.f.badgePlaceholder")}
                 className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-orange-500 font-medium"
               />
             </div>
             <div>
-              <label className="block font-black text-stone-800 mb-1">หมวดหมู่ (Category)</label>
+              <label className="block font-black text-stone-800 mb-1">{t("rv.f.category")}</label>
               <input
                 type="text"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                placeholder="เช่น Heritage & Culture, Food & Drink"
+                placeholder={t("jg.f.catPlaceholder")}
                 className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-orange-500 font-medium"
               />
             </div>
@@ -822,20 +825,20 @@ function QuestFormModal({
             <label className="block font-black text-stone-800 mb-1 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
                 <Grid size={14} className="text-orange-500" />
-                รูปแบบตารางจิ๊กซอว์ (Grid Layout) *
+                {t("jg.f.grid")} *
               </span>
               <span className="text-[10px] text-orange-600 font-bold bg-orange-50 px-2.5 py-0.5 rounded-full border border-orange-200">
-                รวม {gridRows * gridCols} ชิ้นส่วน
+                {t("jg.totalPieces").replace("{n}", String(gridRows * gridCols))}
               </span>
             </label>
 
             <div className="flex gap-1.5 flex-wrap mb-2">
               {[
-                { label: "2x2 (4 ชิ้น)", r: 2, c: 2 },
-                { label: "3x3 (9 ชิ้น)", r: 3, c: 3 },
-                { label: "2x3 (6 ชิ้น)", r: 2, c: 3 },
-                { label: "3x4 (12 ชิ้น)", r: 3, c: 4 },
-                { label: "4x4 (16 ชิ้น)", r: 4, c: 4 },
+                { label: `2x2 (4 ${t("jg.piecesUnit")})`, r: 2, c: 2 },
+                { label: `3x3 (9 ${t("jg.piecesUnit")})`, r: 3, c: 3 },
+                { label: `2x3 (6 ${t("jg.piecesUnit")})`, r: 2, c: 3 },
+                { label: `3x4 (12 ${t("jg.piecesUnit")})`, r: 3, c: 4 },
+                { label: `4x4 (16 ${t("jg.piecesUnit")})`, r: 4, c: 4 },
               ].map((preset) => {
                 const isSelected = gridRows === preset.r && gridCols === preset.c;
                 return (
@@ -861,7 +864,7 @@ function QuestFormModal({
             {/* Custom Rows/Cols Inputs */}
             <div className="grid grid-cols-2 gap-2 bg-stone-50 p-2.5 rounded-xl border border-stone-200/70 mb-2">
               <div className="flex items-center gap-2">
-                <span className="text-[11px] text-stone-600 font-bold shrink-0">จำนวนแถว (Rows):</span>
+                <span className="text-[11px] text-stone-600 font-bold shrink-0">{t("jg.rows")}</span>
                 <input
                   type="number"
                   min={1}
@@ -872,7 +875,7 @@ function QuestFormModal({
                 />
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[11px] text-stone-600 font-bold shrink-0">จำนวนคอลัมน์ (Cols):</span>
+                <span className="text-[11px] text-stone-600 font-bold shrink-0">{t("jg.cols")}</span>
                 <input
                   type="number"
                   min={1}
@@ -888,11 +891,11 @@ function QuestFormModal({
             <div className="bg-amber-50/90 border border-amber-200/90 p-3 rounded-2xl text-amber-950 text-[11px] space-y-1 shadow-xs">
               <div className="flex items-center gap-1.5 font-black text-amber-900">
                 <Info size={14} className="text-amber-600 shrink-0" />
-                <span>คำแนะนำขนาดรูปภาพสำหรับตาราง {gridRows}x{gridCols} ({gridRows * gridCols} ชิ้นส่วน):</span>
+                <span>{t("jg.imgAdvice").replace("{r}", String(gridRows)).replace("{c}", String(gridCols))}</span>
               </div>
               <div className="pl-5 space-y-0.5 text-stone-700 leading-relaxed">
                 <p>
-                  • <strong>ขนาดความละเอียดภาพแนะนำ:</strong>{" "}
+                  • <strong>{t("jg.imgRes")}</strong>{" "}
                   <span className="font-mono font-bold text-amber-900 bg-amber-100/90 px-1.5 py-0.5 rounded border border-amber-200">
                     {gridCols === 2 && gridRows === 2
                       ? "1000 x 1000 px"
@@ -902,19 +905,19 @@ function QuestFormModal({
                       ? "1600 x 1600 px"
                       : `${gridCols * 400} x ${gridRows * 400} px`}
                   </span>{" "}
-                  <span className="text-[10px] text-stone-500">(ขั้นต่ำ {gridCols * 300} x {gridRows * 300} px)</span>
+                  <span className="text-[10px] text-stone-500">({t("jg.minSize")} {gridCols * 300} x {gridRows * 300} px)</span>
                 </p>
                 <p>
-                  • <strong>อัตราส่วนภาพ (Aspect Ratio):</strong>{" "}
+                  • <strong>{t("jg.aspect")}</strong>{" "}
                   <span className="font-mono font-bold text-amber-900 bg-amber-100/90 px-1.5 py-0.5 rounded border border-amber-200">
                     {gridCols} : {gridRows}
                   </span>{" "}
                   <span className="text-[10.5px] font-bold text-amber-900">
                     {gridCols === gridRows
-                      ? "(สี่เหลี่ยมจัตุรัส 1:1)"
+                      ? t("jg.ratioSquare")
                       : gridCols > gridRows
-                      ? "(สี่เหลี่ยมแนวนอน / Landscape)"
-                      : "(สี่เหลี่ยมแนวตั้ง / Portrait)"}
+                      ? t("jg.ratioLandscape")
+                      : t("jg.ratioPortrait")}
                   </span>
                 </p>
               </div>
@@ -923,12 +926,12 @@ function QuestFormModal({
 
           {/* Description */}
           <div>
-            <label className="block font-black text-stone-800 mb-1">คำอธิบายภารกิจ</label>
+            <label className="block font-black text-stone-800 mb-1">{t("jg.f.desc")}</label>
             <textarea
               rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder={`เดินทางไปยัง ${gridRows * gridCols} จุดสำคัญ สแกน QR Code พร้อมเปิด GPS เพื่อรวบรวมชิ้นส่วนจิ๊กซอว์ให้ครบ!`}
+              placeholder={t("jg.f.descPlaceholder").replace("{n}", String(gridRows * gridCols))}
               className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-orange-500 font-medium leading-relaxed"
             />
           </div>
@@ -937,7 +940,7 @@ function QuestFormModal({
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="font-black text-stone-800 text-xs">
-                รูปภาพรางวัลสมบูรณ์ (เมื่อต่อครบ {gridRows * gridCols} ชิ้น) *
+                {t("jg.rewardImage").replace("{n}", String(gridRows * gridCols))} *
               </label>
 
               {/* Hidden File Input & Upload Button */}
@@ -955,7 +958,7 @@ function QuestFormModal({
                 className="px-3 py-1 rounded-xl bg-stone-900 hover:bg-black text-white text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
               >
                 {uploadingImage ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
-                <span>อัปโหลดรูปจากเครื่อง</span>
+                <span>{t("jg.uploadFromDevice")}</span>
               </button>
             </div>
 
@@ -964,7 +967,7 @@ function QuestFormModal({
               required
               value={fullImageUrl}
               onChange={(e) => setFullImageUrl(e.target.value)}
-              placeholder="หรือระบุ URL รูปภาพ (https://...)"
+              placeholder={t("jg.imageUrlPlaceholder")}
               className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-orange-500 font-medium font-mono mb-2"
             />
 
@@ -990,10 +993,10 @@ function QuestFormModal({
                 <div className="w-full flex items-center justify-between text-[11px] font-bold text-orange-300 px-1">
                   <span className="flex items-center gap-1">
                     <Store size={13} className="text-orange-400" />
-                    <span>กดที่ช่องเพื่อผูกร้านค้าในระบบ ({gridRows * gridCols} ช่อง):</span>
+                    <span>{t("jg.tapCellToLink").replace("{n}", String(gridRows * gridCols))}</span>
                   </span>
                   <span className="text-[10px] text-stone-400 font-mono">
-                    ผูกแล้ว {Object.keys(cellShops).length} / {gridRows * gridCols} ร้าน
+                    {t("jg.linkedCount").replace("{a}", String(Object.keys(cellShops).length)).replace("{b}", String(gridRows * gridCols))}
                   </span>
                 </div>
 
@@ -1029,7 +1032,7 @@ function QuestFormModal({
                         >
                           <div className="w-full flex items-center justify-between">
                             <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-white/20 text-white">
-                              ชิ้น {idx + 1}
+                              {t("jg.piece")} {idx + 1}
                             </span>
                             {assigned ? (
                               <CheckCircle2 size={11} className="text-emerald-400 shrink-0" />
@@ -1045,13 +1048,13 @@ function QuestFormModal({
                                 <span className="truncate">{assigned.shopName}</span>
                               </p>
                               <span className="text-[8px] font-bold text-emerald-200/80 block mt-0.5">
-                                ✓ ผูกร้านแล้ว
+                                {t("jg.linkedOk")}
                               </span>
                             </div>
                           ) : (
                             <div className="my-auto py-0.5">
                               <span className="text-[9px] font-bold text-orange-200 group-hover:text-white leading-tight block">
-                                + เลือกร้านในระบบ
+                                {t("jg.pickShop")}
                               </span>
                             </div>
                           )}
@@ -1067,23 +1070,23 @@ function QuestFormModal({
           {/* Reward Details */}
           <div className="p-3.5 bg-orange-50/60 rounded-2xl border border-orange-200/70 space-y-2.5">
             <h4 className="font-black text-orange-950 text-xs flex items-center gap-1.5">
-              🏆 ข้อมูลของรางวัลเมื่อประกอบครบ {gridRows * gridCols} ชิ้น
+              {t("jg.rewardInfo").replace("{n}", String(gridRows * gridCols))}
             </h4>
 
             <div>
-              <label className="block font-bold text-orange-900 mb-0.5 text-[11px]">ชื่อรางวัล (Reward Title)</label>
+              <label className="block font-bold text-orange-900 mb-0.5 text-[11px]">{t("jg.f.rewardTitle")}</label>
               <input
                 type="text"
                 value={rewardTitle}
                 onChange={(e) => setRewardTitle(e.target.value)}
-                placeholder="เช่น 🏆 ตราประทับผู้พิชิต + รับสิทธิ์เครื่องดื่มฟรี"
+                placeholder={t("jg.f.rewardPlaceholder")}
                 className="w-full bg-white border border-orange-200 rounded-xl px-3 py-1.5 text-xs outline-none focus:border-orange-500 font-medium"
               />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div>
-                <label className="block font-bold text-orange-900 mb-0.5 text-[11px]">รหัสคูปอง / Code</label>
+                <label className="block font-bold text-orange-900 mb-0.5 text-[11px]">{t("jg.f.coupon")}</label>
                 <input
                   type="text"
                   value={rewardCode}
@@ -1093,12 +1096,12 @@ function QuestFormModal({
                 />
               </div>
               <div>
-                <label className="block font-bold text-orange-900 mb-0.5 text-[11px]">คำอธิบายรางวัลสั้น</label>
+                <label className="block font-bold text-orange-900 mb-0.5 text-[11px]">{t("jg.f.rewardDesc")}</label>
                 <input
                   type="text"
                   value={rewardDescription}
                   onChange={(e) => setRewardDescription(e.target.value)}
-                  placeholder="ยินดีด้วย! คุณสะสมครบแล้ว"
+                  placeholder={t("jg.f.rewardDescPlaceholder")}
                   className="w-full bg-white border border-orange-200 rounded-xl px-3 py-1.5 text-xs outline-none focus:border-orange-500 font-medium"
                 />
               </div>
@@ -1111,16 +1114,14 @@ function QuestFormModal({
               type="button"
               onClick={onClose}
               className="px-4 py-2 rounded-xl text-xs font-bold text-stone-600 hover:bg-stone-100 transition cursor-pointer"
-            >
-              ยกเลิก
-            </button>
+            >{t("common.cancel")}</button>
             <button
               type="submit"
               disabled={saving}
               className="px-5 py-2 rounded-xl text-xs font-black text-white bg-orange-600 hover:bg-orange-700 transition flex items-center gap-1.5 cursor-pointer shadow-md"
             >
               {saving ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
-              <span>{initialQuest ? "บันทึกการแก้ไข" : "สร้างเควสต์"}</span>
+              <span>{initialQuest ? t("bn.saveEdit") : t("jg.createQuest")}</span>
             </button>
           </div>
         </form>
@@ -1139,10 +1140,10 @@ function QuestFormModal({
                   </div>
                   <div>
                     <h4 className="text-sm font-black text-stone-900">
-                      เลือกร้านค้าในระบบ สำหรับชิ้นส่วนที่ {activeCellForPicker + 1}
+                      {t("jg.pickShopFor")} {activeCellForPicker + 1}
                     </h4>
                     <p className="text-[10.5px] text-stone-400">
-                      ดึงข้อมูลพิกัด GPS, ชื่อร้าน และสถานที่จากฐานข้อมูล century_shops
+                      {t("jg.pickShopDesc")}
                     </p>
                   </div>
                 </div>
@@ -1162,7 +1163,7 @@ function QuestFormModal({
                   type="text"
                   value={shopSearchQuery}
                   onChange={(e) => setShopSearchQuery(e.target.value)}
-                  placeholder="ค้นหาร้านค้าด้วยชื่อ, หมวดหมู่ หรือที่อยู่..."
+                  placeholder={t("jg.shopSearchPlaceholder")}
                   className="w-full bg-stone-50 border border-stone-200 rounded-xl pl-9 pr-3 py-2 text-xs font-bold outline-none focus:border-orange-500"
                 />
               </div>
@@ -1172,14 +1173,14 @@ function QuestFormModal({
                 <div className="flex items-center justify-between bg-amber-50 p-2.5 rounded-xl border border-amber-200 text-xs">
                   <span className="font-bold text-amber-900 flex items-center gap-1.5 truncate">
                     <Store size={14} className="text-amber-600 shrink-0" />
-                    <span>ผูกอยู่กับ: <strong>{cellShops[activeCellForPicker].shopName}</strong></span>
+                    <span>{t("jg.linkedWith")}: <strong>{cellShops[activeCellForPicker].shopName}</strong></span>
                   </span>
                   <button
                     type="button"
                     onClick={() => handleSelectShopForCell(activeCellForPicker, null)}
                     className="px-2.5 py-1 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-700 text-[10.5px] font-bold transition cursor-pointer shrink-0"
                   >
-                    ยกเลิกการผูกร้าน
+                    {t("jg.unlink")}
                   </button>
                 </div>
               )}
@@ -1189,7 +1190,7 @@ function QuestFormModal({
                 {loadingShops ? (
                   <div className="py-12 text-center space-y-2 text-stone-400">
                     <Loader2 size={24} className="animate-spin mx-auto text-orange-500" />
-                    <p className="text-xs font-bold">กำลังโหลดรายชื่อร้านค้าในระบบ...</p>
+                    <p className="text-xs font-bold">{t("um.loadingShops")}</p>
                   </div>
                 ) : shops.filter((s) => {
                     const q = shopSearchQuery.toLowerCase();
@@ -1203,7 +1204,7 @@ function QuestFormModal({
                   }).length === 0 ? (
                   <div className="py-10 text-center space-y-2 text-stone-400 bg-stone-50 rounded-2xl border border-dashed border-stone-200">
                     <Store size={28} className="mx-auto text-stone-300" />
-                    <p className="text-xs font-bold text-stone-600">ไม่พบร้านค้าตรงตามคำค้นหา</p>
+                    <p className="text-xs font-bold text-stone-600">{t("um.noShopMatch")}</p>
                   </div>
                 ) : (
                   shops
@@ -1246,7 +1247,7 @@ function QuestFormModal({
                                 {shop.shop_name}
                               </h5>
                               <p className="text-[10px] text-stone-500 truncate">
-                                {shop.category || shop.address || "ร้านค้าพันธมิตร"}
+                                {shop.category || shop.address || t("jg.partnerShop")}
                               </p>
                               {shop.lat && shop.lng && (
                                 <p className="text-[9px] font-mono text-stone-400 flex items-center gap-1 mt-0.5">
@@ -1265,7 +1266,7 @@ function QuestFormModal({
                                 : "bg-stone-100 hover:bg-orange-600 hover:text-white text-stone-700"
                             }`}
                           >
-                            {isCurrentSelected ? "✓ เลือกอยู่" : "เลือก"}
+                            {isCurrentSelected ? t("sd.selected") : t("jg.select")}
                           </button>
                         </div>
                       );
@@ -1280,7 +1281,7 @@ function QuestFormModal({
                   onClick={() => setActiveCellForPicker(null)}
                   className="px-4 py-1.5 rounded-xl text-xs font-bold text-stone-600 hover:bg-stone-100 cursor-pointer"
                 >
-                  ปิด
+                  {t("common.close")}
                 </button>
               </div>
             </div>
@@ -1311,6 +1312,7 @@ function PieceFormModal({
   onClose: () => void;
   onSave: (pieceData: any) => Promise<void>;
 }) {
+  const { t } = useLang();
   const [selectedQuestId, setSelectedQuestId] = useState(questId);
   const [pieceIndex, setPieceIndex] = useState<number>(initialPiece?.pieceIndex ?? initialIndex ?? 0);
   const [checkpointName, setCheckpointName] = useState(initialPiece?.checkpointName || "");
@@ -1359,7 +1361,7 @@ function PieceFormModal({
     }
     const found = shops.find((s) => String(s.id) === shopIdStr);
     if (found) {
-      const name = found.shop_name || found.shop_name_jp || "ร้านค้า";
+      const name = found.shop_name || found.shop_name_jp || t("log.d.shop");
       setSelectedShopName(name);
       setCheckpointName(name);
       if (found.address || found.category) {
@@ -1394,7 +1396,7 @@ function PieceFormModal({
   // Get current device GPS
   const handleUseCurrentGPS = () => {
     if (!navigator.geolocation) {
-      alert("เบราว์เซอร์ของคุณไม่รองรับ Geolocation");
+      alert(t("alert.noGeo"));
       return;
     }
     setIsLocating(true);
@@ -1410,7 +1412,7 @@ function PieceFormModal({
         setIsLocating(false);
       },
       (err) => {
-        alert("ไม่สามารถดึงพิกัด GPS ปัจจุบันได้ กรุณาคลิกเลือกตำแหน่งบนแผนที่แทน");
+        alert(t("jg.gpsFail"));
         setIsLocating(false);
       },
       { enableHighAccuracy: true, timeout: 8000 }
@@ -1499,11 +1501,11 @@ function PieceFormModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!checkpointName.trim()) {
-      alert("กรุณาระบุชื่อจุดเช็คพอยต์");
+      alert(t("jg.needCheckpointName"));
       return;
     }
     if (!qrCodeValue.trim()) {
-      alert("กรุณาระบุรหัส QR Code");
+      alert(t("jg.needQrCode"));
       return;
     }
 
@@ -1534,10 +1536,10 @@ function PieceFormModal({
           <div className="flex items-center gap-2">
             <div>
               <h3 className="text-base font-black text-stone-900">
-                {initialPiece ? "แก้ไขจุดเช็คพอยต์ & พิกัดบนแผนที่" : "ปักหมุดจุดสแกนจิ๊กซอว์บนแผนที่"}
+                {initialPiece ? t("jg.editPointTitle") : t("jg.newPointTitle")}
               </h3>
               <p className="text-[11px] text-stone-400">
-                คลิกบนแผนที่ด้านล่างเพื่อวางหมุด หรือพิมพ์พิกัด GPS ด้วยตนเอง
+                {t("jg.pointSubtitle")}
               </p>
             </div>
           </div>
@@ -1551,7 +1553,7 @@ function PieceFormModal({
           {/* Target Quest & Piece Index */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-black text-stone-800 mb-1">เลือกเควสต์เป้าหมาย</label>
+              <label className="block font-black text-stone-800 mb-1">{t("jg.targetQuest")}</label>
               <select
                 value={selectedQuestId}
                 onChange={(e) => setSelectedQuestId(e.target.value)}
@@ -1566,16 +1568,16 @@ function PieceFormModal({
             </div>
 
             <div>
-              <label className="block font-black text-stone-800 mb-1">ตำแหน่งชิ้นส่วนในกระดานจิ๊กซอว์ (2x2)</label>
+              <label className="block font-black text-stone-800 mb-1">{t("jg.piecePosLabel")}</label>
               <select
                 value={pieceIndex}
                 onChange={(e) => setPieceIndex(Number(e.target.value))}
                 className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-orange-500 font-bold"
               >
-                <option value={0}>ชิ้นที่ 1: มุมบนซ้าย (Top-Left)</option>
-                <option value={1}>ชิ้นที่ 2: มุมบนขวา (Top-Right)</option>
-                <option value={2}>ชิ้นที่ 3: มุมล่างซ้าย (Bottom-Left)</option>
-                <option value={3}>ชิ้นที่ 4: มุมล่างขวา (Bottom-Right)</option>
+                <option value={0}>{t("jg.piece")} 1: {t("jg.pos.tl")}</option>
+                <option value={1}>{t("jg.piece")} 2: {t("jg.pos.tr")}</option>
+                <option value={2}>{t("jg.piece")} 3: {t("jg.pos.bl")}</option>
+                <option value={3}>{t("jg.piece")} 4: {t("jg.pos.br")}</option>
               </select>
             </div>
           </div>
@@ -1585,18 +1587,18 @@ function PieceFormModal({
             <div className="flex items-center justify-between">
               <label className="font-black text-[#231C18] text-xs flex items-center gap-1.5">
                 <Store size={14} className="text-amber-600" />
-                <span>เลือกร้านค้าพันธมิตรสำหรับชิ้นส่วนนี้ (Link Shop to Jigsaw Piece)</span>
+                <span>{t("jg.linkShopToPiece")}</span>
               </label>
               {selectedShopId && (
                 <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
-                  ✓ ผูกกับร้านแล้ว
+                  {t("jg.linkedOk")}
                 </span>
               )}
             </div>
 
             {loadingShops ? (
               <div className="text-xs text-amber-800 font-semibold animate-pulse py-1">
-                กำลังโหลดรายชื่อร้านค้า...
+                {t("um.loadingShops")}
               </div>
             ) : (
               <select
@@ -1604,7 +1606,7 @@ function PieceFormModal({
                 onChange={(e) => handleShopSelect(e.target.value)}
                 className="w-full bg-white border border-amber-300 rounded-xl px-3 py-2 text-xs outline-none focus:border-amber-600 font-bold text-stone-900 cursor-pointer shadow-2xs"
               >
-                <option value="">-- ไม่ระบุร้านค้า (กำหนดพิกัดเอง) --</option>
+                <option value="">{t("jg.noShopOption")}</option>
                 {shops.map((s) => (
                   <option key={s.id} value={String(s.id)}>
                     🏪 {s.shop_name} {s.category ? `(${s.category})` : ""}
@@ -1613,30 +1615,30 @@ function PieceFormModal({
               </select>
             )}
             <p className="text-[10px] text-amber-900/80 font-semibold">
-              💡 เมื่อเลือกร้านค้า ระบบจะดึงพิกัด GPS และชื่อร้านมาเติมให้โดยอัตโนมัติ!
+              {t("jg.autoFillHint")}
             </p>
           </div>
 
           {/* Checkpoint Name & Location Area */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-black text-stone-800 mb-1">ชื่อจุดเช็คพอยต์ (Checkpoint Name) *</label>
+              <label className="block font-black text-stone-800 mb-1">{t("jg.f.checkpointName")} *</label>
               <input
                 type="text"
                 required
                 value={checkpointName}
                 onChange={(e) => setCheckpointName(e.target.value)}
-                placeholder="เช่น พระปรางค์วัดอรุณราชวราราม"
+                placeholder={t("jg.f.checkpointPlaceholder")}
                 className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-orange-500 font-medium"
               />
             </div>
             <div>
-              <label className="block font-black text-stone-800 mb-1">ย่าน / เขต / จังหวัด (Location Area)</label>
+              <label className="block font-black text-stone-800 mb-1">{t("jg.f.area")}</label>
               <input
                 type="text"
                 value={locationArea}
                 onChange={(e) => setLocationArea(e.target.value)}
-                placeholder="เช่น เขตบางกอกใหญ่ กรุงเทพฯ"
+                placeholder={t("jg.f.areaPlaceholder")}
                 className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-orange-500 font-medium"
               />
             </div>
@@ -1645,22 +1647,22 @@ function PieceFormModal({
           {/* Description & Hint */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-black text-stone-800 mb-1">คำแนะนำการค้นหา</label>
+              <label className="block font-black text-stone-800 mb-1">{t("jg.f.findHint")}</label>
               <input
                 type="text"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="สแกน QR Code บริเวณป้ายบอกทางริมแม่น้ำ"
+                placeholder={t("jg.f.findHintPlaceholder")}
                 className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-orange-500 font-medium"
               />
             </div>
             <div>
- <label className="block font-black text-stone-800 mb-1"> คำใบ้สำหรับผู้เล่น (Hint)</label>
+ <label className="block font-black text-stone-800 mb-1">{t("jg.f.playerHint")}</label>
               <input
                 type="text"
                 value={hint}
                 onChange={(e) => setHint(e.target.value)}
-                placeholder="สังเกตซุ้มประตูสีส้มหรือเจดีย์หินโบราณ"
+                placeholder={t("jg.f.playerHintPlaceholder")}
                 className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-orange-500 font-medium"
               />
             </div>
@@ -1671,7 +1673,7 @@ function PieceFormModal({
             <div className="flex items-center justify-between">
               <label className="font-black text-stone-900 text-xs flex items-center gap-1.5">
                 <MapPin size={14} className="text-orange-600" />
-                คลิกบนแผนที่เพื่อปักหมุดพิกัด GPS (Interactive Map Picker)
+                {t("jg.mapPickerTitle")}
               </label>
 
               <button
@@ -1681,7 +1683,7 @@ function PieceFormModal({
                 className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-[10.5px] font-bold flex items-center gap-1 border border-blue-200 transition cursor-pointer"
               >
                 {isLocating ? <Loader2 size={11} className="animate-spin" /> : <Crosshair size={11} />}
-                <span>ใช้พิกัดปัจจุบัน (GPS)</span>
+                <span>{t("jg.useCurrentGps")}</span>
               </button>
             </div>
 
@@ -1689,14 +1691,14 @@ function PieceFormModal({
             <div className="w-full h-48 rounded-2xl overflow-hidden border border-stone-300 relative shadow-inner">
               <div ref={mapContainerRef} className="w-full h-full" />
               <div className="absolute top-2 left-2 z-[1000] bg-white/90 backdrop-blur-xs px-2.5 py-1 rounded-lg text-[10px] font-bold text-stone-700 shadow-xs pointer-events-none">
-                 คลิกบนแผนที่เพื่อย้ายหมุด
+                 {t("jg.clickToMove")}
               </div>
             </div>
 
             {/* Lat, Lng & Radius inputs */}
             <div className="grid grid-cols-3 gap-2 pt-1">
               <div>
-                <label className="block text-[10px] font-bold text-stone-600 mb-0.5">Latitude (ละติจูด)</label>
+                <label className="block text-[10px] font-bold text-stone-600 mb-0.5">Latitude</label>
                 <input
                   type="number"
                   step="any"
@@ -1707,7 +1709,7 @@ function PieceFormModal({
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-stone-600 mb-0.5">Longitude (ลองจิจูด)</label>
+                <label className="block text-[10px] font-bold text-stone-600 mb-0.5">Longitude</label>
                 <input
                   type="number"
                   step="any"
@@ -1718,7 +1720,7 @@ function PieceFormModal({
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-stone-600 mb-0.5">รัศมีที่อนุญาตสแกน (เมตร)</label>
+                <label className="block text-[10px] font-bold text-stone-600 mb-0.5">{t("jg.radius")}</label>
                 <input
                   type="number"
                   min="50"
@@ -1737,7 +1739,7 @@ function PieceFormModal({
             <div className="flex items-center justify-between">
               <label className="font-black text-stone-900 text-xs flex items-center gap-1.5">
                 <QrCode size={14} className="text-orange-600" />
-                รหัส QR Code สำหรับสแกน (QR Code Value) *
+                {t("jg.qrValue")} *
               </label>
 
               <button
@@ -1745,7 +1747,7 @@ function PieceFormModal({
                 onClick={randomizeQr}
                 className="text-[10px] font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1 cursor-pointer"
               >
- <Sparkles size={11} /> สุ่มรหัสใหม่
+ <Sparkles size={11} /> {t("jg.randomCode")}
               </button>
             </div>
 
@@ -1755,12 +1757,12 @@ function PieceFormModal({
                 required
                 value={qrCodeValue}
                 onChange={(e) => setQrCodeValue(e.target.value)}
-                placeholder="เช่น CLIPPI-JIGSAW-OLDTOWN-P1"
+                placeholder={t("jg.qrPlaceholder")}
                 className="flex-1 bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs font-mono font-black outline-none focus:border-orange-500"
               />
             </div>
             <p className="text-[10.5px] text-stone-400">
-              เมื่อบันทึกแล้ว คุณสามารถกดปุ่มรูป QR Code เพื่อดูและพิมพ์แผ่นป้ายไปติดที่สถานที่จริงได้ทันที
+              {t("jg.qrNote")}
             </p>
           </div>
 
@@ -1770,16 +1772,14 @@ function PieceFormModal({
               type="button"
               onClick={onClose}
               className="px-4 py-2 rounded-xl text-xs font-bold text-stone-600 hover:bg-stone-100 transition cursor-pointer"
-            >
-              ยกเลิก
-            </button>
+            >{t("common.cancel")}</button>
             <button
               type="submit"
               disabled={saving}
               className="px-5 py-2 rounded-xl text-xs font-black text-white bg-orange-600 hover:bg-orange-700 transition flex items-center gap-1.5 cursor-pointer shadow-md"
             >
               {saving ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
-              <span>{initialPiece ? "บันทึกการแก้ไขจุดนี้" : "ปักหมุดลงแผนที่"}</span>
+              <span>{initialPiece ? t("jg.savePoint") : t("jg.pinToMap")}</span>
             </button>
           </div>
         </form>
@@ -1800,6 +1800,7 @@ function PrintQRCardModal({
   quest: JigsawQuest;
   onClose: () => void;
 }) {
+  const { t } = useLang();
   const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=10&data=${encodeURIComponent(
     piece.qrCodeValue
   )}`;
@@ -1817,7 +1818,7 @@ function PrintQRCardModal({
           <div className="flex items-center gap-2">
             <Printer size={18} className="text-orange-600" />
             <h3 className="text-sm font-black text-stone-900">
-              การ์ด QR Code สำหรับติดสถานที่จริง
+              {t("jg.qrCardTitle")}
             </h3>
           </div>
           <button onClick={onClose} className="p-1 rounded-xl hover:bg-stone-100 text-stone-500 cursor-pointer">
@@ -1857,10 +1858,10 @@ function PrintQRCardModal({
           <div className="space-y-1 bg-white p-3.5 rounded-2xl border border-stone-200 text-left">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-black text-orange-600 uppercase">
-                ชิ้นส่วนที่ {piece.pieceIndex + 1} / 4
+                {t("jg.piece")} {piece.pieceIndex + 1} / 4
               </span>
               <span className="text-[9px] font-mono text-stone-400">
-                รัศมี {piece.radiusMeters} ม.
+                {t("jg.radiusShort")} {piece.radiusMeters} m
               </span>
             </div>
             <h4 className="text-sm font-black text-stone-900">
@@ -1871,13 +1872,13 @@ function PrintQRCardModal({
             </p>
             {piece.hint && (
               <p className="text-[10px] text-amber-800 pt-1 border-t border-stone-100">
- <strong>คำใบ้:</strong> {piece.hint}
+ <strong>{t("jig.hint")}</strong> {piece.hint}
               </p>
             )}
           </div>
 
           <p className="text-[10px] text-stone-400 leading-tight">
-            สแกนด้วยกล้องในแอป Clippi พร้อมเปิดพิกัด GPS เพื่อสะสมชิ้นส่วนจิ๊กซอว์
+            {t("jg.qrCardNote")}
           </p>
         </div>
 
@@ -1890,7 +1891,7 @@ function PrintQRCardModal({
             download={`${piece.qrCodeValue}.png`}
             className="px-3.5 py-2 rounded-xl text-xs font-bold text-stone-700 border bg-stone-50 hover:bg-stone-100 transition flex items-center gap-1.5 cursor-pointer"
           >
-            <ExternalLink size={13} /> ดาวน์โหลดรูป QR
+            <ExternalLink size={13} /> {t("jg.downloadQr")}
           </a>
 
           <div className="flex items-center gap-2">
@@ -1898,13 +1899,13 @@ function PrintQRCardModal({
               onClick={onClose}
               className="px-3.5 py-2 rounded-xl text-xs font-bold text-stone-600 hover:bg-stone-100 transition cursor-pointer"
             >
-              ปิด
+              {t("common.close")}
             </button>
             <button
               onClick={handlePrint}
               className="px-4 py-2 rounded-xl text-xs font-black text-white bg-[#FD775C] hover:bg-[#E31E27] transition flex items-center gap-1.5 cursor-pointer shadow-md"
             >
-              <Printer size={14} /> สั่งพิมพ์การ์ด
+              <Printer size={14} /> {t("jg.printCard")}
             </button>
           </div>
         </div>

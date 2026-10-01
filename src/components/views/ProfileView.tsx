@@ -306,7 +306,7 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage, on
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 10 * 1024 * 1024) {
-        showToast("ขนาดไฟล์ต้องไม่เกิน 10MB", "error");
+        showToast(t("pf.fileMax10"), "error");
         return;
       }
       setSelectedFile(file);
@@ -401,7 +401,7 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage, on
 
         if (fallbackErr) {
           console.error("[ProfileView] Fallback profiles upsert error:", fallbackErr.message);
-          showToast(`เกิดข้อผิดพลาดในการบันทึกรูปใน DB: ${fallbackErr.message}`, "error");
+          showToast(t("pf.saveImgFail") + fallbackErr.message, "error");
         }
       }
 
@@ -443,10 +443,10 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage, on
         })
       );
 
-      showToast("บันทึกโปรไฟล์และรูปภาพเรียบร้อยแล้ว!", "success");
+      showToast(t("pf.saveOk"), "success");
     } catch (err: any) {
       console.error("Error saving profile:", err);
-      showToast(err.message || "เกิดข้อผิดพลาดในการบันทึกข้อมูล", "error");
+      showToast(err.message || t("pf.saveFail"), "error");
     } finally {
       setIsSavingProfile(false);
     }
@@ -459,13 +459,13 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage, on
       navigator.clipboard
         .writeText(shareUrl)
         .then(() => {
-          showToast("คัดลอกลิงก์โปรไฟล์สาธารณะเรียบร้อยแล้ว!", "success");
+          showToast(t("pf.linkCopied"), "success");
         })
         .catch(() => {
-          showToast("ไม่สามารถคัดลอกลิงก์ได้", "error");
+          showToast(t("pf.copyFail"), "error");
         });
     } else {
-      showToast(`ลิงก์โปรไฟล์: ${shareUrl}`, "info");
+      showToast(`${t("pf.profileLink")}: ${shareUrl}`, "info");
     }
   };
 
@@ -478,7 +478,7 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage, on
           target_table: "profiles",
           target_id: user.id,
           detail: {
-            note: "ออกจากระบบสำเร็จ",
+            note: t("log.a.logout"),
             email: user.email || undefined,
           },
         });
@@ -491,7 +491,7 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage, on
     if (error) {
       showToast(`Sign out error: ${error.message}`, "error");
     } else {
-      showToast("ออกจากระบบเรียบร้อยแล้ว", "info");
+      showToast(t("pf.logoutOk"), "info");
       if (onNavigateTab) {
         onNavigateTab("explore");
       }
@@ -696,7 +696,7 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage, on
                 type="button"
                 onClick={() => handleScrollBadges("left")}
                 className="absolute -left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/95 hover:bg-white text-stone-700 shadow-md border border-stone-200/80 flex items-center justify-center z-20 cursor-pointer transition-all active:scale-90 hover:scale-105"
-                title="เลื่อนซ้าย"
+                title={t("carousel.prev")}
               >
                 <ChevronLeft size={16} strokeWidth={2.5} />
               </button>
@@ -706,7 +706,7 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage, on
                 type="button"
                 onClick={() => handleScrollBadges("right")}
                 className="absolute -right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/95 hover:bg-white text-stone-700 shadow-md border border-stone-200/80 flex items-center justify-center z-20 cursor-pointer transition-all active:scale-90 hover:scale-105"
-                title="เลื่อนขวา"
+                title={t("carousel.next")}
               >
                 <ChevronRight size={16} strokeWidth={2.5} />
               </button>
@@ -776,7 +776,7 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage, on
       {/* Shop Owner / Merchant Partner Section (Hidden for Admin Role) */}
       {!isAdmin && (
         <div className="w-full">
-          <h3 className="text-xs font-black uppercase tracking-wider text-[#8A7870] mb-3 select-none">สำหรับเจ้าของร้านค้า / Merchant Partner</h3>
+          <h3 className="text-xs font-black uppercase tracking-wider text-[#8A7870] mb-3 select-none">{t("pf.forOwners")}</h3>
           <div className="rounded-3xl bg-gradient-to-br from-amber-50 to-orange-50/80 border border-amber-200 p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3.5 min-w-0">
               <div className="w-11 h-11 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
@@ -785,36 +785,36 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage, on
               <div className="min-w-0">
                 {role === "store" ? (
                   <>
-                    <h4 className="text-sm font-black text-amber-950 truncate">คุณเป็นเจ้าของร้านค้า (Merchant Partner)</h4>
+                    <h4 className="text-sm font-black text-amber-950 truncate">{t("pf.youAreOwner")}</h4>
                     <p className="text-xs text-amber-800 font-semibold mt-0.5">
-                      เข้าใช้งาน Merchant Portal เพื่อจัดการข้อมูลร้าน รับรองดิจิทัลสแตมป์ และดูสถิติ
+                      {t("pf.ownerDesc")}
                     </p>
                   </>
                 ) : isPendingMerchant ? (
                   <>
                     <div className="flex flex-wrap items-center gap-2">
-                      <h4 className="text-sm font-black text-amber-950">คำขอเปิดร้านค้ารอการอนุมัติ</h4>
-                      <span className="px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 text-[10px] font-extrabold animate-pulse">⏳ รอแอดมินอนุมัติ</span>
+                      <h4 className="text-sm font-black text-amber-950">{t("pf.reqPending")}</h4>
+                      <span className="px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 text-[10px] font-extrabold animate-pulse">{t("sm.pending")}</span>
                     </div>
                     <p className="text-xs text-amber-800 font-semibold mt-0.5">
-                      ข้อมูลร้านค้าและเอกสารของคุณถูกส่งเรียบร้อยแล้ว แอดมินกำลังตรวจสอบ
+                      {t("pf.reqPendingDesc")}
                     </p>
                   </>
                 ) : isRejectedMerchant ? (
                   <>
                     <div className="flex flex-wrap items-center gap-2">
-                      <h4 className="text-sm font-black text-rose-950">คำขอเปิดร้านค้าไม่ผ่านการอนุมัติ</h4>
- <span className="px-2 py-0.5 rounded-full bg-rose-200 text-rose-900 text-[10px] font-extrabold"> ไม่ผ่าน</span>
+                      <h4 className="text-sm font-black text-rose-950">{t("pf.reqRejected")}</h4>
+ <span className="px-2 py-0.5 rounded-full bg-rose-200 text-rose-900 text-[10px] font-extrabold">{t("um.statusBanned")}</span>
                     </div>
                     <p className="text-xs text-rose-800 font-semibold mt-0.5">
-                      {typeof merchantRejectionReason === "object" && merchantRejectionReason !== null ? ((merchantRejectionReason as any).reason || JSON.stringify(merchantRejectionReason)) : (merchantRejectionReason || "ข้อมูลเอกสารไม่ตรงตามเงื่อนไข สามารถแก้ไขเพื่อส่งใหม่ได้")}
+                      {typeof merchantRejectionReason === "object" && merchantRejectionReason !== null ? ((merchantRejectionReason as any).reason || JSON.stringify(merchantRejectionReason)) : (merchantRejectionReason || t("sm.defaultRejectReason"))}
                     </p>
                   </>
                 ) : (
                   <>
-                    <h4 className="text-sm font-black text-amber-950">เปิดร้านค้ากับ Clippi / สมัครเป็นเจ้าของร้าน</h4>
+                    <h4 className="text-sm font-black text-amber-950">{t("pf.openShopTitle")}</h4>
                     <p className="text-xs text-amber-800 font-semibold mt-0.5">
-                      ลงทะเบียนร้านค้าของคุณเพื่อรับดิจิทัลสแตมป์ แจกรางวัล และโปรโมตร้านบนแพลตฟอร์ม
+                      {t("pf.openShopDesc")}
                     </p>
                   </>
                 )}
@@ -828,7 +828,7 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage, on
                   onClick={onGoToStoreManage}
                   className="w-full sm:w-auto px-4 py-2.5 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-black transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
                 >
-                  <span>จัดการร้านค้าของฉัน</span>
+                  <span>{t("pf.manageMyShop")}</span>
                   <ChevronRight size={14} />
                 </button>
               ) : isPendingMerchant || isRejectedMerchant ? (
@@ -838,22 +838,22 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage, on
                     onClick={onOpenMerchantModal}
                     className="w-full sm:w-auto px-4 py-2.5 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-black transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
                   >
- <span>{isRejectedMerchant ? " แก้ไข & ส่งคำขอใหม่" : " ดู/แก้ไขข้อมูลร้านค้า"}</span>
+ <span>{isRejectedMerchant ? t("pf.editResend") : t("pf.viewEditShop")}</span>
                   </button>
                   <button
                     type="button"
                     onClick={async () => {
-                      if (confirm("คุณต้องการยกเลิกคำขอสมัครเปิดร้านค้า ใช่หรือไม่?\n(สถานะของคุณจะกลับมาเป็นผู้ใช้งานทั่วไป)")) {
+                      if (confirm(t("pf.confirmCancel"))) {
                         try {
                           await cancelMerchantApp();
                         } catch (e) {
-                          alert("ไม่สามารถยกเลิกคำขอได้");
+                          alert(t("pf.cancelFail"));
                         }
                       }
                     }}
                     className="w-full sm:w-auto px-3.5 py-2.5 rounded-2xl bg-stone-200 hover:bg-stone-300 text-stone-800 text-xs font-black transition shadow-xs cursor-pointer flex items-center justify-center gap-1"
                   >
- <span> ไม่สมัครแล้ว (ยกเลิกคำขอ)</span>
+ <span>{t("pf.cancelReq")}</span>
                   </button>
                 </div>
               ) : (
@@ -863,7 +863,7 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage, on
                   className="w-full sm:w-auto px-4 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-black transition shadow-md cursor-pointer flex items-center justify-center gap-1.5 active:scale-98"
                 >
                   <Store size={14} />
-                  <span>สมัครเปิดร้านค้า / เป็นเจ้าของร้าน</span>
+                  <span>{t("pf.applyOwner")}</span>
                 </button>
               )}
             </div>
@@ -1007,41 +1007,41 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage, on
                   style={{ borderColor: C.line }}
                 >
                   <Upload size={12} className="text-[#E0533C]" />
-                  <span>เลือกรูปจากอุปกรณ์ (Choose Image)</span>
+                  <span>{t("pf.chooseImage")}</span>
                 </button>
               </div>
 
               {/* Display Name Input */}
               <div className="space-y-1">
                 <label className="text-[11px] font-black text-[#231C18] block">
-                  ชื่อที่แสดง (Display Name)
+                  {t("auth.displayName")}
                 </label>
                 <input
                   type="text"
                   value={editDisplayName}
                   onChange={(e) => setEditDisplayName(e.target.value)}
-                  placeholder="เช่น Tanaka San, Heritage Traveler"
+                  placeholder={t("pf.namePlaceholder")}
                   className="w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#E0533C]/30 transition"
                   style={{ borderColor: C.line, background: "#FAF6F0" }}
                 />
-                <p className="text-[9px] text-[#8A7870]">หากเว้นว่างไว้ ระบบจะแสดงชื่อจากอีเมลเป็นค่าเริ่มต้น</p>
+                <p className="text-[9px] text-[#8A7870]">{t("pf.nameHint")}</p>
               </div>
 
               {/* Set Password Field */}
               <div className="space-y-1 pt-2 border-t" style={{ borderColor: C.line }}>
                 <label className="text-[11px] font-black text-[#231C18] block">
-                   ตั้งรหัสผ่านสำหรับเข้าสู่ระบบด้วยอีเมล (Set Email Login Password)
+                   {t("pf.setPassTitle")}
                 </label>
                 <input
                   type="password"
                   value={editPassword}
                   onChange={(e) => setEditPassword(e.target.value)}
-                  placeholder="กรอกรหัสผ่านที่ต้องการใช้ล็อกอินด้วยอีเมล (ขั้นต่ำ 6 ตัวอักษร)"
+                  placeholder={t("pf.setPassPlaceholder")}
                   className="w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#E0533C]/30 transition"
                   style={{ borderColor: C.line, background: "#FAF6F0" }}
                 />
                 <p className="text-[9px] text-[#8A7870]">
-                  หากคุณเคยเข้าสู่ระบบด้วย Google คุณสามารถตั้งรหัสผ่านที่นี่เพื่อล็อกอินด้วยอีเมลและรหัสผ่านนี้ได้
+                  {t("pf.setPassHint")}
                 </p>
               </div>
 
@@ -1053,7 +1053,7 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage, on
                   className="px-4 py-2 rounded-xl border text-xs font-bold hover:bg-stone-100 transition cursor-pointer"
                   style={{ borderColor: C.line }}
                 >
-                  ยกเลิก (Cancel)
+                  {t("common.cancel")}
                 </button>
                 <button
                   type="submit"
@@ -1063,12 +1063,12 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage, on
                   {isSavingProfile ? (
                     <>
                       <Loader2 size={13} className="animate-spin" />
-                      <span>กำลังอัปโหลดและบันทึก...</span>
+                      <span>{t("pf.uploading")}</span>
                     </>
                   ) : (
                     <>
                       <Check size={13} />
-                      <span>บันทึกการเปลี่ยนแปลง</span>
+                      <span>{t("sd.saveAll")}</span>
                     </>
                   )}
                 </button>
@@ -1101,38 +1101,35 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage, on
             {/* FAQ Accordion Content */}
             <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
               <div className="p-3.5 rounded-2xl bg-[#FAF6F0] border space-y-1" style={{ borderColor: C.line }}>
-                <h4 className="text-xs font-black text-[#231C18]">1. วิธีการสะสมแสตมป์ดิจิทัล (Eki-Tag) ทำอย่างไร?</h4>
+                <h4 className="text-xs font-black text-[#231C18]">{t("pf.faq1q")}</h4>
                 <p className="text-[11px] text-[#8A7870] leading-relaxed">
-                  เดินทางไปยังร้านค้าหรือสถานที่มรดก แล้วกดปุ่ม "เช็คอินที่นี่" ในหน้ารายละเอียดร้าน ระบบจะตรวจสอบพิกัด GPS ว่าคุณอยู่ในระยะทางที่กำหนด และมอบแสตมป์เข้าสมุดสะสมทันที
-                </p>
+                  {t("pf.faq1a")}</p>
               </div>
 
               <div className="p-3.5 rounded-2xl bg-[#FAF6F0] border space-y-1" style={{ borderColor: C.line }}>
-                <h4 className="text-xs font-black text-[#231C18]">2. XP และ Level คำนวณอย่างไร?</h4>
+                <h4 className="text-xs font-black text-[#231C18]">{t("pf.faq2q")}</h4>
                 <p className="text-[11px] text-[#8A7870] leading-relaxed">
-                  รับ 25 XP จากการเก็บแสตมป์ 1 ดวง และรับ 15 XP จากการเขียนรีวิวร้านค้า 1 รีวิว ทุกๆ 100 XP เลเวลของคุณจะเพิ่มขึ้น 1 เลเวล!
-                </p>
+                  {t("pf.faq2a")}</p>
               </div>
 
               <div className="p-3.5 rounded-2xl bg-[#FAF6F0] border space-y-1" style={{ borderColor: C.line }}>
-                <h4 className="text-xs font-black text-[#231C18]">3. วิธีการปลดล็อกเหรียญตรา (Badges)?</h4>
+                <h4 className="text-xs font-black text-[#231C18]">{t("pf.faq3q")}</h4>
                 <p className="text-[11px] text-[#8A7870] leading-relaxed">
-                  เหรียญตราจะปลดล็อกตามภารกิจพิเศษ เช่น เยือนสถานที่ในโตเกียวครบ 5 จุด หรือเขียนรีวิวคุณภาพครบ 5 ครั้ง
-                </p>
+                  {t("pf.faq3a")}</p>
               </div>
             </div>
 
             {/* Contact Support Footer */}
             <div className="pt-3 border-t flex items-center justify-between text-xs" style={{ borderColor: C.line }}>
-              <span className="text-[10px] text-[#8A7870] font-semibold">ต้องการความช่วยเหลือเพิ่มเติม?</span>
+              <span className="text-[10px] text-[#8A7870] font-semibold">{t("pf.needMoreHelp")}</span>
               <button
                 onClick={() => {
-                  showToast("ส่งอีเมลหาทีมสนับสนุนแล้ว: support@ekitag.jp", "info");
+                  showToast(t("pf.supportSent"), "info");
                   setIsHelpModalOpen(false);
                 }}
                 className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#FD775C] hover:bg-[#E31E27] transition cursor-pointer"
               >
-                ติดต่อทีมงาน Support
+                {t("pf.contactSupport")}
               </button>
             </div>
 
@@ -1165,8 +1162,8 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage, on
               {/* Toggle 1 */}
               <div className="flex items-center justify-between p-3 rounded-2xl bg-[#FAF6F0] border" style={{ borderColor: C.line }}>
                 <div className="pr-3">
-                  <span className="text-xs font-black block text-[#231C18]">เปิดโปรไฟล์สาธารณะ</span>
-                  <span className="text-[9px] text-[#8A7870]">อนุญาตให้ผู้อื่นมองเห็นสมุดแสตมป์และยศของคุณ</span>
+                  <span className="text-xs font-black block text-[#231C18]">{t("pf.publicProfile")}</span>
+                  <span className="text-[9px] text-[#8A7870]">{t("pf.publicProfileDesc")}</span>
                 </div>
                 <input
                   type="checkbox"
@@ -1179,8 +1176,8 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage, on
               {/* Toggle 2 */}
               <div className="flex items-center justify-between p-3 rounded-2xl bg-[#FAF6F0] border" style={{ borderColor: C.line }}>
                 <div className="pr-3">
-                  <span className="text-xs font-black block text-[#231C18]">การเข้าถึงตำแหน่งพิกัด GPS</span>
-                  <span className="text-[9px] text-[#8A7870]">ใช้สำหรับตรวจสอบระยะทางเช็คอินหน้าร้าน</span>
+                  <span className="text-xs font-black block text-[#231C18]">{t("pf.gpsAccess")}</span>
+                  <span className="text-[9px] text-[#8A7870]">{t("pf.gpsAccessDesc")}</span>
                 </div>
                 <input
                   type="checkbox"
@@ -1193,8 +1190,8 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage, on
               {/* Toggle 3 */}
               <div className="flex items-center justify-between p-3 rounded-2xl bg-[#FAF6F0] border" style={{ borderColor: C.line }}>
                 <div className="pr-3">
-                  <span className="text-xs font-black block text-[#231C18]">การส่งสถิติการใช้งาน</span>
-                  <span className="text-[9px] text-[#8A7870]">ช่วยปรับปรุงประสบการณ์และประสิทธิภาพแอป</span>
+                  <span className="text-xs font-black block text-[#231C18]">{t("pf.analytics")}</span>
+                  <span className="text-[9px] text-[#8A7870]">{t("pf.analyticsDesc")}</span>
                 </div>
                 <input
                   type="checkbox"
@@ -1214,17 +1211,17 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage, on
                 className="px-4 py-2 rounded-xl border text-xs font-bold hover:bg-stone-100 transition cursor-pointer"
                 style={{ borderColor: C.line }}
               >
-                ปิด
+                {t("common.close")}
               </button>
               <button
                 type="button"
                 onClick={() => {
-                  showToast("บันทึกตั้งค่าความเป็นส่วนตัวเรียบร้อยแล้ว", "success");
+                  showToast(t("pf.privacySaved"), "success");
                   setIsPrivacyModalOpen(false);
                 }}
                 className="px-5 py-2 rounded-xl text-xs font-black text-white bg-[#E0533C] hover:bg-[#c94530] transition cursor-pointer shadow-xs"
               >
-                บันทึกตั้งค่า
+                {t("pf.saveSettings")}
               </button>
             </div>
 

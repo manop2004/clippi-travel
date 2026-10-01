@@ -20,12 +20,12 @@ export interface AppBanner {
 const LOCAL_STORAGE_KEY = "clippi_app_banners_cache";
 
 export const PRESET_GRADIENTS = [
-  { name: "Clippi Coral Red (ส้ม-แดง)", value: "linear-gradient(135deg, #FD775C 0%, #E31E27 100%)" },
-  { name: "Ocean Blue (ฟ้า-น้ำเงิน)", value: "linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)" },
-  { name: "Emerald Green (เขียวมรกต)", value: "linear-gradient(135deg, #10B981 0%, #047857 100%)" },
-  { name: "Sunset Purple (ม่วงพาสเทล)", value: "linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)" },
-  { name: "Gold Ambition (ทอง-ส้ม)", value: "linear-gradient(135deg, #F59E0B 0%, #D97706 100%)" },
-  { name: "Midnight Charcoal (เข้มเรียบหรู)", value: "linear-gradient(135deg, #374151 0%, #111827 100%)" },
+  { name: "Clippi Coral Red", value: "linear-gradient(135deg, #FD775C 0%, #E31E27 100%)" },
+  { name: "Ocean Blue", value: "linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)" },
+  { name: "Emerald Green", value: "linear-gradient(135deg, #10B981 0%, #047857 100%)" },
+  { name: "Sunset Purple", value: "linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)" },
+  { name: "Gold Ambition", value: "linear-gradient(135deg, #F59E0B 0%, #D97706 100%)" },
+  { name: "Midnight Charcoal", value: "linear-gradient(135deg, #374151 0%, #111827 100%)" },
 ];
 
 const MOCK_BANNER_IDS = new Set(["ban_default_1", "ban_default_2", "ban_default_3"]);
@@ -168,7 +168,7 @@ export async function createBanner(input: {
     title: input.title.trim(),
     subtitle: input.subtitle?.trim() || "",
     tag: input.tag?.trim() || " PROMOTION",
-    cta_text: input.cta_text?.trim() || "ดูรายละเอียด",
+    cta_text: input.cta_text?.trim() || "",
     cta_link: input.cta_link?.trim() || "",
     image_url: input.image_url?.trim() || "",
     bg_gradient: input.bg_gradient || PRESET_GRADIENTS[0].value,
@@ -249,17 +249,17 @@ export function getBannerStatus(banner: AppBanner): {
   status: "active" | "scheduled" | "expired" | "disabled";
 } {
   if (!banner.is_active) {
-    return { label: "ปิดใช้งาน", color: "bg-stone-100 text-stone-600", status: "disabled" };
+    return { label: "bn.statOff", color: "bg-stone-100 text-stone-600", status: "disabled" };
   }
 
   const nowMs = Date.now();
   if (banner.start_date && new Date(banner.start_date).getTime() > nowMs) {
-    return { label: "รอกำหนดเวลา", color: "bg-amber-100 text-amber-800", status: "scheduled" };
+    return { label: "bn.statScheduled", color: "bg-amber-100 text-amber-800", status: "scheduled" };
   }
 
   if (banner.end_date && new Date(banner.end_date).getTime() < nowMs) {
-    return { label: "หมดอายุแล้ว", color: "bg-rose-100 text-rose-800", status: "expired" };
+    return { label: "bn.statExpired", color: "bg-rose-100 text-rose-800", status: "expired" };
   }
 
-  return { label: "กำลังแสดงผล", color: "bg-emerald-100 text-emerald-800", status: "active" };
+  return { label: "bn.statLive", color: "bg-emerald-100 text-emerald-800", status: "active" };
 }

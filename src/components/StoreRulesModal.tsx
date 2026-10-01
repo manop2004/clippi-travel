@@ -53,7 +53,7 @@ export default function StoreRulesModal({
 
   if (!isOpen || !shop) return null;
 
-  const shopName = shop.shop_name || shop.name || "ร้านของคุณ";
+  const shopName = shop.shop_name || shop.name || t("sd.yourShop");
 
   const isRuleActive = (ruleId: string) => {
     return activeRules.some((r) => r.id === ruleId);
@@ -150,7 +150,7 @@ export default function StoreRulesModal({
           {/* Preset Rules Selector */}
           <div>
             <label className="text-xs font-black text-[#231C18] block mb-2.5">
-              เลือกกฎสำเร็จรูปยอดนิยม (แตะเพื่อเปิด/ปิด):
+              {t("sr.pickPreset")}
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {PRESET_STORE_RULES.map((rule) => {
@@ -219,7 +219,7 @@ export default function StoreRulesModal({
                   disabled={!customTitle.trim()}
                   className="px-4 py-2 rounded-xl bg-[#FD775C] text-white text-xs font-black hover:bg-[#E31E27] transition disabled:opacity-40 cursor-pointer shrink-0"
                 >
-                  + เพิ่มกฎ
+                  + {t("sr.addRule")}
                 </button>
               </div>
             </div>
@@ -228,11 +228,11 @@ export default function StoreRulesModal({
           {/* Active Rules List */}
           <div>
             <label className="text-xs font-black text-[#231C18] block mb-2">
-              รายการกฎประจำร้านที่ตั้งไว้ในปัจจุบัน ({activeRules.length} ข้อ):
+              {t("sr.currentRules")} ({activeRules.length}):
             </label>
             {activeRules.length === 0 ? (
               <div className="p-4 rounded-2xl border border-dashed text-center text-xs text-stone-400 italic">
-                ยังไม่ได้ตั้งกฎระเบียบประจำร้าน (ลูกค้าจะเห็นเฉพาะเวลาเปิด-ปิดปกติ)
+                {t("sr.noRules")}
               </div>
             ) : (
               <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
@@ -273,7 +273,7 @@ export default function StoreRulesModal({
               className="py-2.5 px-4 rounded-xl border text-xs font-bold text-stone-600 hover:bg-stone-100 transition cursor-pointer"
               style={{ borderColor: C.line }}
             >
-              ยกเลิก
+              {t("common.cancel")}
             </button>
             <button
               type="button"
@@ -281,7 +281,7 @@ export default function StoreRulesModal({
               disabled={saving}
               className="py-2.5 px-6 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-700 hover:to-amber-700 text-white text-xs font-black shadow-md transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
-              {saving ? "กำลังบันทึก..." : "บันทึกกฎร้านค้า"}
+              {saving ? t("bn.saving") : t("sr.saveRules")}
             </button>
           </div>
 

@@ -152,7 +152,7 @@ export function useUserRole(): UserRoleState {
 
       if (isAccountDeleted) {
         setIsBanned(true);
-        setBanReason("บัญชีผู้ใช้งานนี้ถูกลบโดยผู้ดูแลระบบ");
+        setBanReason("ban.deletedByAdmin");
         setRole("user");
         setMerchantStatus(null);
         setLoading(false);
@@ -313,7 +313,7 @@ export function useUserRole(): UserRoleState {
 
           mRejection = (rawRejection && typeof rawRejection === "string" && rawRejection.trim())
             ? rawRejection.trim()
-            : "ข้อมูลเอกสารหรือหลักฐานสิทธิ์ร้านค้าไม่ผ่านการตรวจสอบ";
+            : "sm.defaultRejectReason";
         } else if (profileData?.role) {
           detectedRole = profileData.role as UserRole;
         }
@@ -386,4 +386,4 @@ export function useUserRole(): UserRoleState {
     refreshRole: fetchUserRole,
     cancelMerchantApp: handleCancelApplication,
   };
-}
+}

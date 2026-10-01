@@ -42,22 +42,22 @@ export function resolveUserDisplayName(
   metadataDisplayName?: string | null
 ): string {
   const cleanName = (rawDisplayName || "").trim();
-  if (cleanName && cleanName !== "ชื่อเล่น" && cleanName !== "User") {
+  if (cleanName && cleanName !== "Nickname" && cleanName !== "User") {
     return cleanName;
   }
 
   const cleanFull = (fullName || "").trim();
-  if (cleanFull && cleanFull !== "ชื่อเล่น" && cleanFull !== "User") {
+  if (cleanFull && cleanFull !== "Nickname" && cleanFull !== "User") {
     return cleanFull;
   }
 
   const cleanUser = (username || "").trim();
-  if (cleanUser && cleanUser !== "ชื่อเล่น" && cleanUser !== "User") {
+  if (cleanUser && cleanUser !== "Nickname" && cleanUser !== "User") {
     return cleanUser;
   }
 
   const cleanMeta = (metadataDisplayName || "").trim();
-  if (cleanMeta && cleanMeta !== "ชื่อเล่น" && cleanMeta !== "User") {
+  if (cleanMeta && cleanMeta !== "Nickname" && cleanMeta !== "User") {
     return cleanMeta;
   }
 
@@ -71,7 +71,7 @@ export function resolveUserDisplayName(
     return email.trim();
   }
 
-  return "ผู้ใช้งาน";
+  return "User";
 }
 
 export function resolveUserAvatarUrl(

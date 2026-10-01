@@ -80,7 +80,7 @@ export default function QRScannerModal({
 
     if (!navigator.geolocation) {
       setGpsStatus("unavailable");
-      setGpsErrorMsg("เบราว์เซอร์หรืออุปกรณ์ของคุณไม่รองรับ Geolocation GPS");
+      setGpsErrorMsg(t("qr.noGeo"));
       return;
     }
 
@@ -97,11 +97,11 @@ export default function QRScannerModal({
         console.warn("GPS Permission / Retrieval Error:", err);
         setGpsStatus("denied");
         if (err.code === 1) {
-          setGpsErrorMsg("คุณปฏิเสธการอนุญาตเข้าถึงพิกัด GPS กรุณาอนุญาต Location ในการตั้งค่าเบราว์เซอร์");
+          setGpsErrorMsg(t("qr.gpsDenied"));
         } else if (err.code === 2) {
-          setGpsErrorMsg("ไม่สามารถระบุตำแหน่งได้ กรุณาเปิดบริการตำแหน่งที่ตั้ง (Location/GPS) บนอุปกรณ์");
+          setGpsErrorMsg(t("qr.gpsUnavailable"));
         } else {
-          setGpsErrorMsg("หมดเวลาในการดึงพิกัด GPS กรุณากดลองใหม่อีกครั้ง");
+          setGpsErrorMsg(t("qr.gpsTimeout"));
         }
       },
       {
@@ -141,7 +141,7 @@ export default function QRScannerModal({
       startBarcodeScanning();
     } catch (err: any) {
       console.warn("Camera access failed:", err);
-      setCameraError(err?.message || "ไม่สามารถเปิดกล้องได้ อาจมีแอปอื่นใช้งานกล้องอยู่ หรือไม่อนุญาตสิทธิ์กล้อง");
+      setCameraError(err?.message || t("qr.cameraFail"));
       setCameraActive(false);
     }
   };
@@ -251,8 +251,8 @@ export default function QRScannerModal({
     if (gpsStatus !== "granted" || !userCoords) {
       setScanResult({
         success: false,
-        title: " ต้องเปิด GPS ก่อนสแกน",
-        message: "ระบบต้องการพิกัด GPS ของคุณเพื่อยืนยันว่าคุณอยู่ ณ สถานที่จริง กรุณากดเปิด GPS",
+        title: t("qr.needGpsTitle"),
+        message: t("qr.needGpsMsg"),
       });
       return;
     }
@@ -281,10 +281,8 @@ export default function QRScannerModal({
         if (!isNearby) {
           setScanResult({
             success: false,
-            title: " คุณอยู่ไกลจากสถานที่จริง!",
-            message: `QR Code ถูกต้องสำหรับ "${piece.checkpointName}" แต่ตำแหน่งปัจจุบันของคุณอยู่ห่างออกไป ${formatDistance(
-              distMeters
-            )} (ต้องอยู่ในระยะไม่เกิน ${formatDistance(piece.radiusMeters)})`,
+            title: t("qr.tooFarTitle"),
+            message: t("qr.tooFarMsg").replace("{n}", piece.checkpointName).replace("{d}", formatDistance(distMeters)).replace("{r}", formatDistance(piece.radiusMeters)),
             piece,
             distance: distMeters,
           });
@@ -295,10 +293,8 @@ export default function QRScannerModal({
         onPieceCollected(quest.id, piece.id, piece);
         setScanResult({
           success: true,
-          title: " ปลดล็อกชิ้นส่วนสำเร็จ!",
-          message: `คุณได้รับชิ้นส่วนจิ๊กซอว์จาก "${piece.checkpointName}" แล้ว! (พิกัดถูกต้อง ระยะห่าง ${formatDistance(
-            distMeters
-          )})`,
+          title: t("qr.pieceOkTitle"),
+          message: t("qr.pieceOkMsg").replace("{n}", piece.checkpointName).replace("{d}", formatDistance(distMeters)),
           piece,
           distance: distMeters,
         });
@@ -318,7 +314,7 @@ export default function QRScannerModal({
     if (isStampCode || onStampCollected) {
       let shopLat: number | null = parsed?.lat || parsed?.targetLat || parsed?.latitude || null;
       let shopLng: number | null = parsed?.lng || parsed?.targetLng || parsed?.longitude || null;
-      let shopTitle = parsed?.shopName || "ร้านค้ามรดก";
+      let shopTitle = parsed?.shopName || t("qr.heritageShop");
 
       const shopId = parsed?.shopId || (trimmed.startsWith("EKITAG-STAMP-") ? trimmed.replace("EKITAG-STAMP-", "") : null);
 
@@ -348,8 +344,8 @@ export default function QRScannerModal({
         if (distMeters > 50) {
           setScanResult({
             success: false,
-            title: "❌ คุณอยู่ห่างจากร้านเกิน 50 เมตร!",
-            message: `สแกน QR Code สำเร็จสำหรับร้าน "${shopTitle}" แต่พิกัด GPS ปัจจุบันของคุณอยู่ห่างจากร้านออกไป ${formatDistance(distMeters)} (ต้องสแกนภายในระยะรัศมีไม่เกิน 50 เมตรจากร้านเท่านั้นจึงจะเช็คอินได้)`,
+            title: t("qr.tooFarShopTitle"),
+            message: t("qr.tooFarShopMsg").replace("{n}", shopTitle).replace("{d}", formatDistance(distMeters)),
             distance: distMeters,
           });
           return;
@@ -361,19 +357,19 @@ export default function QRScannerModal({
             await collectStamp(shopId);
           } catch (e: any) {
             const errText = e.message || String(e);
-            if (errText.includes("ปิดอยู่") || errText.includes("ปิดบริการ")) {
+            if (errText.startsWith("closed|")) {
               setScanResult({
                 success: false,
-                title: "🔴 ร้านค้านี้กำลังปิดให้บริการอยู่!",
+                title: t("qr.shopClosedTitle"),
                 message: errText,
                 distance: distMeters,
               });
               return;
             }
-            if (errText.includes("คูลดาวน์") || errText.includes("24")) {
+            if (errText.startsWith("cooldown|")) {
               setScanResult({
                 success: false,
-                title: "⏱️ ติดคูลดาวน์ 24 ชั่วโมง!",
+                title: t("qr.cooldownTitle"),
                 message: errText,
                 distance: distMeters,
               });
@@ -389,8 +385,8 @@ export default function QRScannerModal({
 
         setScanResult({
           success: true,
-          title: "🎉 สแกนและเช็คอินสำเร็จ!",
-          message: `เช็คอินร้าน "${shopTitle}" สำเร็จ! (ตำแหน่งพิกัด GPS ถูกต้อง อยู่ในระยะห่างเพียง ${formatDistance(distMeters)})`,
+          title: t("qr.checkinOkTitle"),
+          message: t("qr.checkinOkMsg").replace("{n}", shopTitle).replace("{d}", formatDistance(distMeters)),
           distance: distMeters,
         });
         return;
@@ -411,8 +407,8 @@ export default function QRScannerModal({
 
       setScanResult({
         success: true,
-        title: "สแกนแสตมป์สำเร็จ!",
-        message: `ได้รับแสตมป์จากรหัส: ${shopTitle || trimmed}`,
+        title: t("qr.stampOkTitle"),
+        message: `${t("qr.stampFromCode")}: ${shopTitle || trimmed}`,
       });
       return;
     }
@@ -420,8 +416,8 @@ export default function QRScannerModal({
     // 4.3 กรณีรหัสไม่ถูกต้อง
     setScanResult({
       success: false,
-      title: "ไม่พบข้อมูลที่ตรงกัน",
-      message: `รหัส QR "${trimmed}" ไม่ตรงกับชิ้นส่วนจิ๊กซอว์หรือแสตมป์ในระบบ`,
+      title: t("qr.notFoundTitle"),
+      message: t("qr.notFoundMsg").replace("{c}", trimmed),
     });
   };
 
@@ -445,8 +441,8 @@ export default function QRScannerModal({
           onPieceCollected(quest.id, piece.id, piece);
           setScanResult({
             success: true,
-            title: " ปลดล็อกชิ้นส่วนสำเร็จ (GPS Test)!",
-            message: `จำลองเดินทางมาถึง "${piece.checkpointName}" สำเร็จ! (ระยะห่าง ${formatDistance(dist)})`,
+            title: t("qr.pieceOkTestTitle"),
+            message: t("qr.pieceOkTestMsg").replace("{n}", piece.checkpointName).replace("{d}", formatDistance(dist)),
             piece,
             distance: dist,
           });
@@ -470,13 +466,13 @@ export default function QRScannerModal({
             </div>
             <div>
               <h3 className="font-extrabold text-stone-900 text-sm flex items-center gap-1.5">
-                สแกนเนอร์ QR Code + GPS
+                {t("qr.title")}
                 <span className="text-[9px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-full font-black uppercase">
                   Clippi Hunt
                 </span>
               </h3>
               <p className="text-[10px] text-stone-500 font-medium">
-                บังคับเปิด GPS เพื่อยืนยันว่าคุณเดินทางมาถึงสถานที่จริง
+                {t("qr.subtitle")}
               </p>
             </div>
           </div>
@@ -505,19 +501,19 @@ export default function QRScannerModal({
             />
             <div className="leading-tight">
               <span className="font-bold text-[11px] block">
-                {gpsStatus === "checking" && "กำลังตรวจสอบพิกัด GPS..."}
+                {gpsStatus === "checking" && t("qr.checkingGps")}
                 {gpsStatus === "granted" && (
                   <>
-                    GPS พร้อมใช้งาน • ความแม่นยำ ~{Math.round(userCoords?.accuracy || 0)} ม.
+                    {t("qr.gpsReady")} ~{Math.round(userCoords?.accuracy || 0)} m
                   </>
                 )}
-                {gpsStatus === "denied" && "GPS ไม่ได้รับอนุญาต (บังคับเปิด GPS)"}
-                {gpsStatus === "unavailable" && "อุปกรณ์ไม่รองรับ GPS"}
-                {gpsStatus === "idle" && "ยังไม่ได้เปิด GPS"}
+                {gpsStatus === "denied" && t("qr.gpsNotAllowed")}
+                {gpsStatus === "unavailable" && t("qr.deviceNoGps")}
+                {gpsStatus === "idle" && t("qr.gpsOff")}
               </span>
               {userCoords && (
                 <span className="text-[9px] text-stone-500">
-                  ละติจูด: {userCoords.lat.toFixed(5)}, ลองจิจูด: {userCoords.lng.toFixed(5)}
+                  Lat {userCoords.lat.toFixed(5)}, Lng {userCoords.lng.toFixed(5)}
                 </span>
               )}
             </div>
@@ -527,7 +523,7 @@ export default function QRScannerModal({
             onClick={requestGPS}
             className="px-2.5 py-1 bg-[#FD775C] hover:bg-[#E31E27] text-white font-black rounded-xl text-[10px] flex items-center gap-1 transition shrink-0 cursor-pointer"
           >
-            <RefreshCw size={11} /> รีเฟรช GPS
+            <RefreshCw size={11} /> {t("qr.refreshGps")}
           </button>
         </div>
 
@@ -542,7 +538,7 @@ export default function QRScannerModal({
               activeTab === "camera" ? "bg-white text-stone-900 shadow-xs" : "text-stone-500 hover:text-stone-800"
             }`}
           >
-            <Camera size={14} /> กล้องสแกนเนอร์
+            <Camera size={14} /> {t("qr.cameraScanner")}
           </button>
           <button
             onClick={() => {
@@ -553,7 +549,7 @@ export default function QRScannerModal({
               activeTab === "dev" ? "bg-white text-orange-600 shadow-xs" : "text-stone-500 hover:text-stone-800"
             }`}
           >
-            <Sparkles size={14} /> จุด Checkpoint จำลอง (Dev)
+            <Sparkles size={14} /> {t("qr.devCheckpoint")}
           </button>
         </div>
 
@@ -570,23 +566,23 @@ export default function QRScannerModal({
                 <h4 className="font-black text-stone-900 text-base">{t("qr.gpsRequired")}</h4>
                 <p className="text-xs text-stone-600 mt-1.5 leading-relaxed">
                   {gpsErrorMsg ||
-                    "กติกากิจกรรม Clippi Jigsaw Hunt บังคับให้ผู้เล่นต้องเปิดตำแหน่ง GPS เพื่อยืนยันว่าคุณเดินทางมาถึงสถานที่จริง"}
+                    t("qr.ruleNote")}
                 </p>
               </div>
 
               <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl text-[11px] text-amber-900 text-left space-y-1">
                 <p className="font-bold flex items-center gap-1">
-                  <Info size={13} /> วิธีเปิดสิทธิ์:
+                  <Info size={13} /> {t("qr.howToAllow")}
                 </p>
- <p>1. กดไอคอนแม่กุญแจ  หรือสิทธิ์ที่แถบ URL บนเบราว์เซอร์</p>
-                <p>2. ปรับการตั้งค่า Location / ตำแหน่ง ให้เป็น <strong>"อนุญาต (Allow)"</strong></p>
+ <p>1. {t("qr.allowStep1")}</p>
+                <p>2. {t("qr.allowStep2")}</p>
               </div>
 
               <button
                 onClick={requestGPS}
                 className="w-full bg-orange-600 hover:bg-orange-700 text-white font-extrabold py-3 px-4 rounded-xl text-xs transition shadow-md cursor-pointer flex items-center justify-center gap-2"
               >
-                <RefreshCw size={14} /> อนุญาตและลองเปิด GPS อีกครั้ง
+                <RefreshCw size={14} /> {t("qr.allowAndRetry")}
               </button>
             </div>
           ) : scanResult ? (
@@ -610,7 +606,7 @@ export default function QRScannerModal({
               {scanResult.piece && (
                 <div className="p-3.5 bg-stone-50 border border-stone-200 rounded-2xl text-left max-w-sm mx-auto flex items-center gap-3">
                   <div className="w-12 h-12 rounded-xl bg-orange-500 text-white flex items-center justify-center font-black text-xs shrink-0">
-                    ชิ้นที่ {scanResult.piece.pieceIndex + 1}
+                    {t("jg.piece")} {scanResult.piece.pieceIndex + 1}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-black text-stone-900 truncate">{scanResult.piece.checkpointName}</p>
@@ -629,7 +625,7 @@ export default function QRScannerModal({
                   }}
                   className="flex-1 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-800 font-extrabold rounded-xl text-xs transition cursor-pointer"
                 >
-                  สแกนจุดอื่นต่อ
+                  {t("qr.scanNext")}
                 </button>
                 <button
                   onClick={() => {
@@ -638,12 +634,12 @@ export default function QRScannerModal({
                   }}
                   className="flex-1 py-2.5 bg-orange-600 hover:bg-orange-700 text-white font-extrabold rounded-xl text-xs transition shadow-md cursor-pointer"
                 >
-                  ดูกระดานจิ๊กซอว์
+                  {t("qr.viewBoard")}
                 </button>
               </div>
             </div>
           ) : activeTab === "camera" ? (
-            /* หน้าต่างกล้องสแกนจริง */
+            /* หน้าต่างกล้อง{t("qr.realScan")} */
             <div className="w-full flex flex-col items-center">
               <div className="relative w-full max-w-[300px] aspect-square bg-[#FD775C] rounded-3xl overflow-hidden border-2 border-dashed border-orange-400 shadow-inner flex items-center justify-center">
                 <video
@@ -670,20 +666,20 @@ export default function QRScannerModal({
                   <div className="absolute inset-0 bg-stone-900/90 text-white flex flex-col items-center justify-center p-4 text-center">
                     <Camera size={32} className="text-stone-400 mb-2 animate-bounce" />
                     <p className="text-xs font-bold text-stone-200">
-                      {cameraError || "กำลังเตรียมกล้องสแกนเนอร์..."}
+                      {cameraError || t("qr.preparingCamera")}
                     </p>
                     <button
                       onClick={startCamera}
                       className="mt-3 px-3.5 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-black rounded-xl cursor-pointer"
                     >
-                      เปิดกล้องอีกครั้ง
+                      {t("qr.openCameraAgain")}
                     </button>
                   </div>
                 )}
               </div>
 
               <p className="text-[11px] text-stone-500 mt-3 flex items-center gap-1 font-medium">
-                <MapPin size={12} className="text-orange-500" /> นำกล้องส่องไปที่ QR Code ณ จุดเช็คพอยต์สถานที่จริง
+                <MapPin size={12} className="text-orange-500" /> {t("qr.aimCamera")}
               </p>
 
               {/* ป้อนรหัส QR ด้วยตนเอง หากกล้องติดปัญหา */}
@@ -702,7 +698,7 @@ export default function QRScannerModal({
                   onClick={() => handleScannedData(manualCode)}
                   className="px-3 py-2 bg-[#FD775C] text-white rounded-xl text-xs font-extrabold hover:bg-[#E31E27] transition cursor-pointer"
                 >
-                  ตรวจสอบ
+                  {t("qr.check")}
                 </button>
               </div>
             </div>
@@ -757,11 +753,11 @@ export default function QRScannerModal({
                           </span>
                         </div>
                         <p className="text-[10px] text-stone-500 pl-5.5 mt-0.5 truncate">
-                          {piece.locationArea} • รหัส: <code className="bg-stone-200 px-1 rounded">{piece.qrCodeValue}</code>
+                          {piece.locationArea} • {t("jg.code")}: <code className="bg-stone-200 px-1 rounded">{piece.qrCodeValue}</code>
                         </p>
                         {currentDistance !== null && (
                           <p className="text-[9px] text-stone-400 pl-5.5 mt-0.5">
-                            ห่างจากพิกัดคุณปัจจุบัน: <strong>{formatDistance(currentDistance)}</strong>
+                            {t("qr.distanceFromYou")}: <strong>{formatDistance(currentDistance)}</strong>
                           </p>
                         )}
                       </div>
@@ -773,7 +769,7 @@ export default function QRScannerModal({
                           title={t("qr.scanHere")}
                           className="px-2.5 py-1.5 bg-stone-200 hover:bg-stone-300 text-stone-800 text-[10px] font-bold rounded-xl transition cursor-pointer"
                         >
-                          สแกนจริง
+                          {t("qr.realScan")}
                         </button>
                         {/* ปุ่มวาร์ป/จำลองให้พิกัดตรง */}
                         <button
@@ -781,7 +777,7 @@ export default function QRScannerModal({
                           title={t("qr.simulateHere")}
                           className="px-2.5 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-[10px] font-black rounded-xl transition shadow-xs cursor-pointer flex items-center gap-1"
                         >
-                          <Compass size={11} /> วาร์ป & เก็บ
+                          <Compass size={11} /> {t("qr.warpCollect")}
                         </button>
                       </div>
                     </div>

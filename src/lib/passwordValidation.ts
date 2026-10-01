@@ -1,9 +1,9 @@
 export interface PasswordRequirements {
-  minLength: boolean;     // อย่างน้อย 8 ตัวอักษร
-  hasLowercase: boolean;   // ตัวพิมพ์เล็ก (a-z)
-  hasUppercase: boolean;   // ตัวพิมพ์ใหญ่ (A-Z)
-  hasNumber: boolean;      // ตัวเลข (0-9)
-  hasSpecial: boolean;     // สัญลักษณ์พิเศษ (!@#$%^&*...)
+  minLength: boolean;     
+  hasLowercase: boolean;   
+  hasUppercase: boolean;   
+  hasNumber: boolean;      
+  hasSpecial: boolean;     
 }
 
 /**
@@ -45,35 +45,35 @@ export function getPasswordScore(req: PasswordRequirements): number {
  */
 export function getPasswordStrengthLabel(
   score: number,
-  lang: "th" | "en" | "jp" = "th"
+  lang: "th" | "en" | "jp" | "zh" | "ko" = "th"
 ): { label: string; color: string; bgColor: string } {
   if (score <= 1) {
     return {
-      label: lang === "en" ? "Very Weak" : lang === "jp" ? "非常に弱い" : "อ่อนมาก",
+      label: "pw.veryWeak",
       color: "text-red-600",
       bgColor: "bg-red-500",
     };
   } else if (score === 2) {
     return {
-      label: lang === "en" ? "Weak" : lang === "jp" ? "弱い" : "อ่อน",
+      label: "pw.weak",
       color: "text-amber-600",
       bgColor: "bg-amber-500",
     };
   } else if (score === 3) {
     return {
-      label: lang === "en" ? "Fair" : lang === "jp" ? "普通" : "ปานกลาง",
+      label: "pw.fair",
       color: "text-yellow-600",
       bgColor: "bg-yellow-500",
     };
   } else if (score === 4) {
     return {
-      label: lang === "en" ? "Good" : lang === "jp" ? "良い" : "แข็งแรง",
+      label: "pw.good",
       color: "text-emerald-600",
       bgColor: "bg-emerald-500",
     };
   } else {
     return {
-      label: lang === "en" ? "Very Strong" : lang === "jp" ? "非常に強い" : "แข็งแรงมาก",
+      label: "pw.veryStrong",
       color: "text-emerald-700",
       bgColor: "bg-emerald-600",
     };

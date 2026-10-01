@@ -3,6 +3,7 @@ import { Trophy, Plus, Trash2, Eye, EyeOff, X, Pencil, Loader2 } from "lucide-re
 import { C } from "../../constants/mockData";
 import { ProtectedRoute } from "../auth/ProtectedRoute";
 import { supabase } from "../../supabaseClient";
+import { useLang } from "../../lib/i18n";
 
 // ============================================================================
 // ชนิดเงื่อนไข (template) — ลูกค้า/แอดมินเลือกจาก dropdown ไม่ต้องรู้ column DB
@@ -15,38 +16,39 @@ type RuleType =
   | "landmark_checkin" | "hidden";
 
 const RULE_TYPES: Record<RuleType, {
-  label: string;
+  labelKey: string;
   needsTarget: boolean;
-  targetLabel?: string;
+  targetLabelKey?: string;
   paramOptions?: { value: string; label: string }[];
-  paramLabel?: string;
-  summary: (target?: number | null, param?: string | null) => string;
+  paramLabelKey?: string;
+  summaryKey: string;
 }> = {
-  stamp_count:      { label: "เก็บแสตมป์รวม (ดวง)", needsTarget: true, targetLabel: "จำนวนดวง",
-                      summary: (t) => `เก็บแสตมป์ครบ ${t ?? "?"} ดวง` },
-  category_count:   { label: "เก็บร้านตามหมวด", needsTarget: true, targetLabel: "จำนวนร้าน",
-                      paramLabel: "หมวด", paramOptions: [{ value: "food", label: "ร้านอาหาร" }, { value: "shop", label: "ร้านของฝาก" }],
-                      summary: (t, p) => `เก็บร้าน${p === "food" ? "อาหาร" : "ของฝาก"}ครบ ${t ?? "?"} ร้าน` },
-  prefecture_count: { label: "เก็บร้านตามจังหวัด", needsTarget: true, targetLabel: "จำนวนร้าน",
-                      paramLabel: "จังหวัด (อังกฤษ)", summary: (t, p) => `เก็บร้านใน ${p ?? "?"} ครบ ${t ?? "?"} ร้าน` },
-  region_any:       { label: "เก็บครบทุกภูมิภาค", needsTarget: false,
-                      summary: () => "เก็บอย่างน้อย 1 ร้านจากครบทุกภูมิภาค" },
-  region_complete:  { label: "เก็บครบทุกร้านในภูมิภาค", needsTarget: false, paramLabel: "ภูมิภาค",
-                      paramOptions: ["Kanto","Kansai","Hokkaido","Tohoku","Chubu","Chugoku","Kyushu & Okinawa","Shikoku"].map(r => ({ value: r, label: r })),
-                      summary: (_t, p) => `เก็บครบทุกร้านใน ${p ?? "?"}` },
-  review_count:     { label: "เขียนรีวิว (ครั้ง)", needsTarget: true, targetLabel: "จำนวนครั้ง",
-                      summary: (t) => `เขียนรีวิวครบ ${t ?? "?"} ครั้ง` },
-  review_written:   { label: "รีวิวพร้อมข้อความ (ครั้ง)", needsTarget: true, targetLabel: "จำนวนครั้ง",
-                      summary: (t) => `เขียนรีวิวพร้อมข้อความครบ ${t ?? "?"} ครั้ง` },
-  review_quality_count: { label: "รีวิวคุณภาพ (เนื้อหา ≥20 ตัวอักษร)", needsTarget: true, targetLabel: "จำนวนครั้ง",
-                      summary: (t) => `เขียนรีวิวที่มีเนื้อหา ≥20 ตัวอักษร ครบ ${t ?? "?"} ครั้ง` },
-  founded_before:   { label: "เก็บร้านก่อตั้งก่อนปี", needsTarget: true, targetLabel: "ปี ค.ศ.",
-                      summary: (t) => `เก็บร้านที่ก่อตั้งก่อนปี ${t ?? "?"}` },
-  landmark_checkin: { label: "เช็คอิน landmark", needsTarget: true, targetLabel: "จำนวน",
-                      summary: (t) => `เช็คอิน landmark (สถานี/ศาลเจ้า) ครบ ${t ?? "?"} แห่ง` },
-  hidden:           { label: "เหรียญลับ (ปลดด้วย logic พิเศษ)", needsTarget: false,
-                      summary: () => "เงื่อนไขพิเศษ (ซ่อน)" },
+  stamp_count:      { labelKey: "rt.stamp_count.label", needsTarget: true, targetLabelKey: "rt.tl.stamps", summaryKey: "rt.stamp_count.sum" },
+  category_count:   { labelKey: "rt.category_count.label", needsTarget: true, targetLabelKey: "rt.tl.shops", paramLabelKey: "rt.pl.category",
+                      paramOptions: [{ value: "food", label: "rt.opt.food" }, { value: "shop", label: "rt.opt.shop" }], summaryKey: "rt.category_count.sum" },
+  prefecture_count: { labelKey: "rt.prefecture_count.label", needsTarget: true, targetLabelKey: "rt.tl.shops", paramLabelKey: "rt.pl.prefecture", summaryKey: "rt.prefecture_count.sum" },
+  region_any:       { labelKey: "rt.region_any.label", needsTarget: false, summaryKey: "rt.region_any.sum" },
+  region_complete:  { labelKey: "rt.region_complete.label", needsTarget: false, paramLabelKey: "rt.pl.region",
+                      paramOptions: ["Kanto","Kansai","Hokkaido","Tohoku","Chubu","Chugoku","Kyushu & Okinawa","Shikoku"].map(r => ({ value: r, label: r })), summaryKey: "rt.region_complete.sum" },
+  review_count:     { labelKey: "rt.review_count.label", needsTarget: true, targetLabelKey: "rt.tl.times", summaryKey: "rt.review_count.sum" },
+  review_written:   { labelKey: "rt.review_written.label", needsTarget: true, targetLabelKey: "rt.tl.times", summaryKey: "rt.review_written.sum" },
+  review_quality_count: { labelKey: "rt.review_quality_count.label", needsTarget: true, targetLabelKey: "rt.tl.times", summaryKey: "rt.review_quality_count.sum" },
+  founded_before:   { labelKey: "rt.founded_before.label", needsTarget: true, targetLabelKey: "rt.tl.year", summaryKey: "rt.founded_before.sum" },
+  landmark_checkin: { labelKey: "rt.landmark_checkin.label", needsTarget: true, targetLabelKey: "rt.tl.count", summaryKey: "rt.landmark_checkin.sum" },
+  hidden:           { labelKey: "rt.hidden.label", needsTarget: false, summaryKey: "rt.hidden.sum" },
 };
+
+// สร้างข้อความเงื่อนไขตามภาษา (RULE_TYPES อยู่นอก component จึงต้องรับ t เข้ามา)
+function ruleSummary(t: (k: string) => string, ruleType: RuleType, target?: number | null, param?: string | null): string {
+  const cfg = RULE_TYPES[ruleType];
+  if (!cfg) return "";
+  let out = t(cfg.summaryKey);
+  out = out.replace("{n}", target != null ? String(target) : "?");
+  const cat = param === "food" ? t("rt.opt.food") : param === "shop" ? t("rt.opt.shop") : (param ?? "?");
+  out = out.replace("{cat}", cat);
+  out = out.replace("{p}", param != null && param !== "" ? param : "?");
+  return out;
+}
 
 interface Achievement {
   code: string;
@@ -69,6 +71,7 @@ export default function AchievementManagePage() {
 }
 
 function AchievementManageContent() {
+  const { t } = useLang();
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -85,7 +88,7 @@ function AchievementManageContent() {
       .order("sort_order", { ascending: true });
     if (error) {
       console.error("โหลด achievements ไม่สำเร็จ:", error);
-      alert("โหลดข้อมูลไม่สำเร็จ: " + error.message);
+      alert(t("ach.alert.loadFail") + error.message);
     } else if (data) {
       setAchievements(data as Achievement[]);
     }
@@ -98,13 +101,13 @@ function AchievementManageContent() {
     const next = !current.is_active;
     setAchievements((prev) => prev.map((a) => a.code === code ? { ...a, is_active: next } : a)); // optimistic
     const { error } = await supabase.from("achievements").update({ is_active: next }).eq("code", code);
-    if (error) { alert("อัปเดตไม่สำเร็จ: " + error.message); loadAchievements(); }
+    if (error) { alert(t("ach.alert.updateFail") + error.message); loadAchievements(); }
   };
 
   const deleteAchievement = async (code: string) => {
-    if (!confirm("ลบ achievement นี้ถาวร? (user ที่เคยปลดจะหายไปด้วย)")) return;
+    if (!confirm(t("ach.confirmDelete"))) return;
     const { error } = await supabase.from("achievements").delete().eq("code", code);
-    if (error) { alert("ลบไม่สำเร็จ: " + error.message); return; }
+    if (error) { alert(t("ach.alert.deleteFail") + error.message); return; }
     setAchievements((prev) => prev.filter((a) => a.code !== code));
   };
 
@@ -114,7 +117,7 @@ function AchievementManageContent() {
       rule_type: a.rule_type, rule_target: a.rule_target, rule_param: a.rule_param,
       is_active: a.is_active, sort_order: 0,
     });
-    if (error) { alert("เพิ่มไม่สำเร็จ: " + error.message); return; }
+    if (error) { alert(t("ach.alert.addFail") + error.message); return; }
     setShowForm(false);
     loadAchievements();
   };
@@ -124,7 +127,7 @@ function AchievementManageContent() {
       name: a.name, description: a.description, icon: a.icon,
       rule_type: a.rule_type, rule_target: a.rule_target, rule_param: a.rule_param,
     }).eq("code", a.code);
-    if (error) { alert("แก้ไขไม่สำเร็จ: " + error.message); return; }
+    if (error) { alert(t("ach.alert.editFail") + error.message); return; }
     setEditing(null);
     loadAchievements();
   };
@@ -143,8 +146,8 @@ function AchievementManageContent() {
             <Trophy size={20} strokeWidth={2.2} />
           </div>
           <div>
-            <h2 className="text-lg font-black tracking-tight" style={{ color: C.ink }}>จัดการ Achievement</h2>
-            <p className="text-[11px] font-semibold text-[#8A7870]">ทั้งหมด {achievements.length} · เปิดใช้งาน {activeCount}</p>
+            <h2 className="text-lg font-black tracking-tight" style={{ color: C.ink }}>{t("ach.title")}</h2>
+            <p className="text-[11px] font-semibold text-[#8A7870]">{t("ach.count").replace("{a}", String(achievements.length)).replace("{b}", String(activeCount))}</p>
           </div>
         </div>
         <button
@@ -152,13 +155,13 @@ function AchievementManageContent() {
           className="px-4 py-2.5 rounded-xl text-xs font-black text-white flex items-center gap-1.5 shadow-md hover:opacity-95 transition"
           style={{ background: C.accent }}
         >
-          <Plus size={15} strokeWidth={2.5} /> เพิ่ม Achievement
+          <Plus size={15} strokeWidth={2.5} /> {t("ach.add")}
         </button>
       </div>
 
       {/* Filter */}
       <div className="flex gap-1.5">
-        {([["all", "ทั้งหมด"], ["active", "เปิดใช้งาน"], ["inactive", "ปิดอยู่"]] as const).map(([id, label]) => (
+        {([["all", t("filter.all")], ["active", t("ach.filter.active")], ["inactive", t("ach.filter.inactive")]] as const).map(([id, label]) => (
           <button
             key={id}
             onClick={() => setFilter(id)}
@@ -175,11 +178,11 @@ function AchievementManageContent() {
         {loading ? (
           <div className="p-8 rounded-2xl bg-white border text-center" style={{ borderColor: C.line }}>
             <Loader2 size={20} className="animate-spin mx-auto text-[#8A7870]" />
-            <p className="text-xs text-[#8A7870] mt-2">กำลังโหลด...</p>
+            <p className="text-xs text-[#8A7870] mt-2">{t("common.loading")}</p>
           </div>
         ) : filtered.length === 0 ? (
           <div className="p-6 rounded-2xl bg-white border text-center" style={{ borderColor: C.line }}>
-            <p className="text-xs text-[#8A7870] italic">ยังไม่มี achievement ในหมวดนี้</p>
+            <p className="text-xs text-[#8A7870] italic">{t("ach.empty")}</p>
           </div>
         ) : (
           filtered.map((a) => (
@@ -194,15 +197,15 @@ function AchievementManageContent() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-black truncate" style={{ color: C.ink }}>{a.name}</h3>
-                  {!a.is_active && <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-stone-100 text-[#8A7870]">ปิดอยู่</span>}
+                  {!a.is_active && <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-stone-100 text-[#8A7870]">{t("ach.filter.inactive")}</span>}
                 </div>
-                <p className="text-[11px] text-[#8A7870] truncate">{RULE_TYPES[a.rule_type]?.summary(a.rule_target, a.rule_param) ?? a.description ?? a.rule_type}</p>
+                <p className="text-[11px] text-[#8A7870] truncate">{ruleSummary(t, a.rule_type, a.rule_target, a.rule_param) || a.description || a.rule_type}</p>
                 <code className="text-[9px]" style={{ color: "#B7A99A" }}>{a.code}</code>
               </div>
               <div className="flex items-center gap-1 shrink-0">
                 <button
                   onClick={() => setEditing(a)}
-                  title="แก้ไข"
+                  title={t("ach.tip.edit")}
                   className="w-8 h-8 rounded-lg flex items-center justify-center border hover:bg-stone-50 transition"
                   style={{ borderColor: C.line, color: C.inkSoft }}
                 >
@@ -210,7 +213,7 @@ function AchievementManageContent() {
                 </button>
                 <button
                   onClick={() => toggleActive(a.code)}
-                  title={a.is_active ? "ปิดใช้งาน" : "เปิดใช้งาน"}
+                  title={a.is_active ? t("ach.tip.disable") : t("ach.tip.enable")}
                   className="w-8 h-8 rounded-lg flex items-center justify-center border hover:bg-stone-50 transition"
                   style={{ borderColor: C.line, color: a.is_active ? C.accent : C.inkSoft }}
                 >
@@ -218,7 +221,7 @@ function AchievementManageContent() {
                 </button>
                 <button
                   onClick={() => deleteAchievement(a.code)}
-                  title="ลบ"
+                  title={t("ach.tip.delete")}
                   className="w-8 h-8 rounded-lg flex items-center justify-center border hover:bg-red-50 transition"
                   style={{ borderColor: C.line, color: "#E0533C" }}
                 >
@@ -249,6 +252,7 @@ function AchievementForm({ existingCodes, initial, onCancel, onSave }: {
   onCancel: () => void;
   onSave: (a: Achievement) => void;
 }) {
+  const { t } = useLang();
   const isEdit = !!initial;
   const [name, setName] = useState(initial?.name ?? "");
   const [code, setCode] = useState(initial?.code ?? "");
@@ -261,20 +265,20 @@ function AchievementForm({ existingCodes, initial, onCancel, onSave }: {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !code.trim()) { alert("กรุณากรอกชื่อและ code"); return; }
-    if (!isEdit && existingCodes.includes(code.trim())) { alert("code นี้มีอยู่แล้ว ใช้ code อื่น"); return; }
-    if (cfg.needsTarget && !target) { alert("กรุณากรอกตัวเลขเป้าหมาย"); return; }
-    if (cfg.paramOptions && !param) { alert("กรุณาเลือก" + (cfg.paramLabel || "ตัวเลือก")); return; }
+    if (!name.trim() || !code.trim()) { alert(t("ach.alert.nameCode")); return; }
+    if (!isEdit && existingCodes.includes(code.trim())) { alert(t("ach.alert.codeExists")); return; }
+    if (cfg.needsTarget && !target) { alert(t("ach.alert.needTarget")); return; }
+    if (cfg.paramOptions && !param) { alert(t("ach.alert.needParam")); return; }
 
     const targetNum = cfg.needsTarget ? Number(target) : null;
     onSave({
       code: code.trim(),
       name: name.trim(),
-      description: cfg.summary(targetNum, param || null),
+      description: ruleSummary(t, ruleType, targetNum, param || null),
       icon: icon || "",
       rule_type: ruleType,
       rule_target: targetNum,
-      rule_param: (cfg.paramOptions || cfg.paramLabel) ? (param || null) : null,
+      rule_param: (cfg.paramOptions || cfg.paramLabelKey) ? (param || null) : null,
       is_active: true,
     });
   };
@@ -285,58 +289,58 @@ function AchievementForm({ existingCodes, initial, onCancel, onSave }: {
         <button onClick={onCancel} className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center bg-stone-50 border hover:scale-105 transition" style={{ borderColor: C.line }}>
           <X size={16} color={C.ink} />
         </button>
-        <h2 className="text-lg font-black mb-4" style={{ color: C.ink }}>{isEdit ? "แก้ไข Achievement" : "เพิ่ม Achievement"}</h2>
+        <h2 className="text-lg font-black mb-4" style={{ color: C.ink }}>{isEdit ? t("ach.edit") : t("ach.add")}</h2>
 
         <form onSubmit={handleSubmit} className="space-y-3.5">
-          <Field label="ชื่อ">
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="เช่น นักสะสมตัวจริง" className={inputCls} style={{ borderColor: C.line }} />
+          <Field label={t("form.name")}>
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("form.namePlaceholder")} className={inputCls} style={{ borderColor: C.line }} />
           </Field>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Code (อังกฤษ ห้ามซ้ำ)">
+            <Field label={t("form.code")}>
               <input value={code} onChange={(e) => setCode(e.target.value.replace(/\s/g, "_").toLowerCase())} placeholder="stamp_10" disabled={isEdit} className={inputCls} style={{ borderColor: C.line, opacity: isEdit ? 0.5 : 1 }} />
             </Field>
-            <Field label="ไอคอน (ข้อความ / สัญลักษณ์)">
-              <input value={icon} onChange={(e) => setIcon(e.target.value)} placeholder="เช่น Trophy" className={inputCls} style={{ borderColor: C.line }} />
+            <Field label={t("form.icon")}>
+              <input value={icon} onChange={(e) => setIcon(e.target.value)} placeholder={t("form.iconPlaceholder")} className={inputCls} style={{ borderColor: C.line }} />
             </Field>
           </div>
 
-          <Field label="เงื่อนไข">
+          <Field label={t("form.condition")}>
             <select value={ruleType} onChange={(e) => { setRuleType(e.target.value as RuleType); setParam(""); setTarget(""); }} className={inputCls} style={{ borderColor: C.line }}>
               {(Object.keys(RULE_TYPES) as RuleType[]).map((rt) => (
-                <option key={rt} value={rt}>{RULE_TYPES[rt].label}</option>
+                <option key={rt} value={rt}>{t(RULE_TYPES[rt].labelKey)}</option>
               ))}
             </select>
           </Field>
 
           {/* target — โผล่เฉพาะ rule ที่ต้องใช้ */}
           {cfg.needsTarget && (
-            <Field label={cfg.targetLabel || "ตัวเลข"}>
+            <Field label={cfg.targetLabelKey ? t(cfg.targetLabelKey) : t("form.numberFallback")}>
               <input type="number" value={target} onChange={(e) => setTarget(e.target.value)} placeholder="10" className={inputCls} style={{ borderColor: C.line }} />
             </Field>
           )}
 
           {/* param — dropdown ถ้ามีตัวเลือก / input ถ้าเป็นข้อความอิสระ (เช่นจังหวัด) */}
           {cfg.paramOptions ? (
-            <Field label={cfg.paramLabel || "ตัวเลือก"}>
+            <Field label={cfg.paramLabelKey ? t(cfg.paramLabelKey) : t("form.optionFallback")}>
               <select value={param} onChange={(e) => setParam(e.target.value)} className={inputCls} style={{ borderColor: C.line }}>
-                <option value="">— เลือก —</option>
-                {cfg.paramOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                <option value="">{t("form.selectPlaceholder")}</option>
+                {cfg.paramOptions.map((o) => <option key={o.value} value={o.value}>{o.label.startsWith("rt.") ? t(o.label) : o.label}</option>)}
               </select>
             </Field>
-          ) : cfg.paramLabel ? (
-            <Field label={cfg.paramLabel}>
+          ) : cfg.paramLabelKey ? (
+            <Field label={t(cfg.paramLabelKey)}>
               <input value={param} onChange={(e) => setParam(e.target.value)} placeholder="Tokyo" className={inputCls} style={{ borderColor: C.line }} />
             </Field>
           ) : null}
 
           {/* preview */}
           <div className="p-3 rounded-xl text-[11px] font-semibold" style={{ background: C.accentSoft, color: C.accentDeep }}>
-            {icon} <b>{name || "(ชื่อ)"}</b> {cfg.summary(target ? Number(target) : null, param || null)}
+            {icon} <b>{name || t("form.namePreview")}</b> {ruleSummary(t, ruleType, target ? Number(target) : null, param || null)}
           </div>
 
           <div className="flex gap-2 pt-1">
-            <button type="button" onClick={onCancel} className="flex-1 py-2.5 rounded-xl text-xs font-bold border hover:bg-stone-50 transition" style={{ borderColor: C.line, color: C.ink }}>ยกเลิก</button>
-            <button type="submit" className="flex-1 py-2.5 rounded-xl text-xs font-black text-white shadow-md hover:opacity-95 transition" style={{ background: C.accent }}>บันทึก</button>
+            <button type="button" onClick={onCancel} className="flex-1 py-2.5 rounded-xl text-xs font-bold border hover:bg-stone-50 transition" style={{ borderColor: C.line, color: C.ink }}>{t("common.cancel")}</button>
+            <button type="submit" className="flex-1 py-2.5 rounded-xl text-xs font-black text-white shadow-md hover:opacity-95 transition" style={{ background: C.accent }}>{t("common.save")}</button>
           </div>
         </form>
       </div>

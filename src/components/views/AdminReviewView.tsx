@@ -21,8 +21,10 @@ import {
 import { supabase } from "../../supabaseClient";
 import { C } from "../../constants/mockData";
 import { isQrRequirementEnabled, setQrRequirementEnabled } from "../../lib/qrSettingsHelpers";
+import { useLang } from "../../lib/i18n";
 
 export default function AdminReviewView() {
+  const { t } = useLang();
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
@@ -602,10 +604,10 @@ export default function AdminReviewView() {
         window.dispatchEvent(new CustomEvent("merchant_status_changed", { detail: { status: "approved", userId: uid } }));
       } catch (e) {}
 
-      alert(` อนุมัติสิทธิ์เจ้าของร้านค้าสำหรับ "${sub.shop_name || sub.name_en || sub.contact_name}" เรียบร้อยแล้ว!`);
+      alert(t("rv.grantOk").replace("{n}", sub.shop_name || sub.name_en || sub.contact_name));
     } catch (err: any) {
       console.error("Approve merchant error:", err);
-      alert("เกิดข้อผิดพลาดในการอนุมัติ: " + (err.message || "Failed"));
+      alert(t("rv.approveFail") + (err.message || "Failed"));
     } finally {
       setProcessingId(null);
     }
@@ -620,7 +622,7 @@ export default function AdminReviewView() {
       const uid = subObj?.user_id || subObj?.profiles?.id || (typeof subId === "string" ? subId.replace("prof_", "").replace("local_", "") : null);
       const email = subObj?.contact_email || subObj?.email || subObj?.profiles?.email;
       const cleanEmail = email ? email.trim().toLowerCase() : "";
-      const finalReason = rejectionReason || "เอกสารหรือข้อมูลสิทธิ์ร้านค้าไม่ผ่านการตรวจสอบ";
+      const finalReason = rejectionReason || t("rv.defaultRejectMerchant");
       const nowIso = new Date().toISOString();
 
       // Save rejection key into localStorage immediately
@@ -809,10 +811,10 @@ export default function AdminReviewView() {
         window.dispatchEvent(new CustomEvent("merchant_status_changed", { detail: { status: "rejected", userId: uid } }));
       } catch (e) {}
 
-      alert("ปฏิเสธคำขอลงทะเบียนเจ้าของร้านค้าเรียบร้อยแล้ว");
+      alert(t("rv.rejectMerchantOk"));
     } catch (err: any) {
       console.error("Reject merchant error:", err);
-      alert("เกิดข้อผิดพลาดในการปฏิเสธ: " + (err.message || "Failed"));
+      alert(t("rv.rejectFail") + (err.message || "Failed"));
     } finally {
       setProcessingId(null);
     }
@@ -966,11 +968,11 @@ export default function AdminReviewView() {
       }
 
       setSubmissions((prev) => prev.filter((s) => s.id !== selectedSubmission.id));
-      alert(`อนุมัติสถานที่ "${nameEn.trim()}" เข้าสู่ระบบเรียบร้อยแล้ว!`);
+      alert(t("rv.placeApproveOk").replace("{n}", nameEn.trim()));
       setSelectedSubmission(null);
     } catch (err: any) {
       console.error("Save & Approve error:", err);
-      alert("เกิดข้อผิดพลาด: " + (err.message || "Failed"));
+      alert(t("rv.error") + (err.message || "Failed"));
     } finally {
       setProcessingId(null);
     }
@@ -981,7 +983,7 @@ export default function AdminReviewView() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       const adminId = user?.id || null;
-      const finalReason = rejectionReason || "ข้อมูลสถานที่ไม่อยู่ในเกณฑ์การอนุมัติ";
+      const finalReason = rejectionReason || t("rv.defaultRejectPlace");
 
       await supabase
         .from("place_submissions")
@@ -996,9 +998,9 @@ export default function AdminReviewView() {
       setSubmissions((prev) => prev.filter((s) => s.id !== subId));
       setRejectingId(null);
       setRejectionReason("");
-      alert("ปฏิเสธคำขอเพิ่มสถานที่เรียบร้อยแล้ว");
+      alert(t("rv.rejectPlaceOk"));
     } catch (err: any) {
-      alert("เกิดข้อผิดพลาด: " + (err.message || "Failed"));
+      alert(t("rv.error") + (err.message || "Failed"));
     } finally {
       setProcessingId(null);
     }
@@ -1015,7 +1017,7 @@ export default function AdminReviewView() {
           <div>
             <h2 className="text-lg font-black text-[#231C18]">Admin Review Panel</h2>
             <p className="text-xs text-[#8A7870] font-semibold mt-0.5">
-              ศูนย์รวมการอนุมัติสิทธิ์ร้านค้าและสถานที่ใหม่สำหรับแอดมิน
+              {t("rv.subtitle")}
             </p>
           </div>
         </div>
@@ -1027,7 +1029,7 @@ export default function AdminReviewView() {
           style={{ borderColor: C.line }}
         >
           {loading ? <Loader2 size={14} className="animate-spin text-amber-600" /> : <Clock size={14} />}
-          <span>รีเฟรชข้อมูล</span>
+          <span>{t("rv.refresh")}</span>
         </button>
       </div>
 
@@ -1041,19 +1043,19 @@ export default function AdminReviewView() {
           </div>
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-sm font-black text-[#231C18]">โหมดการเช็คอินของนักท่องเที่ยว (Check-in Mode)</h3>
+              <h3 className="text-sm font-black text-[#231C18]">{t("rv.checkinMode")}</h3>
               <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black border ${
                 qrEnabled
                   ? "bg-amber-50 text-amber-800 border-amber-300"
                   : "bg-blue-50 text-blue-800 border-blue-300"
               }`}>
-                {qrEnabled ? "📷 สแกน QR + เช็ค GPS 50m" : "📍 เช็คพิกัด GPS 50m อย่างเดียว (ไม่ต้องสแกน QR)"}
+                {qrEnabled ? t("rv.modeQr") : t("rv.modeGps")}
               </span>
             </div>
             <p className="text-xs text-[#8A7870] font-semibold mt-1">
               {qrEnabled
-                ? "โหมดปัจจุบัน: นักท่องเที่ยวต้องเปิดกล้องสแกน QR Code ประจำร้านค้า และต้องอยู่ในระยะพิกัด GPS ไม่เกิน 50 เมตร"
-                : "โหมดปัจจุบัน: นักท่องเที่ยวสามารถกดปุ่มเช็คอินรับแสตมป์จากหน้าจอได้ทันทีเมื่ออยู่ในระยะ GPS 50 เมตร (ไม่ต้องเปิดกล้องสแกน QR Code)"}
+                ? t("rv.modeQrDesc")
+                : t("rv.modeGpsDesc")}
             </p>
           </div>
         </div>
@@ -1069,7 +1071,7 @@ export default function AdminReviewView() {
             }`}
           >
             <Power size={15} />
-            <span>{qrEnabled ? "สลับเป็น: เช็ค GPS อย่างเดียว" : "สลับเป็น: บังคับสแกน QR + GPS"}</span>
+            <span>{qrEnabled ? t("rv.switchToGps") : t("rv.switchToQr")}</span>
           </button>
         </div>
       </div>
@@ -1093,9 +1095,9 @@ export default function AdminReviewView() {
               <Store size={20} />
             </div>
             <div>
-              <h3 className="text-xs font-black text-[#231C18]">อนุมัติสิทธิ์เจ้าของร้านค้า (Store Owners)</h3>
+              <h3 className="text-xs font-black text-[#231C18]">{t("rv.tabMerchant")}</h3>
               <p className="text-[10px] text-[#8A7870] font-semibold mt-0.5">
-                ตรวจสอบหลักฐานสิทธิ์ร้านค้า & อนุมัติสิทธิ์จัดการร้าน
+                {t("rv.tabMerchantDesc")}
               </p>
             </div>
           </div>
@@ -1123,9 +1125,9 @@ export default function AdminReviewView() {
               <MapPin size={20} />
             </div>
             <div>
-              <h3 className="text-xs font-black text-[#231C18]">อนุมัติสถานที่ / ร้านค้าใหม่ (New Spots)</h3>
+              <h3 className="text-xs font-black text-[#231C18]">{t("rv.tabPlace")}</h3>
               <p className="text-[10px] text-[#8A7870] font-semibold mt-0.5">
-                ตรวจสอบข้อมูลสถานที่และเพิ่มลงแผนที่ระบบ
+                {t("rv.tabPlaceDesc")}
               </p>
             </div>
           </div>
@@ -1141,7 +1143,7 @@ export default function AdminReviewView() {
       {loading ? (
         <div className="p-12 text-center bg-white rounded-3xl border flex flex-col items-center justify-center gap-3" style={{ borderColor: C.line }}>
           <Loader2 size={24} className="animate-spin text-[#E0533C]" />
-          <span className="text-xs font-bold text-[#8A7870]">กำลังโหลดรายการคำขอ...</span>
+          <span className="text-xs font-bold text-[#8A7870]">{t("rv.loading")}</span>
         </div>
       ) : mainCategory === "merchants" ? (
         /* ════════════════════════════════════════════════════════════ */
@@ -1151,15 +1153,15 @@ export default function AdminReviewView() {
           {merchantSubmissions.length === 0 ? (
             <div className="p-12 text-center bg-white rounded-3xl border flex flex-col items-center justify-center gap-2" style={{ borderColor: C.line }}>
               <CheckCircle2 size={32} className="text-emerald-500 opacity-50 mb-1" />
-              <p className="text-sm font-black text-[#231C18]">ไม่มีคำขอสมัครเจ้าของร้านค้าค้างอยู่</p>
-              <p className="text-xs text-[#8A7870] font-semibold">บัญชีเจ้าของร้านค้าทั้งหมดได้รับการตรวจสอบเรียบร้อยแล้ว</p>
+              <p className="text-sm font-black text-[#231C18]">{t("rv.noMerchant")}</p>
+              <p className="text-xs text-[#8A7870] font-semibold">{t("rv.noMerchantDesc")}</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4">
               {merchantSubmissions.map((m) => {
                 const isRejectingThis = rejectingId === m.id;
-                const shopNameTitle = m.shop_name || m.name_en || m.profiles?.shop_name || "คำขอลงทะเบียนร้านค้า";
-                const ownerName = m.contact_name || m.profiles?.display_name || m.profiles?.full_name || m.profiles?.username || "เจ้าของร้านค้า";
+                const shopNameTitle = m.shop_name || m.name_en || m.profiles?.shop_name || t("rv.merchantReq");
+                const ownerName = m.contact_name || m.profiles?.display_name || m.profiles?.full_name || m.profiles?.username || t("um.notSpecified");
                 const phoneNum = m.contact_phone || m.phone || m.profiles?.phone || "-";
                 const emailStr = m.contact_email || m.email || m.profiles?.email || "-";
 
@@ -1178,30 +1180,30 @@ export default function AdminReviewView() {
                           <div className="flex items-center gap-2">
                             <h3 className="text-sm font-black text-[#231C18]">{shopNameTitle}</h3>
                             <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-100 text-amber-900 border border-amber-300">
-                              ⏳ รออนุมัติสิทธิ์ร้านค้า
+                              {t("rv.pendingMerchant")}
                             </span>
                           </div>
                           <p className="text-xs text-[#8A7870] font-semibold mt-0.5">
-                            ผู้สมัคร / เจ้าของร้าน: <span className="text-[#231C18] font-bold">{ownerName}</span>
+                            {t("rv.applicant")}: <span className="text-[#231C18] font-bold">{ownerName}</span>
                           </p>
                         </div>
                       </div>
 
                       <span className="text-[10px] font-semibold text-gray-400 shrink-0">
-                        ยื่นคำขอเมื่อ: {new Date(m.updated_at || m.created_at).toLocaleDateString()}
+                        {t("rv.submittedAt")}: {new Date(m.updated_at || m.created_at).toLocaleDateString()}
                       </span>
                     </div>
 
                     {/* Merchant Details Grid */}
                     {(() => {
                       const CATEGORY_MAP: Record<string, string> = {
-                        food: "ร้านอาหาร / คาเฟ่ (Food & Cafe)",
-                        shop: "ร้านค้า / ของฝาก (Shopping & Souvenirs)",
-                        sightseeing: "สถานที่ท่องเที่ยว / วัดเซน (Sightseeing & Shrine)",
-                        service: "บริการ / โรงแรม (Service & Hotel)",
-                        other: "อื่นๆ (Other)",
+                        food: t("rv.cat.food"),
+                        shop: t("rv.cat.shop"),
+                        sightseeing: t("rv.cat.sightseeing"),
+                        service: t("rv.cat.service"),
+                        other: t("rv.cat.other"),
                       };
-                      const prefectureStr = m.prefecture || m.profiles?.prefecture || "ไม่ระบุ";
+                      const prefectureStr = m.prefecture || m.profiles?.prefecture || t("um.notSpecified");
                       const rawCat = m.category || m.profiles?.category || "food";
                       const categoryLabel = CATEGORY_MAP[rawCat] || rawCat;
 
@@ -1210,7 +1212,7 @@ export default function AdminReviewView() {
                           <div className="flex items-start gap-2.5 text-xs">
                             <User size={15} className="text-[#8A7870] shrink-0 mt-0.5" />
                             <div className="min-w-0">
-                              <span className="text-[9.5px] font-black uppercase tracking-wider text-[#8A7870] block">ชื่อผู้ติดต่อ</span>
+                              <span className="text-[9.5px] font-black uppercase tracking-wider text-[#8A7870] block">{t("rv.f.contact")}</span>
                               <span className="font-bold text-[#231C18] break-words">{ownerName}</span>
                             </div>
                           </div>
@@ -1218,7 +1220,7 @@ export default function AdminReviewView() {
                           <div className="flex items-start gap-2.5 text-xs">
                             <Phone size={15} className="text-[#8A7870] shrink-0 mt-0.5" />
                             <div className="min-w-0">
-                              <span className="text-[9.5px] font-black uppercase tracking-wider text-[#8A7870] block">เบอร์โทรศัพท์ติดต่อ</span>
+                              <span className="text-[9.5px] font-black uppercase tracking-wider text-[#8A7870] block">{t("rv.f.phone")}</span>
                               <span className="font-bold text-[#231C18] break-words">{phoneNum}</span>
                             </div>
                           </div>
@@ -1226,7 +1228,7 @@ export default function AdminReviewView() {
                           <div className="flex items-start gap-2.5 text-xs">
                             <Mail size={15} className="text-[#8A7870] shrink-0 mt-0.5" />
                             <div className="min-w-0">
-                              <span className="text-[9.5px] font-black uppercase tracking-wider text-[#8A7870] block">อีเมลบัญชีผู้ใช้</span>
+                              <span className="text-[9.5px] font-black uppercase tracking-wider text-[#8A7870] block">{t("rv.f.email")}</span>
                               <span className="font-bold text-[#231C18] break-all">{emailStr}</span>
                             </div>
                           </div>
@@ -1234,7 +1236,7 @@ export default function AdminReviewView() {
                           <div className="flex items-start gap-2.5 text-xs">
                             <MapPin size={15} className="text-[#8A7870] shrink-0 mt-0.5" />
                             <div className="min-w-0">
-                              <span className="text-[9.5px] font-black uppercase tracking-wider text-[#8A7870] block">จังหวัด (Prefecture)</span>
+                              <span className="text-[9.5px] font-black uppercase tracking-wider text-[#8A7870] block">{t("rv.f.prefecture")}</span>
                               <span className="font-bold text-[#231C18] break-words">{prefectureStr}</span>
                             </div>
                           </div>
@@ -1242,7 +1244,7 @@ export default function AdminReviewView() {
                           <div className="flex items-start gap-2.5 text-xs sm:col-span-2 md:col-span-2">
                             <Building size={15} className="text-[#8A7870] shrink-0 mt-0.5" />
                             <div className="min-w-0">
-                              <span className="text-[9.5px] font-black uppercase tracking-wider text-[#8A7870] block">หมวดหมู่ร้านค้า</span>
+                              <span className="text-[9.5px] font-black uppercase tracking-wider text-[#8A7870] block">{t("rv.f.category")}</span>
                               <span className="font-bold text-[#231C18] break-words leading-relaxed">{categoryLabel}</span>
                             </div>
                           </div>
@@ -1255,10 +1257,10 @@ export default function AdminReviewView() {
                       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-amber-200/60 pb-2">
                         <div>
                           <span className="text-[10px] font-black text-amber-950 uppercase tracking-wider block">
-                            เอกสารหลักฐานยืนยันสิทธิ์ร้านค้า (Ownership Proof Document)
+                            {t("rv.proofTitle")}
                           </span>
                           <span className="text-[11px] text-amber-800/80 font-medium">
-                            ใบจดทะเบียนพานิชย์ / ใบอนุญาตประกอบกิจการ / ภาพหน้าร้านพร้อมป้าย
+                            {t("rv.proofDesc")}
                           </span>
                         </div>
 
@@ -1270,7 +1272,7 @@ export default function AdminReviewView() {
                             className="px-3.5 py-1.5 rounded-xl text-xs font-black text-blue-700 bg-white border border-blue-200 hover:bg-blue-50 transition flex items-center gap-1.5 shrink-0 shadow-2xs cursor-pointer"
                           >
                             <ExternalLink size={13} className="text-blue-600" />
-                            <span>เปิดดูแท็บใหม่</span>
+                            <span>{t("rv.openNewTab")}</span>
                           </a>
                         )}
                       </div>
@@ -1293,15 +1295,15 @@ export default function AdminReviewView() {
                                 className="absolute bottom-2 right-2 px-2.5 py-1 rounded-lg bg-black/75 hover:bg-[#E31E27] text-white text-[10px] font-black backdrop-blur-xs flex items-center gap-1 opacity-90 transition cursor-pointer"
                               >
                                 <FileText size={11} />
-                                <span>คลิกเพื่อขยายดูรูปภาพ</span>
+                                <span>{t("rv.clickZoom")}</span>
                               </button>
                             </div>
                           ) : (
                             <div className="p-3 bg-white rounded-xl border border-amber-200 flex items-center gap-3 w-full max-w-md">
                               <FileText size={24} className="text-amber-700 shrink-0" />
                               <div className="flex-1 min-w-0">
-                                <span className="text-xs font-bold text-stone-900 block truncate">เอกสารแนบหลักฐานสิทธิ์ร้านค้า (PDF / Document)</span>
-                                <span className="text-[10px] text-stone-500 font-medium block">คลิกปุ่มเปิดดูเพื่อตรวจสอบไฟล์เอกสาร</span>
+                                <span className="text-xs font-bold text-stone-900 block truncate">{t("rv.attachedPdf")}</span>
+                                <span className="text-[10px] text-stone-500 font-medium block">{t("rv.clickOpenCheck")}</span>
                               </div>
                               <a
                                 href={m.ownership_proof_url}
@@ -1309,7 +1311,7 @@ export default function AdminReviewView() {
                                 rel="noopener noreferrer"
                                 className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-black shrink-0 transition"
                               >
-                                เปิดดูไฟล์
+                                {t("rv.openFile")}
                               </a>
                             </div>
                           )}
@@ -1317,7 +1319,7 @@ export default function AdminReviewView() {
                       ) : (
                         <div className="p-3 rounded-xl bg-amber-100/70 border border-amber-300 text-amber-900 text-xs font-bold flex items-center gap-2">
                           <AlertCircle size={15} className="text-amber-700 shrink-0" />
-                          <span>ไม่ได้แนบไฟล์หลักฐาน (โปรดตรวจสอบข้อมูลหรือติดต่อร้านค้าก่อนอนุมัติ)</span>
+                          <span>{t("rv.noProof")}</span>
                         </div>
                       )}
                     </div>
@@ -1325,17 +1327,17 @@ export default function AdminReviewView() {
                     {/* Action buttons or Reject form */}
                     {isRejectingThis ? (
                       <div className="p-4 rounded-2xl bg-red-50 border border-red-200 space-y-3">
-                        <label className="text-xs font-bold text-red-800 block">ระบุเหตุผลที่ไม่ผ่านการอนุมัติสิทธิ์ร้านค้า:</label>
+                        <label className="text-xs font-bold text-red-800 block">{t("rv.rejectReasonMerchant")}</label>
                         <input
                           type="text"
                           value={rejectionReason}
                           onChange={(e) => setRejectionReason(e.target.value)}
-                          placeholder="เช่น ข้อมูลหลักฐานไม่ชัดเจน, เบอร์โทรศัพท์ไม่ถูกต้อง..."
+                          placeholder={t("rv.rejectPlaceholderMerchant")}
                           className="w-full px-3 py-2 text-xs rounded-xl border bg-white outline-none"
                         />
                         <div className="flex justify-end gap-2">
-                          <button onClick={() => setRejectingId(null)} className="px-3 py-1.5 rounded-xl border text-xs font-bold bg-white cursor-pointer">ยกเลิก</button>
-                          <button onClick={() => handleRejectMerchant(m.id)} className="px-4 py-1.5 rounded-xl text-xs font-black text-white bg-red-600 hover:bg-red-700 cursor-pointer">ยืนยันปฏิเสธ</button>
+                          <button onClick={() => setRejectingId(null)} className="px-3 py-1.5 rounded-xl border text-xs font-bold bg-white cursor-pointer">{t("common.cancel")}</button>
+                          <button onClick={() => handleRejectMerchant(m.id)} className="px-4 py-1.5 rounded-xl text-xs font-black text-white bg-red-600 hover:bg-red-700 cursor-pointer">{t("rv.confirmReject")}</button>
                         </div>
                       </div>
                     ) : (
@@ -1345,7 +1347,7 @@ export default function AdminReviewView() {
                           disabled={processingId === m.id}
                           className="px-4 py-2 rounded-xl text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 transition cursor-pointer"
                         >
-                          ปฏิเสธคำขอ
+                          {t("rv.rejectReq")}
                         </button>
                         <button
                           onClick={() => handleApproveMerchant(m)}
@@ -1353,7 +1355,7 @@ export default function AdminReviewView() {
                           className="px-5 py-2 rounded-xl text-xs font-black text-white bg-amber-600 hover:bg-amber-700 transition flex items-center gap-1.5 cursor-pointer shadow-xs"
                         >
                           {processingId === m.id ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                          <span>อนุมัติสิทธิ์เจ้าของร้านค้า</span>
+                          <span>{t("rv.approveMerchant")}</span>
                         </button>
                       </div>
                     )}
@@ -1402,8 +1404,8 @@ export default function AdminReviewView() {
           {filteredPlaceSubmissions.length === 0 ? (
             <div className="p-12 text-center bg-white rounded-3xl border flex flex-col items-center justify-center gap-2" style={{ borderColor: C.line }}>
               <CheckCircle2 size={32} className="text-emerald-500 opacity-50 mb-1" />
-              <p className="text-sm font-black text-[#231C18]">ไม่มีรายการคำขออนุมัติสถานที่ในหมวดนี้</p>
-              <p className="text-xs text-[#8A7870] font-semibold">สถานที่ทั้งหมดได้รับการตรวจสอบเรียบร้อยแล้ว</p>
+              <p className="text-sm font-black text-[#231C18]">{t("rv.noPlace")}</p>
+              <p className="text-xs text-[#8A7870] font-semibold">{t("rv.noPlaceDesc")}</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4">
@@ -1443,17 +1445,17 @@ export default function AdminReviewView() {
 
                     {isRejectingThis ? (
                       <div className="p-4 rounded-2xl bg-red-50 border border-red-200 space-y-3">
-                        <label className="text-xs font-bold text-red-800 block">ระบุเหตุผลที่ไม่ผ่านการอนุมัติสถานที่:</label>
+                        <label className="text-xs font-bold text-red-800 block">{t("rv.rejectReasonPlace")}</label>
                         <input
                           type="text"
                           value={rejectionReason}
                           onChange={(e) => setRejectionReason(e.target.value)}
-                          placeholder="เช่น ภาพถ่ายไม่ชัดเจน, พิกัดไม่ตรงกับสถานที่จริง..."
+                          placeholder={t("rv.rejectPlaceholderPlace")}
                           className="w-full px-3 py-2 text-xs rounded-xl border bg-white outline-none"
                         />
                         <div className="flex justify-end gap-2">
-                          <button onClick={() => setRejectingId(null)} className="px-3 py-1.5 rounded-xl border text-xs font-bold bg-white cursor-pointer">ยกเลิก</button>
-                          <button onClick={() => handleRejectPlace(sub.id)} className="px-4 py-1.5 rounded-xl text-xs font-black text-white bg-red-600 cursor-pointer">ยืนยันปฏิเสธ</button>
+                          <button onClick={() => setRejectingId(null)} className="px-3 py-1.5 rounded-xl border text-xs font-bold bg-white cursor-pointer">{t("common.cancel")}</button>
+                          <button onClick={() => handleRejectPlace(sub.id)} className="px-4 py-1.5 rounded-xl text-xs font-black text-white bg-red-600 cursor-pointer">{t("rv.confirmReject")}</button>
                         </div>
                       </div>
                     ) : (
@@ -1509,7 +1511,7 @@ export default function AdminReviewView() {
             <div className="p-6 overflow-y-auto flex-1 grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Left Column: Editable Fields */}
               <div className="space-y-4 pr-1">
-                <h4 className="text-[10px] font-black text-[#8A7870] uppercase tracking-wider border-b pb-1" style={{ borderColor: C.line }}>Editable Fields</h4>
+                <h4 className="text-[10px] font-black text-[#8A7870] uppercase tracking-wider border-b pb-1" style={{ borderColor: C.line }}>{t("rv.editableFields")}</h4>
                 
                 {validationError && (
                   <p className="text-xs text-red-600 font-bold bg-red-50 p-2.5 rounded-xl border border-red-200">{validationError}</p>
@@ -1540,7 +1542,7 @@ export default function AdminReviewView() {
                 </div>
 
                 <div>
-                  <label className="text-[9px] font-black uppercase tracking-wider block mb-1 text-[#8A7870]">Address / Street <span className="text-red-500 font-bold">*</span></label>
+                  <label className="text-[9px] font-black uppercase tracking-wider block mb-1 text-[#8A7870]">{t("sm.f.address")}<span className="text-red-500 font-bold">*</span></label>
                   <input
                     required
                     type="text"
@@ -1552,7 +1554,7 @@ export default function AdminReviewView() {
                 </div>
 
                 <div>
-                  <label className="text-[9px] font-black uppercase tracking-wider block mb-1 text-[#8A7870]">Website URL <span className="text-[8px] text-gray-400 font-semibold lowercase italic">(optional)</span></label>
+                  <label className="text-[9px] font-black uppercase tracking-wider block mb-1 text-[#8A7870]">{t("sm.f.website")}<span className="text-[8px] text-gray-400 font-semibold lowercase italic">(optional)</span></label>
                   <input
                     type="url"
                     value={website}
@@ -1564,11 +1566,11 @@ export default function AdminReviewView() {
                 </div>
 
                 <div>
-                  <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">Category</label>
+                  <label className="text-[9px] font-black uppercase tracking-wider block mb-1.5 text-[#8A7870]">{t("rv.f.category")}</label>
                   <div className="flex gap-1.5">
                     {[
-                      { id: "food", label: "Food" },
-                      { id: "shop", label: "Shop" },
+                      { id: "food", label: t("rv.cat.food") },
+                      { id: "shop", label: t("rv.cat.shop") },
                     ].map((c) => (
                       <button
                         type="button"
@@ -1584,7 +1586,7 @@ export default function AdminReviewView() {
                 </div>
 
                 <div>
-                  <label className="text-[9px] font-black uppercase tracking-wider block mb-1 text-[#8A7870]">Prefecture</label>
+                  <label className="text-[9px] font-black uppercase tracking-wider block mb-1 text-[#8A7870]">{t("rv.f.prefecture")}</label>
                   <select
                     value={prefecture}
                     onChange={(e) => {
@@ -1594,16 +1596,16 @@ export default function AdminReviewView() {
                     className="w-full px-3.5 py-2 rounded-xl text-xs border outline-none bg-stone-50/20 focus:border-[#E0533C] transition-all"
                     style={{ borderColor: C.line, color: C.ink }}
                   >
-                    <option value="">Unknown</option>
+                    <option value="">{t("um.notSpecified")}</option>
                     {dbPrefectures.map((pref) => (
                       <option key={pref} value={pref}>{pref}</option>
                     ))}
-                    <option value="custom">Type manually</option>
+                    <option value="custom">{t("rv.typeManually")}</option>
                   </select>
                   {prefecture === "custom" && (
                     <input
                       type="text"
-                      placeholder="Enter prefecture name manually (e.g. Tokyo)"
+                      placeholder={t("rv.prefManualPlaceholder")}
                       value={customPrefecture}
                       onChange={(e) => setCustomPrefecture(e.target.value)}
                       className="w-full px-3.5 py-2 rounded-xl text-xs border outline-none bg-stone-50/20 focus:border-[#E0533C] mt-2 transition-all"
@@ -1664,10 +1666,10 @@ export default function AdminReviewView() {
 
               {/* Right Column: Photos & Submission Info */}
               <div className="space-y-4">
-                <h4 className="text-[10px] font-black text-[#8A7870] uppercase tracking-wider border-b pb-1" style={{ borderColor: C.line }}>Submission Media & Info</h4>
+                <h4 className="text-[10px] font-black text-[#8A7870] uppercase tracking-wider border-b pb-1" style={{ borderColor: C.line }}>{t("rv.mediaInfo")}</h4>
                 
                 <div>
-                  <label className="text-[9px] font-black uppercase tracking-wider block mb-1 text-[#8A7870]">Photos</label>
+                  <label className="text-[9px] font-black uppercase tracking-wider block mb-1 text-[#8A7870]">{t("rv.photos")}</label>
                   {Array.isArray(selectedSubmission.image_urls) && selectedSubmission.image_urls.length > 0 ? (
                     <div className="grid grid-cols-2 gap-2">
                       {selectedSubmission.image_urls.map((url: string, index: number) => (
@@ -1677,12 +1679,12 @@ export default function AdminReviewView() {
                   ) : selectedSubmission.image_url ? (
                     <img src={selectedSubmission.image_url} alt="submission" className="w-full h-36 rounded-2xl object-cover border" style={{ borderColor: C.line }} />
                   ) : (
-                    <p className="text-xs text-gray-400 font-semibold italic">No photos attached</p>
+                    <p className="text-xs text-gray-400 font-semibold italic">{t("rv.noPhotos")}</p>
                   )}
                 </div>
 
                 <div>
-                  <label className="text-[9px] font-black uppercase tracking-wider block mb-1 text-[#8A7870]">Ownership Proof Document</label>
+                  <label className="text-[9px] font-black uppercase tracking-wider block mb-1 text-[#8A7870]">{t("rv.proofTitle")}</label>
                   <div className="mt-1 bg-stone-50/50 p-3 rounded-xl border" style={{ borderColor: C.line }}>
                     {selectedSubmission.ownership_proof_url ? (
                       <a
@@ -1694,7 +1696,7 @@ export default function AdminReviewView() {
                         <FileText size={14} /> View Document
                       </a>
                     ) : (
-                      <span className="text-xs text-gray-400 font-semibold italic">No document attached</span>
+                      <span className="text-xs text-gray-400 font-semibold italic">{t("rv.noDoc")}</span>
                     )}
                   </div>
 
@@ -1722,23 +1724,23 @@ export default function AdminReviewView() {
 
                 <div className="grid grid-cols-2 gap-4 bg-stone-50/50 p-4 rounded-2xl border" style={{ borderColor: C.line }}>
                   <div>
-                    <label className="text-[9px] font-black uppercase tracking-wider block text-[#8A7870]">Submitted By</label>
+                    <label className="text-[9px] font-black uppercase tracking-wider block text-[#8A7870]">{t("rv.submittedBy")}</label>
                     <p className="text-xs font-bold text-[#231C18] mt-0.5">{selectedSubmission.profiles?.display_name || selectedSubmission.profiles?.full_name || selectedSubmission.profiles?.username || "Unknown user"}</p>
                   </div>
                   <div>
-                    <label className="text-[9px] font-black uppercase tracking-wider block text-[#8A7870]">Submitted On</label>
+                    <label className="text-[9px] font-black uppercase tracking-wider block text-[#8A7870]">{t("rv.submittedAt")}</label>
                     <p className="text-xs font-bold text-[#231C18] mt-0.5">{new Date(selectedSubmission.created_at).toLocaleDateString()}</p>
                   </div>
                 </div>
 
                 {/* Reject option */}
                 <div className="p-4 rounded-2xl bg-red-50/30 border border-red-100/60 space-y-3 mt-4">
-                  <label className="text-[9px] font-black uppercase tracking-wider block text-red-800">Reject Option</label>
+                  <label className="text-[9px] font-black uppercase tracking-wider block text-red-800">{t("rv.rejectOption")}</label>
                   <input
                     type="text"
                     value={rejectionReason}
                     onChange={(e) => setRejectionReason(e.target.value)}
-                    placeholder="Specify rejection reason (optional)"
+                    placeholder={t("rv.rejectReasonOptional")}
                     className="w-full px-3.5 py-2 text-xs rounded-xl border bg-white outline-none focus:border-red-500 transition-all"
                     style={{ borderColor: C.line }}
                   />
@@ -1771,7 +1773,7 @@ export default function AdminReviewView() {
                 className="px-5 py-2 rounded-xl text-xs font-black text-white bg-emerald-600 hover:bg-emerald-700 transition flex items-center gap-1.5 cursor-pointer shadow-xs"
               >
                 {processingId === selectedSubmission.id ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
-                <span>Save & Approve Spot</span>
+                <span>{t("rv.saveApprove")}</span>
               </button>
             </div>
           </div>
@@ -1789,14 +1791,14 @@ export default function AdminReviewView() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="w-full flex items-center justify-between mb-3 px-1">
- <span className="text-xs font-black text-white/90"> ตัวอย่างเอกสาร / รูปภาพหลักฐานสิทธิ์ร้านค้า</span>
+ <span className="text-xs font-black text-white/90">{t("rv.previewProof")}</span>
               <button
                 type="button"
                 onClick={() => setPreviewImageUrl(null)}
                 className="px-3.5 py-1 rounded-full bg-[#FD775C] hover:bg-stone-700 text-white text-xs font-black transition cursor-pointer flex items-center gap-1 border border-[#FD775C] shadow-md"
               >
                 <X size={14} />
-                <span>ปิดหน้าต่าง</span>
+                <span>{t("common.close")}</span>
               </button>
             </div>
             <img

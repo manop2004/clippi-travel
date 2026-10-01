@@ -114,16 +114,16 @@ export function saveStoredSchedule(shopId: string | number, schedule: ShopSchedu
   } catch (e) {}
 }
 
-const THAI_DAYS = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
+const WEEK_DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
 export function getShopStatusToday(shop: any, overrideSchedule?: ShopSchedule) {
   if (!shop || !shop.id) {
     return {
       statusKey: "open",
-      badgeText: " เปิดอยู่ (09:00 - 18:00)",
+      badgeText: "sch.open|09:00 - 18:00",
       badgeBg: "bg-emerald-600 text-white",
       borderClr: "border-emerald-200",
-      description: "เปิดให้บริการอยู่ (09:00 - 18:00)",
+      description: "sch.openDesc|09:00 - 18:00",
       isClosed: false,
       openHoursStr: "09:00 - 18:00",
       sched: { open_time: "09:00", close_time: "18:00", opening_hours: "09:00 - 18:00" } as ShopSchedule,
@@ -139,16 +139,16 @@ export function getShopStatusToday(shop: any, overrideSchedule?: ShopSchedule) {
   const day = String(now.getDate()).padStart(2, "0");
   const todayStr = `${year}-${month}-${day}`;
   const dayIndex = now.getDay();
-  const thaiDayName = THAI_DAYS[dayIndex];
+  const thaiDayName = WEEK_DAYS[dayIndex];
 
   // 1. Emergency Closed Today Switch
   if (isClosedToday) {
     return {
       statusKey: "closed_today",
-      badgeText: " ปิดบริการวันนี้",
+      badgeText: "sch.closedToday",
       badgeBg: "bg-rose-600 text-white",
       borderClr: "border-rose-200",
-      description: "ปิดบริการชั่วคราววันนี้ (แจ้งปิดด่วนจากทางร้าน)",
+      description: "sch.closedTodayDesc",
       isClosed: true,
       openHoursStr: sched.opening_hours || `${sched.open_time || "09:00"} - ${sched.close_time || "18:00"}`,
       sched,
@@ -160,10 +160,10 @@ export function getShopStatusToday(shop: any, overrideSchedule?: ShopSchedule) {
   if (holidayMatch) {
     return {
       statusKey: "holiday",
-      badgeText: ` วันหยุด: ${holidayMatch.title || "พิเศษ"}`,
+      badgeText: `sch.holiday|${holidayMatch.title || ""}`,
       badgeBg: "bg-rose-700 text-white",
       borderClr: "border-rose-300",
-      description: `วันหยุดพิเศษ (${holidayMatch.title})`,
+      description: `sch.holidayDesc|${holidayMatch.title}`,
       isClosed: true,
       openHoursStr: sched.opening_hours || `${sched.open_time || "09:00"} - ${sched.close_time || "18:00"}`,
       sched,
@@ -176,10 +176,10 @@ export function getShopStatusToday(shop: any, overrideSchedule?: ShopSchedule) {
   if (isDayClosed) {
     return {
       statusKey: "closed_day",
-      badgeText: ` ปิดทุกวัน${thaiDayName}`,
+      badgeText: `sch.closedEvery|${thaiDayName}`,
       badgeBg: "bg-amber-600 text-white",
       borderClr: "border-amber-200",
-      description: `ปิดบริการประจำวัน${thaiDayName}`,
+      description: `sch.closedEveryDesc|${thaiDayName}`,
       isClosed: true,
       openHoursStr: sched.opening_hours || `${sched.open_time || "09:00"} - ${sched.close_time || "18:00"}`,
       sched,
@@ -206,10 +206,10 @@ export function getShopStatusToday(shop: any, overrideSchedule?: ShopSchedule) {
   if (isOpenNow) {
     return {
       statusKey: "open",
-      badgeText: ` เปิดอยู่ (${openTime} - ${closeTime})`,
+      badgeText: `sch.open|${openTime} - ${closeTime}`,
       badgeBg: "bg-emerald-600 text-white",
       borderClr: "border-emerald-200",
-      description: `เปิดให้บริการอยู่ (${openTime} - ${closeTime})`,
+      description: `sch.openDesc|${openTime} - ${closeTime}`,
       isClosed: false,
       openHoursStr: `${openTime} - ${closeTime}`,
       sched,
@@ -217,10 +217,10 @@ export function getShopStatusToday(shop: any, overrideSchedule?: ShopSchedule) {
   } else {
     return {
       statusKey: "closed_now",
-      badgeText: ` ปิดแล้ว (เปิด ${openTime})`,
+      badgeText: `sch.closedNow|${openTime}`,
       badgeBg: "bg-stone-700 text-white",
       borderClr: "border-stone-200",
-      description: `อยู่นอกเวลาทำการ (${openTime} - ${closeTime})`,
+      description: `sch.outsideHours|${openTime} - ${closeTime}`,
       isClosed: true,
       openHoursStr: `${openTime} - ${closeTime}`,
       sched,

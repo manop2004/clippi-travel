@@ -43,7 +43,7 @@ class GlobalErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySta
           color: "#881337"
         }}>
           <h2 style={{ fontSize: "20px", fontWeight: "bold", margin: "0 0 12px 0" }}>
-             เกิดข้อผิดพลาดในระบบ (Application Error)
+             Application Error
           </h2>
           <p style={{ fontSize: "14px", marginBottom: "16px", fontWeight: "bold" }}>
             {this.state.error?.toString() || "Unknown error occurred."}
@@ -74,7 +74,7 @@ class GlobalErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySta
               cursor: "pointer"
             }}
           >
-            รีโหลดหน้าเว็บ (Reload Page)
+            Reload Page
           </button>
         </div>
       );
