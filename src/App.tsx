@@ -344,7 +344,7 @@ export default function App() {
       if (session?.user?.id) {
         if (session.user.email) {
           localStorage.setItem(`user_email_${session.user.id}`, session.user.email);
-          supabase.from("profiles").update({ email: session.user.email }).eq("id", session.user.id).then(() => {}).catch(() => {});
+          supabase.from("profiles").update({ email: session.user.email }).eq("id", session.user.id).then(() => {}, () => {});
         }
         fetchHeaderProfile(session.user.id);
         recordLoginLog(session);
@@ -362,7 +362,7 @@ export default function App() {
       if (currentSession?.user?.id) {
         if (currentSession.user.email) {
           localStorage.setItem(`user_email_${currentSession.user.id}`, currentSession.user.email);
-          supabase.from("profiles").update({ email: currentSession.user.email }).eq("id", currentSession.user.id).then(() => {}).catch(() => {});
+          supabase.from("profiles").update({ email: currentSession.user.email }).eq("id", currentSession.user.id).then(() => {}, () => {});
         }
         fetchHeaderProfile(currentSession.user.id);
 

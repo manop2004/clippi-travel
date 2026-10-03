@@ -949,21 +949,21 @@ export default function AdminReviewView() {
         await supabase.from("store_owners").upsert({
           user_id: selectedSubmission.user_id,
           shop_id: newShop.id
-        }, { onConflict: "user_id,shop_id" }).then(() => {}).catch(() => {});
+        }, { onConflict: "user_id,shop_id" }).then(() => {}, () => {});
 
-        await supabase.from("profiles").update({ role: "store", merchant_status: "approved" }).eq("id", selectedSubmission.user_id).then(() => {}).catch(() => {});
+        await supabase.from("profiles").update({ role: "store", merchant_status: "approved" }).eq("id", selectedSubmission.user_id).then(() => {}, () => {});
 
         await supabase.from("user_roles").upsert({
           user_id: selectedSubmission.user_id,
           role: "store"
-        }, { onConflict: "user_id" }).then(() => {}).catch(() => {});
+        }, { onConflict: "user_id" }).then(() => {}, () => {});
 
         if (assignOwnership) {
           await supabase.rpc("assign_store_owner", {
             p_user_id: selectedSubmission.user_id,
             p_shop_id: newShop.id,
             p_admin_id: adminId,
-          }).then(() => {}).catch(() => {});
+          }).then(() => {}, () => {});
         }
       }
 
