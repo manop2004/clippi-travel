@@ -185,7 +185,7 @@ export default function ProfileView({ onOpenMerchantModal, onGoToStoreManage, on
 
         if (user?.id && user?.email) {
           localStorage.setItem(`user_email_${user.id}`, user.email);
-          supabase.from("profiles").update({ email: user.email }).eq("id", user.id).then(() => {});
+          supabase.from("profiles").update({ email: user.email }).eq("id", user.id).then(() => {}).catch(() => {});
         }
 
         // 3. Profile details (display_name, avatar_url, DB XP)

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Star, Store } from "lucide-react";
+import { Star, Store, LayoutGrid, ChevronRight } from "lucide-react";
 import { C } from "../constants/mockData";
 import { supabase } from "../supabaseClient";
 import Carousel from "./Carousel";
@@ -14,6 +14,7 @@ interface RegionalBannersProps {
 export default function RegionalBanners({ openPlace }: RegionalBannersProps) {
   const [shops, setShops] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showGrid, setShowGrid] = useState(false);
   const { t, lang } = useLang();
 
   useEffect(() => {
@@ -44,6 +45,41 @@ export default function RegionalBanners({ openPlace }: RegionalBannersProps) {
     openPlace({ ...p, name: shopName, tag: p.region || p.prefecture });
   };
 
+  const renderShopCard = (p: any) => {
+    const shopName = localized(p, "shop_name", lang) || p.name || "Unknown Shop";
+    return (
+      <div
+        onClick={() => handleClick(p)}
+        className="w-full rounded-2xl overflow-hidden relative cursor-pointer hover:shadow-md transition"
+        style={{ height: "180px" }}
+      >
+        {p.image_url ? (
+          <img src={p.image_url} alt={shopName} className="w-full h-full object-cover" loading="lazy" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-4xl" style={{ background: C.accentSoft }}>
+            <Store size={32} className="text-amber-800" />
+          </div>
+        )}
+        <div
+          className="absolute inset-0 flex flex-col justify-end p-4"
+          style={{ background: "linear-gradient(to top, rgba(35,28,24,0.85), rgba(35,28,24,0))" }}
+        >
+          <span
+            className="text-[9px] font-black px-2.5 py-1 rounded-full bg-white/90 self-start mb-2"
+            style={{ color: C.accentDeep }}
+          >
+            {t("region.best").replace("{r}", p.region)}
+          </span>
+          <h3 className="text-white text-sm font-black truncate">{shopName}</h3>
+          <div className="flex items-center gap-1 mt-1">
+            <Star size={11} fill={C.gold} color={C.gold} />
+            <span className="text-white text-xs font-bold">{(p.rating ?? 0).toFixed(1)}</span>
+            <span className="text-white/70 text-[10px]">({p.reviews_count ?? 0})</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   if (loading) {
     return (
@@ -55,46 +91,43 @@ export default function RegionalBanners({ openPlace }: RegionalBannersProps) {
 
   return (
     <div className="w-full min-w-0">
-      <Carousel
-        items={featured}
-        keyExtractor={(p: any) => p.id}
-        desktopClassName="md:grid md:grid-cols-3"
-        renderItem={(p: any) => {
-          const shopName = localized(p, "shop_name", lang) || p.name || "Unknown Shop";
-          return (
-            <div
-              onClick={() => handleClick(p)}
-              className="w-full rounded-2xl overflow-hidden relative cursor-pointer hover:shadow-md transition"
-              style={{ height: "180px" }}
-            >
-              {p.image_url ? (
-                <img src={p.image_url} alt={shopName} className="w-full h-full object-cover" loading="lazy" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-4xl" style={{ background: C.accentSoft }}>
-                  <Store size={32} className="text-amber-800" />
-                </div>
-              )}
-              <div
-                className="absolute inset-0 flex flex-col justify-end p-4"
-                style={{ background: "linear-gradient(to top, rgba(35,28,24,0.85), rgba(35,28,24,0))" }}
-              >
-                <span
-                  className="text-[9px] font-black px-2.5 py-1 rounded-full bg-white/90 self-start mb-2"
-                  style={{ color: C.accentDeep }}
-                >
-                  {t("region.best").replace("{r}", p.region)}
-                </span>
-                <h3 className="text-white text-sm font-black truncate">{shopName}</h3>
-                <div className="flex items-center gap-1 mt-1">
-                  <Star size={11} fill={C.gold} color={C.gold} />
-                  <span className="text-white text-xs font-bold">{(p.rating ?? 0).toFixed(1)}</span>
-                  <span className="text-white/70 text-[10px]">({p.reviews_count ?? 0})</span>
-                </div>
-              </div>
+      {/* Mobile: Toggle between carousel and grid view */}
+      <div className="flex md:hidden items-center justify-end mb-3">
+        <button
+          onClick={() => setShowGrid((prev) => !prev)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-black transition-all active:scale-95 cursor-pointer"
+          style={{
+            background: showGrid ? C.accent : "#FFF0ED",
+            color: showGrid ? "#FFFFFF" : C.accent,
+            boxShadow: showGrid ? `0 2px 8px ${C.accent}40` : "none",
+          }}
+        >
+          <LayoutGrid size={13} strokeWidth={2.5} />
+          <span>{showGrid ? "แสดงน้อยลง" : "ดูทั้งหมด"}</span>
+          {!showGrid && <ChevronRight size={12} strokeWidth={2.5} />}
+        </button>
+      </div>
+
+      {/* Mobile Grid View */}
+      {showGrid && (
+        <div className="grid grid-cols-2 gap-3 md:hidden">
+          {featured.map((p) => (
+            <div key={p.id}>
+              {renderShopCard(p)}
             </div>
-          );
-        }}
-      />
+          ))}
+        </div>
+      )}
+
+      {/* Carousel View (default on mobile, always on desktop) */}
+      <div className={showGrid ? "hidden md:block" : "block"}>
+        <Carousel
+          items={featured}
+          keyExtractor={(p: any) => p.id}
+          desktopClassName="md:grid md:grid-cols-3"
+          renderItem={(p: any) => renderShopCard(p)}
+        />
+      </div>
     </div>
   );
 }
